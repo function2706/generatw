@@ -133,6 +133,10 @@ def do_restapi(data: Dict[str, str]):
 
     update_image("output.png")
 
+def print_json(data: Dict[str, str]):
+    print("-----------------------------------")
+    print("data:", json.dumps(data, ensure_ascii=False, indent=2))
+
 # クリップボードを監視し, 更新があった場合に行動画面であればメタステータスを, キャラクタ画面であればキャラクタステータスを取得する
 # 後者の場合はさらに RestAPI でポストする
 def monitor_clipboard():
@@ -142,12 +146,12 @@ def monitor_clipboard():
     if text != last_text:
         if re.search(r"(\S+)の月", text):
             data = get_metastats(text, data)
+            print_json(data)
         elif re.search(r"■(.+?)\(", text):
             data = get_charastats(text, data)
+            print_json(data)
             if data != last_data:
                 do_restapi(data)
-        print("-----------------------------------")
-        print("data:", json.dumps(data, ensure_ascii=False, indent=2))
         last_text = text
         last_data = copy.deepcopy(data)
 
