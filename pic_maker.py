@@ -6,7 +6,7 @@ from PIL import Image, ImageTk
 import base64, io, json, pyperclip, requests, sys, tkinter
 
 @dataclass
-class SDCfg:
+class SDConfigs:
     url: Optional[str] = "http://127.0.0.1:7860"
     steps: Optional[int] = 20
     sampler_name: Optional[str] = "DPM++ 2S a"
@@ -15,6 +15,11 @@ class SDCfg:
     seed: Optional[int] = -1
     width: Optional[int] = 512
     height: Optional[int] = 512
+
+@dataclass
+class PMConfigs:
+    do_post: bool = False
+    is_verbose: bool = False
 
 @dataclass
 class PMFlags:
@@ -30,7 +35,7 @@ class PicMaker(ABC):
         raise NotImplementedError
 
     # コンストラクタ
-    def __init__(self, title: str):
+    def __init__(self, title: str, do_post: bool, is_verbose: bool):
         self.crnt_clipboard = ""
         self.crnt_stats = {}
 
@@ -39,8 +44,12 @@ class PicMaker(ABC):
         self.tk_label = tkinter.Label(self.tk_root)
         self.tk_label.pack()
 
-        self.sd_cfg = SDCfg()
+        self.sd_configs = SDConfigs()
         self.flags = PMFlags()
+
+        self.pm_configs = PMConfigs()
+        self.pm_configs.do_post = do_post
+        self.pm_configs.is_verbose = is_verbose
 
     # クリップボードから文字列を得る
     # 前回文字列と同様かどうかも記録する
@@ -49,6 +58,10 @@ class PicMaker(ABC):
         if self.crnt_clipboard == new_clipboard:
             self.flags.is_new_clipboard = False
             return
+
+        if self.pm_configs.is_verbose:
+            print("new_clipboard:")
+            print(new_clipboard)
 
         self.flags.is_new_clipboard = True
         self.crnt_clipboard = new_clipboard
@@ -61,12 +74,15 @@ class PicMaker(ABC):
     # 前回のクリップボード文字列から変化がない場合は何もしない
     def refresh_stats(self) -> None:
         self.reflesh_clipboard()
-        #if (not self.crnt_clipboard) or (not self.flags.is_new_clipboard):
         if not self.flags.is_new_clipboard:
             self.flags.is_new_stats = False
             return
 
         new_stats = self.parse_clipboard()
+
+        if self.pm_configs.is_verbose:
+            print("new_stats:", json.dumps(new_stats, ensure_ascii=False, indent=2))
+
         if self.crnt_stats == new_stats:
             self.flags.is_new_stats = False
             return
@@ -76,7 +92,7 @@ class PicMaker(ABC):
 
     # ステータスをダンプする
     def print_stats(self) -> None:
-        print("dump:", json.dumps(self.crnt_stats, ensure_ascii=False, indent=2))
+        print("crnt_stats:", json.dumps(self.crnt_stats, ensure_ascii=False, indent=2))
 
     # ステータスがプロンプト生成において十分な情報を有しているか
     def is_stats_enough_for_prompt(self) -> bool:
@@ -110,20 +126,20 @@ class PicMaker(ABC):
         json = {}
         json["prompt"] = self.make_pos_prompt()
         json["negative_prompt"] = self.make_neg_prompt()
-        json["steps"] = self.sd_cfg.steps
-        json["sampler_name"] = self.sd_cfg.sampler_name
-        json["scheduler"] = self.sd_cfg.scheduler
-        json["cfg_scale"] = self.sd_cfg.cfg_scale
-        json["seed"] = self.sd_cfg.seed
-        json["width"] = self.sd_cfg.width
-        json["height"] = self.sd_cfg.height
+        json["steps"] = self.sd_configs.steps
+        json["sampler_name"] = self.sd_configs.sampler_name
+        json["scheduler"] = self.sd_configs.scheduler
+        json["cfg_scale"] = self.sd_configs.cfg_scale
+        json["seed"] = self.sd_configs.seed
+        json["width"] = self.sd_configs.width
+        json["height"] = self.sd_configs.height
 
         if (not json["prompt"]) or (not json["negative_prompt"]):
             # プロンプトが空の場合はポストしない
             return ""
 
         # txt2img
-        response = requests.post(f"{self.sd_cfg.url}/sdapi/v1/txt2img", json=json)
+        response = requests.post(f"{self.sd_configs.url}/sdapi/v1/txt2img", json=json)
         image_data = response.json()["images"][0]
 
         # 画像保存
@@ -143,6 +159,9 @@ class PicMaker(ABC):
         if self.flags.is_new_stats:
             self.print_stats()
             if self.is_stats_enough_for_prompt():
-                self.update_image(self.gen_pic())
+                if self.pm_configs.do_post:
+                    self.update_image(self.gen_pic())
+                else:
+                    print("Will post!")
 
         self.tk_root.after(500, self.doit)

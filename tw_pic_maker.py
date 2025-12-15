@@ -171,8 +171,8 @@ class TWPicMaker(PicMaker):
         })
 
     # コンストラクタ
-    def __init__(self):
-        super().__init__("tw_picmaker")
+    def __init__(self, do_post: bool, is_verbose: bool):
+        super().__init__("tw_picmaker", do_post, is_verbose)
 
     # クリップボード文字列からメタステータスを取得する
     def get_metastats(self, stats: Dict[str, Any]) -> None:
