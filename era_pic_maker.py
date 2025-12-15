@@ -1,4 +1,5 @@
 from tw_pic_maker import TWPicMaker
+from reverse_pic_maker import ReversePicMaker
 import argparse, signal
 
 # エントリポイント
@@ -9,7 +10,7 @@ def main() -> None:
             description="Era Picture Maker",
             epilog="ex: python era_pic_maker.py -m TW"
         )
-        parser.add_argument("-m", "--mode", choices=["TW", "hoge"], default="TW", help="Run as this mode")
+        parser.add_argument("-m", "--mode", choices=["TW", "R", "hoge"], default="TW", help="Run as this mode")
         parser.add_argument("-p", "--post", action="store_true", help="Do posting via RestAPI")
         parser.add_argument("-v", "--verbose", action="store_true", help="Show all clipboard and stats")
 
@@ -17,6 +18,8 @@ def main() -> None:
 
         if args.mode == "TW":
             pm = TWPicMaker(args.post, args.verbose)
+        elif args.mode == "R":
+            pm = ReversePicMaker(args.post, args.verbose)
         else:
             print(f"[debug] mode={args.mode}, post={args.post}, verbose={args.verbose}")
             return
