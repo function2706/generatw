@@ -12,6 +12,10 @@ root.title("eragen")
 label = tk.Label(root)
 label.pack()
 
+last_text = ""
+data = {}
+last_data = {}
+
 # SIGINT ハンドラ
 def sigint_handler(sig, frame):
     print("\n終了します。")
@@ -133,6 +137,7 @@ def do_restapi(data: Dict[str, str]):
 
     update_image("output.png")
 
+# jsonをダンプする
 def print_json(data: Dict[str, str]):
     print("-----------------------------------")
     print("data:", json.dumps(data, ensure_ascii=False, indent=2))
@@ -159,16 +164,16 @@ def monitor_clipboard():
     root.after(500, monitor_clipboard)
 
 # エントリポイント
-try:
-    last_text = ""
-    data = {}
-    last_data = {}
+def main():
+    try:
+        signal.signal(signal.SIGINT, sigint_handler)
 
-    signal.signal(signal.SIGINT, sigint_handler)
+        # Tkinterのイベントループ開始
+        root.after(100, monitor_clipboard)  # 監視を開始
+        root.mainloop()
+    except KeyboardInterrupt:
+        print("\n終了します。")
+        root.destroy()
 
-    # Tkinterのイベントループ開始
-    root.after(100, monitor_clipboard)  # 監視を開始
-    root.mainloop()
-except KeyboardInterrupt:
-    print("\n終了します。")
-    root.destroy()
+if __name__ == "__main__":
+    main()
