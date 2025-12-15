@@ -81,35 +81,15 @@ class PicMaker(ABC):
 
     # ステータスがプロンプト生成において十分な情報を有しているか
     def is_stats_enough_for_prompt(self) -> bool:
-        stats = self.crnt_stats
-        if not isinstance(stats, dict) or not stats:
-            return False
-        character = stats.get("character")
-        if not isinstance(character, dict) or not character:
-            return False
-        name = character.get("name")
-        if not isinstance(name, str) or not name:
-            return False
-
-        return True
+        pass
 
     # ステータスからポジティブプロンプトを生成する
     def make_pos_prompt(self) -> str:
-        name = self.crnt_stats["character"]["name"]
-        pos_prompt = self.chara_tbl.get(name, "")
-        if pos_prompt == "":
-            return ""
-        pos_prompt += ",best quality,masterpiece,absurdres,1girl,solo"
-        return pos_prompt
+        pass
 
     # ステータスからネガティブプロンプトを生成する
     def make_neg_prompt(self) -> str:
-        neg_prompt = "motion lines,speed lines,3d,((shiny skin)),bad quality,worst quality,worst detail,text,logo,cropped,deformed,blurry,((cropped face)),"\
-                "((amputee)),((bad anatomy)),multiple heads,extra faces,(extra limbs),(missing limb),(missing limbs),"\
-                "bad arm,(multiple arms),(extra arms),(missing arm),bad leg,(multiple legs),(extra legs),(missing leg),"\
-                "((bad hands)),multiple hands,extra hands,missing hand,(extra digits:1.5),(fewer digits:1.5),(missing digits:1.5),"\
-                "((bad feet)),((multiple feet)),((extra feet)),missing foot,(extra toes:2),(fewer toes:2),(missing toes:2)"
-        return neg_prompt
+        pass
 
     # TKinter を指定の画像パスで更新する
     def update_image(self, path: str) -> None:
@@ -399,3 +379,35 @@ class TWPicMaker(PicMaker):
             self.get_charastats(new_stats)
 
         return new_stats
+
+    # ステータスがプロンプト生成において十分な情報を有しているか
+    def is_stats_enough_for_prompt(self) -> bool:
+        stats = self.crnt_stats
+        if not isinstance(stats, dict) or not stats:
+            return False
+        character = stats.get("character")
+        if not isinstance(character, dict) or not character:
+            return False
+        name = character.get("name")
+        if not isinstance(name, str) or not name:
+            return False
+
+        return True
+
+    # ステータスからポジティブプロンプトを生成する
+    def make_pos_prompt(self) -> str:
+        name = self.crnt_stats["character"]["name"]
+        pos_prompt = self.chara_tbl.get(name, "")
+        if pos_prompt == "":
+            return ""
+        pos_prompt += ",best quality,masterpiece,absurdres,1girl,solo"
+        return pos_prompt
+
+    # ステータスからネガティブプロンプトを生成する
+    def make_neg_prompt(self) -> str:
+        neg_prompt = "motion lines,speed lines,3d,((shiny skin)),bad quality,worst quality,worst detail,text,logo,cropped,deformed,blurry,((cropped face)),"\
+                "((amputee)),((bad anatomy)),multiple heads,extra faces,(extra limbs),(missing limb),(missing limbs),"\
+                "bad arm,(multiple arms),(extra arms),(missing arm),bad leg,(multiple legs),(extra legs),(missing leg),"\
+                "((bad hands)),multiple hands,extra hands,missing hand,(extra digits:1.5),(fewer digits:1.5),(missing digits:1.5),"\
+                "((bad feet)),((multiple feet)),((extra feet)),missing foot,(extra toes:2),(fewer toes:2),(missing toes:2)"
+        return neg_prompt
