@@ -1,4 +1,4 @@
-from pic_maker import TWPicMaker
+from tw_pic_maker import TWPicMaker
 import signal
 
 # エントリポイント
