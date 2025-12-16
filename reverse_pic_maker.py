@@ -132,14 +132,33 @@ class ReversePicMaker(PicMaker):
         name_match = re.search(r"^\s*(\S+)\s\[LV", self.crnt_clipboard, re.MULTILINE)
         if name_match:
             chara_data["name"] = name_match.group(1)
-        # 状態
         name = chara_data["name"]
+        # 状態
         status_match = re.search(rf"^\s*{re.escape(name)}の状態:\[(\S+)\]", self.crnt_clipboard, re.MULTILINE)
         if status_match:
             chara_data["status"] = status_match.group(1)
         # 衣装
+        equip_block_match = re.search(rf"^\s*{re.escape(name)}の衣装：\s*(?:\[[^\[\]\n]+\])+", self.crnt_clipboard, re.MULTILINE)
+        if equip_block_match:
+            chara_data["equip"] = []
+            equip_list = chara_data["equip"]
+            equip_block = equip_block_match.group(0)
+            items = re.findall(r'\[([^\[\]\n]+)\]', equip_block)
+            for item in items:
+                equip_list.append(item)
         # 姿勢
+        posture_match = re.search(rf"^\s*現在の姿勢：\S*\[{re.escape(name)}：(\S+)\]", self.crnt_clipboard, re.MULTILINE)
+        if posture_match:
+            chara_data["posture"] = posture_match.group(1)
         # 使用中
+        tool_block_match = re.search(rf"^\s*使用中\s*(?:\[[^\[\]\n]+\])+", self.crnt_clipboard, re.MULTILINE)
+        if tool_block_match:
+            chara_data["tool"] = []
+            tool_list = chara_data["tool"]
+            tool_block = tool_block_match.group(0)
+            items = re.findall(r'\[([^\[\]\n]+)\]', tool_block)
+            for item in items:
+                tool_list.append(item)
 
     # クリップボード文字列が行動画面であればメタステータスを, キャラクタ画面であればキャラクタステータスを取得する
     # 変更が加わる箇所以外は更新されない
