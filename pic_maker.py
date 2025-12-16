@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Mapping, Optional
 from PIL import Image, ImageTk
-import base64, io, json, pyperclip, requests, sys, tkinter
+import base64, io, json, pyperclip, requests, sys, tkinter, time
 
 @dataclass
 class SDConfigs:
@@ -20,11 +20,13 @@ class SDConfigs:
 class PMConfigs:
     do_post: bool = False
     is_verbose: bool = False
+    timeout_sec: int = 60
 
 @dataclass
 class PMFlags:
     is_new_clipboard: bool = False
     is_new_stats: bool = False
+    is_generating: bool = False
 
 # 基底クラス
 class PicMaker(ABC):
@@ -54,7 +56,13 @@ class PicMaker(ABC):
     # クリップボードから文字列を得る
     # 前回文字列と同様かどうかも記録する
     def reflesh_clipboard(self) -> None:
-        new_clipboard = pyperclip.paste()
+        try:
+            new_clipboard = pyperclip.paste()
+        except Exception as e:
+            self.flags.is_new_clipboard = False
+            print("An exception occur for watching clipboard.", e)
+            return
+
         if self.crnt_clipboard == new_clipboard:
             self.flags.is_new_clipboard = False
             return
@@ -122,25 +130,31 @@ class PicMaker(ABC):
 
     # json を生成し RestAPI でポストする
     # 生成した画像のパスを返す
+    # 生成中の場合は何もしない
     def gen_pic(self) -> str:
-        json = {}
-        json["prompt"] = self.make_pos_prompt()
-        json["negative_prompt"] = self.make_neg_prompt()
-        json["steps"] = self.sd_configs.steps
-        json["sampler_name"] = self.sd_configs.sampler_name
-        json["scheduler"] = self.sd_configs.scheduler
-        json["cfg_scale"] = self.sd_configs.cfg_scale
-        json["seed"] = self.sd_configs.seed
-        json["width"] = self.sd_configs.width
-        json["height"] = self.sd_configs.height
-
-        if (not json["prompt"]) or (not json["negative_prompt"]):
-            # プロンプトが空の場合はポストしない
+        if self.flags.is_generating:
+            print("In generating, Busy!")
             return ""
 
-        # txt2img
         try:
-            response = requests.post(f"{self.sd_configs.url}/sdapi/v1/txt2img", json=json, timeout=60)
+            self.flags.is_generating = True
+            json = {}
+            json["prompt"] = self.make_pos_prompt()
+            json["negative_prompt"] = self.make_neg_prompt()
+            json["steps"] = self.sd_configs.steps
+            json["sampler_name"] = self.sd_configs.sampler_name
+            json["scheduler"] = self.sd_configs.scheduler
+            json["cfg_scale"] = self.sd_configs.cfg_scale
+            json["seed"] = self.sd_configs.seed
+            json["width"] = self.sd_configs.width
+            json["height"] = self.sd_configs.height
+
+            if (not json["prompt"]) or (not json["negative_prompt"]):
+                # プロンプトが空の場合はポストしない
+                return ""
+
+            # txt2img
+            response = requests.post(f"{self.sd_configs.url}/sdapi/v1/txt2img", json=json, timeout=self.pm_configs.timeout_sec)
             response.raise_for_status()
             body = response.json()
             images = body.get("images")
@@ -162,8 +176,9 @@ class PicMaker(ABC):
             print("Failed to generate image:", e)
         except Exception as e:
             print("Another error occurs about image:", e)
+        finally:
+            self.flags.is_generating = False
         return ""
-
 
     # SIGINT ハンドラ
     def sigint_handler(self, sig, frame) -> None:
@@ -172,13 +187,18 @@ class PicMaker(ABC):
 
     # メイン処理
     def doit(self) -> None:
-        self.refresh_stats()
-        if self.flags.is_new_stats:
-            self.print_stats()
-            if self.is_stats_enough_for_prompt():
-                if self.pm_configs.do_post:
-                    self.update_image(self.gen_pic())
-                else:
-                    print("Will post!")
+        try:
+            self.refresh_stats()
+            if not self.flags.is_new_stats:
+                return
 
-        self.tk_root.after(500, self.doit)
+            self.print_stats()
+            if not self.is_stats_enough_for_prompt():
+                return
+
+            if self.pm_configs.do_post:
+                self.update_image(self.gen_pic())
+            else:
+                print("Will post!")
+        finally:
+            self.tk_root.after(500, self.doit)
