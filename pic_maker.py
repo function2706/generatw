@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Mapping, Optional
 from PIL import Image, ImageTk
-import base64, io, json, pyperclip, requests, sys, tkinter, time
+import base64, io, json, pyperclip, requests, sys, threading, tkinter
 
 @dataclass
 class SDConfigs:
@@ -180,6 +180,12 @@ class PicMaker(ABC):
             self.flags.is_generating = False
         return ""
 
+    # 生成スレッドエントリポイント
+    def make_pic_async(self) -> None:
+        def worker():
+            self.update_image(self.gen_pic())
+        threading.Thread(target=worker, args=(), daemon=True).start()
+
     # SIGINT ハンドラ
     def sigint_handler(self, sig, frame) -> None:
         self.tk_root.destroy()
@@ -197,7 +203,7 @@ class PicMaker(ABC):
                 return
 
             if self.pm_configs.do_post:
-                self.update_image(self.gen_pic())
+                self.make_pic_async()
             else:
                 print("Will post!")
         finally:
