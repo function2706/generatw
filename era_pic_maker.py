@@ -10,11 +10,16 @@ def main() -> None:
             description="Era Picture Maker",
             epilog="ex: python era_pic_maker.py -m TW"
         )
-        parser.add_argument("-m", "--mode", choices=["TW", "R", "hoge"], default="TW", help="Run as this mode")
+        parser.add_argument("-m", "--mode", choices=["TW", "R", "dummy"], default="dummy", help="Run as this mode")
         parser.add_argument("-p", "--post", action="store_true", help="Do posting via RestAPI")
         parser.add_argument("-v", "--verbose", action="store_true", help="Show all clipboard and stats")
+        parser.add_argument("-c", "--check", action="store_true", help="Check option values")
 
         args = parser.parse_args()
+
+        if args.check:
+            print(f"[debug] mode={args.mode}, post={args.post}, verbose={args.verbose}")
+            return
 
         if args.mode == "TW":
             pm = TWPicMaker(args.post, args.verbose)
