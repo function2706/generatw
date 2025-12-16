@@ -43,6 +43,10 @@ class PicMaker(ABC):
 
         self.tk_root = tkinter.Tk()
         self.tk_root.title(title)
+        self.tk_root.geometry("512x512")
+        button = tkinter.Button(self.tk_root, text="実行", command=self.doit_oneshot)
+        button.pack(pady=20)
+
         self.tk_label = tkinter.Label(self.tk_root)
         self.tk_label.pack()
 
@@ -191,20 +195,23 @@ class PicMaker(ABC):
         self.tk_root.destroy()
         sys.exit(0)
 
-    # メイン処理
+    # ワンショット処理 (ステータス表示 -> ステータス型式確認 -> 非同期で生成, tkinter 更新)
+    def doit_oneshot(self) -> None:
+        self.print_stats()
+        if not self.is_stats_enough_for_prompt():
+            return
+        if self.pm_configs.do_post:
+            self.make_pic_async()
+        else:
+            print("Will post!")
+
+    # メイン処理 (ステータス更新 -> ワンショット処理)
     def doit(self) -> None:
         try:
             self.refresh_stats()
             if not self.flags.is_new_stats:
                 return
 
-            self.print_stats()
-            if not self.is_stats_enough_for_prompt():
-                return
-
-            if self.pm_configs.do_post:
-                self.make_pic_async()
-            else:
-                print("Will post!")
+            self.doit_oneshot()
         finally:
             self.tk_root.after(500, self.doit)
