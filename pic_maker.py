@@ -139,14 +139,31 @@ class PicMaker(ABC):
             return ""
 
         # txt2img
-        response = requests.post(f"{self.sd_configs.url}/sdapi/v1/txt2img", json=json)
-        image_data = response.json()["images"][0]
+        try:
+            response = requests.post(f"{self.sd_configs.url}/sdapi/v1/txt2img", json=json, timeout=60)
+            response.raise_for_status()
+            body = response.json()
+            images = body.get("images")
+            if not images:
+                print("API response without images.")
+                return ""
+            image_data = images[0]
 
-        # 画像保存
-        image = Image.open(io.BytesIO(base64.b64decode(image_data)))
-        image_path = self.gen_image_path()
-        image.save(image_path)
-        return image_path
+            # 画像保存
+            image = Image.open(io.BytesIO(base64.b64decode(image_data)))
+            image_path = self.gen_image_path()
+            image.save(image_path)
+            return image_path
+        except requests.exceptions.Timeout:
+            print("API timeout.")
+        except requests.exceptions.RequestException as e:
+            print("API Failed to request:", e)
+        except (ValueError, KeyError, IndexError) as e:
+            print("Failed to generate image:", e)
+        except Exception as e:
+            print("Another error occurs about image:", e)
+        return ""
+
 
     # SIGINT ハンドラ
     def sigint_handler(self, sig, frame) -> None:

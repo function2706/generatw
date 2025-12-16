@@ -160,7 +160,7 @@ class ReversePicMaker(PicMaker):
             for item in items:
                 tool_list.append(item)
 
-    # クリップボード文字列が行動画面であればメタステータスを, キャラクタ画面であればキャラクタステータスを取得する
+    # クリップボード文字列からキャラクタステータスを取得する
     # 変更が加わる箇所以外は更新されない
     def parse_clipboard(self) -> Dict[str, Any]:
         new_stats = copy.deepcopy(self.crnt_stats)
