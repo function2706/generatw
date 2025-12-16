@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Mapping, Optional
 from PIL import Image, ImageTk
+from tkinter import ttk
 import base64, io, json, pyperclip, requests, sys, threading, tkinter
 
 @dataclass
@@ -38,24 +39,55 @@ class PicMaker(ABC):
 
     # コンストラクタ
     def __init__(self, title: str, do_post: bool, is_verbose: bool):
+        self.sd_configs = SDConfigs()
+        self.flags = PMFlags()
+
         self.crnt_clipboard = ""
         self.crnt_stats = {}
 
         self.tk_root = tkinter.Tk()
-        self.tk_root.title(title)
-        self.tk_root.geometry("512x512")
-        button = tkinter.Button(self.tk_root, text="実行", command=self.doit_oneshot)
-        button.pack(pady=20)
-
-        self.tk_label = tkinter.Label(self.tk_root)
-        self.tk_label.pack()
-
-        self.sd_configs = SDConfigs()
-        self.flags = PMFlags()
+        self.main_frame = ttk.Frame(self.tk_root, padding=12)
+        self.config_frame = ttk.Frame(self.main_frame)
+        self.image_frame = ttk.Frame(self.main_frame)
+        self.construct_gui(title)
 
         self.pm_configs = PMConfigs()
         self.pm_configs.do_post = do_post
         self.pm_configs.is_verbose = is_verbose
+
+    # テキストボックスの作成
+    def put_textbox(self, name: str, row: int, col: int, width: int, default: str) -> ttk.Entry:
+        ttk.Label(self.config_frame, text=name).grid(row=row, column=col, padx=6, pady=6, sticky="w")
+        entry = ttk.Entry(self.config_frame, width=width)
+        entry.grid(row=row, column=(col + 1), padx=2, pady=6, sticky="w")
+        entry.insert(0, default)
+        return entry
+
+    # GUI の構築
+    def construct_gui(self, title: str) -> None:
+        # ウィンドウ定義
+        self.tk_root.title(title)
+        self.tk_root.geometry("640x640")
+        self.tk_root.columnconfigure(0, weight=1)
+        self.tk_root.rowconfigure(0, weight=1)
+        # フレーム定義
+        self.main_frame.grid(row=0, column=0, sticky="nsew")
+        self.config_frame.grid(row=0, column=0, sticky="nw")
+        self.image_frame.grid(row=1, column=0, sticky="s")
+        # ボタン(今すぐ生成)
+        button = ttk.Button(self.config_frame, text="今すぐ生成", command=self.doit_oneshot)
+        button.grid(row=0, column=0, padx=6, pady=6, sticky="e")
+        # テキストボックス(幅)
+        self.entry_width = self.put_textbox("幅", 0, 1, 5, str(self.sd_configs.width))
+        # テキストボックス(高さ)
+        self.entry_height = self.put_textbox("高さ", 0, 3, 5, str(self.sd_configs.height))
+        # テキストボックス(ステップ数)
+        self.entry_steps = self.put_textbox("Steps", 0, 5, 4, str(self.sd_configs.steps))
+        # テキストボックス(URL)
+        self.entry_url = self.put_textbox("サーバ", 0, 7, 24, str(self.sd_configs.url))
+        # ラベル
+        self.tk_label = ttk.Label(self.image_frame)
+        self.tk_label.grid(row=1, column=0, padx=6, pady=6, sticky="nsew")
 
     # クリップボードから文字列を得る
     # 前回文字列と同様かどうかも記録する
@@ -132,6 +164,17 @@ class PicMaker(ABC):
     def gen_image_path(self) -> str:
         pass
 
+    # GUI から SD コンフィグを更新する
+    def reflesh_sd_configs(self) -> None:
+        self.sd_configs.url = self.entry_url.get()
+        self.sd_configs.steps = int(self.entry_steps.get())
+        self.sd_configs.sampler_name = "DPM++ 2S a"
+        self.sd_configs.scheduler = "Karras"
+        self.sd_configs.cfg_scale = 7.0
+        self.sd_configs.seed = -1
+        self.sd_configs.width = int(self.entry_width.get())
+        self.sd_configs.height = int(self.entry_height.get())
+
     # json を生成し RestAPI でポストする
     # 生成した画像のパスを返す
     # 生成中の場合は何もしない
@@ -142,6 +185,7 @@ class PicMaker(ABC):
 
         try:
             self.flags.is_generating = True
+            self.reflesh_sd_configs()
             json = {}
             json["prompt"] = self.make_pos_prompt()
             json["negative_prompt"] = self.make_neg_prompt()
