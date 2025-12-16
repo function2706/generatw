@@ -128,7 +128,6 @@ class ReversePicMaker(PicMaker):
         stats["character"] = {}
         chara_data = stats["character"]
         # キャラ名
-        print(self.crnt_clipboard)
         name_match = re.search(r"^\s*(\S+)\s\[LV", self.crnt_clipboard, re.MULTILINE)
         if name_match:
             chara_data["name"] = name_match.group(1)
@@ -200,7 +199,7 @@ class ReversePicMaker(PicMaker):
                 "((bad hands)),multiple hands,extra hands,missing hand,(extra digits:1.5),(fewer digits:1.5),(missing digits:1.5),"\
                 "((bad feet)),((multiple feet)),((extra feet)),missing foot,(extra toes:2),(fewer toes:2),(missing toes:2)"
         return neg_prompt
-    
+
     # ステータス等をもとに画像のパスを生成する
     def gen_image_path(self) -> str:
         name = self.crnt_stats["character"]["name"]
