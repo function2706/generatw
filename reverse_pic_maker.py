@@ -121,7 +121,7 @@ class ReversePicMaker(PicMaker):
 
     # コンストラクタ
     def __init__(self, do_post: bool, is_verbose: bool):
-        super().__init__("reverse_picmaker", do_post, is_verbose)
+        super().__init__(do_post, is_verbose)
 
     # クリップボード文字列からキャラクタステータスを取得する
     def get_charastats(self, stats: Dict[str, Any]) -> None:

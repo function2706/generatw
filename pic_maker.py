@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Mapping, Optional
 from PIL import Image, ImageTk
-from tkinter import ttk
+from tkinter import ttk, Frame
 import base64, io, json, pyperclip, requests, sys, threading, tkinter
 
 @dataclass
@@ -38,56 +38,81 @@ class PicMaker(ABC):
         raise NotImplementedError
 
     # コンストラクタ
-    def __init__(self, title: str, do_post: bool, is_verbose: bool):
+    def __init__(self, do_post: bool, is_verbose: bool):
         self.sd_configs = SDConfigs()
         self.flags = PMFlags()
 
         self.crnt_clipboard = ""
         self.crnt_stats = {}
 
+        # 設定ウィンドウ
         self.tk_root = tkinter.Tk()
-        self.main_frame = ttk.Frame(self.tk_root, padding=12)
-        self.config_frame = ttk.Frame(self.main_frame)
-        self.image_frame = ttk.Frame(self.main_frame)
-        self.construct_gui(title)
+        self.construct_config_window()
+        self.image_window = None
 
         self.pm_configs = PMConfigs()
         self.pm_configs.do_post = do_post
         self.pm_configs.is_verbose = is_verbose
 
     # テキストボックスの作成
-    def put_textbox(self, name: str, row: int, col: int, width: int, default: str) -> ttk.Entry:
-        ttk.Label(self.config_frame, text=name).grid(row=row, column=col, padx=6, pady=6, sticky="w")
-        entry = ttk.Entry(self.config_frame, width=width)
+    def put_textbox(self, frame :Frame, name: str, row: int, col: int, width: int, default: str) -> ttk.Entry:
+        ttk.Label(frame, text=name).grid(row=row, column=col, padx=6, pady=6, sticky="w")
+        entry = ttk.Entry(frame, width=width)
         entry.grid(row=row, column=(col + 1), padx=2, pady=6, sticky="w")
         entry.insert(0, default)
         return entry
 
     # GUI の構築
-    def construct_gui(self, title: str) -> None:
+    def construct_config_window(self) -> None:
         # ウィンドウ定義
-        self.tk_root.title(title)
-        self.tk_root.geometry("640x640")
+        self.tk_root.title("設定")
         self.tk_root.columnconfigure(0, weight=1)
         self.tk_root.rowconfigure(0, weight=1)
         # フレーム定義
+        self.main_frame = ttk.Frame(self.tk_root, padding=12)
         self.main_frame.grid(row=0, column=0, sticky="nsew")
-        self.config_frame.grid(row=0, column=0, sticky="nw")
-        self.image_frame.grid(row=1, column=0, sticky="s")
+        self.config_button_frame = ttk.Frame(self.main_frame)
+        self.config_button_frame.grid(row=0, column=0, sticky="w")
+        self.config_param1_frame = ttk.Frame(self.main_frame)
+        self.config_param1_frame.grid(row=1, column=0, sticky="w")
+        self.config_param2_frame = ttk.Frame(self.main_frame)
+        self.config_param2_frame.grid(row=2, column=0, sticky="w")
         # ボタン(今すぐ生成)
-        button = ttk.Button(self.config_frame, text="今すぐ生成", command=self.doit_oneshot)
-        button.grid(row=0, column=0, padx=6, pady=6, sticky="e")
+        button = ttk.Button(self.config_button_frame, text="今すぐ生成", command=self.doit_oneshot)
+        button.grid(row=0, column=0, padx=6, pady=6, sticky="w")
         # テキストボックス(幅)
-        self.entry_width = self.put_textbox("幅", 0, 1, 5, str(self.sd_configs.width))
+        self.entry_width = self.put_textbox(self.config_param1_frame, "幅", 1, 0, 5, str(self.sd_configs.width))
         # テキストボックス(高さ)
-        self.entry_height = self.put_textbox("高さ", 0, 3, 5, str(self.sd_configs.height))
+        self.entry_height = self.put_textbox(self.config_param1_frame, "高さ", 1, 2, 5, str(self.sd_configs.height))
         # テキストボックス(ステップ数)
-        self.entry_steps = self.put_textbox("Steps", 0, 5, 4, str(self.sd_configs.steps))
+        self.entry_steps = self.put_textbox(self.config_param1_frame, "Steps", 1, 4, 4, str(self.sd_configs.steps))
         # テキストボックス(URL)
-        self.entry_url = self.put_textbox("サーバ", 0, 7, 24, str(self.sd_configs.url))
-        # ラベル
-        self.tk_label = ttk.Label(self.image_frame)
-        self.tk_label.grid(row=1, column=0, padx=6, pady=6, sticky="nsew")
+        self.entry_url = self.put_textbox(self.config_param2_frame, "URL", 0, 0, 24, str(self.sd_configs.url))
+
+    # 画像ウィンドウが開かれているか
+    def is_image_window_open(self):
+        return (self.image_window is not None) and (self.image_window.winfo_exists())
+
+    # 画像ウィンドウのクローズ時のハンドラ
+    def on_image_window_close(self) -> None:
+        if self.is_image_window_open():
+            self.image_window.destroy()
+        self.image_window = None
+
+    # 画像ウィンドウを構成, ただしすでに開いている場合は最前面に表示するのみ
+    def construct_image_window(self) -> None:
+        if self.is_image_window_open():
+            self.image_window.deiconify()
+            self.image_window.lift()
+            return
+
+        self.image_window = tkinter.Toplevel(self.tk_root)
+        self.image_window.title("画像")
+        self.image_window.protocol("WM_DELETE_WINDOW", self.on_image_window_close)
+        image_frame = ttk.Frame(self.image_window, padding=5)
+        image_frame.grid(row=0, column=0, sticky="nsew")
+        self.image_label = ttk.Label(image_frame)
+        self.image_label.grid(row=0, column=0, padx=6, pady=6, sticky="nsew")
 
     # クリップボードから文字列を得る
     # 前回文字列と同様かどうかも記録する
@@ -157,8 +182,9 @@ class PicMaker(ABC):
 
         img = Image.open(path)
         tk_img = ImageTk.PhotoImage(img)
-        self.tk_label.configure(image=tk_img)
-        self.tk_label.image = tk_img
+        self.construct_image_window()
+        self.image_label.configure(image=tk_img)
+        self.image_label.image = tk_img
 
     # ステータス等をもとに画像のパスを生成する
     def gen_image_path(self) -> str:
