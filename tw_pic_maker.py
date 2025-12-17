@@ -174,6 +174,10 @@ class TWPicMaker(PicMaker):
     def __init__(self, do_post: bool, is_verbose: bool):
         super().__init__(do_post, is_verbose)
 
+    # 自身のクラス名を取得する
+    def whoami(self) -> str:
+        return "TWPicMaker"
+
     # クリップボード文字列からメタステータスを取得する
     def get_metastats(self, stats: Dict[str, Any]) -> None:
         stats["metastats"] = {}

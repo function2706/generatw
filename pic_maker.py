@@ -59,6 +59,10 @@ class PicMaker(ABC):
         self.pm_configs.do_post = do_post
         self.pm_configs.is_verbose = is_verbose
 
+    # 自身のクラス名を取得する
+    def whoami(self) -> str:
+        pass
+
     # テキストボックスの作成
     def put_textbox(self, frame :Frame, name: str, row: int, col: int, width: int, default: str) -> ttk.Entry:
         ttk.Label(frame, text=name).grid(row=row, column=col, padx=6, pady=6, sticky="w")

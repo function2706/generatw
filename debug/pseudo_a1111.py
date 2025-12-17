@@ -146,7 +146,7 @@ def txt2img(req: Txt2ImgRequest):
     }
 
     # parameters は A1111 と同名キーで返す
-    parameters = req.dict()
+    parameters = req.model_dump()
 
     return {
         "images": images_b64,
