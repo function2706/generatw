@@ -65,6 +65,7 @@ class PicMaker(ABC):
     # GUI の構築
     def construct_config_window(self) -> None:
         # ウィンドウ定義
+        self.tk_root.protocol("WM_DELETE_WINDOW", self.on_config_window_close)
         self.tk_root.title("設定")
         self.tk_root.columnconfigure(0, weight=1)
         self.tk_root.rowconfigure(0, weight=1)
@@ -88,6 +89,16 @@ class PicMaker(ABC):
         self.entry_steps = self.put_textbox(self.config_param1_frame, "Steps", 1, 4, 4, str(self.sd_configs.steps))
         # テキストボックス(URL)
         self.entry_url = self.put_textbox(self.config_param2_frame, "URL", 0, 0, 24, str(self.sd_configs.url))
+
+    # 設定ウィンドウが開かれているか
+    def is_config_window_open(self):
+        return (self.tk_root is not None) and (self.tk_root.winfo_exists())
+
+    # 画像ウィンドウのクローズ時のハンドラ
+    def on_config_window_close(self) -> None:
+        self.on_image_window_close()
+        if self.is_config_window_open():
+            self.tk_root.destroy()
 
     # 画像ウィンドウが開かれているか
     def is_image_window_open(self):
@@ -263,7 +274,6 @@ class PicMaker(ABC):
     # SIGINT ハンドラ
     def sigint_handler(self, sig, frame) -> None:
         self.tk_root.destroy()
-        sys.exit(0)
 
     # ワンショット処理 (ステータス表示 -> ステータス型式確認 -> 非同期で生成, tkinter 更新)
     def doit_oneshot(self) -> None:
