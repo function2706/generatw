@@ -2,7 +2,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, PngImagePlugin
 from tkinter import ttk, Frame
 from typing import Any, Dict, Mapping, Optional, Union
 import base64, hashlib, io, json, pyperclip, random, requests, threading, tkinter
@@ -243,16 +243,17 @@ class PicMaker(ABC):
 
     # 画像を保存する
     # 親ディレクトリが存在しない場合は作成する
-    def save_image_safely(self, img: Image.Image, path: Union[str, Path]) -> None:
+    def save_image_safely(self, image: Image.Image, path: Union[str, Path], meta: PngImagePlugin.PngInfo) -> None:
         dest = Path(path)
         if dest.parent and not dest.parent.exists():
             dest.parent.mkdir(parents=True, exist_ok=True)
-        img.save(str(dest))
+        image.save(str(dest), pnginfo=meta)
 
     # 指定の画像群を保存する
     # 生成した画像のパス群を返す
     def save_images(self, images: Any, info_obj: Any) -> list[str]:
         image_paths = []
+        infotexts = info_obj.get("infotexts", [])
         prompts = info_obj.get("all_prompts", [])
         neg_prompts = info_obj.get("all_negative_prompts", [])
         seeds = info_obj.get("all_seeds", [])
@@ -266,7 +267,11 @@ class PicMaker(ABC):
                 b64 = image_data.split(",", 1)[-1]
                 image = Image.open(io.BytesIO(base64.b64decode(b64)))
                 image_path = dir + "/" + filename + ".png"
-                self.save_image_safely(image, image_path)
+
+                meta = PngImagePlugin.PngInfo()
+                meta.add_text("parameters", infotexts[idx])
+
+                self.save_image_safely(image, image_path, meta)
                 image_paths.append(image_path)
             except Exception as e:
                 print(f"[WARN] Failed to save image idx={idx}: {e}")
