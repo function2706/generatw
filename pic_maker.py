@@ -247,7 +247,7 @@ class PicMaker(ABC):
                 b64 = image_data.split(",", 1)[-1]
 
                 image = Image.open(io.BytesIO(base64.b64decode(b64)))
-                image_path = "f_{idx}" + self.gen_image_path()
+                image_path = f"{idx}_" + self.gen_image_path()
                 image.save(image_path)
                 image_paths.append(image_path)
             except Exception as e:
