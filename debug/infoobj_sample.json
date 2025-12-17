@@ -1,0 +1,61 @@
+{
+    "prompt": "houjuu nue,best quality,masterpiece,absurdres,1girl,solo",
+    "all_prompts": [
+        "houjuu nue,best quality,masterpiece,absurdres,1girl,solo",
+        "houjuu nue,best quality,masterpiece,absurdres,1girl,solo",
+        "houjuu nue,best quality,masterpiece,absurdres,1girl,solo",
+        "houjuu nue,best quality,masterpiece,absurdres,1girl,solo"
+    ],
+    "negative_prompt": "motion lines,speed lines,3d,((shiny skin)),bad quality,worst quality,worst detail,text,logo,cropped,deformed,blurry,((cropped face)),((amputee)),((bad anatomy)),multiple heads,extra faces,(extra limbs),(missing limb),(missing limbs),bad arm,(multiple arms),(extra arms),(missing arm),bad leg,(multiple legs),(extra legs),(missing leg),((bad hands)),multiple hands,extra hands,missing hand,(extra digits:1.5),(fewer digits:1.5),(missing digits:1.5),((bad feet)),((multiple feet)),((extra feet)),missing foot,(extra toes:2),(fewer toes:2),(missing toes:2)",
+    "all_negative_prompts": [
+        "motion lines,speed lines,3d,((shiny skin)),bad quality,worst quality,worst detail,text,logo,cropped,deformed,blurry,((cropped face)),((amputee)),((bad anatomy)),multiple heads,extra faces,(extra limbs),(missing limb),(missing limbs),bad arm,(multiple arms),(extra arms),(missing arm),bad leg,(multiple legs),(extra legs),(missing leg),((bad hands)),multiple hands,extra hands,missing hand,(extra digits:1.5),(fewer digits:1.5),(missing digits:1.5),((bad feet)),((multiple feet)),((extra feet)),missing foot,(extra toes:2),(fewer toes:2),(missing toes:2)",
+        "motion lines,speed lines,3d,((shiny skin)),bad quality,worst quality,worst detail,text,logo,cropped,deformed,blurry,((cropped face)),((amputee)),((bad anatomy)),multiple heads,extra faces,(extra limbs),(missing limb),(missing limbs),bad arm,(multiple arms),(extra arms),(missing arm),bad leg,(multiple legs),(extra legs),(missing leg),((bad hands)),multiple hands,extra hands,missing hand,(extra digits:1.5),(fewer digits:1.5),(missing digits:1.5),((bad feet)),((multiple feet)),((extra feet)),missing foot,(extra toes:2),(fewer toes:2),(missing toes:2)",
+        "motion lines,speed lines,3d,((shiny skin)),bad quality,worst quality,worst detail,text,logo,cropped,deformed,blurry,((cropped face)),((amputee)),((bad anatomy)),multiple heads,extra faces,(extra limbs),(missing limb),(missing limbs),bad arm,(multiple arms),(extra arms),(missing arm),bad leg,(multiple legs),(extra legs),(missing leg),((bad hands)),multiple hands,extra hands,missing hand,(extra digits:1.5),(fewer digits:1.5),(missing digits:1.5),((bad feet)),((multiple feet)),((extra feet)),missing foot,(extra toes:2),(fewer toes:2),(missing toes:2)",
+        "motion lines,speed lines,3d,((shiny skin)),bad quality,worst quality,worst detail,text,logo,cropped,deformed,blurry,((cropped face)),((amputee)),((bad anatomy)),multiple heads,extra faces,(extra limbs),(missing limb),(missing limbs),bad arm,(multiple arms),(extra arms),(missing arm),bad leg,(multiple legs),(extra legs),(missing leg),((bad hands)),multiple hands,extra hands,missing hand,(extra digits:1.5),(fewer digits:1.5),(missing digits:1.5),((bad feet)),((multiple feet)),((extra feet)),missing foot,(extra toes:2),(fewer toes:2),(missing toes:2)"
+    ],
+    "seed": 711276269,
+    "all_seeds": [
+        711276269,
+        711276270,
+        711276271,
+        711276272
+    ],
+    "subseed": 2625554071,
+    "all_subseeds": [
+        2625554071,
+        2625554072,
+        2625554073,
+        2625554074
+    ],
+    "subseed_strength": 0,
+    "width": 512,
+    "height": 512,
+    "sampler_name": "DPM++ 2S a",
+    "cfg_scale": 7.0,
+    "steps": 20,
+    "batch_size": 4,
+    "restore_faces": false,
+    "face_restoration_model": null,
+    "sd_model_name": "waiNSFWIllustrious_v150",
+    "sd_model_hash": "befc694a29",
+    "sd_vae_name": null,
+    "sd_vae_hash": null,
+    "seed_resize_from_w": -1,
+    "seed_resize_from_h": -1,
+    "denoising_strength": null,
+    "extra_generation_params": {
+        "Schedule type": "Karras"
+    },
+    "index_of_first_image": 0,
+    "infotexts": [
+        "houjuu nue,best quality,masterpiece,absurdres,1girl,solo\nNegative prompt: motion lines,speed lines,3d,((shiny skin)),bad quality,worst quality,worst detail,text,logo,cropped,deformed,blurry,((cropped face)),((amputee)),((bad anatomy)),multiple heads,extra faces,(extra limbs),(missing limb),(missing limbs),bad arm,(multiple arms),(extra arms),(missing arm),bad leg,(multiple legs),(extra legs),(missing leg),((bad hands)),multiple hands,extra hands,missing hand,(extra digits:1.5),(fewer digits:1.5),(missing digits:1.5),((bad feet)),((multiple feet)),((extra feet)),missing foot,(extra toes:2),(fewer toes:2),(missing toes:2)\nSteps: 20, Sampler: DPM++ 2S a, Schedule type: Karras, CFG scale: 7.0, Seed: 711276269, Size: 512x512, Model hash: befc694a29, Model: waiNSFWIllustrious_v150, Clip skip: 2, Version: v1.10.1",
+        "houjuu nue,best quality,masterpiece,absurdres,1girl,solo\nNegative prompt: motion lines,speed lines,3d,((shiny skin)),bad quality,worst quality,worst detail,text,logo,cropped,deformed,blurry,((cropped face)),((amputee)),((bad anatomy)),multiple heads,extra faces,(extra limbs),(missing limb),(missing limbs),bad arm,(multiple arms),(extra arms),(missing arm),bad leg,(multiple legs),(extra legs),(missing leg),((bad hands)),multiple hands,extra hands,missing hand,(extra digits:1.5),(fewer digits:1.5),(missing digits:1.5),((bad feet)),((multiple feet)),((extra feet)),missing foot,(extra toes:2),(fewer toes:2),(missing toes:2)\nSteps: 20, Sampler: DPM++ 2S a, Schedule type: Karras, CFG scale: 7.0, Seed: 711276270, Size: 512x512, Model hash: befc694a29, Model: waiNSFWIllustrious_v150, Clip skip: 2, Version: v1.10.1",
+        "houjuu nue,best quality,masterpiece,absurdres,1girl,solo\nNegative prompt: motion lines,speed lines,3d,((shiny skin)),bad quality,worst quality,worst detail,text,logo,cropped,deformed,blurry,((cropped face)),((amputee)),((bad anatomy)),multiple heads,extra faces,(extra limbs),(missing limb),(missing limbs),bad arm,(multiple arms),(extra arms),(missing arm),bad leg,(multiple legs),(extra legs),(missing leg),((bad hands)),multiple hands,extra hands,missing hand,(extra digits:1.5),(fewer digits:1.5),(missing digits:1.5),((bad feet)),((multiple feet)),((extra feet)),missing foot,(extra toes:2),(fewer toes:2),(missing toes:2)\nSteps: 20, Sampler: DPM++ 2S a, Schedule type: Karras, CFG scale: 7.0, Seed: 711276271, Size: 512x512, Model hash: befc694a29, Model: waiNSFWIllustrious_v150, Clip skip: 2, Version: v1.10.1",
+        "houjuu nue,best quality,masterpiece,absurdres,1girl,solo\nNegative prompt: motion lines,speed lines,3d,((shiny skin)),bad quality,worst quality,worst detail,text,logo,cropped,deformed,blurry,((cropped face)),((amputee)),((bad anatomy)),multiple heads,extra faces,(extra limbs),(missing limb),(missing limbs),bad arm,(multiple arms),(extra arms),(missing arm),bad leg,(multiple legs),(extra legs),(missing leg),((bad hands)),multiple hands,extra hands,missing hand,(extra digits:1.5),(fewer digits:1.5),(missing digits:1.5),((bad feet)),((multiple feet)),((extra feet)),missing foot,(extra toes:2),(fewer toes:2),(missing toes:2)\nSteps: 20, Sampler: DPM++ 2S a, Schedule type: Karras, CFG scale: 7.0, Seed: 711276272, Size: 512x512, Model hash: befc694a29, Model: waiNSFWIllustrious_v150, Clip skip: 2, Version: v1.10.1"
+    ],
+    "styles": [],
+    "job_timestamp": "20251217232545",
+    "clip_skip": 2,
+    "is_using_inpainting_conditioning": false,
+    "version": "v1.10.1"
+}
