@@ -1,10 +1,11 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, Mapping, Optional
+from pathlib import Path
 from PIL import Image, ImageTk
 from tkinter import ttk, Frame
-import base64, io, json, pyperclip, random, requests, sys, threading, tkinter
+from typing import Any, Dict, Mapping, Optional, Union
+import base64, hashlib, io, json, pyperclip, random, requests, threading, tkinter
 
 @dataclass
 class SDConfigs:
@@ -244,22 +245,33 @@ class PicMaker(ABC):
         api_json["height"] = self.sd_configs.height
         return api_json if api_json["prompt"] and api_json["negative_prompt"] else None
 
+    # 画像を保存する
+    # 親ディレクトリが存在しない場合は作成する
+    def save_image_safely(self, img: Image.Image, path: Union[str, Path]) -> None:
+        dest = Path(path)
+        if dest.parent and not dest.parent.exists():
+            dest.parent.mkdir(parents=True, exist_ok=True)
+        img.save(str(dest))
+
     # 指定の画像群を保存する
     # 生成した画像のパス群を返す
     def save_images(self, images: Any, info_obj: Any) -> list[str]:
         image_paths = []
+        prompts = info_obj.get("all_prompts", [])
+        neg_prompts = info_obj.get("all_negative_prompts", [])
+        seeds = info_obj.get("all_seeds", [])
         for idx, image_data in enumerate(images):
             try:
-                prompts = info_obj.get("all_prompts", [])
-                neg_prompts = info_obj.get("all_negative_prompts", [])
+                dir_raw :str = prompts[idx] + neg_prompts[idx]
+                dir = self.whoami() + "/" + hashlib.md5(dir_raw.encode()).hexdigest()
+                filename_raw :str = prompts[idx] + neg_prompts[idx] + str(seeds[idx])
+                filename = hashlib.md5(filename_raw.encode()).hexdigest()
 
                 b64 = image_data.split(",", 1)[-1]
                 image = Image.open(io.BytesIO(base64.b64decode(b64)))
-                image_path = f"{idx}_" + self.gen_image_path()
-                image.save(image_path)
+                image_path = dir + "/" + filename + ".png"
+                self.save_image_safely(image, image_path)
                 image_paths.append(image_path)
-                dump_json(prompts[idx], "prompts")
-                dump_json(neg_prompts[idx], "neg_prompts")
             except Exception as e:
                 print(f"[WARN] Failed to save image idx={idx}: {e}")
 
