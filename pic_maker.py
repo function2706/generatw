@@ -4,12 +4,14 @@ from dataclasses import dataclass
 from typing import Any, Dict, Mapping, Optional
 from PIL import Image, ImageTk
 from tkinter import ttk, Frame
-import base64, io, json, pyperclip, requests, sys, threading, tkinter
+import base64, io, json, pyperclip, random, requests, sys, threading, tkinter
 
 @dataclass
 class SDConfigs:
-    url: Optional[str] = "http://127.0.0.1:7860"
+    ipaddr: Optional[str] = "127.0.0.1"
+    port: Optional[int] = 7860
     steps: Optional[int] = 20
+    batch_size: Optional[int] = 4
     sampler_name: Optional[str] = "DPM++ 2S a"
     scheduler: Optional[str] = "Karras"
     cfg_scale: Optional[float] = 7.0
@@ -78,6 +80,7 @@ class PicMaker(ABC):
         self.config_param1_frame.grid(row=1, column=0, sticky="w")
         self.config_param2_frame = ttk.Frame(self.main_frame)
         self.config_param2_frame.grid(row=2, column=0, sticky="w")
+        # フレーム 1
         # ボタン(今すぐ生成)
         button = ttk.Button(self.config_button_frame, text="今すぐ生成", command=self.doit_oneshot)
         button.grid(row=0, column=0, padx=6, pady=6, sticky="w")
@@ -86,9 +89,14 @@ class PicMaker(ABC):
         # テキストボックス(高さ)
         self.entry_height = self.put_textbox(self.config_param1_frame, "高さ", 1, 2, 5, str(self.sd_configs.height))
         # テキストボックス(ステップ数)
-        self.entry_steps = self.put_textbox(self.config_param1_frame, "Steps", 1, 4, 4, str(self.sd_configs.steps))
-        # テキストボックス(URL)
-        self.entry_url = self.put_textbox(self.config_param2_frame, "URL", 0, 0, 24, str(self.sd_configs.url))
+        self.entry_steps = self.put_textbox(self.config_param1_frame, "Steps", 2, 0, 4, str(self.sd_configs.steps))
+        # テキストボックス(生成数)
+        self.entry_batch_size = self.put_textbox(self.config_param1_frame, "生成数", 2, 2, 4, str(self.sd_configs.batch_size))
+        # フレーム 2
+        # テキストボックス(IPアドレス)
+        self.entry_ipaddr = self.put_textbox(self.config_param2_frame, "IPアドレス", 0, 0, 16, str(self.sd_configs.ipaddr))
+        # テキストボックス(ポート)
+        self.entry_port = self.put_textbox(self.config_param2_frame, "ポート", 0, 2, 6, str(self.sd_configs.port))
 
     # 設定ウィンドウが開かれているか
     def is_config_window_open(self):
@@ -202,9 +210,11 @@ class PicMaker(ABC):
         pass
 
     # GUI から SD コンフィグを更新する
-    def reflesh_sd_configs(self) -> None:
-        self.sd_configs.url = self.entry_url.get()
+    def refresh_sd_configs(self) -> None:
+        self.sd_configs.ipaddr = self.entry_ipaddr.get()
+        self.sd_configs.port = self.entry_port.get()
         self.sd_configs.steps = int(self.entry_steps.get())
+        self.sd_configs.batch_size = int(self.entry_batch_size.get())
         self.sd_configs.sampler_name = "DPM++ 2S a"
         self.sd_configs.scheduler = "Karras"
         self.sd_configs.cfg_scale = 7.0
@@ -212,47 +222,64 @@ class PicMaker(ABC):
         self.sd_configs.width = int(self.entry_width.get())
         self.sd_configs.height = int(self.entry_height.get())
 
+    # 現在の SD 設定から RestAPI で txt2img にポストする json を生成する
+    def make_json_for_txt2img(self) -> dict:
+        api_json = {}
+        api_json["prompt"] = self.make_pos_prompt()
+        api_json["negative_prompt"] = self.make_neg_prompt()
+        api_json["steps"] = self.sd_configs.steps
+        api_json["batch_size"] = self.sd_configs.batch_size
+        api_json["sampler_name"] = self.sd_configs.sampler_name
+        api_json["scheduler"] = self.sd_configs.scheduler
+        api_json["cfg_scale"] = self.sd_configs.cfg_scale
+        api_json["seed"] = self.sd_configs.seed
+        api_json["width"] = self.sd_configs.width
+        api_json["height"] = self.sd_configs.height
+        return api_json if api_json["prompt"] and api_json["negative_prompt"] else None
+
+    # 指定の画像群を保存する
+    # 生成した画像のパス群を返す
+    def save_images(self, images: Any) -> list[str]:
+        image_paths = []
+        for idx, image_data in enumerate(images):
+            try:
+                # data URI ("data:image/png;base64,...") の先頭を除去
+                b64 = image_data.split(",", 1)[-1]
+
+                image = Image.open(io.BytesIO(base64.b64decode(b64)))
+                image_path = "f_{idx}" + self.gen_image_path()
+                image.save(image_path)
+                image_paths.append(image_path)
+            except Exception as e:
+                print(f"[WARN] Failed to save image idx={idx}: {e}")
+
+        return image_paths
+
     # json を生成し RestAPI でポストする
-    # 生成した画像のパスを返す
+    # 生成した画像のパス群を返す
     # 生成中の場合は何もしない
-    def gen_pic(self) -> str:
+    def gen_pic(self) -> list[str]:
         if self.flags.is_generating:
             print("In generating, Busy!")
-            return ""
-
+            return []
         try:
             self.flags.is_generating = True
-            self.reflesh_sd_configs()
-            json = {}
-            json["prompt"] = self.make_pos_prompt()
-            json["negative_prompt"] = self.make_neg_prompt()
-            json["steps"] = self.sd_configs.steps
-            json["sampler_name"] = self.sd_configs.sampler_name
-            json["scheduler"] = self.sd_configs.scheduler
-            json["cfg_scale"] = self.sd_configs.cfg_scale
-            json["seed"] = self.sd_configs.seed
-            json["width"] = self.sd_configs.width
-            json["height"] = self.sd_configs.height
-
-            if (not json["prompt"]) or (not json["negative_prompt"]):
+            self.refresh_sd_configs()
+            payload = self.make_json_for_txt2img()
+            if not payload:
                 # プロンプトが空の場合はポストしない
-                return ""
+                return []
 
             # txt2img
-            response = requests.post(f"{self.sd_configs.url}/sdapi/v1/txt2img", json=json, timeout=self.pm_configs.timeout_sec)
+            response = requests.post(f"http://{self.sd_configs.ipaddr}:{self.sd_configs.port}/sdapi/v1/txt2img", json=payload, timeout=self.pm_configs.timeout_sec)
             response.raise_for_status()
             body = response.json()
-            images = body.get("images")
+            images = body.get("images", [])
             if not images:
                 print("API response without images.")
-                return ""
-            image_data = images[0]
+                return []
 
-            # 画像保存
-            image = Image.open(io.BytesIO(base64.b64decode(image_data)))
-            image_path = self.gen_image_path()
-            image.save(image_path)
-            return image_path
+            return self.save_images(images)
         except requests.exceptions.Timeout:
             print("API timeout.")
         except requests.exceptions.RequestException as e:
@@ -263,12 +290,13 @@ class PicMaker(ABC):
             print("Another error occurs about image:", e)
         finally:
             self.flags.is_generating = False
-        return ""
+        return []
 
     # 生成スレッドエントリポイント
     def make_pic_async(self) -> None:
         def worker():
-            self.update_image(self.gen_pic())
+            image_paths = self.gen_pic()
+            self.update_image(random.choice(image_paths))
         threading.Thread(target=worker, args=(), daemon=True).start()
 
     # SIGINT ハンドラ
