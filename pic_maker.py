@@ -213,10 +213,6 @@ class PicMaker(ABC):
         self.image_label.configure(image=tk_img)
         self.image_label.image = tk_img
 
-    # ステータス等をもとに画像のパスを生成する
-    def gen_image_path(self) -> str:
-        pass
-
     # GUI から SD コンフィグを更新する
     def refresh_sd_configs(self) -> None:
         self.sd_configs.ipaddr = self.entry_ipaddr.get()

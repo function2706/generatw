@@ -203,8 +203,3 @@ class ReversePicMaker(PicMaker):
                 "((bad hands)),multiple hands,extra hands,missing hand,(extra digits:1.5),(fewer digits:1.5),(missing digits:1.5),"\
                 "((bad feet)),((multiple feet)),((extra feet)),missing foot,(extra toes:2),(fewer toes:2),(missing toes:2)"
         return neg_prompt
-
-    # ステータス等をもとに画像のパスを生成する
-    def gen_image_path(self) -> str:
-        name = self.crnt_stats["character"]["name"]
-        return self.chara_tbl.get(name, "") + ".png"
