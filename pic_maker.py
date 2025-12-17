@@ -31,6 +31,9 @@ class PMFlags:
     is_new_stats: bool = False
     is_generating: bool = False
 
+def dump_json(data: dict, label: str) -> None:
+    print(f"{label}:", json.dumps(data, ensure_ascii=False, indent=2))
+
 # 基底クラス
 class PicMaker(ABC):
     @property
@@ -180,7 +183,7 @@ class PicMaker(ABC):
 
     # ステータスをダンプする
     def print_stats(self) -> None:
-        print("crnt_stats:", json.dumps(self.crnt_stats, ensure_ascii=False, indent=2))
+        dump_json(self.crnt_stats, "crnt_stats")
 
     # ステータスがプロンプト生成において十分な情報を有しているか
     def is_stats_enough_for_prompt(self) -> bool:
@@ -239,17 +242,20 @@ class PicMaker(ABC):
 
     # 指定の画像群を保存する
     # 生成した画像のパス群を返す
-    def save_images(self, images: Any) -> list[str]:
+    def save_images(self, images: Any, info_obj: Any) -> list[str]:
         image_paths = []
         for idx, image_data in enumerate(images):
             try:
-                # data URI ("data:image/png;base64,...") の先頭を除去
-                b64 = image_data.split(",", 1)[-1]
+                prompts = info_obj.get("all_prompts", [])
+                neg_prompts = info_obj.get("all_negative_prompts", [])
 
+                b64 = image_data.split(",", 1)[-1]
                 image = Image.open(io.BytesIO(base64.b64decode(b64)))
                 image_path = f"{idx}_" + self.gen_image_path()
                 image.save(image_path)
                 image_paths.append(image_path)
+                dump_json(prompts[idx], "prompts")
+                dump_json(neg_prompts[idx], "neg_prompts")
             except Exception as e:
                 print(f"[WARN] Failed to save image idx={idx}: {e}")
 
@@ -279,7 +285,8 @@ class PicMaker(ABC):
                 print("API response without images.")
                 return []
 
-            return self.save_images(images)
+            info_obj = json.loads(body.get("info", "{}"))
+            return self.save_images(images, info_obj)
         except requests.exceptions.Timeout:
             print("API timeout.")
         except requests.exceptions.RequestException as e:

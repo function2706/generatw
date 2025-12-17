@@ -1,104 +1,159 @@
 
-import tkinter as tk
-from tkinter import ttk
-from tkinter import messagebox
+# filename: mock_a1111_txt2img.py
+# -*- coding: utf-8 -*-
+from typing import List, Optional
+from fastapi import FastAPI
+from pydantic import BaseModel, Field
+from PIL import Image
+import io
+import base64
+import random
+import uvicorn
+import json
+import datetime
 
-def on_run():
-    # 入力値の取得
-    name = entry_name.get()
-    mode = radio_var.get()
-    enable_feature = check_var.get()  # 1 or 0
-    choice = combo_var.get()
+app = FastAPI(title="Mock A1111 sdapi/v1/txt2img")
 
-    msg = (
-        f"名前: {name}\n"
-        f"モード: {mode}\n"
-        f"機能有効: {bool(enable_feature)}\n"
-        f"選択: {choice}"
+# A1111 に寄せたリクエストモデル（主要フィールドのみ）
+class Txt2ImgRequest(BaseModel):
+    prompt: Optional[str] = ""
+    negative_prompt: Optional[str] = ""
+    styles: Optional[List[str]] = None
+
+    seed: Optional[int] = -1
+    subseed: Optional[int] = -1
+    subseed_strength: Optional[float] = 0.0
+    seed_resize_from_h: Optional[int] = -1
+    seed_resize_from_w: Optional[int] = -1
+
+    sampler_name: Optional[str] = None
+    sampler_index: Optional[str] = None  # 一部クライアントは index を使う
+    scheduler: Optional[str] = None
+
+    batch_size: Optional[int] = Field(default=1, ge=1)  # 1回のバッチ内枚数
+    n_iter: Optional[int] = Field(default=1, ge=1)      # バッチの繰り返し回数
+
+    steps: Optional[int] = 20
+    cfg_scale: Optional[float] = 7.0
+    width: Optional[int] = Field(default=512, ge=1)
+    height: Optional[int] = Field(default=512, ge=1)
+
+    restore_faces: Optional[bool] = False
+    tiling: Optional[bool] = False
+
+    eta: Optional[float] = None
+    s_min_uncond: Optional[float] = 0.0
+    s_churn: Optional[float] = 0.0
+    s_tmax: Optional[float] = None
+    s_tmin: Optional[float] = 0.0
+    s_noise: Optional[float] = 1.0
+
+    override_settings: Optional[dict] = None
+    override_settings_restore_afterwards: Optional[bool] = True
+
+    script_args: Optional[List] = None
+    script_name: Optional[str] = None
+
+    send_images: Optional[bool] = True
+    save_images: Optional[bool] = False
+
+    alwayson_scripts: Optional[dict] = None
+
+def dumps_info(obj) -> str:
+    # A1111 は info を JSON 文字列で返す
+    return json.dumps(obj, ensure_ascii=False)
+
+def make_infotext(
+    req: Txt2ImgRequest, prompt: str, neg: str, seed_val: int, width: int, height: int
+) -> str:
+    # 実機 PNG Info の1行目に近いレイアウト（最小限）
+    # 例: "<prompt>\nNegative prompt: <neg>\nSteps: <steps>, Sampler: <sampler>, CFG scale: <cfg>, Seed: <seed>, Size: <W>x<H>, Model hash: <...>, Model: <...>"
+    sampler = req.sampler_name or req.sampler_index or ""
+    line = (
+        f"{prompt}\n"
+        f"Negative prompt: {neg}\n"
+        f"Steps: {req.steps}, Sampler: {sampler}, CFG scale: {req.cfg_scale}, "
+        f"Seed: {seed_val}, Size: {width}x{height}"
     )
-    messagebox.showinfo("実行結果", msg)
+    if req.scheduler:
+        line += f", Scheduler: {req.scheduler}"
+    return line
 
-def on_reset():
-    entry_name.delete(0, tk.END)
-    radio_var.set("通常")
-    check_var.set(0)
-    combo_var.set(options[0])
+@app.post("/sdapi/v1/txt2img")
+def txt2img(req: Txt2ImgRequest):
+    # サイズ安全化（上限は適当に設定）
+    MAX_SIDE = 8192
+    width = max(1, min(req.width, MAX_SIDE))
+    height = max(1, min(req.height, MAX_SIDE))
+    batch_size = max(1, req.batch_size or 1)
+    n_iter = max(1, req.n_iter or 1)
 
-root = tk.Tk()
-root.title("Tkinter ウィジェット例（タブ分割 + grid配置）")
-root.geometry("480x320")
+    total_images = batch_size * n_iter
 
-# ====== Notebook（タブ） ======
-notebook = ttk.Notebook(root)
-notebook.pack(expand=True, fill="both")
+    # シード列の決定：seed=-1 なら各画像ごとランダム、>=0 なら連番
+    seeds: List[int] = []
+    if req.seed is None or req.seed < 0:
+        rng_sys = random.SystemRandom()
+        seeds = [rng_sys.randint(0, 2**31 - 1) for _ in range(total_images)]
+    else:
+        seeds = [req.seed + i for i in range(total_images)]
 
-tab_input = ttk.Frame(notebook, padding=12)
-tab_settings = ttk.Frame(notebook, padding=12)
-tab_actions = ttk.Frame(notebook, padding=12)
+    # 画像生成（単色）
+    images_b64: List[str] = []
+    for s in seeds:
+        rng = random.Random(s)
+        color = (rng.randint(0, 255), rng.randint(0, 255), rng.randint(0, 255))
+        img = Image.new("RGB", (width, height), color=color)
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        png_bytes = buf.getvalue()
+        b64 = base64.b64encode(png_bytes).decode("ascii")
+        images_b64.append(b64)
 
-notebook.add(tab_input, text="入力")
-notebook.add(tab_settings, text="設定")
-notebook.add(tab_actions, text="操作")
+    # info（JSON 文字列）構築：A1111 の項目名に合わせる
+    prompt = req.prompt or ""
+    neg = req.negative_prompt or ""
 
-# ====== タブ1：入力 ======
-ttk.Label(tab_input, text="名前").grid(row=0, column=0, padx=6, pady=6, sticky="w")
-entry_name = ttk.Entry(tab_input, width=28)
-entry_name.grid(row=0, column=1, padx=6, pady=6, sticky="we")
-tab_input.columnconfigure(1, weight=1)  # Entryを横に伸ばす
-tab_input.rowconfigure(99, weight=1)    # 下に余白
+    infotexts: List[str] = []
+    all_prompts: List[str] = []
+    all_negative_prompts: List[str] = []
+    all_seeds: List[int] = []
 
-# ====== タブ2：設定 ======
-# ラジオボタン
-ttk.Label(tab_settings, text="モード").grid(row=0, column=0, padx=6, pady=6, sticky="w")
-radio_var = tk.StringVar(value="通常")
-modes = ["通常", "高速", "安全"]
-for i, m in enumerate(modes):
-    ttk.Radiobutton(tab_settings, text=m, value=m, variable=radio_var).grid(
-        row=0, column=1+i, padx=4, pady=6, sticky="w"
-    )
+    for i in range(total_images):
+        seed_val = seeds[i]
+        infotexts.append(make_infotext(req, prompt, neg, seed_val, width, height))
+        all_prompts.append(prompt)
+        all_negative_prompts.append(neg)
+        all_seeds.append(seed_val)
 
-# チェックボックス
-check_var = tk.IntVar(value=0)
-ttk.Checkbutton(tab_settings, text="機能を有効化", variable=check_var).grid(
-    row=1, column=1, padx=6, pady=6, sticky="w"
-)
+    # A1111 互換フィールド（最低限 + よくある拡張）
+    info_obj = {
+        "infotexts": infotexts,
+        "all_prompts": all_prompts,
+        "all_negative_prompts": all_negative_prompts,
+        "all_seeds": all_seeds,
 
-# コンボボックス
-ttk.Label(tab_settings, text="選択").grid(row=2, column=0, padx=6, pady=6, sticky="w")
-options = ["A", "B", "C"]
-combo_var = tk.StringVar(value=options[0])
-combo = ttk.Combobox(tab_settings, textvariable=combo_var, values=options,
-                     state="readonly", width=10)
-combo.grid(row=2, column=1, padx=6, pady=6, sticky="w")
+        # 参考までに付加（UIの progress/state と合わせやすい）
+        "job_timestamp": datetime.datetime.now().strftime("%Y%m%d%H%M%S"),
+        "batch_size": batch_size,
+        "n_iter": n_iter,
+        "width": width,
+        "height": height,
+        "steps": req.steps,
+        "sampler_name": req.sampler_name or req.sampler_index,
+        "scheduler": req.scheduler,
+        "cfg_scale": req.cfg_scale,
+    }
 
-# 見た目調整
-for c in range(0, 5):
-    tab_settings.columnconfigure(c, weight=0)
-tab_settings.columnconfigure(1, weight=1)
-tab_settings.rowconfigure(99, weight=1)
+    # parameters は A1111 と同名キーで返す
+    parameters = req.dict()
 
-# ====== タブ3：操作 ======
-run_btn = ttk.Button(tab_actions, text="実行", command=on_run)
-run_btn.grid(row=0, column=0, padx=6, pady=12, sticky="e")
+    return {
+        "images": images_b64,
+        "parameters": parameters,
+        "info": dumps_info(info_obj),
+    }
 
-reset_btn = ttk.Button(tab_actions, text="リセット", command=on_reset)
-reset_btn.grid(row=0, column=1, padx=6, pady=12, sticky="w")
-
-# 余白と伸縮
-tab_actions.columnconfigure(0, weight=1)
-tab_actions.columnconfigure(1, weight=1)
-tab_actions.rowconfigure(99, weight=1)
-
-# （任意）タブ切り替えイベント
-def on_tab_changed(event):
-    current = event.widget.select()
-    tab_text = event.widget.tab(current, "text")
-    # 例：タブに応じてフォーカスを移す
-    if tab_text == "入力":
-        entry_name.focus_set()
-    elif tab_text == "設定":
-        combo.focus_set()
-
-notebook.bind("<<NotebookTabChanged>>", on_tab_changed)
-
-root.mainloop()
+if __name__ == "__main__":
+    # 127.0.0.1:7860 で待受（A1111 と同じ既定ポート）
+    uvicorn.run(app, host="127.0.0.1", port=7860)
