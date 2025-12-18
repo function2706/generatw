@@ -314,11 +314,22 @@ class PicMaker(ABC):
         return metadata
 
     # 記録用 CSV にディレクトリ名とプロンプトを記録する
+    # 初回はヘッダーも記述する
     def record_dir_csv(self, info_obj: Any, idx: int) -> None:
         csv_path = Path(self.whoami() + "/" + Const.INFO_CSV_NAME)
-        csv_meta = open(csv_path, "a", encoding="utf-8", newline="")
-        writer = csv.writer(csv_meta)
-        writer.writerow([self.make_dirname(info_obj, idx), info_obj.get("all_prompts", [])[idx], info_obj.get("all_negative_prompts", [])[idx]])
+        need_header = (not csv_path.exists()) or (csv_path.stat().st_size == 0)
+        with open(csv_path, "a", encoding="utf-8", newline="") as f:
+            writer = csv.writer(f)
+            if need_header:
+                writer.writerow(["dirname", "prompt", "negative_prompt"])
+            writer.writerow([self.make_dirname(info_obj, idx), info_obj.get("all_prompts", [])[idx], info_obj.get("all_negative_prompts", [])[idx]])
+
+    # 記録用 CSV を list として得る
+    def get_dir_csv_list(self) -> list[Any]:
+        csv_path = Path(self.whoami() + "/" + Const.INFO_CSV_NAME)
+        with open(csv_path, "r", encoding="utf-8", newline="") as f:
+            reader = csv.DictReader(f)
+            return list(reader)
 
     # 指定の画像群を保存する
     # この際メタデータ(プロンプト, シード)も同時に埋め込む
