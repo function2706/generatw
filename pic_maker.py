@@ -34,7 +34,8 @@ class PMFlags:
     is_generating: bool = False
 
 def dump_json(data: dict, label: str) -> None:
-    print(f"{label}:", json.dumps(data, ensure_ascii=False, indent=2))
+    print(f"\"{label}\":")
+    print(json.dumps(data, ensure_ascii=False, indent=2))
 
 # 基底クラス
 class PicMaker(ABC):
@@ -195,6 +196,9 @@ class PicMaker(ABC):
             self.flags.is_new_stats = False
             return
 
+        if self.pm_configs.is_verbose:
+            dump_json(new_stats, "new_stats")
+
         self.flags.is_new_stats = True
         self.crnt_stats = new_stats
 
@@ -296,7 +300,6 @@ class PicMaker(ABC):
         metadata["sd_model_name"] = image.info.get("sd_model_name")
         metadata["sd_model_hash"] = image.info.get("sd_model_hash")
         metadata["clip_skip"] = int(image.info.get("clip_skip"))
-        metadata["prompt"] = image.info.get("prompt")
         return metadata
 
     # 指定の画像群を保存する
@@ -317,6 +320,10 @@ class PicMaker(ABC):
 
                 image.save(str(dest), pnginfo=self.make_metadata(info_obj, idx))
                 image_paths.append(image_path)
+
+                if self.pm_configs.is_verbose:
+                    image_v = Image.open(str(dest))
+                    dump_json(self.get_metadata(image_v), "image")
             except Exception as e:
                 print(f"[WARN] Failed to save image idx={idx}: {e}")
 
