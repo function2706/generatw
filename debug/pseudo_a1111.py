@@ -137,6 +137,8 @@ def txt2img(req: Txt2ImgRequest):
         "steps": req.steps,
         "n_iter": n_iter,
         "batch_size": batch_size,
+        "sd_model_name": "Foobar_Hogefuga",
+        "sd_model_hash": "12345abcde",
         "extra_generation_params": extra_generation_params,
 
         "index_of_first_image": 0,

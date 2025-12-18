@@ -1,24 +1,25 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from PIL import Image, ImageTk, PngImagePlugin
 from tkinter import ttk, Frame
 from typing import Any, Dict, Mapping, Optional, Union
-import base64, hashlib, io, json, pyperclip, random, requests, threading, tkinter
+import base64, datetime, hashlib, io, json, pyperclip, random, requests, threading, tkinter
 
 @dataclass
 class SDConfigs:
     ipaddr: Optional[str] = "127.0.0.1"
     port: Optional[int] = 7860
-    steps: Optional[int] = 20
+    steps: Optional[int] = 30
     batch_size: Optional[int] = 4
     sampler_name: Optional[str] = "DPM++ 2S a"
     scheduler: Optional[str] = "Karras"
     cfg_scale: Optional[float] = 7.0
     seed: Optional[int] = -1
-    width: Optional[int] = 512
-    height: Optional[int] = 512
+    width: Optional[int] = 540
+    height: Optional[int] = 960
 
 @dataclass
 class PMConfigs:
@@ -241,37 +242,73 @@ class PicMaker(ABC):
         api_json["height"] = self.sd_configs.height
         return api_json if api_json["prompt"] and api_json["negative_prompt"] else None
 
-    # 画像を保存する
-    # 親ディレクトリが存在しない場合は作成する
-    def save_image_safely(self, image: Image.Image, path: Union[str, Path], meta: PngImagePlugin.PngInfo) -> None:
-        dest = Path(path)
-        if dest.parent and not dest.parent.exists():
-            dest.parent.mkdir(parents=True, exist_ok=True)
-        image.save(str(dest), pnginfo=meta)
-
-    # 指定の画像群を保存する
-    # 生成した画像のパス群を返す
-    def save_images(self, images: Any, info_obj: Any) -> list[str]:
-        image_paths = []
-        infotexts = info_obj.get("infotexts", [])
+    # メタデータやモードからファイルパスを生成する
+    def make_filepath(self, info_obj: Any, idx: int) -> str:
         prompts = info_obj.get("all_prompts", [])
         neg_prompts = info_obj.get("all_negative_prompts", [])
         seeds = info_obj.get("all_seeds", [])
+
+        dirpath_raw :str = prompts[idx] + neg_prompts[idx]
+        dirpath = self.whoami() + "/" + hashlib.md5(dirpath_raw.encode()).hexdigest()
+        now = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+        filename = now + "-" + str(seeds[idx])
+
+        return dirpath + "/" + filename + ".png"
+
+    # PNG に付帯するメタデータを生成する
+    # (API 応答で得たメタデータは "images" で削ぎ落とした時点でなくなるので, 再度の付与が必要)
+    def make_metadata(self, info_obj: Any, idx: int) -> PngImagePlugin.PngInfo:
+        metadata = PngImagePlugin.PngInfo()
+        metadata.add_text("parameters", info_obj.get("infotexts", [])[idx])
+        metadata.add_text("prompt", info_obj.get("all_prompts", [])[idx])
+        metadata.add_text("negative_prompt", info_obj.get("all_negative_prompts", [])[idx])
+        metadata.add_text("steps", str(info_obj.get("steps", 0)))
+        metadata.add_text("sampler", info_obj.get("sampler_name", ""))
+        metadata.add_text("schedule_type", info_obj.get("extra_generation_params", {}).get("Schedule type", ""))
+        metadata.add_text("cfg_scale", str(info_obj.get("cfg_scale", 0)))
+        metadata.add_text("seed", str(info_obj.get("all_seeds", [])[idx]))
+        metadata.add_text("width", str(info_obj.get("width", 0)))
+        metadata.add_text("height", str(info_obj.get("height", 0)))
+        metadata.add_text("sd_model_name", info_obj.get("sd_model_name", ""))
+        metadata.add_text("sd_model_hash", info_obj.get("sd_model_hash", ""))
+        metadata.add_text("clip_skip", str(info_obj.get("clip_skip", 0)))
+        return metadata
+
+    # Image からメタデータを取り出す
+    def get_metadata(self, image: Image) -> dict[str, Any]:
+        metadata = {}
+        metadata["prompt"] = image.info.get("prompt")
+        metadata["negative_prompt"] = image.info.get("negative_prompt")
+        metadata["steps"] = int(image.info.get("steps"))
+        metadata["sampler"] = image.info.get("sampler")
+        metadata["schedule_type"] = image.info.get("schedule_type")
+        metadata["cfg_scale"] = float(image.info.get("cfg_scale"))
+        metadata["seed"] = int(image.info.get("seed"))
+        metadata["width"] = int(image.info.get("width"))
+        metadata["height"] = int(image.info.get("height"))
+        metadata["sd_model_name"] = image.info.get("sd_model_name")
+        metadata["sd_model_hash"] = image.info.get("sd_model_hash")
+        metadata["clip_skip"] = int(image.info.get("clip_skip"))
+        metadata["prompt"] = image.info.get("prompt")
+        return metadata
+
+    # 指定の画像群を保存する
+    # この際メタデータ(プロンプト, シード)も同時に埋め込む
+    # 生成した画像のパス群を返す
+    def save_images(self, images: Any, info_obj: Any) -> list[str]:
+        image_paths = []
         for idx, image_data in enumerate(images):
             try:
-                dir_raw :str = prompts[idx] + neg_prompts[idx]
-                dir = self.whoami() + "/" + hashlib.md5(dir_raw.encode()).hexdigest()
-                filename_raw :str = prompts[idx] + neg_prompts[idx] + str(seeds[idx])
-                filename = hashlib.md5(filename_raw.encode()).hexdigest()
-
                 b64 = image_data.split(",", 1)[-1]
                 image = Image.open(io.BytesIO(base64.b64decode(b64)))
-                image_path = dir + "/" + filename + ".png"
 
-                meta = PngImagePlugin.PngInfo()
-                meta.add_text("parameters", infotexts[idx])
+                image_path = self.make_filepath(info_obj, idx)
+                dest = Path(image_path)
+                if dest.parent and not dest.parent.exists():
+                    # 親ディレクトリが存在しない場合は作成する
+                    dest.parent.mkdir(parents=True, exist_ok=True)
 
-                self.save_image_safely(image, image_path, meta)
+                image.save(str(dest), pnginfo=self.make_metadata(info_obj, idx))
                 image_paths.append(image_path)
             except Exception as e:
                 print(f"[WARN] Failed to save image idx={idx}: {e}")
@@ -294,7 +331,8 @@ class PicMaker(ABC):
                 return []
 
             # txt2img
-            response = requests.post(f"http://{self.sd_configs.ipaddr}:{self.sd_configs.port}/sdapi/v1/txt2img", json=payload, timeout=self.pm_configs.timeout_sec)
+            response = requests.post(f"http://{self.sd_configs.ipaddr}:{self.sd_configs.port}/sdapi/v1/txt2img",
+                                     json=payload, timeout=self.pm_configs.timeout_sec)
             response.raise_for_status()
             body = response.json()
             images = body.get("images", [])
@@ -302,8 +340,7 @@ class PicMaker(ABC):
                 print("API response without images.")
                 return []
 
-            info_obj = json.loads(body.get("info", "{}"))
-            return self.save_images(images, info_obj)
+            return self.save_images(images, json.loads(body.get("info", "{}")))
         except requests.exceptions.Timeout:
             print("API timeout.")
         except requests.exceptions.RequestException as e:
@@ -317,6 +354,7 @@ class PicMaker(ABC):
         return []
 
     # 生成スレッドエントリポイント
+    # 複数個生成した場合はランダムで 1 つ表示する
     def make_pic_async(self) -> None:
         def worker():
             image_paths = self.gen_pic()
@@ -329,7 +367,6 @@ class PicMaker(ABC):
 
     # ワンショット処理 (ステータス表示 -> ステータス型式確認 -> 非同期で生成, tkinter 更新)
     def doit_oneshot(self) -> None:
-        self.print_stats()
         if not self.is_stats_enough_for_prompt():
             return
         if self.pm_configs.do_post:
