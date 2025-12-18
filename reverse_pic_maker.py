@@ -127,6 +127,18 @@ class ReversePicMaker(PicMaker):
     def whoami(self) -> str:
         return "ReversePicMaker"
 
+    # モードに即したダミーデータをステータスにセットする
+    def set_dummy_stats(self) -> None:
+        self.crnt_stats = {}
+
+        self.crnt_stats["character"] = {}
+        chara_data = self.crnt_stats["character"]
+        chara_data["name"] = "テスト"
+        chara_data["status"] = "普通"
+        chara_data["equip"] = ["シャツ", "パンツ"]
+        chara_data["posture"] = "直立"
+        chara_data["tool"] = ["腕時計", "イヤホン"]
+
     # クリップボード文字列からキャラクタステータスを取得する
     def get_charastats(self, stats: Dict[str, Any]) -> None:
         stats["character"] = {}

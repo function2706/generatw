@@ -65,6 +65,16 @@ class PicMaker(ABC):
     def whoami(self) -> str:
         pass
 
+    # モードに即したダミーデータをステータスにセットする
+    def set_dummy_stats(self) -> None:
+        pass
+
+    # デバッグボタンハンドラ
+    # ダミーデータをステータスにセットし, 即時ポストする
+    def doit_debug(self) -> None:
+        self.set_dummy_stats()
+        self.doit_oneshot()
+
     # テキストボックスの作成
     def put_textbox(self, frame :Frame, name: str, row: int, col: int, width: int, default: str) -> ttk.Entry:
         ttk.Label(frame, text=name).grid(row=row, column=col, padx=6, pady=6, sticky="w")
@@ -89,10 +99,14 @@ class PicMaker(ABC):
         self.config_param1_frame.grid(row=1, column=0, sticky="w")
         self.config_param2_frame = ttk.Frame(self.main_frame)
         self.config_param2_frame.grid(row=2, column=0, sticky="w")
-        # フレーム 1
+        # ボタン用フレーム
         # ボタン(今すぐ生成)
         button = ttk.Button(self.config_button_frame, text="今すぐ生成", command=self.doit_oneshot)
         button.grid(row=0, column=0, padx=6, pady=6, sticky="w")
+        # ボタン(デバッグ)
+        button = ttk.Button(self.config_button_frame, text="デバッグ", command=self.doit_debug)
+        button.grid(row=0, column=1, padx=6, pady=6, sticky="w")
+        # フレーム 1
         # テキストボックス(幅)
         self.entry_width = self.put_textbox(self.config_param1_frame, "幅", 1, 0, 5, str(self.sd_configs.width))
         # テキストボックス(高さ)
@@ -108,7 +122,7 @@ class PicMaker(ABC):
         self.entry_port = self.put_textbox(self.config_param2_frame, "ポート", 0, 2, 6, str(self.sd_configs.port))
 
     # 設定ウィンドウが開かれているか
-    def is_config_window_open(self):
+    def is_config_window_open(self) -> bool:
         return (self.tk_root is not None) and (self.tk_root.winfo_exists())
 
     # 画像ウィンドウのクローズ時のハンドラ
@@ -118,7 +132,7 @@ class PicMaker(ABC):
             self.tk_root.destroy()
 
     # 画像ウィンドウが開かれているか
-    def is_image_window_open(self):
+    def is_image_window_open(self) -> bool:
         return (self.image_window is not None) and (self.image_window.winfo_exists())
 
     # 画像ウィンドウのクローズ時のハンドラ
@@ -177,19 +191,12 @@ class PicMaker(ABC):
 
         new_stats = self.parse_clipboard()
 
-        if self.pm_configs.is_verbose:
-            print("new_stats:", json.dumps(new_stats, ensure_ascii=False, indent=2))
-
         if self.crnt_stats == new_stats:
             self.flags.is_new_stats = False
             return
 
         self.flags.is_new_stats = True
         self.crnt_stats = new_stats
-
-    # ステータスをダンプする
-    def print_stats(self) -> None:
-        dump_json(self.crnt_stats, "crnt_stats")
 
     # ステータスがプロンプト生成において十分な情報を有しているか
     def is_stats_enough_for_prompt(self) -> bool:

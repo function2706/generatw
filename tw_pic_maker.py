@@ -178,6 +178,28 @@ class TWPicMaker(PicMaker):
     def whoami(self) -> str:
         return "TWPicMaker"
 
+    # モードに即したダミーデータをステータスにセットする
+    def set_dummy_stats(self) -> None:
+        self.crnt_stats = {}
+
+        self.crnt_stats["metastats"] = {}
+        meta_stats = self.crnt_stats["metastats"]
+        meta_stats["season"] = "春"
+        meta_stats["time"] = {"hour": "12", "minute": "34"}
+        meta_stats["place"] = {"address": "デバッグルーム", "cleanliness": "清潔"}
+        meta_stats["weather"] = "☀"
+        meta_stats["temperature"] = "25"
+
+        self.crnt_stats["character"] = {}
+        chara_data = self.crnt_stats["character"]
+        chara_data["name"] = "テスト"
+        chara_data["affection"] = {"rank": "C", "value": "100"}
+        chara_data["trust"] = {"rank": "C", "value": "100"}
+        chara_data["heat"] = "1"
+        chara_data["equip"] = {}
+        chara_data["equip"]["上半身"] = "シャツ"
+        chara_data["equip"]["下半身"] = "パンツ"
+
     # クリップボード文字列からメタステータスを取得する
     def get_metastats(self, stats: Dict[str, Any]) -> None:
         stats["metastats"] = {}
