@@ -5,8 +5,17 @@ from datetime import datetime
 from pathlib import Path
 from PIL import Image, ImageTk, PngImagePlugin
 from tkinter import ttk, Frame
-from typing import Any, Dict, Mapping, Optional, Union
-import base64, datetime, hashlib, io, json, pyperclip, random, requests, threading, tkinter
+from typing import Any, Dict, Mapping, Optional
+import base64, csv, datetime, hashlib, io, json, pyperclip, random, requests, threading, tkinter
+
+class _ReadOnly(type):
+    def __setattr__(cls, name, value):
+        raise AttributeError("read-only class")
+    def __delattr__(cls, name):
+        raise AttributeError("read-only class")
+
+class Const(metaclass=_ReadOnly):
+    INFO_CSV_NAME = "info.csv"
 
 @dataclass
 class SDConfigs:
@@ -124,7 +133,7 @@ class PicMaker(ABC):
     def is_config_window_open(self) -> bool:
         return (self.tk_root is not None) and (self.tk_root.winfo_exists())
 
-    # 画像ウィンドウのクローズ時のハンドラ
+    # 設定ウィンドウのクローズ時のハンドラ
     def on_config_window_close(self) -> None:
         self.on_image_window_close()
         if self.is_config_window_open():
@@ -251,17 +260,21 @@ class PicMaker(ABC):
         api_json["height"] = self.sd_configs.height
         return api_json if api_json["prompt"] and api_json["negative_prompt"] else None
 
-    # メタデータやモードからファイルパスを生成する
-    def make_filepath(self, info_obj: Any, idx: int) -> str:
+    # メタデータからディレクトリ名を生成する
+    def make_dirname(self, info_obj: Any, idx: int) -> str:
         prompts = info_obj.get("all_prompts", [])
         neg_prompts = info_obj.get("all_negative_prompts", [])
-        seeds = info_obj.get("all_seeds", [])
 
         dirpath_raw :str = prompts[idx] + neg_prompts[idx]
-        dirpath = self.whoami() + "/" + hashlib.md5(dirpath_raw.encode()).hexdigest()
+        return hashlib.md5(dirpath_raw.encode()).hexdigest()
+
+    # メタデータやモードからファイルパスを生成する
+    def make_filepath(self, info_obj: Any, idx: int) -> str:
+        seeds = info_obj.get("all_seeds", [])
+
+        dirpath = self.whoami() + "/" + self.make_dirname(info_obj, idx)
         now = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
         filename = now + "-" + str(seeds[idx])
-
         return dirpath + "/" + filename + ".png"
 
     # PNG に付帯するメタデータを生成する
@@ -300,6 +313,13 @@ class PicMaker(ABC):
         metadata["clip_skip"] = int(image.info.get("clip_skip"))
         return metadata
 
+    # 記録用 CSV にディレクトリ名とプロンプトを記録する
+    def record_dir_csv(self, info_obj: Any, idx: int) -> None:
+        csv_path = Path(self.whoami() + "/" + Const.INFO_CSV_NAME)
+        csv_meta = open(csv_path, "a", encoding="utf-8", newline="")
+        writer = csv.writer(csv_meta)
+        writer.writerow([self.make_dirname(info_obj, idx), info_obj.get("all_prompts", [])[idx], info_obj.get("all_negative_prompts", [])[idx]])
+
     # 指定の画像群を保存する
     # この際メタデータ(プロンプト, シード)も同時に埋め込む
     # 生成した画像のパス群を返す
@@ -318,6 +338,7 @@ class PicMaker(ABC):
                 if dest.parent and not dest.parent.exists():
                     # 親ディレクトリが存在しない場合は作成する
                     dest.parent.mkdir(parents=True, exist_ok=True)
+                    self.record_dir_csv(info_obj, idx)
 
                 image.save(str(dest), pnginfo=self.make_metadata(info_obj, idx))
                 image_paths.append(image_path)
