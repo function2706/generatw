@@ -120,8 +120,8 @@ class ReversePicMaker(PicMaker):
         })
 
     # コンストラクタ
-    def __init__(self, do_post: bool, is_verbose: bool):
-        super().__init__(do_post, is_verbose)
+    def __init__(self, is_verbose: bool):
+        super().__init__(is_verbose)
 
     # 自身のクラス名を取得する
     def whoami(self) -> str:

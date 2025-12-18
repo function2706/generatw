@@ -23,7 +23,6 @@ class SDConfigs:
 
 @dataclass
 class PMConfigs:
-    do_post: bool = False
     is_verbose: bool = False
     timeout_sec: int = 60
 
@@ -46,7 +45,7 @@ class PicMaker(ABC):
         raise NotImplementedError
 
     # コンストラクタ
-    def __init__(self, do_post: bool, is_verbose: bool):
+    def __init__(self, is_verbose: bool):
         self.sd_configs = SDConfigs()
         self.flags = PMFlags()
 
@@ -59,7 +58,6 @@ class PicMaker(ABC):
         self.image_window = None
 
         self.pm_configs = PMConfigs()
-        self.pm_configs.do_post = do_post
         self.pm_configs.is_verbose = is_verbose
 
     # 自身のクラス名を取得する
@@ -386,10 +384,7 @@ class PicMaker(ABC):
     def doit_oneshot(self) -> None:
         if not self.is_stats_enough_for_prompt():
             return
-        if self.pm_configs.do_post:
-            self.make_pic_async()
-        else:
-            print("Will post!")
+        self.make_pic_async()
 
     # メイン処理 (ステータス更新 -> ワンショット処理)
     def doit(self) -> None:
