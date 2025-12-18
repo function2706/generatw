@@ -306,6 +306,9 @@ class PicMaker(ABC):
     # この際メタデータ(プロンプト, シード)も同時に埋め込む
     # 生成した画像のパス群を返す
     def save_images(self, images: Any, info_obj: Any) -> list[str]:
+        if self.pm_configs.is_verbose:
+            dump_json(info_obj, "info_obj")
+
         image_paths = []
         for idx, image_data in enumerate(images):
             try:
