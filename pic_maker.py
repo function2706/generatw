@@ -6,7 +6,7 @@ from pathlib import Path
 from PIL import Image, ImageTk, PngImagePlugin
 from tkinter import ttk, Frame
 from typing import Any, Dict, Mapping, Optional
-import base64, csv, datetime, hashlib, io, json, pyperclip, random, requests, threading, tkinter
+import base64, csv, datetime, hashlib, io, json, os, pyperclip, random, requests, threading, tkinter
 
 class _ReadOnly(type):
     def __setattr__(cls, name, value):
@@ -69,6 +69,8 @@ class PicMaker(ABC):
         self.pm_configs = PMConfigs()
         self.pm_configs.is_verbose = is_verbose
 
+        self.crnt_image_path: Path = None
+
     # 自身のクラス名を取得する
     def whoami(self) -> str:
         pass
@@ -91,6 +93,16 @@ class PicMaker(ABC):
         entry.insert(0, default)
         return entry
 
+    # 設定ウィンドウが開かれているか
+    def is_config_window_open(self) -> bool:
+        return (self.tk_root is not None) and (self.tk_root.winfo_exists())
+
+    # 設定ウィンドウのクローズ時のハンドラ
+    def on_config_window_close(self) -> None:
+        self.on_image_window_close()
+        if self.is_config_window_open():
+            self.tk_root.destroy()
+
     # GUI の構築
     def construct_config_window(self) -> None:
         # ウィンドウ定義
@@ -99,13 +111,13 @@ class PicMaker(ABC):
         self.tk_root.columnconfigure(0, weight=1)
         self.tk_root.rowconfigure(0, weight=1)
         # フレーム定義
-        self.main_frame = ttk.Frame(self.tk_root, padding=12)
-        self.main_frame.grid(row=0, column=0, sticky="nsew")
-        self.config_button_frame = ttk.Frame(self.main_frame)
+        self.config_main_frame = ttk.Frame(self.tk_root, padding=12)
+        self.config_main_frame.grid(row=0, column=0, sticky="nsew")
+        self.config_button_frame = ttk.Frame(self.config_main_frame)
         self.config_button_frame.grid(row=0, column=0, sticky="w")
-        self.config_param1_frame = ttk.Frame(self.main_frame)
+        self.config_param1_frame = ttk.Frame(self.config_main_frame)
         self.config_param1_frame.grid(row=1, column=0, sticky="w")
-        self.config_param2_frame = ttk.Frame(self.main_frame)
+        self.config_param2_frame = ttk.Frame(self.config_main_frame)
         self.config_param2_frame.grid(row=2, column=0, sticky="w")
         # ボタン用フレーム
         # ボタン(今すぐ生成)
@@ -129,16 +141,6 @@ class PicMaker(ABC):
         # テキストボックス(ポート)
         self.entry_port = self.put_textbox(self.config_param2_frame, "ポート", 0, 2, 6, str(self.sd_configs.port))
 
-    # 設定ウィンドウが開かれているか
-    def is_config_window_open(self) -> bool:
-        return (self.tk_root is not None) and (self.tk_root.winfo_exists())
-
-    # 設定ウィンドウのクローズ時のハンドラ
-    def on_config_window_close(self) -> None:
-        self.on_image_window_close()
-        if self.is_config_window_open():
-            self.tk_root.destroy()
-
     # 画像ウィンドウが開かれているか
     def is_image_window_open(self) -> bool:
         return (self.image_window is not None) and (self.image_window.winfo_exists())
@@ -148,6 +150,30 @@ class PicMaker(ABC):
         if self.is_image_window_open():
             self.image_window.destroy()
         self.image_window = None
+
+    # > ボタンハンドラ
+    def on_next_button(self) -> None:
+        dirname = Path(self.whoami()) / self.get_dirname(self.make_pos_prompt(), self.make_neg_prompt())
+        files = os.listdir(dirname)
+        filepaths = [Path(s) for s in files]
+        idx = filepaths.index(Path(self.crnt_image_path.name))
+        self.update_image(dirname / filepaths[min(idx + 1, len(filepaths) - 1)])
+
+    # < ボタンハンドラ
+    def on_prev_button(self) -> None:
+        dirname = Path(self.whoami()) / self.get_dirname(self.make_pos_prompt(), self.make_neg_prompt())
+        files = os.listdir(dirname)
+        filepaths = [Path(s) for s in files]
+        idx = filepaths.index(Path(self.crnt_image_path.name))
+        self.update_image(dirname / filepaths[max(idx - 1, 0)])
+
+    # GOOD ボタンハンドラ
+    def on_good_button(self) -> None:
+        return
+
+    # BAD ボタンハンドラ
+    def on_bad_button(self) -> None:
+        return
 
     # 画像ウィンドウを構成, ただしすでに開いている場合は最前面に表示するのみ
     def construct_image_window(self) -> None:
@@ -159,10 +185,32 @@ class PicMaker(ABC):
         self.image_window = tkinter.Toplevel(self.tk_root)
         self.image_window.title("画像")
         self.image_window.protocol("WM_DELETE_WINDOW", self.on_image_window_close)
-        image_frame = ttk.Frame(self.image_window, padding=5)
-        image_frame.grid(row=0, column=0, sticky="nsew")
-        self.image_label = ttk.Label(image_frame)
-        self.image_label.grid(row=0, column=0, padx=6, pady=6, sticky="nsew")
+        # フレーム定義
+        self.image_main_frame = ttk.Frame(self.image_window, padding=5)
+        self.image_main_frame.grid(row=0, column=0, sticky="nsew")
+        self.image_label_frame = ttk.Frame(self.image_main_frame)
+        self.image_label_frame.grid(row=0, column=0, sticky="nwe")
+        self.image_eval_frame = ttk.Frame(self.image_main_frame)
+        self.image_eval_frame.grid(row=1, column=0, sticky="swe")
+        # 画像フレーム
+        # ラベル
+        self.image_label = ttk.Label(self.image_label_frame)
+        self.image_label.grid(row=0, column=1, padx=6, pady=6, sticky="nswe")
+        # ボタン(<)
+        button = ttk.Button(self.image_label_frame, text="<", width=2, command=self.on_prev_button)
+        button.grid(row=0, column=0, padx=6, pady=6, sticky="nsw")
+        # ボタン(>)
+        button = ttk.Button(self.image_label_frame, text=">", width=2, command=self.on_next_button)
+        button.grid(row=0, column=2, padx=6, pady=6, sticky="nse")
+        # 評価フレーム
+        self.image_eval_frame.columnconfigure(0, weight=1)
+        self.image_eval_frame.columnconfigure(1, weight=1)
+        # ボタン(GOOD)
+        button = ttk.Button(self.image_eval_frame, text="GOOD", command=self.on_good_button)
+        button.grid(row=0, column=0, padx=6, pady=6, sticky="wes")
+        # ボタン(BAD)
+        button = ttk.Button(self.image_eval_frame, text="BAD", command=self.on_bad_button)
+        button.grid(row=0, column=1, padx=6, pady=6, sticky="wes")
 
     # クリップボードから文字列を得る
     # 前回文字列と同様かどうかも記録する
@@ -222,7 +270,7 @@ class PicMaker(ABC):
         pass
 
     # TKinter を指定の画像パスで更新する
-    def update_image(self, path: str) -> None:
+    def update_image(self, path: Path) -> None:
         if not path:
             return
 
@@ -231,6 +279,8 @@ class PicMaker(ABC):
         self.construct_image_window()
         self.image_label.configure(image=tk_img)
         self.image_label.image = tk_img
+
+        self.crnt_image_path = path
 
     # GUI から SD コンフィグを更新する
     def refresh_sd_configs(self) -> None:
@@ -260,22 +310,25 @@ class PicMaker(ABC):
         api_json["height"] = self.sd_configs.height
         return api_json if api_json["prompt"] and api_json["negative_prompt"] else None
 
+    # プロンプトからハッシュ値(MD5)からなるディレクトリ名を得る
+    def get_dirname(self, prompt: str, neg_prompt: str) -> Path:
+        dirpath_raw :str = prompt + neg_prompt
+        return Path(hashlib.md5(dirpath_raw.encode()).hexdigest())
+
     # メタデータからディレクトリ名を生成する
-    def make_dirname(self, info_obj: Any, idx: int) -> str:
+    def make_dirname(self, info_obj: Any, idx: int) -> Path:
         prompts = info_obj.get("all_prompts", [])
         neg_prompts = info_obj.get("all_negative_prompts", [])
-
-        dirpath_raw :str = prompts[idx] + neg_prompts[idx]
-        return hashlib.md5(dirpath_raw.encode()).hexdigest()
+        return self.get_dirname(prompts[idx], neg_prompts[idx])
 
     # メタデータやモードからファイルパスを生成する
-    def make_filepath(self, info_obj: Any, idx: int) -> str:
+    def make_filepath(self, info_obj: Any, idx: int) -> Path:
         seeds = info_obj.get("all_seeds", [])
 
-        dirpath = self.whoami() + "/" + self.make_dirname(info_obj, idx)
+        dirpath = Path(self.whoami()) / self.make_dirname(info_obj, idx)
         now = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-        filename = now + "-" + str(seeds[idx])
-        return dirpath + "/" + filename + ".png"
+        filename = Path(f"{now}-{seeds[idx]}.png")
+        return dirpath / filename
 
     # PNG に付帯するメタデータを生成する
     # (API 応答で得たメタデータは "images" で削ぎ落とした時点でなくなるので, 再度の付与が必要)
@@ -316,7 +369,7 @@ class PicMaker(ABC):
     # 記録用 CSV にディレクトリ名とプロンプトを記録する
     # 初回はヘッダーも記述する
     def record_dir_csv(self, info_obj: Any, idx: int) -> None:
-        csv_path = Path(self.whoami() + "/" + Const.INFO_CSV_NAME)
+        csv_path = Path(self.whoami()) / Path(Const.INFO_CSV_NAME)
         need_header = (not csv_path.exists()) or (csv_path.stat().st_size == 0)
         with open(csv_path, "a", encoding="utf-8", newline="") as f:
             writer = csv.writer(f)
@@ -326,7 +379,7 @@ class PicMaker(ABC):
 
     # 記録用 CSV を list として得る
     def get_dir_csv_list(self) -> list[Any]:
-        csv_path = Path(self.whoami() + "/" + Const.INFO_CSV_NAME)
+        csv_path = Path(self.whoami()) / Path(Const.INFO_CSV_NAME)
         with open(csv_path, "r", encoding="utf-8", newline="") as f:
             reader = csv.DictReader(f)
             return list(reader)
@@ -334,28 +387,27 @@ class PicMaker(ABC):
     # 指定の画像群を保存する
     # この際メタデータ(プロンプト, シード)も同時に埋め込む
     # 生成した画像のパス群を返す
-    def save_images(self, images: Any, info_obj: Any) -> list[str]:
+    def save_images(self, images: Any, info_obj: Any) -> list[Path]:
         if self.pm_configs.is_verbose:
             dump_json(info_obj, "info_obj")
 
-        image_paths = []
+        image_paths: list[Path] = []
         for idx, image_data in enumerate(images):
             try:
                 b64 = image_data.split(",", 1)[-1]
                 image = Image.open(io.BytesIO(base64.b64decode(b64)))
 
                 image_path = self.make_filepath(info_obj, idx)
-                dest = Path(image_path)
-                if dest.parent and not dest.parent.exists():
+                if image_path.parent and not image_path.parent.exists():
                     # 親ディレクトリが存在しない場合は作成する
-                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    image_path.parent.mkdir(parents=True, exist_ok=True)
                     self.record_dir_csv(info_obj, idx)
 
-                image.save(str(dest), pnginfo=self.make_metadata(info_obj, idx))
+                image.save(str(image_path), pnginfo=self.make_metadata(info_obj, idx))
                 image_paths.append(image_path)
 
                 if self.pm_configs.is_verbose:
-                    image_v = Image.open(str(dest))
+                    image_v = Image.open(str(image_path))
                     dump_json(self.get_metadata(image_v), "image")
             except Exception as e:
                 print(f"[WARN] Failed to save image idx={idx}: {e}")
@@ -365,7 +417,7 @@ class PicMaker(ABC):
     # json を生成し RestAPI でポストする
     # 生成した画像のパス群を返す
     # 生成中の場合は何もしない
-    def gen_pic(self) -> list[str]:
+    def gen_pic(self) -> list[Path]:
         if self.flags.is_generating:
             print("In generating, Busy!")
             return []
