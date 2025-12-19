@@ -151,19 +151,22 @@ class PicMaker(ABC):
             self.image_window.destroy()
         self.image_window = None
 
+    # 指定のディレクトリ直下のファイルリストを取得する
+    def get_filelist(self, dirname: Path) -> list[Path]:
+        files = os.listdir(dirname)
+        return [Path(s) for s in files]
+
     # > ボタンハンドラ
     def on_next_button(self) -> None:
         dirname = Path(self.whoami()) / self.get_dirname(self.make_pos_prompt(), self.make_neg_prompt())
-        files = os.listdir(dirname)
-        filepaths = [Path(s) for s in files]
+        filepaths = self.get_filelist(dirname)
         idx = filepaths.index(Path(self.crnt_image_path.name))
         self.update_image(dirname / filepaths[min(idx + 1, len(filepaths) - 1)])
 
     # < ボタンハンドラ
     def on_prev_button(self) -> None:
         dirname = Path(self.whoami()) / self.get_dirname(self.make_pos_prompt(), self.make_neg_prompt())
-        files = os.listdir(dirname)
-        filepaths = [Path(s) for s in files]
+        filepaths = self.get_filelist(dirname)
         idx = filepaths.index(Path(self.crnt_image_path.name))
         self.update_image(dirname / filepaths[max(idx - 1, 0)])
 
