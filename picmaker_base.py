@@ -77,6 +77,11 @@ class PicMakerBase(ABC):
     def set_dummy_stats(self) -> None:
         pass
 
+    # 表示ボタンハンドラ
+    # 表示すべき画像がないときは何もしない
+    def on_output(self) -> None:
+        self.update_image(self.picmanager.crnt_picstats)
+
     # デバッグボタンハンドラ
     # ダミーデータをステータスにセットし, 即時ポストする
     def doit_debug(self) -> None:
@@ -129,11 +134,14 @@ class PicMakerBase(ABC):
         self.config_param2_frame.grid(row=2, column=0, sticky="w")
         # ボタン用フレーム
         # ボタン(今すぐ生成)
-        button = ttk.Button(self.config_button_frame, text="今すぐ生成", command=self.doit_oneshot)
-        button.grid(row=0, column=0, padx=6, pady=6, sticky="w")
+        self.button_gen = ttk.Button(self.config_button_frame, text="今すぐ生成", command=self.doit_oneshot)
+        self.button_gen.grid(row=0, column=0, padx=6, pady=6, sticky="w")
+        # ボタン(画像を表示)
+        self.button_output = ttk.Button(self.config_button_frame, text="画像を表示", command=self.on_output)
+        self.button_output.grid(row=0, column=1, padx=6, pady=6, sticky="w")
         # ボタン(デバッグ)
-        button = ttk.Button(self.config_button_frame, text="デバッグ", command=self.doit_debug)
-        button.grid(row=0, column=1, padx=6, pady=6, sticky="w")
+        self.button_debug = ttk.Button(self.config_button_frame, text="デバッグ", command=self.doit_debug)
+        self.button_debug.grid(row=0, column=2, padx=6, pady=6, sticky="w")
         # フレーム 1
         # テキストボックス(幅)
         self.entry_width = self.put_textbox(self.config_param1_frame, "幅", 1, 0, 5, str(self.sd_configs.width))
@@ -171,20 +179,20 @@ class PicMakerBase(ABC):
         self.image_label = ttk.Label(self.image_label_frame)
         self.image_label.grid(row=0, column=1, padx=6, pady=6, sticky="nswe")
         # ボタン(<)
-        button = ttk.Button(self.image_label_frame, text="<", width=2, command=self.on_prev_button)
-        button.grid(row=0, column=0, padx=6, pady=6, sticky="nsw")
+        self.button_prev = ttk.Button(self.image_label_frame, text="<", width=2, command=self.on_prev_button)
+        self.button_prev.grid(row=0, column=0, padx=6, pady=6, sticky="nsw")
         # ボタン(>)
-        button = ttk.Button(self.image_label_frame, text=">", width=2, command=self.on_next_button)
-        button.grid(row=0, column=2, padx=6, pady=6, sticky="nse")
+        self.button_next = ttk.Button(self.image_label_frame, text=">", width=2, command=self.on_next_button)
+        self.button_next.grid(row=0, column=2, padx=6, pady=6, sticky="nse")
         # 評価フレーム
         self.image_eval_frame.columnconfigure(0, weight=1)
         self.image_eval_frame.columnconfigure(1, weight=1)
         # ボタン(GOOD)
-        button = ttk.Button(self.image_eval_frame, text="GOOD", command=self.on_good_button)
-        button.grid(row=0, column=0, padx=6, pady=6, sticky="wes")
+        self.button_good = ttk.Button(self.image_eval_frame, text="GOOD", command=self.on_good_button)
+        self.button_good.grid(row=0, column=0, padx=6, pady=6, sticky="wes")
         # ボタン(BAD)
-        button = ttk.Button(self.image_eval_frame, text="BAD", command=self.on_bad_button)
-        button.grid(row=0, column=1, padx=6, pady=6, sticky="wes")
+        self.button_bad = ttk.Button(self.image_eval_frame, text="BAD", command=self.on_bad_button)
+        self.button_bad.grid(row=0, column=1, padx=6, pady=6, sticky="wes")
 
     # 画像フレームを指定の PicStats で更新する
     def update_image(self, picstats: PicStats) -> None:
@@ -198,6 +206,7 @@ class PicMakerBase(ABC):
         self.image_label.image = tk_img
 
         self.picmanager.crnt_picstats = picstats
+        self.button_output.configure(state="normal")
 
     # > ボタンハンドラ
     def on_next_button(self) -> None:
@@ -406,8 +415,10 @@ class PicMakerBase(ABC):
     # 複数個生成した場合はランダムで 1 つ表示する
     def make_pic_async(self) -> None:
         def worker():
-            image_paths = self.gen_pic()
-            self.update_image(PicStats(random.choice(image_paths)))
+            pic_paths = self.gen_pic()
+            if not pic_paths:
+                return
+            self.update_image(PicStats(random.choice(pic_paths)))
         threading.Thread(target=worker, args=(), daemon=True).start()
 
     # SIGINT ハンドラ
@@ -423,6 +434,9 @@ class PicMakerBase(ABC):
     # メイン処理 (ステータス更新 -> ワンショット処理)
     def doit(self) -> None:
         try:
+            if not self.is_stats_enough_for_prompt():
+                self.button_output.configure(state="disabled")
+
             self.refresh_stats()
             if not self.flags.is_new_stats:
                 return
