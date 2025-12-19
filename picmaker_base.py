@@ -3,19 +3,17 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from picmanager import PicManager, PicStats
 from PIL import Image, ImageTk, PngImagePlugin
 from tkinter import ttk, Frame
-from typing import Any, Dict, Mapping, Optional
-import base64, csv, datetime, hashlib, io, json, os, pyperclip, random, requests, threading, tkinter
+from typing import Any, Mapping, Optional
+import base64, datetime, hashlib, io, json, os, pyperclip, random, requests, threading, tkinter
 
 class _ReadOnly(type):
     def __setattr__(cls, name, value):
         raise AttributeError("read-only class")
     def __delattr__(cls, name):
         raise AttributeError("read-only class")
-
-class Const(metaclass=_ReadOnly):
-    INFO_CSV_NAME = "info.csv"
 
 @dataclass
 class SDConfigs:
@@ -69,7 +67,7 @@ class PicMakerBase(ABC):
         self.pm_configs = PMConfigs()
         self.pm_configs.is_verbose = is_verbose
 
-        self.crnt_image_path: Path = None
+        self.picmanager = PicManager(self.whoami())
 
     # 自身のクラス名を取得する
     def whoami(self) -> str:
@@ -188,32 +186,26 @@ class PicMakerBase(ABC):
         button = ttk.Button(self.image_eval_frame, text="BAD", command=self.on_bad_button)
         button.grid(row=0, column=1, padx=6, pady=6, sticky="wes")
 
-    # 画像フレームを指定の画像パスで更新する
-    def update_image(self, path: Path) -> None:
-        if not path:
+    # 画像フレームを指定の PicStats で更新する
+    def update_image(self, picstats: PicStats) -> None:
+        if not picstats:
             return
 
-        img = Image.open(path)
-        tk_img = ImageTk.PhotoImage(img)
+        image = Image.open(picstats.path)
+        tk_img = ImageTk.PhotoImage(image)
         self.construct_image_window()
         self.image_label.configure(image=tk_img)
         self.image_label.image = tk_img
 
-        self.crnt_image_path = path
+        self.picmanager.crnt_picstats = picstats
 
     # > ボタンハンドラ
     def on_next_button(self) -> None:
-        dirname = Path(self.whoami()) / self.get_dirname(self.make_pos_prompt(), self.make_neg_prompt())
-        filepaths = self.get_filelist(dirname)
-        idx = filepaths.index(Path(self.crnt_image_path.name))
-        self.update_image(dirname / filepaths[min(idx + 1, len(filepaths) - 1)])
+        self.update_image(self.picmanager.next_picstats())
 
     # < ボタンハンドラ
     def on_prev_button(self) -> None:
-        dirname = Path(self.whoami()) / self.get_dirname(self.make_pos_prompt(), self.make_neg_prompt())
-        filepaths = self.get_filelist(dirname)
-        idx = filepaths.index(Path(self.crnt_image_path.name))
-        self.update_image(dirname / filepaths[max(idx - 1, 0)])
+        self.update_image(self.picmanager.prev_picstats())
 
     # GOOD ボタンハンドラ
     def on_good_button(self) -> None:
@@ -258,7 +250,7 @@ class PicMakerBase(ABC):
         self.crnt_clipboard = new_clipboard
 
     # クリップボード文字列をもとに各ステータスを取得する
-    def parse_clipboard(self) -> Dict[str, Any]:
+    def parse_clipboard(self) -> dict[str, Any]:
         pass
 
     # ステータスを更新する
@@ -293,6 +285,70 @@ class PicMakerBase(ABC):
     def make_neg_prompt(self) -> str:
         pass
 
+    # メタデータからディレクトリ名を生成する
+    def make_dirname(self, info_obj: Any, idx: int) -> Path:
+        prompts = info_obj.get("all_prompts", [])
+        neg_prompts = info_obj.get("all_negative_prompts", [])
+        dirpath_raw :str = prompts[idx] + neg_prompts[idx]
+        return Path(hashlib.md5(dirpath_raw.encode()).hexdigest())
+
+    # メタデータやモードからファイルパスを生成する
+    def make_filepath(self, info_obj: Any, idx: int) -> Path:
+        seeds = info_obj.get("all_seeds", [])
+
+        dirpath = Path(self.whoami()) / self.make_dirname(info_obj, idx)
+        now = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+        filename = Path(f"{now}-{seeds[idx]}.png")
+        return dirpath / filename
+
+    # PNG に付帯するメタデータを生成する
+    # (API 応答で得たメタデータは "images" で削ぎ落とした時点でなくなるので, 再度の付与が必要)
+    def make_metadata(self, info_obj: Any, idx: int) -> PngImagePlugin.PngInfo:
+        metadata = PngImagePlugin.PngInfo()
+        metadata.add_text("prompt", info_obj.get("all_prompts", [])[idx])
+        metadata.add_text("negative_prompt", info_obj.get("all_negative_prompts", [])[idx])
+        metadata.add_text("steps", str(info_obj.get("steps", 0)))
+        metadata.add_text("sampler", info_obj.get("sampler_name", ""))
+        metadata.add_text("schedule_type", info_obj.get("extra_generation_params", {}).get("Schedule type", ""))
+        metadata.add_text("cfg_scale", str(info_obj.get("cfg_scale", 0)))
+        metadata.add_text("seed", str(info_obj.get("all_seeds", [])[idx]))
+        metadata.add_text("width", str(info_obj.get("width", 0)))
+        metadata.add_text("height", str(info_obj.get("height", 0)))
+        metadata.add_text("sd_model_name", info_obj.get("sd_model_name", ""))
+        metadata.add_text("sd_model_hash", info_obj.get("sd_model_hash", ""))
+        metadata.add_text("clip_skip", str(info_obj.get("clip_skip", 0)))
+        metadata.add_text("parameters", info_obj.get("infotexts", [])[idx])
+        return metadata
+
+    # 指定の画像群を保存する
+    # この際メタデータ(プロンプト, シード)も同時に埋め込む
+    # 生成した画像のパス群を返す
+    def save_images(self, images: Any, info_obj: Any) -> list[Path]:
+        if self.pm_configs.is_verbose:
+            dump_json(info_obj, "info_obj")
+
+        pic_paths: list[Path] = []
+        for idx, image_data in enumerate(images):
+            try:
+                b64 = image_data.split(",", 1)[-1]
+                image = Image.open(io.BytesIO(base64.b64decode(b64)))
+
+                pic_path = self.make_filepath(info_obj, idx)
+                if pic_path.parent and not pic_path.parent.exists():
+                    # 親ディレクトリが存在しない場合は作成する
+                    pic_path.parent.mkdir(parents=True, exist_ok=True)
+
+                image.save(str(pic_path), pnginfo=self.make_metadata(info_obj, idx))
+                pic_paths.append(pic_path)
+
+                if self.pm_configs.is_verbose:
+                    dump_json(PicStats(pic_path).info.to_dict(), "image")
+            except Exception as e:
+                print(f"[WARN] Failed to save image idx={idx}: {e}")
+
+        self.picmanager.refresh_piclist()
+        return pic_paths
+
     # 現在の SD 設定から RestAPI で txt2img にポストする json を生成する
     def make_json_for_txt2img(self) -> dict:
         api_json = {}
@@ -307,115 +363,6 @@ class PicMakerBase(ABC):
         api_json["width"] = self.sd_configs.width
         api_json["height"] = self.sd_configs.height
         return api_json if api_json["prompt"] and api_json["negative_prompt"] else None
-
-    # プロンプトからハッシュ値(MD5)からなるディレクトリ名を得る
-    def get_dirname(self, prompt: str, neg_prompt: str) -> Path:
-        dirpath_raw :str = prompt + neg_prompt
-        return Path(hashlib.md5(dirpath_raw.encode()).hexdigest())
-
-    # メタデータからディレクトリ名を生成する
-    def make_dirname(self, info_obj: Any, idx: int) -> Path:
-        prompts = info_obj.get("all_prompts", [])
-        neg_prompts = info_obj.get("all_negative_prompts", [])
-        return self.get_dirname(prompts[idx], neg_prompts[idx])
-
-    # メタデータやモードからファイルパスを生成する
-    def make_filepath(self, info_obj: Any, idx: int) -> Path:
-        seeds = info_obj.get("all_seeds", [])
-
-        dirpath = Path(self.whoami()) / self.make_dirname(info_obj, idx)
-        now = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-        filename = Path(f"{now}-{seeds[idx]}.png")
-        return dirpath / filename
-
-    # 指定のディレクトリ直下のファイルリストを取得する
-    def get_filelist(self, dirname: Path) -> list[Path]:
-        files = os.listdir(dirname)
-        return [Path(s) for s in files]
-
-    # PNG に付帯するメタデータを生成する
-    # (API 応答で得たメタデータは "images" で削ぎ落とした時点でなくなるので, 再度の付与が必要)
-    def make_metadata(self, info_obj: Any, idx: int) -> PngImagePlugin.PngInfo:
-        metadata = PngImagePlugin.PngInfo()
-        metadata.add_text("parameters", info_obj.get("infotexts", [])[idx])
-        metadata.add_text("prompt", info_obj.get("all_prompts", [])[idx])
-        metadata.add_text("negative_prompt", info_obj.get("all_negative_prompts", [])[idx])
-        metadata.add_text("steps", str(info_obj.get("steps", 0)))
-        metadata.add_text("sampler", info_obj.get("sampler_name", ""))
-        metadata.add_text("schedule_type", info_obj.get("extra_generation_params", {}).get("Schedule type", ""))
-        metadata.add_text("cfg_scale", str(info_obj.get("cfg_scale", 0)))
-        metadata.add_text("seed", str(info_obj.get("all_seeds", [])[idx]))
-        metadata.add_text("width", str(info_obj.get("width", 0)))
-        metadata.add_text("height", str(info_obj.get("height", 0)))
-        metadata.add_text("sd_model_name", info_obj.get("sd_model_name", ""))
-        metadata.add_text("sd_model_hash", info_obj.get("sd_model_hash", ""))
-        metadata.add_text("clip_skip", str(info_obj.get("clip_skip", 0)))
-        return metadata
-
-    # Image からメタデータを取り出す
-    def get_metadata(self, image: Image) -> dict[str, Any]:
-        metadata = {}
-        metadata["prompt"] = image.info.get("prompt")
-        metadata["negative_prompt"] = image.info.get("negative_prompt")
-        metadata["steps"] = int(image.info.get("steps"))
-        metadata["sampler"] = image.info.get("sampler")
-        metadata["schedule_type"] = image.info.get("schedule_type")
-        metadata["cfg_scale"] = float(image.info.get("cfg_scale"))
-        metadata["seed"] = int(image.info.get("seed"))
-        metadata["width"] = int(image.info.get("width"))
-        metadata["height"] = int(image.info.get("height"))
-        metadata["sd_model_name"] = image.info.get("sd_model_name")
-        metadata["sd_model_hash"] = image.info.get("sd_model_hash")
-        metadata["clip_skip"] = int(image.info.get("clip_skip"))
-        return metadata
-
-    # 記録用 CSV にディレクトリ名とプロンプトを記録する
-    # 初回はヘッダーも記述する
-    def record_dir_csv(self, info_obj: Any, idx: int) -> None:
-        csv_path = Path(self.whoami()) / Path(Const.INFO_CSV_NAME)
-        need_header = (not csv_path.exists()) or (csv_path.stat().st_size == 0)
-        with open(csv_path, "a", encoding="utf-8", newline="") as f:
-            writer = csv.writer(f)
-            if need_header:
-                writer.writerow(["dirname", "prompt", "negative_prompt"])
-            writer.writerow([self.make_dirname(info_obj, idx), info_obj.get("all_prompts", [])[idx], info_obj.get("all_negative_prompts", [])[idx]])
-
-    # 記録用 CSV を list として得る
-    def get_dir_csv_list(self) -> list[Any]:
-        csv_path = Path(self.whoami()) / Path(Const.INFO_CSV_NAME)
-        with open(csv_path, "r", encoding="utf-8", newline="") as f:
-            reader = csv.DictReader(f)
-            return list(reader)
-
-    # 指定の画像群を保存する
-    # この際メタデータ(プロンプト, シード)も同時に埋め込む
-    # 生成した画像のパス群を返す
-    def save_images(self, images: Any, info_obj: Any) -> list[Path]:
-        if self.pm_configs.is_verbose:
-            dump_json(info_obj, "info_obj")
-
-        image_paths: list[Path] = []
-        for idx, image_data in enumerate(images):
-            try:
-                b64 = image_data.split(",", 1)[-1]
-                image = Image.open(io.BytesIO(base64.b64decode(b64)))
-
-                image_path = self.make_filepath(info_obj, idx)
-                if image_path.parent and not image_path.parent.exists():
-                    # 親ディレクトリが存在しない場合は作成する
-                    image_path.parent.mkdir(parents=True, exist_ok=True)
-                    self.record_dir_csv(info_obj, idx)
-
-                image.save(str(image_path), pnginfo=self.make_metadata(info_obj, idx))
-                image_paths.append(image_path)
-
-                if self.pm_configs.is_verbose:
-                    image_v = Image.open(str(image_path))
-                    dump_json(self.get_metadata(image_v), "image")
-            except Exception as e:
-                print(f"[WARN] Failed to save image idx={idx}: {e}")
-
-        return image_paths
 
     # json を生成し RestAPI でポストする
     # 生成した画像のパス群を返す
@@ -460,7 +407,7 @@ class PicMakerBase(ABC):
     def make_pic_async(self) -> None:
         def worker():
             image_paths = self.gen_pic()
-            self.update_image(random.choice(image_paths))
+            self.update_image(PicStats(random.choice(image_paths)))
         threading.Thread(target=worker, args=(), daemon=True).start()
 
     # SIGINT ハンドラ
