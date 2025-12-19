@@ -22,6 +22,23 @@ class PicInfo:
         self.clip_skip = int(image.info.get("clip_skip"))
         self.parameters = image.info.get("parameters")
 
+    # 等号定義
+    def __eq__(self, other):
+        return (isinstance(other, PicInfo)
+                and self.prompt == other.prompt
+                and self.negative_prompt == other.negative_prompt
+                and self.steps == other.steps
+                and self.sampler == other.sampler
+                and self.schedule_type == other.schedule_type
+                and self.cfg_scale == other.cfg_scale
+                and self.seed == other.seed
+                and self.width == other.width
+                and self.height == other.height
+                and self.sd_model_name == other.sd_model_name
+                and self.sd_model_hash == other.sd_model_hash
+                and self.clip_skip == other.clip_skip
+                and self.parameters == other.parameters)
+
     # dict に成形する
     def to_dict(self) -> dict[str, Any]:
         dict = {}
@@ -55,7 +72,11 @@ class PicStats:
 
     # 等号定義
     def __eq__(self, other):
-        return isinstance(other, PicStats) and self.path == other.path and self.dir == other.dir
+        return (isinstance(other, PicStats)
+                and self.path == other.path
+                and self.dir == other.dir
+                and self.name == other.name
+                and self.info == other.info)
 
     # dict に成形する
     def to_dict(self) -> dict[str, Any]:
