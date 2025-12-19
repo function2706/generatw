@@ -103,6 +103,16 @@ class PicMakerBase(ABC):
         if self.is_config_window_open():
             self.tk_root.destroy()
 
+    # 画像ウィンドウが開かれているか
+    def is_image_window_open(self) -> bool:
+        return (self.image_window is not None) and (self.image_window.winfo_exists())
+
+    # 画像ウィンドウのクローズ時のハンドラ
+    def on_image_window_close(self) -> None:
+        if self.is_image_window_open():
+            self.image_window.destroy()
+        self.image_window = None
+
     # GUI の構築
     def construct_config_window(self) -> None:
         # ウィンドウ定義
@@ -141,43 +151,6 @@ class PicMakerBase(ABC):
         # テキストボックス(ポート)
         self.entry_port = self.put_textbox(self.config_param2_frame, "ポート", 0, 2, 6, str(self.sd_configs.port))
 
-    # 画像ウィンドウが開かれているか
-    def is_image_window_open(self) -> bool:
-        return (self.image_window is not None) and (self.image_window.winfo_exists())
-
-    # 画像ウィンドウのクローズ時のハンドラ
-    def on_image_window_close(self) -> None:
-        if self.is_image_window_open():
-            self.image_window.destroy()
-        self.image_window = None
-
-    # 指定のディレクトリ直下のファイルリストを取得する
-    def get_filelist(self, dirname: Path) -> list[Path]:
-        files = os.listdir(dirname)
-        return [Path(s) for s in files]
-
-    # > ボタンハンドラ
-    def on_next_button(self) -> None:
-        dirname = Path(self.whoami()) / self.get_dirname(self.make_pos_prompt(), self.make_neg_prompt())
-        filepaths = self.get_filelist(dirname)
-        idx = filepaths.index(Path(self.crnt_image_path.name))
-        self.update_image(dirname / filepaths[min(idx + 1, len(filepaths) - 1)])
-
-    # < ボタンハンドラ
-    def on_prev_button(self) -> None:
-        dirname = Path(self.whoami()) / self.get_dirname(self.make_pos_prompt(), self.make_neg_prompt())
-        filepaths = self.get_filelist(dirname)
-        idx = filepaths.index(Path(self.crnt_image_path.name))
-        self.update_image(dirname / filepaths[max(idx - 1, 0)])
-
-    # GOOD ボタンハンドラ
-    def on_good_button(self) -> None:
-        return
-
-    # BAD ボタンハンドラ
-    def on_bad_button(self) -> None:
-        return
-
     # 画像ウィンドウを構成, ただしすでに開いている場合は最前面に表示するのみ
     def construct_image_window(self) -> None:
         if self.is_image_window_open():
@@ -214,6 +187,54 @@ class PicMakerBase(ABC):
         # ボタン(BAD)
         button = ttk.Button(self.image_eval_frame, text="BAD", command=self.on_bad_button)
         button.grid(row=0, column=1, padx=6, pady=6, sticky="wes")
+
+    # 画像フレームを指定の画像パスで更新する
+    def update_image(self, path: Path) -> None:
+        if not path:
+            return
+
+        img = Image.open(path)
+        tk_img = ImageTk.PhotoImage(img)
+        self.construct_image_window()
+        self.image_label.configure(image=tk_img)
+        self.image_label.image = tk_img
+
+        self.crnt_image_path = path
+
+    # > ボタンハンドラ
+    def on_next_button(self) -> None:
+        dirname = Path(self.whoami()) / self.get_dirname(self.make_pos_prompt(), self.make_neg_prompt())
+        filepaths = self.get_filelist(dirname)
+        idx = filepaths.index(Path(self.crnt_image_path.name))
+        self.update_image(dirname / filepaths[min(idx + 1, len(filepaths) - 1)])
+
+    # < ボタンハンドラ
+    def on_prev_button(self) -> None:
+        dirname = Path(self.whoami()) / self.get_dirname(self.make_pos_prompt(), self.make_neg_prompt())
+        filepaths = self.get_filelist(dirname)
+        idx = filepaths.index(Path(self.crnt_image_path.name))
+        self.update_image(dirname / filepaths[max(idx - 1, 0)])
+
+    # GOOD ボタンハンドラ
+    def on_good_button(self) -> None:
+        return
+
+    # BAD ボタンハンドラ
+    def on_bad_button(self) -> None:
+        return
+
+    # GUI から SD コンフィグを更新する
+    def refresh_sd_configs(self) -> None:
+        self.sd_configs.ipaddr = self.entry_ipaddr.get()
+        self.sd_configs.port = self.entry_port.get()
+        self.sd_configs.steps = int(self.entry_steps.get())
+        self.sd_configs.batch_size = int(self.entry_batch_size.get())
+        self.sd_configs.sampler_name = "DPM++ 2S a"
+        self.sd_configs.scheduler = "Karras"
+        self.sd_configs.cfg_scale = 7.0
+        self.sd_configs.seed = -1
+        self.sd_configs.width = int(self.entry_width.get())
+        self.sd_configs.height = int(self.entry_height.get())
 
     # クリップボードから文字列を得る
     # 前回文字列と同様かどうかも記録する
@@ -272,32 +293,6 @@ class PicMakerBase(ABC):
     def make_neg_prompt(self) -> str:
         pass
 
-    # TKinter を指定の画像パスで更新する
-    def update_image(self, path: Path) -> None:
-        if not path:
-            return
-
-        img = Image.open(path)
-        tk_img = ImageTk.PhotoImage(img)
-        self.construct_image_window()
-        self.image_label.configure(image=tk_img)
-        self.image_label.image = tk_img
-
-        self.crnt_image_path = path
-
-    # GUI から SD コンフィグを更新する
-    def refresh_sd_configs(self) -> None:
-        self.sd_configs.ipaddr = self.entry_ipaddr.get()
-        self.sd_configs.port = self.entry_port.get()
-        self.sd_configs.steps = int(self.entry_steps.get())
-        self.sd_configs.batch_size = int(self.entry_batch_size.get())
-        self.sd_configs.sampler_name = "DPM++ 2S a"
-        self.sd_configs.scheduler = "Karras"
-        self.sd_configs.cfg_scale = 7.0
-        self.sd_configs.seed = -1
-        self.sd_configs.width = int(self.entry_width.get())
-        self.sd_configs.height = int(self.entry_height.get())
-
     # 現在の SD 設定から RestAPI で txt2img にポストする json を生成する
     def make_json_for_txt2img(self) -> dict:
         api_json = {}
@@ -332,6 +327,11 @@ class PicMakerBase(ABC):
         now = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
         filename = Path(f"{now}-{seeds[idx]}.png")
         return dirpath / filename
+
+    # 指定のディレクトリ直下のファイルリストを取得する
+    def get_filelist(self, dirname: Path) -> list[Path]:
+        files = os.listdir(dirname)
+        return [Path(s) for s in files]
 
     # PNG に付帯するメタデータを生成する
     # (API 応答で得たメタデータは "images" で削ぎ落とした時点でなくなるので, 再度の付与が必要)
