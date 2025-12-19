@@ -1,6 +1,6 @@
 from __future__ import annotations
 from picmaker_base import PicMakerBase
-from typing import Any, Dict, Mapping
+from typing import Any, Mapping
 from types import MappingProxyType
 import copy, re
 
@@ -136,7 +136,7 @@ class PicMakerReverse(PicMakerBase):
         chara_data["tool"] = ["腕時計", "イヤホン"]
 
     # クリップボード文字列からキャラクタステータスを取得する
-    def get_charastats(self, stats: Dict[str, Any]) -> None:
+    def get_charastats(self, stats: dict[str, Any]) -> None:
         stats["character"] = {}
         chara_data = stats["character"]
         # キャラ名
@@ -173,7 +173,7 @@ class PicMakerReverse(PicMakerBase):
 
     # クリップボード文字列からキャラクタステータスを取得する
     # 変更が加わる箇所以外は更新されない
-    def parse_clipboard(self) -> Dict[str, Any]:
+    def parse_clipboard(self) -> dict[str, Any]:
         new_stats = copy.deepcopy(self.crnt_stats)
         if re.search(r"^\s*(\S+)\s\[LV", self.crnt_clipboard, re.MULTILINE):
             self.get_charastats(new_stats)

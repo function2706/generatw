@@ -1,6 +1,6 @@
 from __future__ import annotations
 from picmaker_base import PicMakerBase
-from typing import Any, Dict, Mapping
+from typing import Any, Mapping
 from types import MappingProxyType
 import copy, re
 
@@ -197,7 +197,7 @@ class PicMakerTW(PicMakerBase):
         chara_data["equip"]["下半身"] = "パンツ"
 
     # クリップボード文字列からメタステータスを取得する
-    def get_metastats(self, stats: Dict[str, Any]) -> None:
+    def get_metastats(self, stats: dict[str, Any]) -> None:
         stats["metastats"] = {}
         meta_stats = stats["metastats"]
         # 季節
@@ -222,7 +222,7 @@ class PicMakerTW(PicMakerBase):
             meta_stats["temperature"] = temperature_match.group(1)
 
     # クリップボード文字列からキャラクタステータスを取得する
-    def get_charastats(self, stats: Dict[str, Any]) -> None:
+    def get_charastats(self, stats: dict[str, Any]) -> None:
         stats["character"] = {}
         chara_data = stats["character"]
         # キャラ名
@@ -249,7 +249,7 @@ class PicMakerTW(PicMakerBase):
 
     # クリップボード文字列が行動画面であればメタステータスを, キャラクタ画面であればキャラクタステータスを取得する
     # 変更が加わる箇所以外は更新されない
-    def parse_clipboard(self) -> Dict[str, Any]:
+    def parse_clipboard(self) -> dict[str, Any]:
         new_stats = copy.deepcopy(self.crnt_stats)
         if re.search(r"(\S+)の月", self.crnt_clipboard):
             self.get_metastats(new_stats)
