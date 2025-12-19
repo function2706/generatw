@@ -1,5 +1,5 @@
-from tw_pic_maker import TWPicMaker
-from reverse_pic_maker import ReversePicMaker
+from picmaker_tw import PicMakerTW
+from picmaker_reverse import PicMakerReverse
 import argparse, signal
 
 # エントリポイント
@@ -17,9 +17,9 @@ def main() -> None:
         print(f"[debug] mode={args.mode}, verbose={args.verbose}")
         return
     if args.mode == "TW":
-        pm = TWPicMaker(args.verbose)
+        pm = PicMakerTW(args.verbose)
     elif args.mode == "R":
-        pm = ReversePicMaker(args.verbose)
+        pm = PicMakerReverse(args.verbose)
     else:
         print(f"[debug] mode={args.mode}, verbose={args.verbose}")
         return

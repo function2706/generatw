@@ -1,11 +1,11 @@
 from __future__ import annotations
-from pic_maker import PicMaker
+from picmaker_base import PicMakerBase
 from typing import Any, Dict, Mapping
 from types import MappingProxyType
 import copy, re
 
 # eratohoTW
-class TWPicMaker(PicMaker):
+class PicMakerTW(PicMakerBase):
     @property
     # キャラクタプロンプトテーブル
     def chara_tbl(self) -> Mapping[str, Any]:
@@ -173,10 +173,6 @@ class TWPicMaker(PicMaker):
     # コンストラクタ
     def __init__(self, is_verbose: bool):
         super().__init__(is_verbose)
-
-    # 自身のクラス名を取得する
-    def whoami(self) -> str:
-        return "TWPicMaker"
 
     # モードに即したダミーデータをステータスにセットする
     def set_dummy_stats(self) -> None:

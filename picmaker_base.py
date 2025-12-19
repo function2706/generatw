@@ -46,7 +46,7 @@ def dump_json(data: dict, label: str) -> None:
     print(json.dumps(data, ensure_ascii=False, indent=2))
 
 # 基底クラス
-class PicMaker(ABC):
+class PicMakerBase(ABC):
     @property
     @abstractmethod
     # キャラクタプロンプトテーブル
@@ -73,7 +73,7 @@ class PicMaker(ABC):
 
     # 自身のクラス名を取得する
     def whoami(self) -> str:
-        pass
+        return self.__class__.__name__
 
     # モードに即したダミーデータをステータスにセットする
     def set_dummy_stats(self) -> None:
