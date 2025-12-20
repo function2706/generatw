@@ -1,8 +1,8 @@
 from __future__ import annotations
 from pathlib import Path
 from PIL import Image
-from typing import Any, Dict, Mapping, Optional
-import os
+from typing import Any
+import json, os
 
 # 画像のメタデータ
 class PicInfo:
@@ -81,9 +81,9 @@ class PicStats:
     # dict に成形する
     def to_dict(self) -> dict[str, Any]:
         dict = {}
-        dict["path"] = self.path
-        dict["dir"] = self.dir
-        dict["name"] = self.name
+        dict["path"] = str(self.path)
+        dict["dir"] = str(self.dir)
+        dict["name"] = str(self.name)
         dict["info"] = self.info.to_dict()
         return dict
 
@@ -126,3 +126,8 @@ class PicManager:
         picstats_list = self.picstats_list_in(self.crnt_picstats.dir)
         idx = picstats_list.index(self.crnt_picstats)
         return list(self.piclist[max(idx - 1, 0)].values())[0]
+    
+    # リストをダンプする
+    def dump_piclist(self) -> None:
+        dump = [ {str(dirname): picstats.to_dict()} for d in self.piclist for dirname, picstats in d.items() ]
+        print(json.dumps(dump, indent=2, ensure_ascii=False))

@@ -7,7 +7,7 @@ from picmanager import PicManager, PicStats
 from PIL import Image, ImageTk, PngImagePlugin
 from tkinter import ttk, Frame
 from typing import Any, Mapping, Optional
-import base64, datetime, hashlib, io, json, os, pyperclip, random, requests, threading, tkinter
+import base64, datetime, hashlib, io, json, pyperclip, random, requests, threading, tkinter
 
 class _ReadOnly(type):
     def __setattr__(cls, name, value):
@@ -206,7 +206,8 @@ class PicMakerBase(ABC):
         self.image_label.image = tk_img
 
         self.picmanager.crnt_picstats = picstats
-        self.button_output.configure(state="normal")
+        if self.is_config_window_open():
+            self.button_output.configure(state="normal")
 
     # > ボタンハンドラ
     def on_next_button(self) -> None:
@@ -434,7 +435,7 @@ class PicMakerBase(ABC):
     # メイン処理 (ステータス更新 -> ワンショット処理)
     def doit(self) -> None:
         try:
-            if not self.is_stats_enough_for_prompt():
+            if not self.is_stats_enough_for_prompt() and self.is_config_window_open():
                 self.button_output.configure(state="disabled")
 
             self.refresh_stats()
