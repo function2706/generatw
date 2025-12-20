@@ -3,7 +3,7 @@
 # -*- coding: utf-8 -*-
 from fastapi import FastAPI
 from typing import List, Optional
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 from pydantic import BaseModel, Field
 import argparse, base64, datetime, io, json, random, uvicorn
 
@@ -88,12 +88,23 @@ def txt2img(req: Txt2ImgRequest):
     else:
         seeds = [req.seed + i for i in range(total_images)]
 
-    # 画像生成（単色）
+    # 画像生成（単色 + 時刻等）
     images_b64: List[str] = []
-    for s in seeds:
+    for idx, s in enumerate(seeds):
         rng = random.Random(s)
         color = (rng.randint(0, 255), rng.randint(0, 255), rng.randint(0, 255))
         img = Image.new("RGB", (width, height), color=color)
+
+        try:
+            font = ImageFont.truetype("arial.ttf", 24)
+        except IOError:
+            font = ImageFont.load_default()
+        draw = ImageDraw.Draw(img)
+        text = f"{idx=}, seed={s}, time={datetime.datetime.now().strftime('%H:%M:%S')}"
+        for dx, dy in [(-1,0),(1,0),(0,-1),(0,1)]:
+            draw.text((10+dx, 10+dy), text, fill=(0,0,0), font=font)
+        draw.text((10, 10), text, fill=(255, 255, 255), font=font)
+
         buf = io.BytesIO()
         img.save(buf, format="PNG")
         png_bytes = buf.getvalue()
