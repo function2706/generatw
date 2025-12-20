@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from picmanager import PicManager, PicStats
 from PIL import Image, ImageTk, PngImagePlugin
-from tkinter import ttk, Frame
+from tkinter import ttk, Frame, TclError
 from typing import Any, Mapping, Optional
 import base64, datetime, hashlib, io, json, pyperclip, random, requests, threading, tkinter
 
@@ -98,7 +98,12 @@ class PicMakerBase(ABC):
 
     # 設定ウィンドウが開かれているか
     def is_config_window_open(self) -> bool:
-        return (self.tk_root is not None) and (self.tk_root.winfo_exists())
+        if self.tk_root is None:
+            return False
+        try:
+            return bool(self.tk_root.winfo_exists())
+        except TclError:
+            return False
 
     # 設定ウィンドウのクローズ時のハンドラ
     def on_config_window_close(self) -> None:
@@ -108,7 +113,12 @@ class PicMakerBase(ABC):
 
     # 画像ウィンドウが開かれているか
     def is_image_window_open(self) -> bool:
-        return (self.image_window is not None) and (self.image_window.winfo_exists())
+        if self.image_window is None:
+            return False
+        try:
+            return bool(self.image_window.winfo_exists())
+        except TclError:
+            return False
 
     # 画像ウィンドウのクローズ時のハンドラ
     def on_image_window_close(self) -> None:

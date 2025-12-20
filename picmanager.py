@@ -92,42 +92,48 @@ class PicManager:
     # コンストラクタ
     def __init__(self, rootdir: Path):
         self.rootdir = rootdir
-        self.piclist: list[dict[Path, PicStats]] = []
+        self.piclist: list[dict[Path, list[PicStats]]] = []
         self.refresh_piclist()
-        self.crnt_picstats: PicStats = None
+        self.crnt_picstats: PicStats | None = None
 
     # 親ディレクトリ内の画像ファイルを PicStats の形で再帰的にリスト化する
     def refresh_piclist(self) -> None:
         self.piclist = []
         for dirpath, _, filenames in os.walk(self.rootdir):
+            picstats: list[PicStats] = []
             for filename in filenames:
-                if not filename.lower().endswith(".png"):
-                    continue
-                path = Path(os.path.join(dirpath, filename))
-                picstats = PicStats(path)
-                self.piclist.append({Path(path.parent.name): picstats})
+                if filename.lower().endswith(".png"):
+                    path = Path(dirpath) / filename
+                    picstats.append(PicStats(path))
+            if picstats:
+                dirname = Path(dirpath).name
+                self.piclist.append({Path(dirname): picstats})
 
-    # 指定のディレクトリ名を持つ PicStats をリスト化する
-    def picstats_list_in(self, dirname: Path) -> list[PicStats]:
-        results: list[PicStats] = []
+    # 指定のディレクトリ名を持つ PicStats リストを返す
+    def get_picstats_list(self, dirname: Path) -> list[PicStats]:
         for d in self.piclist:
             if dirname in d:
-                results.append(d[dirname])
-        return results
+                return d[dirname]
+        return []
 
     # PicStats リストにおいて, 現在の次のものを返す
     def next_picstats(self) -> PicStats:
-        picstats_list = self.picstats_list_in(self.crnt_picstats.dir)
+        picstats_list = self.get_picstats_list(self.crnt_picstats.dir)
         idx = picstats_list.index(self.crnt_picstats)
-        return list(self.piclist[min(idx + 1, len(self.piclist) - 1)].values())[0]
+        return picstats_list[min(idx + 1, len(picstats_list) - 1)]
 
     # PicStats リストにおいて, 現在の前のものを返す
     def prev_picstats(self) -> PicStats:
-        picstats_list = self.picstats_list_in(self.crnt_picstats.dir)
+        picstats_list = self.get_picstats_list(self.crnt_picstats.dir)
         idx = picstats_list.index(self.crnt_picstats)
-        return list(self.piclist[max(idx - 1, 0)].values())[0]
-    
-    # リストをダンプする
-    def dump_piclist(self) -> None:
-        dump = [ {str(dirname): picstats.to_dict()} for d in self.piclist for dirname, picstats in d.items() ]
-        print(json.dumps(dump, indent=2, ensure_ascii=False))
+        return picstats_list[max(idx - 1, 0)]
+
+    def to_json(self) -> dict:
+        serializable = []
+        for d in self.piclist:
+            for dirname, stats_list in d.items():
+                serializable.append({
+                    "dir": str(dirname),
+                    "pics": [s.to_dict() for s in stats_list]
+                })
+        return json.dumps(serializable, ensure_ascii=False, indent=2)
