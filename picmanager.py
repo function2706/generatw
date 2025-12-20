@@ -1,7 +1,7 @@
 from __future__ import annotations
 from pathlib import Path
 from PIL import Image
-from typing import Any
+from typing import Any, Dict, List
 import json, os
 
 # 画像のメタデータ
@@ -39,8 +39,8 @@ class PicInfo:
                 and self.clip_skip == other.clip_skip
                 and self.parameters == other.parameters)
 
-    # dict に成形する
-    def to_dict(self) -> dict[str, Any]:
+    # Dict に成形する
+    def to_dict(self) -> Dict[str, Any]:
         dict = {}
         dict["prompt"] = self.prompt
         dict["negative_prompt"] = self.negative_prompt
@@ -78,8 +78,8 @@ class PicStats:
                 and self.name == other.name
                 and self.info == other.info)
 
-    # dict に成形する
-    def to_dict(self) -> dict[str, Any]:
+    # Dict に成形する
+    def to_dict(self) -> Dict[str, Any]:
         dict = {}
         dict["path"] = str(self.path)
         dict["dir"] = str(self.dir)
@@ -92,7 +92,7 @@ class PicManager:
     # コンストラクタ
     def __init__(self, rootdir: Path):
         self.rootdir = rootdir
-        self.piclist: list[dict[Path, list[PicStats]]] = []
+        self.piclist: List[Dict[Path, List[PicStats]]] = []
         self.refresh_piclist()
         self.crnt_picstats: PicStats | None = None
 
@@ -100,7 +100,7 @@ class PicManager:
     def refresh_piclist(self) -> None:
         self.piclist = []
         for dirpath, _, filenames in os.walk(self.rootdir):
-            picstats: list[PicStats] = []
+            picstats: List[PicStats] = []
             for filename in filenames:
                 if filename.lower().endswith(".png"):
                     path = Path(dirpath) / filename
@@ -110,7 +110,7 @@ class PicManager:
                 self.piclist.append({Path(dirname): picstats})
 
     # 指定のディレクトリ名を持つ PicStats リストを返す
-    def get_picstats_list(self, dirname: Path) -> list[PicStats]:
+    def get_picstats_list(self, dirname: Path) -> List[PicStats]:
         for d in self.piclist:
             if dirname in d:
                 return d[dirname]
@@ -128,7 +128,7 @@ class PicManager:
         idx = picstats_list.index(self.crnt_picstats)
         return picstats_list[max(idx - 1, 0)]
 
-    def to_json(self) -> dict:
+    def to_json(self) -> Dict:
         serializable = []
         for d in self.piclist:
             for dirname, stats_list in d.items():

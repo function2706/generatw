@@ -2,7 +2,7 @@
 # filename: mock_a1111_txt2img.py
 # -*- coding: utf-8 -*-
 from fastapi import FastAPI
-from typing import List, Optional
+from typing import Dict, List, Optional
 from PIL import Image, ImageDraw, ImageFont
 from pydantic import BaseModel, Field
 import argparse, base64, datetime, io, json, random, uvicorn
@@ -42,7 +42,7 @@ class Txt2ImgRequest(BaseModel):
     s_tmin: Optional[float] = 0.0
     s_noise: Optional[float] = 1.0
 
-    override_settings: Optional[dict] = None
+    override_settings: Optional[Dict] = None
     override_settings_restore_afterwards: Optional[bool] = True
 
     script_args: Optional[List] = None
@@ -51,7 +51,7 @@ class Txt2ImgRequest(BaseModel):
     send_images: Optional[bool] = True
     save_images: Optional[bool] = False
 
-    alwayson_scripts: Optional[dict] = None
+    alwayson_scripts: Optional[Dict] = None
 
 def dumps_info(obj) -> str:
     return json.dumps(obj, ensure_ascii=False)

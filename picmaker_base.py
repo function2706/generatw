@@ -6,7 +6,7 @@ from pathlib import Path
 from picmanager import PicManager, PicStats
 from PIL import Image, ImageTk, PngImagePlugin
 from tkinter import ttk, Frame, TclError
-from typing import Any, Mapping, Optional
+from typing import Any, Dict, List, Mapping, Optional
 import base64, datetime, hashlib, io, json, pyperclip, random, requests, threading, tkinter
 
 class _ReadOnly(type):
@@ -39,7 +39,7 @@ class PMFlags:
     is_new_stats: bool = False
     is_generating: bool = False
 
-def dump_json(data: dict, label: str) -> None:
+def dump_json(data: Dict, label: str) -> None:
     print(f"\"{label}\":")
     print(json.dumps(data, ensure_ascii=False, indent=2))
 
@@ -270,7 +270,7 @@ class PicMakerBase(ABC):
         self.crnt_clipboard = new_clipboard
 
     # クリップボード文字列をもとに各ステータスを取得する
-    def parse_clipboard(self) -> dict[str, Any]:
+    def parse_clipboard(self) -> Dict[str, Any]:
         pass
 
     # ステータスを更新する
@@ -343,11 +343,11 @@ class PicMakerBase(ABC):
     # 指定の画像群を保存する
     # この際メタデータ(プロンプト, シード)も同時に埋め込む
     # 生成した画像のパス群を返す
-    def save_images(self, images: Any, info_obj: Any) -> list[Path]:
+    def save_images(self, images: Any, info_obj: Any) -> List[Path]:
         if self.pm_configs.is_verbose:
             dump_json(info_obj, "info_obj")
 
-        pic_paths: list[Path] = []
+        pic_paths: List[Path] = []
         for idx, image_data in enumerate(images):
             try:
                 b64 = image_data.split(",", 1)[-1]
@@ -370,7 +370,7 @@ class PicMakerBase(ABC):
         return pic_paths
 
     # 現在の SD 設定から RestAPI で txt2img にポストする json を生成する
-    def make_json_for_txt2img(self) -> dict:
+    def make_json_for_txt2img(self) -> Dict:
         api_json = {}
         api_json["prompt"] = self.make_pos_prompt()
         api_json["negative_prompt"] = self.make_neg_prompt()
@@ -387,7 +387,7 @@ class PicMakerBase(ABC):
     # json を生成し RestAPI でポストする
     # 生成した画像のパス群を返す
     # 生成中の場合は何もしない
-    def gen_pic(self) -> list[Path]:
+    def gen_pic(self) -> List[Path]:
         if self.flags.is_generating:
             print("In generating, Busy!")
             return []
