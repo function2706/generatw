@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from typing import Dict, List, Optional
 from PIL import Image, ImageDraw, ImageFont
 from pydantic import BaseModel, Field
-import argparse, base64, datetime, io, json, random, socket, uvicorn
+import argparse, base64, datetime, errno, io, json, random, socket, time, uvicorn
 
 app = FastAPI(title="Mock A1111 sdapi/v1/txt2img")
 
@@ -169,10 +169,25 @@ def txt2img(req: Txt2ImgRequest):
         "info": dumps_info(info_obj),
     }
 
-def find_free_port(server):
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("127.0.0.1", 0))
-        return s.getsockname()[1]
+def find_available_port(host, port):
+    while True:
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind((host, port))
+                return s.getsockname()[1]
+        except OSError as e:
+            if e.errno in (errno.EADDRINUSE, 10013, 10048):
+                print(f"Port {port} is in use. Trying another port...")
+                port = 0
+                time.sleep(0.1)
+                continue
+            else:
+                raise
+
+def run_uvicorn_until_success(app, host="127.0.0.1", initial_port=None):
+    port = find_available_port(host, initial_port or 0)
+    print(f"Starting uvicorn on {host}:{port}")
+    uvicorn.run(app, host=host, port=port)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -181,7 +196,6 @@ if __name__ == "__main__":
         epilog="ex: pseudo_a1111.py -s 127.0.0.1 -p 7860"
     )
     parser.add_argument("-s", "--server", default="127.0.0.1", help="A1111 IP Addr")
-    parser.add_argument("-p", "--port", type=int, default=-1, help="A1111 port (auto if without this option)")
+    parser.add_argument("-p", "--port", type=int, default=7860, help="A1111 port")
     args = parser.parse_args()
-    port = port=args.port if (args.port >= 0) else find_free_port(args.server)
-    uvicorn.run(app, host=args.server, port=port)
+    run_uvicorn_until_success(app, args.server, args.port)
