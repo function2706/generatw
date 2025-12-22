@@ -67,11 +67,15 @@ class PicMakerBase(ABC):
         self.pm_configs = PMConfigs()
         self.pm_configs.is_verbose = is_verbose
 
-        self.picmanager = PicManager(self.whoami())
+        self.picmanager = PicManager(self.pics_dir_path())
 
     # 自身のクラス名を取得する
     def whoami(self) -> str:
         return self.__class__.__name__
+
+    # 画像ディレクトリ名を取得する
+    def pics_dir_path(self) -> Path:
+        return Path("pics") / Path(self.whoami())
 
     # モードに即したダミーデータをステータスにセットする
     def set_dummy_stats(self) -> None:
@@ -316,7 +320,7 @@ class PicMakerBase(ABC):
     def make_filepath(self, info_obj: Any, idx: int) -> Path:
         seeds = info_obj.get("all_seeds", [])
 
-        dirpath = Path(self.whoami()) / self.make_dirname(info_obj, idx)
+        dirpath = self.pics_dir_path() / self.make_dirname(info_obj, idx)
         now = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
         filename = Path(f"{now}-{seeds[idx]}.png")
         return dirpath / filename

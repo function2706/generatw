@@ -1,4 +1,3 @@
-*.png
-*.csv
 __pycache__
+pics
 venv
