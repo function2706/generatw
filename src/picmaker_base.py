@@ -1,19 +1,33 @@
 from __future__ import annotations
+
+import base64
+import hashlib
+import io
+import json
+import random
+import threading
+import tkinter
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from picmanager import PicManager, PicStats
-from PIL import Image, ImageTk, PngImagePlugin
-from tkinter import ttk, Frame, TclError
+from tkinter import Frame, TclError, ttk
 from typing import Any, Dict, List, Mapping, Optional
-import base64, datetime, hashlib, io, json, pyperclip, random, requests, threading, tkinter
+
+import pyperclip
+import requests
+from PIL import Image, ImageTk, PngImagePlugin
+
+from picmanager import PicManager, PicStats
+
 
 class _ReadOnly(type):
     def __setattr__(cls, name, value):
         raise AttributeError("read-only class")
+
     def __delattr__(cls, name):
         raise AttributeError("read-only class")
+
 
 @dataclass
 class SDConfigs:
@@ -28,10 +42,12 @@ class SDConfigs:
     width: Optional[int] = 540
     height: Optional[int] = 960
 
+
 @dataclass
 class PMConfigs:
     is_verbose: bool = False
     timeout_sec: int = 60
+
 
 @dataclass
 class PMFlags:
@@ -39,9 +55,11 @@ class PMFlags:
     is_new_stats: bool = False
     is_generating: bool = False
 
+
 def dump_json(data: Dict, label: str) -> None:
-    print(f"\"{label}\":")
+    print(f'"{label}":')
     print(json.dumps(data, ensure_ascii=False, indent=2))
+
 
 # 基底クラス
 class PicMakerBase(ABC):
@@ -78,6 +96,7 @@ class PicMakerBase(ABC):
         return Path("pics") / Path(self.whoami())
 
     # モードに即したダミーデータをステータスにセットする
+    @abstractmethod
     def set_dummy_stats(self) -> None:
         pass
 
@@ -93,7 +112,9 @@ class PicMakerBase(ABC):
         self.doit_oneshot()
 
     # テキストボックスの作成
-    def put_textbox(self, frame :Frame, name: str, row: int, col: int, width: int, default: str) -> ttk.Entry:
+    def put_textbox(
+        self, frame: Frame, name: str, row: int, col: int, width: int, default: str
+    ) -> ttk.Entry:
         ttk.Label(frame, text=name).grid(row=row, column=col, padx=6, pady=6, sticky="w")
         entry = ttk.Entry(frame, width=width)
         entry.grid(row=row, column=(col + 1), padx=2, pady=6, sticky="w")
@@ -148,28 +169,51 @@ class PicMakerBase(ABC):
         self.config_param2_frame.grid(row=2, column=0, sticky="w")
         # ボタン用フレーム
         # ボタン(今すぐ生成)
-        self.button_gen = ttk.Button(self.config_button_frame, text="今すぐ生成", command=self.doit_oneshot)
+        self.button_gen = ttk.Button(
+            self.config_button_frame, text="今すぐ生成", command=self.doit_oneshot
+        )
         self.button_gen.grid(row=0, column=0, padx=6, pady=6, sticky="w")
         # ボタン(画像を表示)
-        self.button_output = ttk.Button(self.config_button_frame, text="画像を表示", command=self.on_output)
+        self.button_output = ttk.Button(
+            self.config_button_frame, text="画像を表示", command=self.on_output
+        )
         self.button_output.grid(row=0, column=1, padx=6, pady=6, sticky="w")
         # ボタン(デバッグ)
-        self.button_debug = ttk.Button(self.config_button_frame, text="デバッグ", command=self.doit_debug)
+        self.button_debug = ttk.Button(
+            self.config_button_frame, text="デバッグ", command=self.doit_debug
+        )
         self.button_debug.grid(row=0, column=2, padx=6, pady=6, sticky="w")
         # フレーム 1
         # テキストボックス(幅)
-        self.entry_width = self.put_textbox(self.config_param1_frame, "幅", 1, 0, 5, str(self.sd_configs.width))
+        self.entry_width = self.put_textbox(
+            self.config_param1_frame, "幅", 1, 0, 5, str(self.sd_configs.width)
+        )
         # テキストボックス(高さ)
-        self.entry_height = self.put_textbox(self.config_param1_frame, "高さ", 1, 2, 5, str(self.sd_configs.height))
+        self.entry_height = self.put_textbox(
+            self.config_param1_frame, "高さ", 1, 2, 5, str(self.sd_configs.height)
+        )
         # テキストボックス(ステップ数)
-        self.entry_steps = self.put_textbox(self.config_param1_frame, "Steps", 2, 0, 4, str(self.sd_configs.steps))
+        self.entry_steps = self.put_textbox(
+            self.config_param1_frame, "Steps", 2, 0, 4, str(self.sd_configs.steps)
+        )
         # テキストボックス(生成数)
-        self.entry_batch_size = self.put_textbox(self.config_param1_frame, "生成数", 2, 2, 4, str(self.sd_configs.batch_size))
+        self.entry_batch_size = self.put_textbox(
+            self.config_param1_frame, "生成数", 2, 2, 4, str(self.sd_configs.batch_size)
+        )
         # フレーム 2
         # テキストボックス(IPアドレス)
-        self.entry_ipaddr = self.put_textbox(self.config_param2_frame, "IPアドレス", 0, 0, 16, str(self.sd_configs.ipaddr))
+        self.entry_ipaddr = self.put_textbox(
+            self.config_param2_frame,
+            "IPアドレス",
+            0,
+            0,
+            16,
+            str(self.sd_configs.ipaddr),
+        )
         # テキストボックス(ポート)
-        self.entry_port = self.put_textbox(self.config_param2_frame, "ポート", 0, 2, 6, str(self.sd_configs.port))
+        self.entry_port = self.put_textbox(
+            self.config_param2_frame, "ポート", 0, 2, 6, str(self.sd_configs.port)
+        )
 
     # 画像ウィンドウを構成, ただしすでに開いている場合は最前面に表示するのみ
     def construct_image_window(self) -> None:
@@ -193,16 +237,22 @@ class PicMakerBase(ABC):
         self.image_label = ttk.Label(self.image_label_frame)
         self.image_label.grid(row=0, column=1, padx=6, pady=6, sticky="nswe")
         # ボタン(<)
-        self.button_prev = ttk.Button(self.image_label_frame, text="<", width=2, command=self.on_prev_button)
+        self.button_prev = ttk.Button(
+            self.image_label_frame, text="<", width=2, command=self.on_prev_button
+        )
         self.button_prev.grid(row=0, column=0, padx=6, pady=6, sticky="nsw")
         # ボタン(>)
-        self.button_next = ttk.Button(self.image_label_frame, text=">", width=2, command=self.on_next_button)
+        self.button_next = ttk.Button(
+            self.image_label_frame, text=">", width=2, command=self.on_next_button
+        )
         self.button_next.grid(row=0, column=2, padx=6, pady=6, sticky="nse")
         # 評価フレーム
         self.image_eval_frame.columnconfigure(0, weight=1)
         self.image_eval_frame.columnconfigure(1, weight=1)
         # ボタン(GOOD)
-        self.button_good = ttk.Button(self.image_eval_frame, text="GOOD", command=self.on_good_button)
+        self.button_good = ttk.Button(
+            self.image_eval_frame, text="GOOD", command=self.on_good_button
+        )
         self.button_good.grid(row=0, column=0, padx=6, pady=6, sticky="wes")
         # ボタン(BAD)
         self.button_bad = ttk.Button(self.image_eval_frame, text="BAD", command=self.on_bad_button)
@@ -274,6 +324,7 @@ class PicMakerBase(ABC):
         self.crnt_clipboard = new_clipboard
 
     # クリップボード文字列をもとに各ステータスを取得する
+    @abstractmethod
     def parse_clipboard(self) -> Dict[str, Any]:
         pass
 
@@ -298,14 +349,17 @@ class PicMakerBase(ABC):
         self.crnt_stats = new_stats
 
     # ステータスがプロンプト生成において十分な情報を有しているか
+    @abstractmethod
     def is_stats_enough_for_prompt(self) -> bool:
         pass
 
     # ステータスからポジティブプロンプトを生成する
+    @abstractmethod
     def make_pos_prompt(self) -> str:
         pass
 
     # ステータスからネガティブプロンプトを生成する
+    @abstractmethod
     def make_neg_prompt(self) -> str:
         pass
 
@@ -313,7 +367,7 @@ class PicMakerBase(ABC):
     def make_dirname(self, info_obj: Any, idx: int) -> Path:
         prompts = info_obj.get("all_prompts", [])
         neg_prompts = info_obj.get("all_negative_prompts", [])
-        dirpath_raw :str = prompts[idx] + neg_prompts[idx]
+        dirpath_raw: str = prompts[idx] + neg_prompts[idx]
         return Path(hashlib.md5(dirpath_raw.encode()).hexdigest())
 
     # メタデータやモードからファイルパスを生成する
@@ -321,7 +375,7 @@ class PicMakerBase(ABC):
         seeds = info_obj.get("all_seeds", [])
 
         dirpath = self.pics_dir_path() / self.make_dirname(info_obj, idx)
-        now = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+        now = datetime.now().strftime("%Y%m%d%H%M%S")
         filename = Path(f"{now}-{seeds[idx]}.png")
         return dirpath / filename
 
@@ -333,7 +387,10 @@ class PicMakerBase(ABC):
         metadata.add_text("negative_prompt", info_obj.get("all_negative_prompts", [])[idx])
         metadata.add_text("steps", str(info_obj.get("steps", 0)))
         metadata.add_text("sampler", info_obj.get("sampler_name", ""))
-        metadata.add_text("schedule_type", info_obj.get("extra_generation_params", {}).get("Schedule type", ""))
+        metadata.add_text(
+            "schedule_type",
+            info_obj.get("extra_generation_params", {}).get("Schedule type", ""),
+        )
         metadata.add_text("cfg_scale", str(info_obj.get("cfg_scale", 0)))
         metadata.add_text("seed", str(info_obj.get("all_seeds", [])[idx]))
         metadata.add_text("width", str(info_obj.get("width", 0)))
@@ -404,8 +461,11 @@ class PicMakerBase(ABC):
                 return []
 
             # txt2img
-            response = requests.post(f"http://{self.sd_configs.ipaddr}:{self.sd_configs.port}/sdapi/v1/txt2img",
-                                     json=payload, timeout=self.pm_configs.timeout_sec)
+            response = requests.post(
+                f"http://{self.sd_configs.ipaddr}:{self.sd_configs.port}/sdapi/v1/txt2img",
+                json=payload,
+                timeout=self.pm_configs.timeout_sec,
+            )
             response.raise_for_status()
             body = response.json()
             images = body.get("images", [])
@@ -434,6 +494,7 @@ class PicMakerBase(ABC):
             if not pic_paths:
                 return
             self.update_image(PicStats(random.choice(pic_paths)))
+
         threading.Thread(target=worker, args=(), daemon=True).start()
 
     # SIGINT ハンドラ

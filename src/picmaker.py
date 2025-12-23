@@ -1,15 +1,20 @@
-from picmaker_tw import PicMakerTW
+import argparse
+import signal
+
 from picmaker_reverse import PicMakerReverse
-import argparse, signal
+from picmaker_tw import PicMakerTW
+
 
 # エントリポイント
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="era_pic_maker.py",
         description="Era Picture Maker",
-        epilog="ex: python era_pic_maker.py -m TW"
+        epilog="ex: python era_pic_maker.py -m TW",
     )
-    parser.add_argument("-m", "--mode", choices=["TW", "R", "dummy"], default="dummy", help="Run as this mode")
+    parser.add_argument(
+        "-m", "--mode", choices=["TW", "R", "dummy"], default="dummy", help="Run as this mode"
+    )
     parser.add_argument("-v", "--verbose", action="store_true", help="Show all clipboard and stats")
     parser.add_argument("-c", "--check", action="store_true", help="Check option values")
     args = parser.parse_args()
@@ -27,6 +32,7 @@ def main() -> None:
     # Tkinterのイベントループ開始
     pm.tk_root.after(100, pm.doit)  # 監視を開始
     pm.tk_root.mainloop()
+
 
 if __name__ == "__main__":
     main()

@@ -1,7 +1,6 @@
-
 import tkinter as tk
-from tkinter import ttk
-from tkinter import messagebox
+from tkinter import messagebox, ttk
+
 
 def on_run():
     # 入力値の取得
@@ -10,19 +9,16 @@ def on_run():
     enable_feature = check_var.get()  # 1 or 0
     choice = combo_var.get()
 
-    msg = (
-        f"名前: {name}\n"
-        f"モード: {mode}\n"
-        f"機能有効: {bool(enable_feature)}\n"
-        f"選択: {choice}"
-    )
+    msg = f"名前: {name}\nモード: {mode}\n機能有効: {bool(enable_feature)}\n選択: {choice}"
     messagebox.showinfo("実行結果", msg)
+
 
 def on_reset():
     entry_name.delete(0, tk.END)
     radio_var.set("通常")
     check_var.set(0)
     combo_var.set(options[0])
+
 
 root = tk.Tk()
 root.title("Tkinter ウィジェット例（タブ分割 + grid配置）")
@@ -45,7 +41,7 @@ ttk.Label(tab_input, text="名前").grid(row=0, column=0, padx=6, pady=6, sticky
 entry_name = ttk.Entry(tab_input, width=28)
 entry_name.grid(row=0, column=1, padx=6, pady=6, sticky="we")
 tab_input.columnconfigure(1, weight=1)  # Entryを横に伸ばす
-tab_input.rowconfigure(99, weight=1)    # 下に余白
+tab_input.rowconfigure(99, weight=1)  # 下に余白
 
 # ====== タブ2：設定 ======
 # ラジオボタン
@@ -54,7 +50,7 @@ radio_var = tk.StringVar(value="通常")
 modes = ["通常", "高速", "安全"]
 for i, m in enumerate(modes):
     ttk.Radiobutton(tab_settings, text=m, value=m, variable=radio_var).grid(
-        row=0, column=1+i, padx=4, pady=6, sticky="w"
+        row=0, column=1 + i, padx=4, pady=6, sticky="w"
     )
 
 # チェックボックス
@@ -67,8 +63,9 @@ ttk.Checkbutton(tab_settings, text="機能を有効化", variable=check_var).gri
 ttk.Label(tab_settings, text="選択").grid(row=2, column=0, padx=6, pady=6, sticky="w")
 options = ["A", "B", "C"]
 combo_var = tk.StringVar(value=options[0])
-combo = ttk.Combobox(tab_settings, textvariable=combo_var, values=options,
-                     state="readonly", width=10)
+combo = ttk.Combobox(
+    tab_settings, textvariable=combo_var, values=options, state="readonly", width=10
+)
 combo.grid(row=2, column=1, padx=6, pady=6, sticky="w")
 
 # 見た目調整
@@ -89,6 +86,7 @@ tab_actions.columnconfigure(0, weight=1)
 tab_actions.columnconfigure(1, weight=1)
 tab_actions.rowconfigure(99, weight=1)
 
+
 # （任意）タブ切り替えイベント
 def on_tab_changed(event):
     current = event.widget.select()
@@ -98,6 +96,7 @@ def on_tab_changed(event):
         entry_name.focus_set()
     elif tab_text == "設定":
         combo.focus_set()
+
 
 notebook.bind("<<NotebookTabChanged>>", on_tab_changed)
 

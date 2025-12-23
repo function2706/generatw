@@ -1,3 +1,18 @@
 {
-    "python.defaultInterpreterPath": "${workspaceFolder}/venv/Scripts/python.exe"
+    "ruff.enable": true,
+    "ruff.format.enable": true,
+    "ruff.lint.enable": true,
+    "ruff.logLevel": "error",
+    "editor.codeActionsOnSave": {
+        "source.fixAll": "explicit",
+        "source.organizeImports": "explicit"
+    },
+    "editor.formatOnSave": true,
+    "python.formatting.provider": "none",
+    "autoDocstring.generateDocstringOnEnter": true,
+    "autoDocstring.docstringFormat": "google",
+    "autoDocstring.includeName": true,
+    "autoDocstring.includeExtendedSummary": false,
+    "autoDocstring.startOnNewLine": true,
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python"
 }

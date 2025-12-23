@@ -1,8 +1,12 @@
 from __future__ import annotations
+
+import json
+import os
 from pathlib import Path
-from PIL import Image
 from typing import Any, Dict, List
-import json, os
+
+from PIL import Image
+
 
 # 画像のメタデータ
 class PicInfo:
@@ -24,20 +28,22 @@ class PicInfo:
 
     # 等号定義
     def __eq__(self, other):
-        return (isinstance(other, PicInfo)
-                and self.prompt == other.prompt
-                and self.negative_prompt == other.negative_prompt
-                and self.steps == other.steps
-                and self.sampler == other.sampler
-                and self.schedule_type == other.schedule_type
-                and self.cfg_scale == other.cfg_scale
-                and self.seed == other.seed
-                and self.width == other.width
-                and self.height == other.height
-                and self.sd_model_name == other.sd_model_name
-                and self.sd_model_hash == other.sd_model_hash
-                and self.clip_skip == other.clip_skip
-                and self.parameters == other.parameters)
+        return (
+            isinstance(other, PicInfo)
+            and self.prompt == other.prompt
+            and self.negative_prompt == other.negative_prompt
+            and self.steps == other.steps
+            and self.sampler == other.sampler
+            and self.schedule_type == other.schedule_type
+            and self.cfg_scale == other.cfg_scale
+            and self.seed == other.seed
+            and self.width == other.width
+            and self.height == other.height
+            and self.sd_model_name == other.sd_model_name
+            and self.sd_model_hash == other.sd_model_hash
+            and self.clip_skip == other.clip_skip
+            and self.parameters == other.parameters
+        )
 
     # Dict に成形する
     def to_dict(self) -> Dict[str, Any]:
@@ -57,6 +63,7 @@ class PicInfo:
         dict["parameters"] = self.parameters
         return dict
 
+
 # 画像情報
 class PicStats:
     # コンストラクタ
@@ -72,11 +79,13 @@ class PicStats:
 
     # 等号定義
     def __eq__(self, other):
-        return (isinstance(other, PicStats)
-                and self.path == other.path
-                and self.dir == other.dir
-                and self.name == other.name
-                and self.info == other.info)
+        return (
+            isinstance(other, PicStats)
+            and self.path == other.path
+            and self.dir == other.dir
+            and self.name == other.name
+            and self.info == other.info
+        )
 
     # Dict に成形する
     def to_dict(self) -> Dict[str, Any]:
@@ -86,6 +95,7 @@ class PicStats:
         dict["name"] = str(self.name)
         dict["info"] = self.info.to_dict()
         return dict
+
 
 # 画像監視クラス
 class PicManager:
@@ -132,8 +142,7 @@ class PicManager:
         serializable = []
         for d in self.piclist:
             for dirname, stats_list in d.items():
-                serializable.append({
-                    "dir": str(dirname),
-                    "pics": [s.to_dict() for s in stats_list]
-                })
+                serializable.append(
+                    {"dir": str(dirname), "pics": [s.to_dict() for s in stats_list]}
+                )
         return json.dumps(serializable, ensure_ascii=False, indent=2)

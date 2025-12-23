@@ -1,13 +1,27 @@
+"""
+debug.pseudo_a1111
+A1111 を模したデバッグ用サーバ
+txt2img エンドポイントを用意し, 要求に対してダミーの body を返す
+"""
 
-# filename: mock_a1111_txt2img.py
-# -*- coding: utf-8 -*-
-from fastapi import FastAPI
+import argparse
+import base64
+import datetime
+import errno
+import io
+import json
+import random
+import socket
+import time
 from typing import Dict, List, Optional
+
+import uvicorn
+from fastapi import FastAPI
 from PIL import Image, ImageDraw, ImageFont
 from pydantic import BaseModel, Field
-import argparse, base64, datetime, errno, io, json, random, socket, time, uvicorn
 
 app = FastAPI(title="Mock A1111 sdapi/v1/txt2img")
+
 
 class Txt2ImgRequest(BaseModel):
     prompt: Optional[str] = ""
@@ -53,8 +67,10 @@ class Txt2ImgRequest(BaseModel):
 
     alwayson_scripts: Optional[Dict] = None
 
+
 def dumps_info(obj) -> str:
     return json.dumps(obj, ensure_ascii=False)
+
 
 def make_infotext(
     req: Txt2ImgRequest, prompt: str, neg: str, seed_val: int, width: int, height: int
@@ -69,6 +85,7 @@ def make_infotext(
     if req.scheduler:
         line += f", Scheduler: {req.scheduler}"
     return line
+
 
 @app.post("/sdapi/v1/txt2img")
 def txt2img(req: Txt2ImgRequest):
@@ -101,8 +118,8 @@ def txt2img(req: Txt2ImgRequest):
             font = ImageFont.load_default()
         draw = ImageDraw.Draw(img)
         text = f"{idx=}, seed={s}, time={datetime.datetime.now().strftime('%H:%M:%S')}"
-        for dx, dy in [(-1,0),(1,0),(0,-1),(0,1)]:
-            draw.text((10+dx, 10+dy), text, fill=(0,0,0), font=font)
+        for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            draw.text((10 + dx, 10 + dy), text, fill=(0, 0, 0), font=font)
         draw.text((10, 10), text, fill=(255, 255, 255), font=font)
 
         buf = io.BytesIO()
@@ -118,7 +135,6 @@ def txt2img(req: Txt2ImgRequest):
     all_prompts: List[str] = []
     all_negative_prompts: List[str] = []
     all_seeds: List[int] = []
-    all_subseeds: List[int] = []
 
     for i in range(total_images):
         seed_val = seeds[i]
@@ -139,7 +155,6 @@ def txt2img(req: Txt2ImgRequest):
         "all_seeds": all_seeds,
         "subseed": seeds[0],
         "all_subseeds": all_seeds,
-
         "subseed_strength": 0,
         "width": width,
         "height": height,
@@ -151,13 +166,11 @@ def txt2img(req: Txt2ImgRequest):
         "sd_model_name": "Foobar_Hogefuga",
         "sd_model_hash": "12345abcde",
         "extra_generation_params": extra_generation_params,
-
         "index_of_first_image": 0,
         "infotexts": infotexts,
-
         "job_timestamp": datetime.datetime.now().strftime("%Y%m%d%H%M%S"),
         "clip_skip": 2,
-        "version": "v1.10.1"
+        "version": "v1.10.1",
     }
 
     # parameters は A1111 と同名キーで返す
@@ -168,6 +181,7 @@ def txt2img(req: Txt2ImgRequest):
         "parameters": parameters,
         "info": dumps_info(info_obj),
     }
+
 
 def find_available_port(host, port):
     while True:
@@ -184,16 +198,18 @@ def find_available_port(host, port):
             else:
                 raise
 
+
 def run_uvicorn_until_success(app, host="127.0.0.1", initial_port=None):
     port = find_available_port(host, initial_port or 0)
     print(f"Starting uvicorn on {host}:{port}")
     uvicorn.run(app, host=host, port=port)
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         prog="pseudo_a1111.py",
         description="A1111 Pseudo Server",
-        epilog="ex: pseudo_a1111.py -s 127.0.0.1 -p 7860"
+        epilog="ex: pseudo_a1111.py -s 127.0.0.1 -p 7860",
     )
     parser.add_argument("-s", "--server", default="127.0.0.1", help="A1111 IP Addr")
     parser.add_argument("-p", "--port", type=int, default=7860, help="A1111 port")
