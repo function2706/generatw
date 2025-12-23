@@ -203,12 +203,7 @@ class PicMakerBase(ABC):
         # フレーム 2
         # テキストボックス(IPアドレス)
         self.entry_ipaddr = self.put_textbox(
-            self.config_param2_frame,
-            "IPアドレス",
-            0,
-            0,
-            16,
-            str(self.sd_configs.ipaddr),
+            self.config_param2_frame, "IPアドレス", 0, 0, 16, str(self.sd_configs.ipaddr)
         )
         # テキストボックス(ポート)
         self.entry_port = self.put_textbox(
@@ -363,18 +358,22 @@ class PicMakerBase(ABC):
     def make_neg_prompt(self) -> str:
         pass
 
+    # プロンプトからディレクトリ名を生成する
+    def make_dirname_from_prompts(self, pos_prompt: str, neg_prompt: str) -> str:
+        dirpath_raw: str = pos_prompt + neg_prompt
+        return hashlib.md5(dirpath_raw.encode()).hexdigest()
+
     # メタデータからディレクトリ名を生成する
-    def make_dirname(self, info_obj: Any, idx: int) -> Path:
-        prompts = info_obj.get("all_prompts", [])
+    def make_dirname_from_info(self, info_obj: Any, idx: int) -> str:
+        pos_prompts = info_obj.get("all_prompts", [])
         neg_prompts = info_obj.get("all_negative_prompts", [])
-        dirpath_raw: str = prompts[idx] + neg_prompts[idx]
-        return Path(hashlib.md5(dirpath_raw.encode()).hexdigest())
+        return self.make_dirname_from_prompts(pos_prompts[idx], neg_prompts[idx])
 
     # メタデータやモードからファイルパスを生成する
     def make_filepath(self, info_obj: Any, idx: int) -> Path:
         seeds = info_obj.get("all_seeds", [])
 
-        dirpath = self.pics_dir_path() / self.make_dirname(info_obj, idx)
+        dirpath = self.pics_dir_path() / Path(self.make_dirname_from_info(info_obj, idx))
         now = datetime.now().strftime("%Y%m%d%H%M%S")
         filename = Path(f"{now}-{seeds[idx]}.png")
         return dirpath / filename
@@ -486,14 +485,48 @@ class PicMakerBase(ABC):
             self.flags.is_generating = False
         return []
 
+    def get_pic_list(self) -> List[Path]:
+        pos_prompt = self.make_pos_prompt()
+        neg_prompt = self.make_neg_prompt()
+        picstat_list = self.picmanager.get_picstats_list(
+            Path(self.make_dirname_from_prompts(pos_prompt, neg_prompt))
+        )
+        return [ps.path for ps in picstat_list]
+
+    @abstractmethod
+    def should_gen_pic(self) -> bool:
+        """
+        画像生成を実施すべきか\n
+        判断基準は各派生クラスに委ねる
+
+        Returns:
+            bool: true: 生成すべき, false: 生成すべきでない
+        """
+        pass
+
     # 生成スレッドエントリポイント
     # 複数個生成した場合はランダムで 1 つ表示する
     def make_pic_async(self) -> None:
         def worker():
-            pic_paths = self.gen_pic()
-            if not pic_paths:
-                return
-            self.update_image(PicStats(random.choice(pic_paths)))
+            crnt_pic_paths = self.get_pic_list()
+            if self.should_gen_pic():
+                # 画像生成すべき
+                new_pic_paths = self.gen_pic()
+                if not new_pic_paths:
+                    # 生成が正常に完了しなかった場合は中断(Busy も含む)
+                    return
+            else:
+                # 画像生成すべきでない
+                if crnt_pic_paths:
+                    # すでに表示できる画像がある場合は追加しない
+                    new_pic_paths = []
+                else:
+                    # 表示できる画像がない場合は生成
+                    new_pic_paths = self.gen_pic()
+                    if not new_pic_paths:
+                        # 生成が正常に完了しなかった場合は中断(Busy も含む)
+                        return
+            self.update_image(PicStats(random.choice(crnt_pic_paths + new_pic_paths)))
 
         threading.Thread(target=worker, args=(), daemon=True).start()
 

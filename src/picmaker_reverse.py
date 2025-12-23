@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import random
 import re
 from types import MappingProxyType
 from typing import Any, Mapping
@@ -234,3 +235,12 @@ class PicMakerReverse(PicMakerBase):
             "(extra toes:2),(fewer toes:2),(missing toes:2)"
         )
         return neg_prompt
+
+    def should_gen_pic(self) -> bool:
+        """
+        仮実装, 30% で true を返す
+
+        Returns:
+            bool: 30% で true
+        """
+        return random.random() < 0.3
