@@ -509,23 +509,13 @@ class PicMakerBase(ABC):
     def make_pic_async(self) -> None:
         def worker():
             crnt_pic_paths = self.get_pic_list()
-            if self.should_gen_pic():
-                # 画像生成すべき
-                new_pic_paths = self.gen_pic()
-                if not new_pic_paths:
-                    # 生成が正常に完了しなかった場合は中断(Busy も含む)
-                    return
-            else:
-                # 画像生成すべきでない
-                if crnt_pic_paths:
-                    # すでに表示できる画像がある場合は追加しない
-                    new_pic_paths = []
-                else:
-                    # 表示できる画像がない場合は生成
-                    new_pic_paths = self.gen_pic()
-                    if not new_pic_paths:
-                        # 生成が正常に完了しなかった場合は中断(Busy も含む)
-                        return
+            # 生成すべき or 画像が無いなら生成する
+            need_generate = self.should_gen_pic() or not crnt_pic_paths
+            new_pic_paths = self.gen_pic() if need_generate else []
+            # 生成が必要だったのに失敗した場合は中断
+            if need_generate and not new_pic_paths:
+                return
+            # ここまで来たら new_pic_paths は [] か Path のリスト
             self.update_image(PicStats(random.choice(crnt_pic_paths + new_pic_paths)))
 
         threading.Thread(target=worker, args=(), daemon=True).start()
