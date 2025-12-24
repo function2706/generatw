@@ -1,3 +1,7 @@
+"""
+クリップボード監視, GUI 管理, 画像生成管理を実施するモジュールの基底クラス
+"""
+
 from __future__ import annotations
 
 import base64
@@ -21,16 +25,12 @@ from PIL import Image, ImageTk, PngImagePlugin
 from picmanager import PicManager, PicStats
 
 
-class _ReadOnly(type):
-    def __setattr__(cls, name, value):
-        raise AttributeError("read-only class")
-
-    def __delattr__(cls, name):
-        raise AttributeError("read-only class")
-
-
 @dataclass
 class SDConfigs:
+    """
+    Stable Diffusion API 関連の設定一覧
+    """
+
     ipaddr: Optional[str] = "127.0.0.1"
     port: Optional[int] = 7860
     steps: Optional[int] = 30
@@ -45,32 +45,64 @@ class SDConfigs:
 
 @dataclass
 class PMConfigs:
+    """
+    このクラス関連の設定一覧
+    """
+
     is_verbose: bool = False
     timeout_sec: int = 60
 
 
 @dataclass
 class PMFlags:
+    """
+    このクラスで用いるフラグ
+    """
+
+    # クリップボードの更新があったか
     is_new_clipboard: bool = False
+    # ステータスデータの更新があったか
     is_new_stats: bool = False
+    # 画像生成中か
     is_generating: bool = False
 
 
 def dump_json(data: Dict, label: str) -> None:
+    """
+    指定の Dict を json 形式でダンプする
+
+    Args:
+        data (Dict): ダンプ対象
+        label (str): 表示するラベル("label": {...})
+    """
     print(f'"{label}":')
     print(json.dumps(data, ensure_ascii=False, indent=2))
 
 
-# 基底クラス
 class PicMakerBase(ABC):
+    """
+    クリップボード監視, GUI 管理, 画像生成管理を実施するクラス
+    """
+
     @property
     @abstractmethod
-    # キャラクタプロンプトテーブル
     def chara_tbl(self) -> Mapping[str, str]:
+        """
+        キャラクタプロンプトテーブル\n
+        キャラクタ名と対応するプロンプトの定義
+
+        Returns:
+            Mapping[str, str]: テーブル
+        """
         raise NotImplementedError
 
-    # コンストラクタ
     def __init__(self, is_verbose: bool):
+        """
+        コンストラクタ\n
+
+        Args:
+            is_verbose (bool): 冗長的表示を行うか
+        """
         self.sd_configs = SDConfigs()
         self.flags = PMFlags()
 
@@ -87,42 +119,79 @@ class PicMakerBase(ABC):
 
         self.picmanager = PicManager(self.pics_dir_path())
 
-    # 自身のクラス名を取得する
     def whoami(self) -> str:
+        """
+        自身のクラス名を取得する
+
+        Returns:
+            str: クラス名
+        """
         return self.__class__.__name__
 
-    # 画像ディレクトリ名を取得する
     def pics_dir_path(self) -> Path:
+        """
+        画像ディレクトリパスを取得する\n
+        (pics/<クラス名>)
+
+        Returns:
+            Path: ディレクトリパス
+        """
         return Path("pics") / Path(self.whoami())
 
-    # モードに即したダミーデータをステータスにセットする
     @abstractmethod
     def set_dummy_stats(self) -> None:
+        """
+        ダミーデータをステータスにセットする(デバッグ用)\n
+        データはモードに即して定義される
+        """
         pass
 
-    # 表示ボタンハンドラ
-    # 表示すべき画像がないときは何もしない
     def on_output(self) -> None:
+        """
+        表示ボタンハンドラ\n
+        表示すべき画像がないときは何もしない
+        """
         self.update_image(self.picmanager.crnt_picstats)
 
-    # デバッグボタンハンドラ
-    # ダミーデータをステータスにセットし, 即時ポストする
     def doit_debug(self) -> None:
+        """
+        デバッグボタンハンドラ\n
+        ダミーデータをステータスにセットし, 即時ポストする
+        """
         self.set_dummy_stats()
         self.doit_oneshot()
 
-    # テキストボックスの作成
     def put_textbox(
         self, frame: Frame, name: str, row: int, col: int, width: int, default: str
     ) -> ttk.Entry:
+        """
+        テキストボックスの作成\n
+        本オブジェクトは column 2つ分を占めることに注意
+
+        Args:
+            frame (Frame): 挿入先フレーム
+            name (str): ラベル
+            row (int): フレーム内の row
+            col (int): フレーム内の column
+            width (int): 長さ
+            default (str): デフォルト値
+
+        Returns:
+            ttk.Entry: オブジェクトインスタンス
+        """
         ttk.Label(frame, text=name).grid(row=row, column=col, padx=6, pady=6, sticky="w")
         entry = ttk.Entry(frame, width=width)
         entry.grid(row=row, column=(col + 1), padx=2, pady=6, sticky="w")
         entry.insert(0, default)
         return entry
 
-    # 設定ウィンドウが開かれているか
     def is_config_window_open(self) -> bool:
+        """
+        設定ウィンドウが開かれているか
+
+        Returns:
+            bool: True: 開かれている, False: 開かれていない or TclError 例外発生
+        """
         if self.tk_root is None:
             return False
         try:
@@ -130,14 +199,21 @@ class PicMakerBase(ABC):
         except TclError:
             return False
 
-    # 設定ウィンドウのクローズ時のハンドラ
     def on_config_window_close(self) -> None:
+        """
+        設定ウィンドウのクローズ時のハンドラ
+        """
         self.on_image_window_close()
         if self.is_config_window_open():
             self.tk_root.destroy()
 
-    # 画像ウィンドウが開かれているか
     def is_image_window_open(self) -> bool:
+        """
+        画像ウィンドウが開かれているか
+
+        Returns:
+            bool: True: 開かれている, False: 開かれていない or TclError 例外発生
+        """
         if self.image_window is None:
             return False
         try:
@@ -145,14 +221,18 @@ class PicMakerBase(ABC):
         except TclError:
             return False
 
-    # 画像ウィンドウのクローズ時のハンドラ
     def on_image_window_close(self) -> None:
+        """
+        画像ウィンドウのクローズ時のハンドラ
+        """
         if self.is_image_window_open():
             self.image_window.destroy()
         self.image_window = None
 
-    # GUI の構築
     def construct_config_window(self) -> None:
+        """
+        GUI の構築
+        """
         # ウィンドウ定義
         self.tk_root.protocol("WM_DELETE_WINDOW", self.on_config_window_close)
         self.tk_root.title("設定")
@@ -210,8 +290,10 @@ class PicMakerBase(ABC):
             self.config_param2_frame, "ポート", 0, 2, 6, str(self.sd_configs.port)
         )
 
-    # 画像ウィンドウを構成, ただしすでに開いている場合は最前面に表示するのみ
     def construct_image_window(self) -> None:
+        """
+        画像ウィンドウを構成, ただしすでに開いている場合は最前面に表示するのみ
+        """
         if self.is_image_window_open():
             self.image_window.deiconify()
             self.image_window.lift()
@@ -253,8 +335,14 @@ class PicMakerBase(ABC):
         self.button_bad = ttk.Button(self.image_eval_frame, text="BAD", command=self.on_bad_button)
         self.button_bad.grid(row=0, column=1, padx=6, pady=6, sticky="wes")
 
-    # 画像フレームを指定の PicStats で更新する
     def update_image(self, picstats: PicStats) -> None:
+        """
+        画像フレームを指定の PicStats で更新する\n
+        picstats が None の場合は何もしない
+
+        Args:
+            picstats (PicStats): 更新予定の PicStats
+        """
         if not picstats:
             return
 
@@ -268,24 +356,34 @@ class PicMakerBase(ABC):
         if self.is_config_window_open():
             self.button_output.configure(state="normal")
 
-    # > ボタンハンドラ
     def on_next_button(self) -> None:
+        """
+        > ボタンハンドラ
+        """
         self.update_image(self.picmanager.next_picstats())
 
-    # < ボタンハンドラ
     def on_prev_button(self) -> None:
+        """
+        < ボタンハンドラ
+        """
         self.update_image(self.picmanager.prev_picstats())
 
-    # GOOD ボタンハンドラ
     def on_good_button(self) -> None:
+        """
+        GOOD ボタンハンドラ
+        """
         return
 
-    # BAD ボタンハンドラ
     def on_bad_button(self) -> None:
+        """
+        BAD ボタンハンドラ
+        """
         return
 
-    # GUI から SD コンフィグを更新する
     def refresh_sd_configs(self) -> None:
+        """
+        GUI から SD コンフィグを更新する
+        """
         self.sd_configs.ipaddr = self.entry_ipaddr.get()
         self.sd_configs.port = self.entry_port.get()
         self.sd_configs.steps = int(self.entry_steps.get())
@@ -297,9 +395,11 @@ class PicMakerBase(ABC):
         self.sd_configs.width = int(self.entry_width.get())
         self.sd_configs.height = int(self.entry_height.get())
 
-    # クリップボードから文字列を得る
-    # 前回文字列と同様かどうかも記録する
     def reflesh_clipboard(self) -> None:
+        """
+        クリップボードを監視し, 記録中文字列と異なる場合に記録する\n
+        同時にフラグの更新も行う
+        """
         try:
             new_clipboard = pyperclip.paste()
         except Exception as e:
@@ -318,14 +418,21 @@ class PicMakerBase(ABC):
         self.flags.is_new_clipboard = True
         self.crnt_clipboard = new_clipboard
 
-    # クリップボード文字列をもとに各ステータスを取得する
     @abstractmethod
     def parse_clipboard(self) -> Dict[str, Any]:
+        """
+        クリップボード文字列をもとに各ステータスを取得する
+
+        Returns:
+            Dict[str, Any]: ステータス
+        """
         pass
 
-    # ステータスを更新する
-    # 前回のクリップボード文字列から変化がない場合は何もしない
     def refresh_stats(self) -> None:
+        """
+        記録中クリップボード文字列をもとにステータスを更新する\n
+        同時に記録中ステータスと一致するかを示すフラグの管理も行う
+        """
         self.reflesh_clipboard()
         if not self.flags.is_new_clipboard:
             self.flags.is_new_stats = False
@@ -343,34 +450,80 @@ class PicMakerBase(ABC):
         self.flags.is_new_stats = True
         self.crnt_stats = new_stats
 
-    # ステータスがプロンプト生成において十分な情報を有しているか
     @abstractmethod
     def is_stats_enough_for_prompt(self) -> bool:
+        """
+        記録中ステータスがプロンプト生成に際し十分な情報を有しているか
+
+        Returns:
+            bool: True: 有している, False: 有していない
+        """
         pass
 
-    # ステータスからポジティブプロンプトを生成する
     @abstractmethod
     def make_pos_prompt(self) -> str:
+        """
+        記録中ステータスからポジティブプロンプトを生成する
+
+        Returns:
+            str: プロンプト
+        """
         pass
 
-    # ステータスからネガティブプロンプトを生成する
     @abstractmethod
     def make_neg_prompt(self) -> str:
+        """
+        記録中ステータスからネガティブプロンプトを生成する
+
+        Returns:
+            str: プロンプト
+        """
         pass
 
-    # プロンプトからディレクトリ名を生成する
     def make_dirname_from_prompts(self, pos_prompt: str, neg_prompt: str) -> str:
+        """
+        プロンプトからディレクトリ名を生成する\n
+        ディレクトリ名は MD5 (32byte Ascii) として得られる
+
+        Args:
+            pos_prompt (str): ポジティブプロンプト
+            neg_prompt (str): ネガティブプロンプト
+
+        Returns:
+            str: ディレクトリ名
+        """
         dirpath_raw: str = pos_prompt + neg_prompt
         return hashlib.md5(dirpath_raw.encode()).hexdigest()
 
-    # メタデータからディレクトリ名を生成する
     def make_dirname_from_info(self, info_obj: Any, idx: int) -> str:
+        """
+        info 領域上のデータからディレクトリ名を生成する\n
+        info 領域上のデータは同時生成した画像群に関する配列構造のため, インデックスの指定も必要
+
+        Args:
+            info_obj (Any): info 領域上のデータ
+            idx (int): 配列のインデックス
+
+        Returns:
+            str: ディレクトリ名
+        """
         pos_prompts = info_obj.get("all_prompts", [])
         neg_prompts = info_obj.get("all_negative_prompts", [])
         return self.make_dirname_from_prompts(pos_prompts[idx], neg_prompts[idx])
 
-    # メタデータやモードからファイルパスを生成する
     def make_filepath(self, info_obj: Any, idx: int) -> Path:
+        """
+        info 領域上のデータからファイルパスを生成する\n
+        info 領域上のデータは同時生成した画像群に関する配列構造のため, インデックスの指定も必要\n
+        ファイル名は"YYYYMMDDhhmmss-<seed>.png"
+
+        Args:
+            info_obj (Any): info 領域上のデータ
+            idx (int): 配列のインデックス
+
+        Returns:
+            Path: ファイルパス
+        """
         seeds = info_obj.get("all_seeds", [])
 
         dirpath = self.pics_dir_path() / Path(self.make_dirname_from_info(info_obj, idx))
@@ -378,9 +531,19 @@ class PicMakerBase(ABC):
         filename = Path(f"{now}-{seeds[idx]}.png")
         return dirpath / filename
 
-    # PNG に付帯するメタデータを生成する
-    # (API 応答で得たメタデータは "images" で削ぎ落とした時点でなくなるので, 再度の付与が必要)
     def make_metadata(self, info_obj: Any, idx: int) -> PngImagePlugin.PngInfo:
+        """
+        PNG に付与する PNG Info を生成する\n
+        info 領域上のデータは "images" で削ぎ落とした時点でなくなるので, 再度の付与を行う\n
+        info 領域上のデータは同時生成した画像群に関する配列構造のため, インデックスの指定も必要
+
+        Args:
+            info_obj (Any): info 領域上のデータ
+            idx (int): 配列のインデックス
+
+        Returns:
+            PngImagePlugin.PngInfo: PNG Info
+        """
         metadata = PngImagePlugin.PngInfo()
         metadata.add_text("prompt", info_obj.get("all_prompts", [])[idx])
         metadata.add_text("negative_prompt", info_obj.get("all_negative_prompts", [])[idx])
@@ -400,10 +563,18 @@ class PicMakerBase(ABC):
         metadata.add_text("parameters", info_obj.get("infotexts", [])[idx])
         return metadata
 
-    # 指定の画像群を保存する
-    # この際メタデータ(プロンプト, シード)も同時に埋め込む
-    # 生成した画像のパス群を返す
     def save_images(self, images: Any, info_obj: Any) -> List[Path]:
+        """
+        指定の画像群を保存する\n
+        各画像には次回起動時にメタデータの再取得ができるよう, info 領域上のデータが埋め込まれる
+
+        Args:
+            images (Any): 画像群データ
+            info_obj (Any): info 領域上のデータ
+
+        Returns:
+            List[Path]: 生成した画像のパス群
+        """
         if self.pm_configs.is_verbose:
             dump_json(info_obj, "info_obj")
 
@@ -429,8 +600,13 @@ class PicMakerBase(ABC):
         self.picmanager.refresh_piclist()
         return pic_paths
 
-    # 現在の SD 設定から RestAPI で txt2img にポストする json を生成する
     def make_json_for_txt2img(self) -> Dict:
+        """
+        現在の Stable Diffusion 設定から txt2img エンドポイントにポストする json を生成する
+
+        Returns:
+            Dict: ポストする json
+        """
         api_json = {}
         api_json["prompt"] = self.make_pos_prompt()
         api_json["negative_prompt"] = self.make_neg_prompt()
@@ -444,19 +620,18 @@ class PicMakerBase(ABC):
         api_json["height"] = self.sd_configs.height
         return api_json if api_json["prompt"] and api_json["negative_prompt"] else None
 
-    # json を生成し RestAPI でポストする
-    # 生成した画像のパス群を返す
-    # 生成中の場合は何もしない
     def gen_pic(self) -> List[Path]:
-        if self.flags.is_generating:
-            print("In generating, Busy!")
-            return []
+        """
+        json を生成し Stable Diffusion txt2img エンドポイントへポストする\n
+
+        Returns:
+            List[Path]: 生成した画像のパス群
+        """
         try:
             self.flags.is_generating = True
             self.refresh_sd_configs()
             payload = self.make_json_for_txt2img()
             if not payload:
-                # プロンプトが空の場合はポストしない
                 return []
 
             # txt2img
@@ -486,6 +661,12 @@ class PicMakerBase(ABC):
         return []
 
     def get_pic_list(self) -> List[Path]:
+        """
+        記録中ステータスに適合するディレクトリ下の画像パス群を取得する
+
+        Returns:
+            List[Path]: 画像パス群
+        """
         pos_prompt = self.make_pos_prompt()
         neg_prompt = self.make_neg_prompt()
         picstat_list = self.picmanager.get_picstats_list(
@@ -496,17 +677,21 @@ class PicMakerBase(ABC):
     @abstractmethod
     def should_gen_pic(self) -> bool:
         """
-        画像生成を実施すべきか\n
-        判断基準は各派生クラスに委ねる
+        画像生成を実施すべきか
 
         Returns:
-            bool: true: 生成すべき, false: 生成すべきでない
+            bool: True: 生成すべき, False: 生成すべきでない
         """
         pass
 
-    # 生成スレッドエントリポイント
-    # 複数個生成した場合はランダムで 1 つ表示する
     def make_pic_async(self) -> None:
+        """
+        画像生成スレッドエントリポイント\n
+        生成から表示までを実施する(複数個生成した場合はランダムで 1 つ表示)\n
+        生成すべきでないと判断した場合はすでに生成した画像を表示する\n
+        生成に失敗した場合は何もしない
+        """
+
         def worker():
             crnt_pic_paths = self.get_pic_list()
             # 生成すべき or 画像が無いなら生成する
@@ -520,18 +705,30 @@ class PicMakerBase(ABC):
 
         threading.Thread(target=worker, args=(), daemon=True).start()
 
-    # SIGINT ハンドラ
     def sigint_handler(self, sig, frame) -> None:
+        """
+        SIGINT ハンドラ
+
+        Args:
+            sig (_type_): シグナル
+            frame (_type_): Tkinter フレーム
+        """
         self.tk_root.destroy()
 
-    # ワンショット処理 (ステータス表示 -> ステータス型式確認 -> 非同期で生成, tkinter 更新)
     def doit_oneshot(self) -> None:
+        """
+        ワンショット処理 (ステータス確認 -> 非同期で生成 -> tkinter 更新)\n
+        記録中ステータスをもとに即座に生成する
+        """
         if not self.is_stats_enough_for_prompt():
             return
         self.make_pic_async()
 
-    # メイン処理 (ステータス更新 -> ワンショット処理)
     def doit(self) -> None:
+        """
+        メイン処理 (ステータス更新 -> ワンショット処理)\n
+        Tkinter メインループにて周期的に呼び出される処理
+        """
         try:
             if not self.is_stats_enough_for_prompt() and self.is_config_window_open():
                 self.button_output.configure(state="disabled")
