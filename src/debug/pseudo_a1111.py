@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 import base64
 import datetime
 import errno
@@ -15,6 +16,7 @@ from PIL import Image, ImageDraw, ImageFont
 from pydantic import BaseModel, Field
 
 app = FastAPI(title="Mock A1111 sdapi/v1/txt2img")
+app.state.cooldown = 0
 
 
 class Txt2ImgRequest(BaseModel):
@@ -82,7 +84,11 @@ def make_infotext(
 
 
 @app.post("/sdapi/v1/txt2img")
-def txt2img(req: Txt2ImgRequest):
+async def txt2img(req: Txt2ImgRequest):
+    cooldown = getattr(app.state, "cooldown", 0)
+    if cooldown > 0:
+        await asyncio.sleep(cooldown)
+
     MAX_SIDE = 8192
     width = max(1, min(req.width, MAX_SIDE))
     height = max(1, min(req.height, MAX_SIDE))
@@ -203,9 +209,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         prog="pseudo_a1111.py",
         description="A1111 Pseudo Server",
-        epilog="ex: pseudo_a1111.py -s 127.0.0.1 -p 7860",
+        epilog="ex: pseudo_a1111.py -s 127.0.0.1 -p 7860 -c 5",
     )
     parser.add_argument("-s", "--server", default="127.0.0.1", help="A1111 IP Addr")
-    parser.add_argument("-p", "--port", type=int, default=7860, help="A1111 port")
+    parser.add_argument("-p", "--port", type=int, default=7860, help="A1111 Port")
+    parser.add_argument("-c", "--cooldown", type=int, default=0, help="Cooldown Time")
     args = parser.parse_args()
+    app.state.cooldown = args.cooldown
     run_uvicorn_until_success(app, args.server, args.port)

@@ -14,9 +14,9 @@ def main() -> None:
     エントリポイント
     """
     parser = argparse.ArgumentParser(
-        prog="era_pic_maker.py",
+        prog="picmaker.py",
         description="Era Picture Maker",
-        epilog="ex: python era_pic_maker.py -m TW",
+        epilog="ex: python picmaker.py -m TW",
     )
     parser.add_argument(
         "-m", "--mode", choices=["TW", "R", "dummy"], default="dummy", help="Run as this mode"

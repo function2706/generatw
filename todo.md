@@ -33,3 +33,5 @@ crntのpicが消されたり変更されたりした場合は他の画像にラ�
 
             self.update_image(PicStats(random.choice(crnt_pic_paths + new_pic_paths)))
 ・PicManagerはリストをList[Dict[str, List[PicStats]]]として持つべき(ディレクトリ名をPath→str)
+・生成した場合, 記録中ステータスが生成画像のディレクトリ名と一致しない(=プロンプト不一致)場合は表示しないようにすべきか
+→というより表示は常に記録中ステータスのものしかできないようにすべき
