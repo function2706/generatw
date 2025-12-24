@@ -1,3 +1,7 @@
+"""
+クリップボード監視, GUI 管理, 画像生成管理を実施するモジュールの The World 版クラス
+"""
+
 from __future__ import annotations
 
 import copy
@@ -11,6 +15,10 @@ from picmaker_base import PicMakerBase
 
 # eratohoTW
 class PicMakerTW(PicMakerBase):
+    """
+    クリップボード監視, GUI 管理, 画像生成管理を実施するクラス for The World
+    """
+
     @property
     def chara_tbl(self) -> Mapping[str, Any]:
         return MappingProxyType(

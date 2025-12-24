@@ -1,3 +1,7 @@
+"""
+クリップボード監視, GUI 管理, 画像生成管理を実施するモジュールの Reverse 版クラス
+"""
+
 from __future__ import annotations
 
 import copy
@@ -9,8 +13,11 @@ from typing import Any, Mapping
 from picmaker_base import Dict, PicMakerBase
 
 
-# eratohoTW
 class PicMakerReverse(PicMakerBase):
+    """
+    クリップボード監視, GUI 管理, 画像生成管理を実施するクラス for Reverse
+    """
+
     @property
     def chara_tbl(self) -> Mapping[str, Any]:
         return MappingProxyType(

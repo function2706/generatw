@@ -1,3 +1,7 @@
+"""
+メインスクリプト
+"""
+
 import argparse
 import signal
 
