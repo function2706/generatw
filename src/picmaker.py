@@ -5,8 +5,10 @@ from picmaker_reverse import PicMakerReverse
 from picmaker_tw import PicMakerTW
 
 
-# エントリポイント
 def main() -> None:
+    """
+    エントリポイント
+    """
     parser = argparse.ArgumentParser(
         prog="era_pic_maker.py",
         description="Era Picture Maker",
@@ -30,7 +32,7 @@ def main() -> None:
         return
     signal.signal(signal.SIGINT, pm.sigint_handler)
     # Tkinterのイベントループ開始
-    pm.tk_root.after(100, pm.doit)  # 監視を開始
+    pm.tk_root.after(100, pm.doit)
     pm.tk_root.mainloop()
 
 
