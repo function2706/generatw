@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import random
 import re
 from types import MappingProxyType
 from typing import Any, Dict, Mapping
@@ -11,7 +12,6 @@ from picmaker_base import PicMakerBase
 # eratohoTW
 class PicMakerTW(PicMakerBase):
     @property
-    # キャラクタプロンプトテーブル
     def chara_tbl(self) -> Mapping[str, Any]:
         return MappingProxyType(
             {
@@ -215,11 +215,9 @@ class PicMakerTW(PicMakerBase):
             }
         )
 
-    # コンストラクタ
     def __init__(self, is_verbose: bool):
         super().__init__(is_verbose)
 
-    # モードに即したダミーデータをステータスにセットする
     def set_dummy_stats(self) -> None:
         self.crnt_stats = {}
 
@@ -241,8 +239,13 @@ class PicMakerTW(PicMakerBase):
         chara_data["equip"]["上半身"] = "シャツ"
         chara_data["equip"]["下半身"] = "パンツ"
 
-    # クリップボード文字列からメタステータスを取得する
     def get_metastats(self, stats: Dict[str, Any]) -> None:
+        """
+        指定のステータスからメタステータスを取得する
+
+        Args:
+            stats (Dict[str, Any]): ステータス
+        """
         stats["metastats"] = {}
         meta_stats = stats["metastats"]
         # 季節
@@ -269,8 +272,13 @@ class PicMakerTW(PicMakerBase):
         if temperature_match:
             meta_stats["temperature"] = temperature_match.group(1)
 
-    # クリップボード文字列からキャラクタステータスを取得する
     def get_charastats(self, stats: Dict[str, Any]) -> None:
+        """
+        指定のステータスからキャラクターステータスを取得する
+
+        Args:
+            stats (Dict[str, Any]): ステータス
+        """
         stats["character"] = {}
         chara_data = stats["character"]
         # キャラ名
@@ -303,10 +311,15 @@ class PicMakerTW(PicMakerBase):
                     item = "unknown"
                 chara_data["equip"][category] = item
 
-    # クリップボード文字列が行動画面であればメタステータスを,
-    # キャラクタ画面であればキャラクタステータスを取得する
-    # 変更が加わる箇所以外は更新されない
     def parse_clipboard(self) -> Dict[str, Any]:
+        """
+        クリップボード文字列が行動画面であればメタステータスを,\n
+        キャラクタ画面であればキャラクタステータスを取得する\n
+        変更が加わる箇所以外は更新されない
+
+        Returns:
+            Dict[str, Any]: ステータス
+        """
         new_stats = copy.deepcopy(self.crnt_stats)
         if re.search(r"(\S+)の月", self.crnt_clipboard):
             self.get_metastats(new_stats)
@@ -315,7 +328,6 @@ class PicMakerTW(PicMakerBase):
 
         return new_stats
 
-    # ステータスがプロンプト生成において十分な情報を有しているか
     def is_stats_enough_for_prompt(self) -> bool:
         stats = self.crnt_stats
         if not isinstance(stats, Dict) or not stats:
@@ -329,7 +341,6 @@ class PicMakerTW(PicMakerBase):
 
         return True
 
-    # ステータスからポジティブプロンプトを生成する
     def make_pos_prompt(self) -> str:
         name = self.crnt_stats["character"]["name"]
         pos_prompt = self.chara_tbl.get(name, "")
@@ -338,7 +349,6 @@ class PicMakerTW(PicMakerBase):
         pos_prompt += ",best quality,masterpiece,absurdres,1girl,solo"
         return pos_prompt
 
-    # ステータスからネガティブプロンプトを生成する
     def make_neg_prompt(self) -> str:
         neg_prompt = (
             "motion lines,speed lines,3d,((shiny skin)),bad quality,"
@@ -353,3 +363,12 @@ class PicMakerTW(PicMakerBase):
             "(extra toes:2),(fewer toes:2),(missing toes:2)"
         )
         return neg_prompt
+
+    def should_gen_pic(self) -> bool:
+        """
+        仮実装, 30% で true を返す
+
+        Returns:
+            bool: 30% で True
+        """
+        return random.random() < 0.3

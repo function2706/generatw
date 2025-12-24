@@ -192,7 +192,7 @@ class PicMakerReverse(PicMakerBase):
 
     def parse_clipboard(self) -> Dict[str, Any]:
         """
-        クリップボード文字列をもとにキャラクタステータスを取得する
+        クリップボード文字列をもとにキャラクタステータスを取得する\n
         変更が加わる箇所以外は更新されない
 
         Returns:
