@@ -64,7 +64,7 @@ class Txt2ImgRequest(BaseModel):
     alwayson_scripts: Optional[Dict] = None
 
 
-def dumps_info(obj) -> str:
+def dump_infos(obj) -> str:
     return json.dumps(obj, ensure_ascii=False)
 
 
@@ -146,7 +146,7 @@ async def txt2img(req: Txt2ImgRequest):
     extra_generation_params = {
         "Schedule type": req.scheduler,
     }
-    info_obj = {
+    infos = {
         "prompts": prompt,
         "all_prompts": all_prompts,
         "negative_prompt": neg,
@@ -179,7 +179,7 @@ async def txt2img(req: Txt2ImgRequest):
     return {
         "images": images_b64,
         "parameters": parameters,
-        "info": dumps_info(info_obj),
+        "info": dump_infos(infos),
     }
 
 

@@ -555,88 +555,88 @@ class PicMakerBase(ABC):
         dirpath_raw: str = pos_prompt + neg_prompt
         return hashlib.md5(dirpath_raw.encode()).hexdigest()
 
-    def make_dirname_from_info(self, info_obj: Any, idx: int) -> str:
+    def make_dirname_from_info(self, infos: Any, idx: int) -> str:
         """
         info 領域上のデータからディレクトリ名を生成する\n
         info 領域上のデータは同時生成した画像群に関する配列構造のため, インデックスの指定も必要
 
         Args:
-            info_obj (Any): info 領域上のデータ
+            infos (Any): info 領域上のデータ
             idx (int): 配列のインデックス
 
         Returns:
             str: ディレクトリ名
         """
-        pos_prompts = info_obj.get("all_prompts", [])
-        neg_prompts = info_obj.get("all_negative_prompts", [])
+        pos_prompts = infos.get("all_prompts", [])
+        neg_prompts = infos.get("all_negative_prompts", [])
         return self.make_dirname_from_prompts(pos_prompts[idx], neg_prompts[idx])
 
-    def make_filepath(self, info_obj: Any, idx: int) -> Path:
+    def make_filepath(self, infos: Any, idx: int) -> Path:
         """
         info 領域上のデータからファイルパスを生成する\n
         info 領域上のデータは同時生成した画像群に関する配列構造のため, インデックスの指定も必要\n
         ファイル名は"YYYYMMDDhhmmss-<seed>.png"
 
         Args:
-            info_obj (Any): info 領域上のデータ
+            infos (Any): info 領域上のデータ
             idx (int): 配列のインデックス
 
         Returns:
             Path: ファイルパス
         """
-        seeds = info_obj.get("all_seeds", [])
+        seeds = infos.get("all_seeds", [])
 
-        dirpath = self.pics_dir_path() / Path(self.make_dirname_from_info(info_obj, idx))
+        dirpath = self.pics_dir_path() / Path(self.make_dirname_from_info(infos, idx))
         now = datetime.now().strftime("%Y%m%d%H%M%S")
         filename = Path(f"{now}-{seeds[idx]}.png")
         return dirpath / filename
 
-    def make_metadata(self, info_obj: Any, idx: int) -> PngImagePlugin.PngInfo:
+    def make_metadata(self, infos: Any, idx: int) -> PngImagePlugin.PngInfo:
         """
         PNG に付与する PNG Info を生成する\n
         info 領域上のデータは "images" で削ぎ落とした時点でなくなるので, 再度の付与を行う\n
         info 領域上のデータは同時生成した画像群に関する配列構造のため, インデックスの指定も必要
 
         Args:
-            info_obj (Any): info 領域上のデータ
+            infos (Any): info 領域上のデータ
             idx (int): 配列のインデックス
 
         Returns:
             PngImagePlugin.PngInfo: PNG Info
         """
         metadata = PngImagePlugin.PngInfo()
-        metadata.add_text("prompt", info_obj.get("all_prompts", [])[idx])
-        metadata.add_text("negative_prompt", info_obj.get("all_negative_prompts", [])[idx])
-        metadata.add_text("steps", str(info_obj.get("steps", 0)))
-        metadata.add_text("sampler", info_obj.get("sampler_name", ""))
+        metadata.add_text("prompt", infos.get("all_prompts", [])[idx])
+        metadata.add_text("negative_prompt", infos.get("all_negative_prompts", [])[idx])
+        metadata.add_text("steps", str(infos.get("steps", 0)))
+        metadata.add_text("sampler", infos.get("sampler_name", ""))
         metadata.add_text(
             "schedule_type",
-            info_obj.get("extra_generation_params", {}).get("Schedule type", ""),
+            infos.get("extra_generation_params", {}).get("Schedule type", ""),
         )
-        metadata.add_text("cfg_scale", str(info_obj.get("cfg_scale", 0)))
-        metadata.add_text("seed", str(info_obj.get("all_seeds", [])[idx]))
-        metadata.add_text("width", str(info_obj.get("width", 0)))
-        metadata.add_text("height", str(info_obj.get("height", 0)))
-        metadata.add_text("sd_model_name", info_obj.get("sd_model_name", ""))
-        metadata.add_text("sd_model_hash", info_obj.get("sd_model_hash", ""))
-        metadata.add_text("clip_skip", str(info_obj.get("clip_skip", 0)))
-        metadata.add_text("parameters", info_obj.get("infotexts", [])[idx])
+        metadata.add_text("cfg_scale", str(infos.get("cfg_scale", 0)))
+        metadata.add_text("seed", str(infos.get("all_seeds", [])[idx]))
+        metadata.add_text("width", str(infos.get("width", 0)))
+        metadata.add_text("height", str(infos.get("height", 0)))
+        metadata.add_text("sd_model_name", infos.get("sd_model_name", ""))
+        metadata.add_text("sd_model_hash", infos.get("sd_model_hash", ""))
+        metadata.add_text("clip_skip", str(infos.get("clip_skip", 0)))
+        metadata.add_text("parameters", infos.get("infotexts", [])[idx])
         return metadata
 
-    def save_images(self, images: Any, info_obj: Any) -> List[Path]:
+    def save_images(self, images: Any, infos: Any) -> List[Path]:
         """
         指定の画像群を保存する\n
         各画像には次回起動時にメタデータの再取得ができるよう, info 領域上のデータが埋め込まれる
 
         Args:
             images (Any): 画像群データ
-            info_obj (Any): info 領域上のデータ
+            infos (Any): info 領域上のデータ
 
         Returns:
             List[Path]: 生成した画像のパス群
         """
         if self.pm_configs.is_verbose:
-            dump_json(info_obj, "info_obj")
+            dump_json(infos, "infos")
 
         pic_paths: List[Path] = []
         for idx, image_data in enumerate(images):
@@ -644,12 +644,12 @@ class PicMakerBase(ABC):
                 b64 = image_data.split(",", 1)[-1]
                 image = Image.open(io.BytesIO(base64.b64decode(b64)))
 
-                pic_path = self.make_filepath(info_obj, idx)
+                pic_path = self.make_filepath(infos, idx)
                 if pic_path.parent and not pic_path.parent.exists():
                     # 親ディレクトリが存在しない場合は作成する
                     pic_path.parent.mkdir(parents=True, exist_ok=True)
 
-                image.save(str(pic_path), pnginfo=self.make_metadata(info_obj, idx))
+                image.save(str(pic_path), pnginfo=self.make_metadata(infos, idx))
                 pic_paths.append(pic_path)
 
                 if self.pm_configs.is_verbose:
