@@ -12,7 +12,6 @@ from picmaker_base import Dict, PicMakerBase
 # eratohoTW
 class PicMakerReverse(PicMakerBase):
     @property
-    # キャラクタプロンプトテーブル
     def chara_tbl(self) -> Mapping[str, Any]:
         return MappingProxyType(
             {
@@ -126,11 +125,9 @@ class PicMakerReverse(PicMakerBase):
             }
         )
 
-    # コンストラクタ
     def __init__(self, is_verbose: bool):
         super().__init__(is_verbose)
 
-    # モードに即したダミーデータをステータスにセットする
     def set_dummy_stats(self) -> None:
         self.crnt_stats = {}
 
@@ -142,8 +139,13 @@ class PicMakerReverse(PicMakerBase):
         chara_data["posture"] = "直立"
         chara_data["tool"] = ["腕時計", "イヤホン"]
 
-    # クリップボード文字列からキャラクタステータスを取得する
     def get_charastats(self, stats: Dict[str, Any]) -> None:
+        """
+        指定のステータスからキャラクターステータスを取得する
+
+        Args:
+            stats (Dict[str, Any]): ステータス
+        """
         stats["character"] = {}
         chara_data = stats["character"]
         # キャラ名
@@ -188,16 +190,20 @@ class PicMakerReverse(PicMakerBase):
             for item in items:
                 tool_list.append(item)
 
-    # クリップボード文字列からキャラクタステータスを取得する
-    # 変更が加わる箇所以外は更新されない
     def parse_clipboard(self) -> Dict[str, Any]:
+        """
+        クリップボード文字列をもとにキャラクタステータスを取得する
+        変更が加わる箇所以外は更新されない
+
+        Returns:
+            Dict[str, Any]: ステータス
+        """
         new_stats = copy.deepcopy(self.crnt_stats)
         if re.search(r"^\s*(\S+)\s\[LV", self.crnt_clipboard, re.MULTILINE):
             self.get_charastats(new_stats)
 
         return new_stats
 
-    # ステータスがプロンプト生成において十分な情報を有しているか
     def is_stats_enough_for_prompt(self) -> bool:
         stats = self.crnt_stats
         if not isinstance(stats, Dict) or not stats:
@@ -211,7 +217,6 @@ class PicMakerReverse(PicMakerBase):
 
         return True
 
-    # ステータスからポジティブプロンプトを生成する
     def make_pos_prompt(self) -> str:
         name = self.crnt_stats["character"]["name"]
         pos_prompt = self.chara_tbl.get(name, "")
@@ -220,7 +225,6 @@ class PicMakerReverse(PicMakerBase):
         pos_prompt += ",best quality,masterpiece,absurdres,1girl,solo"
         return pos_prompt
 
-    # ステータスからネガティブプロンプトを生成する
     def make_neg_prompt(self) -> str:
         neg_prompt = (
             "motion lines,speed lines,3d,((shiny skin)),bad quality,"
@@ -241,6 +245,6 @@ class PicMakerReverse(PicMakerBase):
         仮実装, 30% で true を返す
 
         Returns:
-            bool: 30% で true
+            bool: 30% で True
         """
         return random.random() < 0.3
