@@ -480,6 +480,66 @@ class PicMakerBase(ABC):
         """
         pass
 
+    def make_json_for_txt2img(self) -> Dict:
+        """
+        現在の Stable Diffusion 設定から txt2img エンドポイントにポストする json を生成する
+
+        Returns:
+            Dict: ポストする json
+        """
+        api_json = {}
+        api_json["prompt"] = self.make_pos_prompt()
+        api_json["negative_prompt"] = self.make_neg_prompt()
+        api_json["steps"] = self.sd_configs.steps
+        api_json["batch_size"] = self.sd_configs.batch_size
+        api_json["sampler_name"] = self.sd_configs.sampler_name
+        api_json["scheduler"] = self.sd_configs.scheduler
+        api_json["cfg_scale"] = self.sd_configs.cfg_scale
+        api_json["seed"] = self.sd_configs.seed
+        api_json["width"] = self.sd_configs.width
+        api_json["height"] = self.sd_configs.height
+        return api_json if api_json["prompt"] and api_json["negative_prompt"] else None
+
+    def gen_pic(self) -> List[Path]:
+        """
+        json を生成し Stable Diffusion txt2img エンドポイントへポストする\n
+
+        Returns:
+            List[Path]: 生成した画像のパス群
+        """
+        try:
+            self.flags.is_generating = True
+            self.refresh_sd_configs()
+            payload = self.make_json_for_txt2img()
+            if not payload:
+                return []
+
+            # txt2img
+            response = requests.post(
+                f"http://{self.sd_configs.ipaddr}:{self.sd_configs.port}/sdapi/v1/txt2img",
+                json=payload,
+                timeout=self.pm_configs.timeout_sec,
+            )
+            response.raise_for_status()
+            body = response.json()
+            images = body.get("images", [])
+            if not images:
+                print("API response without images.")
+                return []
+
+            return self.save_images(images, json.loads(body.get("info", "{}")))
+        except requests.exceptions.Timeout:
+            print("API timeout.")
+        except requests.exceptions.RequestException as e:
+            print("API Failed to request:", e)
+        except (ValueError, KeyError, IndexError) as e:
+            print("Failed to generate image:", e)
+        except Exception as e:
+            print("Another error occurs about image:", e)
+        finally:
+            self.flags.is_generating = False
+        return []
+
     def make_dirname_from_prompts(self, pos_prompt: str, neg_prompt: str) -> str:
         """
         プロンプトからディレクトリ名を生成する\n
@@ -599,66 +659,6 @@ class PicMakerBase(ABC):
 
         self.picmanager.refresh_piclist()
         return pic_paths
-
-    def make_json_for_txt2img(self) -> Dict:
-        """
-        現在の Stable Diffusion 設定から txt2img エンドポイントにポストする json を生成する
-
-        Returns:
-            Dict: ポストする json
-        """
-        api_json = {}
-        api_json["prompt"] = self.make_pos_prompt()
-        api_json["negative_prompt"] = self.make_neg_prompt()
-        api_json["steps"] = self.sd_configs.steps
-        api_json["batch_size"] = self.sd_configs.batch_size
-        api_json["sampler_name"] = self.sd_configs.sampler_name
-        api_json["scheduler"] = self.sd_configs.scheduler
-        api_json["cfg_scale"] = self.sd_configs.cfg_scale
-        api_json["seed"] = self.sd_configs.seed
-        api_json["width"] = self.sd_configs.width
-        api_json["height"] = self.sd_configs.height
-        return api_json if api_json["prompt"] and api_json["negative_prompt"] else None
-
-    def gen_pic(self) -> List[Path]:
-        """
-        json を生成し Stable Diffusion txt2img エンドポイントへポストする\n
-
-        Returns:
-            List[Path]: 生成した画像のパス群
-        """
-        try:
-            self.flags.is_generating = True
-            self.refresh_sd_configs()
-            payload = self.make_json_for_txt2img()
-            if not payload:
-                return []
-
-            # txt2img
-            response = requests.post(
-                f"http://{self.sd_configs.ipaddr}:{self.sd_configs.port}/sdapi/v1/txt2img",
-                json=payload,
-                timeout=self.pm_configs.timeout_sec,
-            )
-            response.raise_for_status()
-            body = response.json()
-            images = body.get("images", [])
-            if not images:
-                print("API response without images.")
-                return []
-
-            return self.save_images(images, json.loads(body.get("info", "{}")))
-        except requests.exceptions.Timeout:
-            print("API timeout.")
-        except requests.exceptions.RequestException as e:
-            print("API Failed to request:", e)
-        except (ValueError, KeyError, IndexError) as e:
-            print("Failed to generate image:", e)
-        except Exception as e:
-            print("Another error occurs about image:", e)
-        finally:
-            self.flags.is_generating = False
-        return []
 
     def get_pic_list(self) -> List[Path]:
         """
