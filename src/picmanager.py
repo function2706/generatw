@@ -1,3 +1,7 @@
+"""
+画像管理クラス, 及びこれが包含するサブクラス群
+"""
+
 from __future__ import annotations
 
 import json
@@ -8,10 +12,18 @@ from typing import Any, Dict, List
 from PIL import Image
 
 
-# 画像のメタデータ
 class PicInfo:
-    # コンストラクタ
+    """
+    画像のメタデータ
+    """
+
     def __init__(self, image: Image):
+        """
+        コンストラクタ
+
+        Args:
+            image (Image): Open して得られる Image インスタンス
+        """
         self.prompt = image.info.get("prompt")
         self.negative_prompt = image.info.get("negative_prompt")
         self.steps = int(image.info.get("steps"))
@@ -26,8 +38,16 @@ class PicInfo:
         self.clip_skip = int(image.info.get("clip_skip"))
         self.parameters = image.info.get("parameters")
 
-    # 等号定義
-    def __eq__(self, other):
+    def __eq__(self, other: PicInfo):
+        """
+        各値が指定の PicInfo のものと等しいか
+
+        Args:
+            other (PicInfo): 比較対象
+
+        Returns:
+            _type_: True: 等しい, False: 等しくない
+        """
         return (
             isinstance(other, PicInfo)
             and self.prompt == other.prompt
@@ -45,8 +65,13 @@ class PicInfo:
             and self.parameters == other.parameters
         )
 
-    # Dict に成形する
     def to_dict(self) -> Dict[str, Any]:
+        """
+        このクラスを Dict[str, Any] に変形する
+
+        Returns:
+            Dict[str, Any]: 変形後インスタンス
+        """
         dict = {}
         dict["prompt"] = self.prompt
         dict["negative_prompt"] = self.negative_prompt
@@ -64,10 +89,18 @@ class PicInfo:
         return dict
 
 
-# 画像情報
 class PicStats:
-    # コンストラクタ
+    """
+    画像情報 (パス, ディレクトリ名, ファイル名, メタデータ)
+    """
+
     def __init__(self, path: Path):
+        """
+        コンストラクタ
+
+        Args:
+            path (Path): 画像のパス
+        """
         self.path = path
         self.dir = Path(path.parent.name)
         self.name = Path(path.name)
@@ -77,8 +110,16 @@ class PicStats:
         except Exception as e:
             print(f"Error PicStats {path}: {e}")
 
-    # 等号定義
-    def __eq__(self, other):
+    def __eq__(self, other: PicStats):
+        """
+        各値が指定の PicStats のものと等しいか
+
+        Args:
+            other (PicStats): 比較対象
+
+        Returns:
+            _type_: True: 等しい, False: 等しくない
+        """
         return (
             isinstance(other, PicStats)
             and self.path == other.path
@@ -87,8 +128,13 @@ class PicStats:
             and self.info == other.info
         )
 
-    # Dict に成形する
     def to_dict(self) -> Dict[str, Any]:
+        """
+        このクラスを Dict[str, Any] に変形する
+
+        Returns:
+            Dict[str, Any]: 変形後インスタンス
+        """
         dict = {}
         dict["path"] = str(self.path)
         dict["dir"] = str(self.dir)
@@ -97,17 +143,29 @@ class PicStats:
         return dict
 
 
-# 画像監視クラス
 class PicManager:
-    # コンストラクタ
+    """
+    画像監視クラス
+    """
+
     def __init__(self, rootdir: Path):
+        """
+        コンストラクタ\n
+        piclist は ディレクトリ名とそのディレクトリに属するファイル名群を各成分とするリスト\n
+        注目中の画像を PicStats の形で記憶する(専ら表示中と同義)
+
+        Args:
+            rootdir (Path): 監視対象ディレクトリ
+        """
         self.rootdir = rootdir
         self.piclist: List[Dict[Path, List[PicStats]]] = []
         self.refresh_piclist()
         self.crnt_picstats: PicStats | None = None
 
-    # 親ディレクトリ内の画像ファイルを PicStats の形で再帰的にリスト化する
     def refresh_piclist(self) -> None:
+        """
+        監視対象ディレクトリ内の画像ファイルを PicStats の形で再帰的にリスト化する
+        """
         self.piclist = []
         for dirpath, _, filenames in os.walk(self.rootdir):
             picstats: List[PicStats] = []
@@ -119,26 +177,53 @@ class PicManager:
                 dirname = Path(dirpath).name
                 self.piclist.append({Path(dirname): picstats})
 
-    # 指定のディレクトリ名を持つ PicStats リストを返す
     def get_picstats_list(self, dirname: Path) -> List[PicStats]:
+        """
+        監視対象ディレクトリ内で指定のディレクトリ名に紐づく PicStats リストを取得する\n
+        存在しない場合は空リストを返す
+
+        Args:
+            dirname (Path): ディレクトリ名
+
+        Returns:
+            List[PicStats]: PicStats リスト
+        """
         for d in self.piclist:
             if dirname in d:
                 return d[dirname]
         return []
 
-    # PicStats リストにおいて, 現在の次のものを返す
     def next_picstats(self) -> PicStats:
+        """
+        PicStats リストにおいて, 注目中 PicStats の次のものを返す\n
+        末尾を注目中である場合はそれ自体を返す
+
+        Returns:
+            PicStats: 次の PicStats
+        """
         picstats_list = self.get_picstats_list(self.crnt_picstats.dir)
         idx = picstats_list.index(self.crnt_picstats)
         return picstats_list[min(idx + 1, len(picstats_list) - 1)]
 
-    # PicStats リストにおいて, 現在の前のものを返す
     def prev_picstats(self) -> PicStats:
+        """
+        PicStats リストにおいて, 注目中 PicStats の前のものを返す\n
+        先頭を注目中である場合はそれ自体を返す
+
+        Returns:
+            PicStats: 前の PicStats
+        """
         picstats_list = self.get_picstats_list(self.crnt_picstats.dir)
         idx = picstats_list.index(self.crnt_picstats)
         return picstats_list[max(idx - 1, 0)]
 
     def to_json(self) -> Dict:
+        """
+        このクラスを json に成形する
+
+        Returns:
+            Dict: json
+        """
         serializable = []
         for d in self.piclist:
             for dirname, stats_list in d.items():
