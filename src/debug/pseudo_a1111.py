@@ -1,9 +1,3 @@
-"""
-debug.pseudo_a1111
-A1111 を模したデバッグ用サーバ
-txt2img エンドポイントを用意し, 要求に対してダミーの body を返す
-"""
-
 import argparse
 import base64
 import datetime
