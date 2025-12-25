@@ -102,8 +102,8 @@ class PicStats:
             path (Path): 画像のパス
         """
         self.path = path
-        self.dir = Path(path.parent.name)
-        self.name = Path(path.name)
+        self.dir = path.parent.name
+        self.name = path.name
         try:
             with Image.open(path) as image:
                 self.info = PicInfo(image)
@@ -137,8 +137,8 @@ class PicStats:
         """
         dict = {}
         dict["path"] = str(self.path)
-        dict["dir"] = str(self.dir)
-        dict["name"] = str(self.name)
+        dict["dir"] = self.dir
+        dict["name"] = self.name
         dict["info"] = self.info.to_dict()
         return dict
 
@@ -158,7 +158,7 @@ class PicManager:
             rootdir (Path): 監視対象ディレクトリ
         """
         self.rootdir = rootdir
-        self.piclist: List[Dict[Path, List[PicStats]]] = []
+        self.piclist: List[Dict[str, List[PicStats]]] = []
         self.refresh_piclist()
         self.crnt_picstats: PicStats | None = None
 
@@ -175,15 +175,15 @@ class PicManager:
                     picstats.append(PicStats(path))
             if picstats:
                 dirname = Path(dirpath).name
-                self.piclist.append({Path(dirname): picstats})
+                self.piclist.append({dirname: picstats})
 
-    def get_picstats_list(self, dirname: Path) -> List[PicStats]:
+    def get_picstats_list(self, dirname: str) -> List[PicStats]:
         """
         監視対象ディレクトリ内で指定のディレクトリ名に紐づく PicStats リストを取得する\n
         存在しない場合は空リストを返す
 
         Args:
-            dirname (Path): ディレクトリ名
+            dirname (str): ディレクトリ名
 
         Returns:
             List[PicStats]: PicStats リスト
@@ -227,7 +227,5 @@ class PicManager:
         serializable = []
         for d in self.piclist:
             for dirname, stats_list in d.items():
-                serializable.append(
-                    {"dir": str(dirname), "pics": [s.to_dict() for s in stats_list]}
-                )
+                serializable.append({"dir": dirname, "pics": [s.to_dict() for s in stats_list]})
         return json.dumps(serializable, ensure_ascii=False, indent=2)

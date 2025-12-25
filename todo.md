@@ -19,7 +19,6 @@
 　crntのpicが消されたり変更されたりした場合は他の画像にランダムで移動？
 ・GUIクラス作成
 ・メタデータ埋め込みをPicInfoコンストラクタに統合(image: Imageとinfos: Anyの引数指定でどちらの初期化を行うかを分岐させる)
-・PicManagerはリストをList[Dict[str, List[PicStats]]]として持つべき(ディレクトリ名をPath→str)
 
 <misc.>
 ・TW：出かけた場合の場所取得

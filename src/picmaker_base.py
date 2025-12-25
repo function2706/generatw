@@ -667,7 +667,7 @@ class PicMakerBase(ABC):
         pos_prompt = self.make_pos_prompt()
         neg_prompt = self.make_neg_prompt()
         return self.picmanager.get_picstats_list(
-            Path(self.make_dirname_from_prompts(pos_prompt, neg_prompt))
+            self.make_dirname_from_prompts(pos_prompt, neg_prompt)
         )
 
     @abstractmethod
