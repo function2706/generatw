@@ -10,37 +10,18 @@ import io
 import json
 import random
 import threading
-import tkinter
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from tkinter import Frame, TclError, ttk
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 import pyperclip
 import requests
-from PIL import Image, ImageTk
+from PIL import Image
 
+from displayer import Displayer, SDConfigs
 from picmanager import PicManager, PicStats, SDPngInfo
-
-
-@dataclass
-class SDConfigs:
-    """
-    Stable Diffusion API 関連の設定一覧
-    """
-
-    ipaddr: Optional[str] = "127.0.0.1"
-    port: Optional[int] = 7860
-    steps: Optional[int] = 30
-    batch_size: Optional[int] = 2
-    sampler_name: Optional[str] = "DPM++ 2S a"
-    scheduler: Optional[str] = "Karras"
-    cfg_scale: Optional[float] = 7.0
-    seed: Optional[int] = -1
-    width: Optional[int] = 540
-    height: Optional[int] = 960
 
 
 @dataclass
@@ -103,16 +84,22 @@ class PicMakerBase(ABC):
         Args:
             is_verbose (bool): 冗長的表示を行うか
         """
-        self.sd_configs = SDConfigs()
         self.flags = PMFlags()
 
         self.crnt_clipboard = ""
         self.crnt_stats = {}
 
-        # 設定ウィンドウ
-        self.tk_root = tkinter.Tk()
-        self.construct_config_window()
-        self.pic_window = None
+        self.displayer = Displayer(
+            self.doit,
+            self.doit,
+            self.doit_oneshot,
+            self.on_output,
+            self.on_debug,
+            self.on_next,
+            self.on_prev,
+            self.on_good,
+            self.on_bad,
+        )
 
         self.pm_configs = PMConfigs()
         self.pm_configs.is_verbose = is_verbose
@@ -153,185 +140,13 @@ class PicMakerBase(ABC):
         """
         self.update_pic(self.picmanager.crnt_picstats)
 
-    def doit_debug(self) -> None:
+    def on_debug(self) -> None:
         """
         デバッグボタンハンドラ\n
         ダミーデータをステータスにセットし, 即時ポストする
         """
         self.set_dummy_stats()
         self.doit_oneshot()
-
-    def put_textbox(
-        self, frame: Frame, name: str, row: int, col: int, width: int, default: str
-    ) -> ttk.Entry:
-        """
-        テキストボックスの作成\n
-        本オブジェクトは column 2つ分を占めることに注意
-
-        Args:
-            frame (Frame): 挿入先フレーム
-            name (str): ラベル
-            row (int): フレーム内の row
-            col (int): フレーム内の column
-            width (int): 長さ
-            default (str): デフォルト値
-
-        Returns:
-            ttk.Entry: オブジェクトインスタンス
-        """
-        ttk.Label(frame, text=name).grid(row=row, column=col, padx=6, pady=6, sticky="w")
-        entry = ttk.Entry(frame, width=width)
-        entry.grid(row=row, column=(col + 1), padx=2, pady=6, sticky="w")
-        entry.insert(0, default)
-        return entry
-
-    def is_config_window_open(self) -> bool:
-        """
-        設定ウィンドウが開かれているか
-
-        Returns:
-            bool: True: 開かれている, False: 開かれていない or TclError 例外発生
-        """
-        if self.tk_root is None:
-            return False
-        try:
-            return bool(self.tk_root.winfo_exists())
-        except TclError:
-            return False
-
-    def on_config_window_close(self) -> None:
-        """
-        設定ウィンドウのクローズ時のハンドラ
-        """
-        self.on_pic_window_close()
-        if self.is_config_window_open():
-            self.tk_root.destroy()
-
-    def is_pic_window_open(self) -> bool:
-        """
-        画像ウィンドウが開かれているか
-
-        Returns:
-            bool: True: 開かれている, False: 開かれていない or TclError 例外発生
-        """
-        if self.pic_window is None:
-            return False
-        try:
-            return bool(self.pic_window.winfo_exists())
-        except TclError:
-            return False
-
-    def on_pic_window_close(self) -> None:
-        """
-        画像ウィンドウのクローズ時のハンドラ
-        """
-        if self.is_pic_window_open():
-            self.pic_window.destroy()
-        self.pic_window = None
-
-    def construct_config_window(self) -> None:
-        """
-        GUI の構築
-        """
-        # ウィンドウ定義
-        self.tk_root.protocol("WM_DELETE_WINDOW", self.on_config_window_close)
-        self.tk_root.title("設定")
-        self.tk_root.columnconfigure(0, weight=1)
-        self.tk_root.rowconfigure(0, weight=1)
-        # フレーム定義
-        self.config_main_frame = ttk.Frame(self.tk_root, padding=12)
-        self.config_main_frame.grid(row=0, column=0, sticky="nsew")
-        self.config_button_frame = ttk.Frame(self.config_main_frame)
-        self.config_button_frame.grid(row=0, column=0, sticky="w")
-        self.config_param1_frame = ttk.Frame(self.config_main_frame)
-        self.config_param1_frame.grid(row=1, column=0, sticky="w")
-        self.config_param2_frame = ttk.Frame(self.config_main_frame)
-        self.config_param2_frame.grid(row=2, column=0, sticky="w")
-        # ボタン用フレーム
-        # ボタン(今すぐ生成)
-        self.button_gen = ttk.Button(
-            self.config_button_frame, text="今すぐ生成", command=self.doit_oneshot
-        )
-        self.button_gen.grid(row=0, column=0, padx=6, pady=6, sticky="w")
-        # ボタン(画像を表示)
-        self.button_output = ttk.Button(
-            self.config_button_frame, text="画像を表示", command=self.on_output
-        )
-        self.button_output.grid(row=0, column=1, padx=6, pady=6, sticky="w")
-        # ボタン(デバッグ)
-        self.button_debug = ttk.Button(
-            self.config_button_frame, text="デバッグ", command=self.doit_debug
-        )
-        self.button_debug.grid(row=0, column=2, padx=6, pady=6, sticky="w")
-        # フレーム 1
-        # テキストボックス(幅)
-        self.entry_width = self.put_textbox(
-            self.config_param1_frame, "幅", 1, 0, 5, str(self.sd_configs.width)
-        )
-        # テキストボックス(高さ)
-        self.entry_height = self.put_textbox(
-            self.config_param1_frame, "高さ", 1, 2, 5, str(self.sd_configs.height)
-        )
-        # テキストボックス(ステップ数)
-        self.entry_steps = self.put_textbox(
-            self.config_param1_frame, "Steps", 2, 0, 4, str(self.sd_configs.steps)
-        )
-        # テキストボックス(生成数)
-        self.entry_batch_size = self.put_textbox(
-            self.config_param1_frame, "生成数", 2, 2, 4, str(self.sd_configs.batch_size)
-        )
-        # フレーム 2
-        # テキストボックス(IPアドレス)
-        self.entry_ipaddr = self.put_textbox(
-            self.config_param2_frame, "IPアドレス", 0, 0, 16, str(self.sd_configs.ipaddr)
-        )
-        # テキストボックス(ポート)
-        self.entry_port = self.put_textbox(
-            self.config_param2_frame, "ポート", 0, 2, 6, str(self.sd_configs.port)
-        )
-
-    def construct_pic_window(self) -> None:
-        """
-        画像ウィンドウを構成, ただしすでに開いている場合は最前面に表示するのみ
-        """
-        if self.is_pic_window_open():
-            self.pic_window.deiconify()
-            self.pic_window.lift()
-            return
-
-        self.pic_window = tkinter.Toplevel(self.tk_root)
-        self.pic_window.title("画像")
-        self.pic_window.protocol("WM_DELETE_WINDOW", self.on_pic_window_close)
-        # フレーム定義
-        self.pic_main_frame = ttk.Frame(self.pic_window, padding=5)
-        self.pic_main_frame.grid(row=0, column=0, sticky="nsew")
-        self.pic_label_frame = ttk.Frame(self.pic_main_frame)
-        self.pic_label_frame.grid(row=0, column=0, sticky="nwe")
-        self.pic_eval_frame = ttk.Frame(self.pic_main_frame)
-        self.pic_eval_frame.grid(row=1, column=0, sticky="swe")
-        # 画像フレーム
-        # ラベル
-        self.pic_label = ttk.Label(self.pic_label_frame)
-        self.pic_label.grid(row=0, column=1, padx=6, pady=6, sticky="nswe")
-        # ボタン(<)
-        self.button_prev = ttk.Button(
-            self.pic_label_frame, text="<", width=2, command=self.on_prev_button
-        )
-        self.button_prev.grid(row=0, column=0, padx=6, pady=6, sticky="nsw")
-        # ボタン(>)
-        self.button_next = ttk.Button(
-            self.pic_label_frame, text=">", width=2, command=self.on_next_button
-        )
-        self.button_next.grid(row=0, column=2, padx=6, pady=6, sticky="nse")
-        # 評価フレーム
-        self.pic_eval_frame.columnconfigure(0, weight=1)
-        self.pic_eval_frame.columnconfigure(1, weight=1)
-        # ボタン(GOOD)
-        self.button_good = ttk.Button(self.pic_eval_frame, text="GOOD", command=self.on_good_button)
-        self.button_good.grid(row=0, column=0, padx=6, pady=6, sticky="wes")
-        # ボタン(BAD)
-        self.button_bad = ttk.Button(self.pic_eval_frame, text="BAD", command=self.on_bad_button)
-        self.button_bad.grid(row=0, column=1, padx=6, pady=6, sticky="wes")
 
     def update_pic(self, picstats: PicStats) -> None:
         """
@@ -344,54 +159,34 @@ class PicMakerBase(ABC):
         if not picstats:
             return
 
-        image = Image.open(picstats.path)
-        tk_img = ImageTk.PhotoImage(image)
-        self.construct_pic_window()
-        self.pic_label.configure(image=tk_img)
-        self.pic_label.image = tk_img
+        self.displayer.popup_with(picstats.path)
 
         self.picmanager.crnt_picstats = picstats
-        if self.is_config_window_open():
-            self.button_output.configure(state="normal")
+        self.displayer.switch_output_button_state(True)
 
-    def on_next_button(self) -> None:
+    def on_next(self) -> None:
         """
         > ボタンハンドラ
         """
         self.update_pic(self.picmanager.next_picstats())
 
-    def on_prev_button(self) -> None:
+    def on_prev(self) -> None:
         """
         < ボタンハンドラ
         """
         self.update_pic(self.picmanager.prev_picstats())
 
-    def on_good_button(self) -> None:
+    def on_good(self) -> None:
         """
         GOOD ボタンハンドラ
         """
         return
 
-    def on_bad_button(self) -> None:
+    def on_bad(self) -> None:
         """
         BAD ボタンハンドラ
         """
         return
-
-    def refresh_sd_configs(self) -> None:
-        """
-        GUI から SD コンフィグを更新する
-        """
-        self.sd_configs.ipaddr = self.entry_ipaddr.get()
-        self.sd_configs.port = self.entry_port.get()
-        self.sd_configs.steps = int(self.entry_steps.get())
-        self.sd_configs.batch_size = int(self.entry_batch_size.get())
-        self.sd_configs.sampler_name = "DPM++ 2S a"
-        self.sd_configs.scheduler = "Karras"
-        self.sd_configs.cfg_scale = 7.0
-        self.sd_configs.seed = -1
-        self.sd_configs.width = int(self.entry_width.get())
-        self.sd_configs.height = int(self.entry_height.get())
 
     def reflesh_clipboard(self) -> None:
         """
@@ -478,7 +273,7 @@ class PicMakerBase(ABC):
         """
         pass
 
-    def make_json_for_txt2img(self) -> Dict:
+    def make_json_for_txt2img(self, sd_configs: SDConfigs) -> Dict:
         """
         現在の Stable Diffusion 設定から txt2img エンドポイントにポストする json を生成する
 
@@ -488,14 +283,14 @@ class PicMakerBase(ABC):
         api_json = {}
         api_json["prompt"] = self.make_pos_prompt()
         api_json["negative_prompt"] = self.make_neg_prompt()
-        api_json["steps"] = self.sd_configs.steps
-        api_json["batch_size"] = self.sd_configs.batch_size
-        api_json["sampler_name"] = self.sd_configs.sampler_name
-        api_json["scheduler"] = self.sd_configs.scheduler
-        api_json["cfg_scale"] = self.sd_configs.cfg_scale
-        api_json["seed"] = self.sd_configs.seed
-        api_json["width"] = self.sd_configs.width
-        api_json["height"] = self.sd_configs.height
+        api_json["steps"] = sd_configs.steps
+        api_json["batch_size"] = sd_configs.batch_size
+        api_json["sampler_name"] = sd_configs.sampler_name
+        api_json["scheduler"] = sd_configs.scheduler
+        api_json["cfg_scale"] = sd_configs.cfg_scale
+        api_json["seed"] = sd_configs.seed
+        api_json["width"] = sd_configs.width
+        api_json["height"] = sd_configs.height
         return api_json if api_json["prompt"] and api_json["negative_prompt"] else None
 
     def post_to_txt2img(self) -> Optional[Tuple[Any, Any]]:
@@ -507,14 +302,14 @@ class PicMakerBase(ABC):
         """
         try:
             self.flags.is_generating = True
-            self.refresh_sd_configs()
-            payload = self.make_json_for_txt2img()
+            sd_configs = self.displayer.get_sd_configs()
+            payload = self.make_json_for_txt2img(sd_configs)
             if not payload:
                 return None
 
             # txt2img
             response = requests.post(
-                f"http://{self.sd_configs.ipaddr}:{self.sd_configs.port}/sdapi/v1/txt2img",
+                f"http://{sd_configs.ipaddr}:{sd_configs.port}/sdapi/v1/txt2img",
                 json=payload,
                 timeout=self.pm_configs.timeout_sec,
             )
@@ -676,11 +471,11 @@ class PicMakerBase(ABC):
             sig (_type_): シグナル
             frame (_type_): Tkinter フレーム
         """
-        self.tk_root.destroy()
+        self.displayer.destroy_config_window()
 
     def doit_oneshot(self) -> None:
         """
-        ワンショット処理 (ステータス確認 -> 非同期で生成 -> tkinter 更新)\n
+        ワンショット処理 (ステータス確認 -> 非同期で生成 -> 表示更新)\n
         記録中ステータスをもとに即座に生成する
         """
         if not self.is_stats_enough_for_prompt():
@@ -693,8 +488,8 @@ class PicMakerBase(ABC):
         Tkinter メインループにて周期的に呼び出される処理
         """
         try:
-            if not self.is_stats_enough_for_prompt() and self.is_config_window_open():
-                self.button_output.configure(state="disabled")
+            if not self.is_stats_enough_for_prompt():
+                self.displayer.switch_output_button_state(False)
 
             self.refresh_stats()
             if not self.flags.is_new_stats:
@@ -702,4 +497,4 @@ class PicMakerBase(ABC):
 
             self.doit_oneshot()
         finally:
-            self.tk_root.after(500, self.doit)
+            self.displayer.endpoint()

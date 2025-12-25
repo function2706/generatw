@@ -35,9 +35,8 @@ def main() -> None:
         print(f"[debug] mode={args.mode}, verbose={args.verbose}")
         return
     signal.signal(signal.SIGINT, pm.sigint_handler)
-    # Tkinterのイベントループ開始
-    pm.tk_root.after(100, pm.doit)
-    pm.tk_root.mainloop()
+
+    pm.displayer.entrypoint()
 
 
 if __name__ == "__main__":
