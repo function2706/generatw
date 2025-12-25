@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from tkinter import Frame, TclError, ttk
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 import pyperclip
 import requests
@@ -500,19 +500,19 @@ class PicMakerBase(ABC):
         api_json["height"] = self.sd_configs.height
         return api_json if api_json["prompt"] and api_json["negative_prompt"] else None
 
-    def gen_pic(self) -> List[Path]:
+    def gen_images(self) -> Optional[Tuple[Any, Any]]:
         """
-        json を生成し Stable Diffusion txt2img エンドポイントへポストする\n
+        json を生成し Stable Diffusion txt2img エンドポイントへポストする
 
         Returns:
-            List[Path]: 生成した画像のパス群
+            Tuple[Any, Any]: image フィールド, info フィールド, 失敗時は None
         """
         try:
             self.flags.is_generating = True
             self.refresh_sd_configs()
             payload = self.make_json_for_txt2img()
             if not payload:
-                return []
+                return None
 
             # txt2img
             response = requests.post(
@@ -525,9 +525,9 @@ class PicMakerBase(ABC):
             images = body.get("images", [])
             if not images:
                 print("API response without images.")
-                return []
+                return None
 
-            return self.save_images(images, json.loads(body.get("info", "{}")))
+            return images, json.loads(body.get("info", "{}"))
         except requests.exceptions.Timeout:
             print("API timeout.")
         except requests.exceptions.RequestException as e:
@@ -538,7 +538,7 @@ class PicMakerBase(ABC):
             print("Another error occurs about image:", e)
         finally:
             self.flags.is_generating = False
-        return []
+        return None
 
     def make_dirname_from_prompts(self, pos_prompt: str, neg_prompt: str) -> str:
         """
@@ -626,7 +626,8 @@ class PicMakerBase(ABC):
     def save_images(self, images: Any, infos: Any) -> List[Path]:
         """
         指定の画像群を保存する\n
-        各画像には次回起動時にメタデータの再取得ができるよう, info 領域上のデータが埋め込まれる
+        各画像には次回起動時にメタデータの再取得ができるよう, info 領域上のデータが埋め込まれる\n
+        images か infos が None の場合は何もしない
 
         Args:
             images (Any): 画像群データ
@@ -635,6 +636,9 @@ class PicMakerBase(ABC):
         Returns:
             List[Path]: 生成した画像のパス群
         """
+        if not images or not infos:
+            return []
+
         if self.pm_configs.is_verbose:
             dump_json(infos, "infos")
 
@@ -687,20 +691,25 @@ class PicMakerBase(ABC):
     def make_pic_async(self) -> None:
         """
         画像生成スレッドエントリポイント\n
-        生成から表示までを実施する(複数個生成した場合はランダムで 1 つ表示)\n
-        生成すべきでないと判断した場合はすでに生成した画像を表示する\n
+        生成から表示までを実施する\n
+        生成すべきでないと判断した場合は, すでに生成した画像が存在するならそれを表示する\n
+        存在しない場合は生成を実施する\n
+        表示可能な画像が複数個存在する場合はランダムで決定する\n
         生成に失敗した場合は何もしない
         """
 
         def worker():
             crnt_pic_paths = self.get_pic_list()
-            # 生成すべき or 画像が無いなら生成する
-            need_generate = self.should_gen_pic() or not crnt_pic_paths
-            new_pic_paths = self.gen_pic() if need_generate else []
-            # 生成が必要だったのに失敗した場合は中断
-            if need_generate and not new_pic_paths:
-                return
-            # ここまで来たら new_pic_paths は [] か Path のリスト
+            new_pic_paths = []
+            if self.should_gen_pic() or not crnt_pic_paths:
+                # 生成すべき or 画像が無いなら生成する
+                result = self.gen_images()
+                if result is None:
+                    # 生成失敗
+                    return
+                else:
+                    images, infos = result
+                new_pic_paths = self.save_images(images, infos)
             self.update_image(PicStats(random.choice(crnt_pic_paths + new_pic_paths)))
 
         threading.Thread(target=worker, args=(), daemon=True).start()
