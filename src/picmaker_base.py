@@ -498,7 +498,7 @@ class PicMakerBase(ABC):
         api_json["height"] = self.sd_configs.height
         return api_json if api_json["prompt"] and api_json["negative_prompt"] else None
 
-    def gen_images(self) -> Optional[Tuple[Any, Any]]:
+    def post_to_txt2img(self) -> Optional[Tuple[Any, Any]]:
         """
         json を生成し Stable Diffusion txt2img エンドポイントへポストする
 
@@ -621,26 +621,23 @@ class PicMakerBase(ABC):
         metadata.add_text("parameters", infos.get("infotexts", [])[idx])
         return metadata
 
-    def save_images(self, images: Any, infos: Any) -> List[Path]:
+    def save_images(self, images: Any, infos: Any) -> None:
         """
         指定の画像群を保存する\n
         各画像には次回起動時にメタデータの再取得ができるよう, info 領域上のデータが埋め込まれる\n
+        保存が正常に完了した場合は画像リストの更新が行われる\n
         images か infos が None の場合は何もしない
 
         Args:
             images (Any): 画像群データ
             infos (Any): info 領域上のデータ
-
-        Returns:
-            List[Path]: 生成した画像のパス群
         """
         if not images or not infos:
-            return []
+            return
 
         if self.pm_configs.is_verbose:
             dump_json(infos, "infos")
 
-        pic_paths: List[Path] = []
         for idx, image_data in enumerate(images):
             try:
                 b64 = image_data.split(",", 1)[-1]
@@ -652,7 +649,6 @@ class PicMakerBase(ABC):
                     pic_path.parent.mkdir(parents=True, exist_ok=True)
 
                 image.save(str(pic_path), pnginfo=self.make_metadata(infos, idx))
-                pic_paths.append(pic_path)
 
                 if self.pm_configs.is_verbose:
                     dump_json(PicStats(pic_path).info.to_dict(), "image")
@@ -660,21 +656,19 @@ class PicMakerBase(ABC):
                 print(f"[WARN] Failed to save image idx={idx}: {e}")
 
         self.picmanager.refresh_piclist()
-        return pic_paths
 
-    def get_pic_list(self) -> List[Path]:
+    def get_crnt_picstats_list(self) -> List[PicStats]:
         """
-        記録中ステータスに適合するディレクトリ下の画像パス群を取得する
+        記録中ステータスに適合するディレクトリ下の画像群に関する PicStats のリストを取得する
 
         Returns:
             List[Path]: 画像パス群
         """
         pos_prompt = self.make_pos_prompt()
         neg_prompt = self.make_neg_prompt()
-        picstat_list = self.picmanager.get_picstats_list(
+        return self.picmanager.get_picstats_list(
             Path(self.make_dirname_from_prompts(pos_prompt, neg_prompt))
         )
-        return [ps.path for ps in picstat_list]
 
     @abstractmethod
     def should_gen_pic(self) -> bool:
@@ -694,25 +688,17 @@ class PicMakerBase(ABC):
         表示可能な画像が複数個存在する場合はランダムで決定する\n
         生成に失敗した場合は何もしない
         """
-        crnt_pic_paths = self.get_pic_list()
-        new_pic_paths = []
-        if self.should_gen_pic() or not crnt_pic_paths:
+        if self.should_gen_pic() or not self.get_crnt_picstats_list():
             # 生成すべき or 画像が無いなら生成する
-            result = self.gen_images()
+            result = self.post_to_txt2img()
             if result is None:
                 # 生成失敗
                 return
             else:
                 images, infos = result
-            new_pic_paths = self.save_images(images, infos)
-        self.update_pic(PicStats(random.choice(crnt_pic_paths + new_pic_paths)))
-
-    def refresh_pic_async(self) -> None:
-        """
-        画像生成スレッドエントリポイント
-        """
-
-        threading.Thread(target=self.refresh_pic_main, args=(), daemon=True).start()
+            self.save_images(images, infos)
+        output_picstats = random.choice(self.get_crnt_picstats_list())
+        self.update_pic(output_picstats)
 
     def sigint_handler(self, sig, frame) -> None:
         """
@@ -731,7 +717,7 @@ class PicMakerBase(ABC):
         """
         if not self.is_stats_enough_for_prompt():
             return
-        self.refresh_pic_async()
+        threading.Thread(target=self.refresh_pic_main, args=(), daemon=True).start()
 
     def doit(self) -> None:
         """
