@@ -112,7 +112,7 @@ class PicMakerBase(ABC):
         # 設定ウィンドウ
         self.tk_root = tkinter.Tk()
         self.construct_config_window()
-        self.image_window = None
+        self.pic_window = None
 
         self.pm_configs = PMConfigs()
         self.pm_configs.is_verbose = is_verbose
@@ -151,7 +151,7 @@ class PicMakerBase(ABC):
         表示ボタンハンドラ\n
         表示すべき画像がないときは何もしない
         """
-        self.update_image(self.picmanager.crnt_picstats)
+        self.update_pic(self.picmanager.crnt_picstats)
 
     def doit_debug(self) -> None:
         """
@@ -203,31 +203,31 @@ class PicMakerBase(ABC):
         """
         設定ウィンドウのクローズ時のハンドラ
         """
-        self.on_image_window_close()
+        self.on_pic_window_close()
         if self.is_config_window_open():
             self.tk_root.destroy()
 
-    def is_image_window_open(self) -> bool:
+    def is_pic_window_open(self) -> bool:
         """
         画像ウィンドウが開かれているか
 
         Returns:
             bool: True: 開かれている, False: 開かれていない or TclError 例外発生
         """
-        if self.image_window is None:
+        if self.pic_window is None:
             return False
         try:
-            return bool(self.image_window.winfo_exists())
+            return bool(self.pic_window.winfo_exists())
         except TclError:
             return False
 
-    def on_image_window_close(self) -> None:
+    def on_pic_window_close(self) -> None:
         """
         画像ウィンドウのクローズ時のハンドラ
         """
-        if self.is_image_window_open():
-            self.image_window.destroy()
-        self.image_window = None
+        if self.is_pic_window_open():
+            self.pic_window.destroy()
+        self.pic_window = None
 
     def construct_config_window(self) -> None:
         """
@@ -290,52 +290,50 @@ class PicMakerBase(ABC):
             self.config_param2_frame, "ポート", 0, 2, 6, str(self.sd_configs.port)
         )
 
-    def construct_image_window(self) -> None:
+    def construct_pic_window(self) -> None:
         """
         画像ウィンドウを構成, ただしすでに開いている場合は最前面に表示するのみ
         """
-        if self.is_image_window_open():
-            self.image_window.deiconify()
-            self.image_window.lift()
+        if self.is_pic_window_open():
+            self.pic_window.deiconify()
+            self.pic_window.lift()
             return
 
-        self.image_window = tkinter.Toplevel(self.tk_root)
-        self.image_window.title("画像")
-        self.image_window.protocol("WM_DELETE_WINDOW", self.on_image_window_close)
+        self.pic_window = tkinter.Toplevel(self.tk_root)
+        self.pic_window.title("画像")
+        self.pic_window.protocol("WM_DELETE_WINDOW", self.on_pic_window_close)
         # フレーム定義
-        self.image_main_frame = ttk.Frame(self.image_window, padding=5)
-        self.image_main_frame.grid(row=0, column=0, sticky="nsew")
-        self.image_label_frame = ttk.Frame(self.image_main_frame)
-        self.image_label_frame.grid(row=0, column=0, sticky="nwe")
-        self.image_eval_frame = ttk.Frame(self.image_main_frame)
-        self.image_eval_frame.grid(row=1, column=0, sticky="swe")
+        self.pic_main_frame = ttk.Frame(self.pic_window, padding=5)
+        self.pic_main_frame.grid(row=0, column=0, sticky="nsew")
+        self.pic_label_frame = ttk.Frame(self.pic_main_frame)
+        self.pic_label_frame.grid(row=0, column=0, sticky="nwe")
+        self.pic_eval_frame = ttk.Frame(self.pic_main_frame)
+        self.pic_eval_frame.grid(row=1, column=0, sticky="swe")
         # 画像フレーム
         # ラベル
-        self.image_label = ttk.Label(self.image_label_frame)
-        self.image_label.grid(row=0, column=1, padx=6, pady=6, sticky="nswe")
+        self.pic_label = ttk.Label(self.pic_label_frame)
+        self.pic_label.grid(row=0, column=1, padx=6, pady=6, sticky="nswe")
         # ボタン(<)
         self.button_prev = ttk.Button(
-            self.image_label_frame, text="<", width=2, command=self.on_prev_button
+            self.pic_label_frame, text="<", width=2, command=self.on_prev_button
         )
         self.button_prev.grid(row=0, column=0, padx=6, pady=6, sticky="nsw")
         # ボタン(>)
         self.button_next = ttk.Button(
-            self.image_label_frame, text=">", width=2, command=self.on_next_button
+            self.pic_label_frame, text=">", width=2, command=self.on_next_button
         )
         self.button_next.grid(row=0, column=2, padx=6, pady=6, sticky="nse")
         # 評価フレーム
-        self.image_eval_frame.columnconfigure(0, weight=1)
-        self.image_eval_frame.columnconfigure(1, weight=1)
+        self.pic_eval_frame.columnconfigure(0, weight=1)
+        self.pic_eval_frame.columnconfigure(1, weight=1)
         # ボタン(GOOD)
-        self.button_good = ttk.Button(
-            self.image_eval_frame, text="GOOD", command=self.on_good_button
-        )
+        self.button_good = ttk.Button(self.pic_eval_frame, text="GOOD", command=self.on_good_button)
         self.button_good.grid(row=0, column=0, padx=6, pady=6, sticky="wes")
         # ボタン(BAD)
-        self.button_bad = ttk.Button(self.image_eval_frame, text="BAD", command=self.on_bad_button)
+        self.button_bad = ttk.Button(self.pic_eval_frame, text="BAD", command=self.on_bad_button)
         self.button_bad.grid(row=0, column=1, padx=6, pady=6, sticky="wes")
 
-    def update_image(self, picstats: PicStats) -> None:
+    def update_pic(self, picstats: PicStats) -> None:
         """
         画像フレームを指定の PicStats で更新する\n
         picstats が None の場合は何もしない
@@ -348,9 +346,9 @@ class PicMakerBase(ABC):
 
         image = Image.open(picstats.path)
         tk_img = ImageTk.PhotoImage(image)
-        self.construct_image_window()
-        self.image_label.configure(image=tk_img)
-        self.image_label.image = tk_img
+        self.construct_pic_window()
+        self.pic_label.configure(image=tk_img)
+        self.pic_label.image = tk_img
 
         self.picmanager.crnt_picstats = picstats
         if self.is_config_window_open():
@@ -360,13 +358,13 @@ class PicMakerBase(ABC):
         """
         > ボタンハンドラ
         """
-        self.update_image(self.picmanager.next_picstats())
+        self.update_pic(self.picmanager.next_picstats())
 
     def on_prev_button(self) -> None:
         """
         < ボタンハンドラ
         """
-        self.update_image(self.picmanager.prev_picstats())
+        self.update_pic(self.picmanager.prev_picstats())
 
     def on_good_button(self) -> None:
         """
@@ -710,7 +708,7 @@ class PicMakerBase(ABC):
                 else:
                     images, infos = result
                 new_pic_paths = self.save_images(images, infos)
-            self.update_image(PicStats(random.choice(crnt_pic_paths + new_pic_paths)))
+            self.update_pic(PicStats(random.choice(crnt_pic_paths + new_pic_paths)))
 
         threading.Thread(target=worker, args=(), daemon=True).start()
 
