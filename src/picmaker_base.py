@@ -34,7 +34,7 @@ class SDConfigs:
     ipaddr: Optional[str] = "127.0.0.1"
     port: Optional[int] = 7860
     steps: Optional[int] = 30
-    batch_size: Optional[int] = 4
+    batch_size: Optional[int] = 2
     sampler_name: Optional[str] = "DPM++ 2S a"
     scheduler: Optional[str] = "Karras"
     cfg_scale: Optional[float] = 7.0
@@ -686,31 +686,33 @@ class PicMakerBase(ABC):
         """
         pass
 
-    def make_pic_async(self) -> None:
+    def refresh_pic_main(self) -> None:
         """
-        画像生成スレッドエントリポイント\n
-        生成から表示までを実施する\n
+        画像の更新, 生成から表示までを実施する\n
         生成すべきでないと判断した場合は, すでに生成した画像が存在するならそれを表示する\n
         存在しない場合は生成を実施する\n
         表示可能な画像が複数個存在する場合はランダムで決定する\n
         生成に失敗した場合は何もしない
         """
+        crnt_pic_paths = self.get_pic_list()
+        new_pic_paths = []
+        if self.should_gen_pic() or not crnt_pic_paths:
+            # 生成すべき or 画像が無いなら生成する
+            result = self.gen_images()
+            if result is None:
+                # 生成失敗
+                return
+            else:
+                images, infos = result
+            new_pic_paths = self.save_images(images, infos)
+        self.update_pic(PicStats(random.choice(crnt_pic_paths + new_pic_paths)))
 
-        def worker():
-            crnt_pic_paths = self.get_pic_list()
-            new_pic_paths = []
-            if self.should_gen_pic() or not crnt_pic_paths:
-                # 生成すべき or 画像が無いなら生成する
-                result = self.gen_images()
-                if result is None:
-                    # 生成失敗
-                    return
-                else:
-                    images, infos = result
-                new_pic_paths = self.save_images(images, infos)
-            self.update_pic(PicStats(random.choice(crnt_pic_paths + new_pic_paths)))
+    def refresh_pic_async(self) -> None:
+        """
+        画像生成スレッドエントリポイント
+        """
 
-        threading.Thread(target=worker, args=(), daemon=True).start()
+        threading.Thread(target=self.refresh_pic_main, args=(), daemon=True).start()
 
     def sigint_handler(self, sig, frame) -> None:
         """
@@ -729,7 +731,7 @@ class PicMakerBase(ABC):
         """
         if not self.is_stats_enough_for_prompt():
             return
-        self.make_pic_async()
+        self.refresh_pic_async()
 
     def doit(self) -> None:
         """
