@@ -9,7 +9,42 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List
 
-from PIL import Image
+from PIL import Image, PngImagePlugin
+
+
+class SDPngInfo(PngImagePlugin.PngInfo):
+    """
+    Stable Diffusion 特化の PngInfo
+    """
+
+    def __init__(self, infos: Any, idx: int):
+        """
+        コンストラクタ
+        PNG に付与する PNG Info を生成する\n
+        info 領域上のデータは "images" で削ぎ落とした時点でなくなるので, 再度の付与を行う\n
+        info 領域上のデータは同時生成した画像群に関する配列構造のため, インデックスの指定も必要
+
+        Args:
+            infos (Any): info 領域上のデータ
+            idx (int): 配列のインデックス
+        """
+        super().__init__()
+        self.add_text("prompt", infos.get("all_prompts", [])[idx])
+        self.add_text("negative_prompt", infos.get("all_negative_prompts", [])[idx])
+        self.add_text("steps", str(infos.get("steps", 0)))
+        self.add_text("sampler", infos.get("sampler_name", ""))
+        self.add_text(
+            "schedule_type",
+            infos.get("extra_generation_params", {}).get("Schedule type", ""),
+        )
+        self.add_text("cfg_scale", str(infos.get("cfg_scale", 0)))
+        self.add_text("seed", str(infos.get("all_seeds", [])[idx]))
+        self.add_text("width", str(infos.get("width", 0)))
+        self.add_text("height", str(infos.get("height", 0)))
+        self.add_text("sd_model_name", infos.get("sd_model_name", ""))
+        self.add_text("sd_model_hash", infos.get("sd_model_hash", ""))
+        self.add_text("clip_skip", str(infos.get("clip_skip", 0)))
+        self.add_text("parameters", infos.get("infotexts", [])[idx])
 
 
 class PicInfo:

@@ -20,9 +20,9 @@ from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 import pyperclip
 import requests
-from PIL import Image, ImageTk, PngImagePlugin
+from PIL import Image, ImageTk
 
-from picmanager import PicManager, PicStats
+from picmanager import PicManager, PicStats, SDPngInfo
 
 
 @dataclass
@@ -589,38 +589,6 @@ class PicMakerBase(ABC):
         filename = Path(f"{now}-{seeds[idx]}.png")
         return dirpath / filename
 
-    def make_metadata(self, infos: Any, idx: int) -> PngImagePlugin.PngInfo:
-        """
-        PNG に付与する PNG Info を生成する\n
-        info 領域上のデータは "images" で削ぎ落とした時点でなくなるので, 再度の付与を行う\n
-        info 領域上のデータは同時生成した画像群に関する配列構造のため, インデックスの指定も必要
-
-        Args:
-            infos (Any): info 領域上のデータ
-            idx (int): 配列のインデックス
-
-        Returns:
-            PngImagePlugin.PngInfo: PNG Info
-        """
-        metadata = PngImagePlugin.PngInfo()
-        metadata.add_text("prompt", infos.get("all_prompts", [])[idx])
-        metadata.add_text("negative_prompt", infos.get("all_negative_prompts", [])[idx])
-        metadata.add_text("steps", str(infos.get("steps", 0)))
-        metadata.add_text("sampler", infos.get("sampler_name", ""))
-        metadata.add_text(
-            "schedule_type",
-            infos.get("extra_generation_params", {}).get("Schedule type", ""),
-        )
-        metadata.add_text("cfg_scale", str(infos.get("cfg_scale", 0)))
-        metadata.add_text("seed", str(infos.get("all_seeds", [])[idx]))
-        metadata.add_text("width", str(infos.get("width", 0)))
-        metadata.add_text("height", str(infos.get("height", 0)))
-        metadata.add_text("sd_model_name", infos.get("sd_model_name", ""))
-        metadata.add_text("sd_model_hash", infos.get("sd_model_hash", ""))
-        metadata.add_text("clip_skip", str(infos.get("clip_skip", 0)))
-        metadata.add_text("parameters", infos.get("infotexts", [])[idx])
-        return metadata
-
     def save_images(self, images: Any, infos: Any) -> None:
         """
         指定の画像群を保存する\n
@@ -648,7 +616,7 @@ class PicMakerBase(ABC):
                     # 親ディレクトリが存在しない場合は作成する
                     pic_path.parent.mkdir(parents=True, exist_ok=True)
 
-                image.save(str(pic_path), pnginfo=self.make_metadata(infos, idx))
+                image.save(str(pic_path), pnginfo=SDPngInfo(infos, idx))
 
                 if self.pm_configs.is_verbose:
                     dump_json(PicStats(pic_path).info.to_dict(), "image")
