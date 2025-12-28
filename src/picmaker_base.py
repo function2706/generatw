@@ -106,6 +106,13 @@ class PicMakerBase(ABC):
 
         self.picmanager = PicManager(self.pics_dir_path())
 
+    def finalize(self) -> None:
+        """
+        終了処理
+        """
+        self.picmanager.finalize()
+        self.displayer.destroy_config_window()
+
     def whoami(self) -> str:
         """
         自身のクラス名を取得する
@@ -136,8 +143,11 @@ class PicMakerBase(ABC):
     def on_output(self) -> None:
         """
         表示ボタンハンドラ\n
-        表示すべき画像がないときは何もしない
+        表示すべき画像がない, もしくは表示対象が指定されていないときは何もしない
         """
+        if self.picmanager.is_void():
+            return
+
         self.update_pic(self.picmanager.crnt_picstats)
 
     def on_debug(self) -> None:
@@ -488,7 +498,9 @@ class PicMakerBase(ABC):
         Tkinter メインループにて周期的に呼び出される処理
         """
         try:
-            if not self.is_stats_enough_for_prompt():
+            if (not self.is_stats_enough_for_prompt()) or (self.picmanager.is_void()):
+                # ボタングレーアウトはプロンプトが不適な場合に加えて
+                # 表示すべき画像がない, もしくは表示対象が指定されていない場合も実施
                 self.displayer.switch_output_button_state(False)
 
             self.refresh_stats()

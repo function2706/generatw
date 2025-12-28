@@ -6,10 +6,13 @@ from __future__ import annotations
 
 import json
 import os
+import random
 from pathlib import Path
 from typing import Any, Dict, List
 
 from PIL import Image, PngImagePlugin
+from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
 
 
 class SDPngInfo(PngImagePlugin.PngInfo):
@@ -183,6 +186,27 @@ class PicManager:
     画像監視クラス
     """
 
+    class PicEventHandler(FileSystemEventHandler):
+        def __init__(self, picmanager: PicManager):
+            self.picmanager = picmanager
+
+        def on_any_event(self, event):
+            print(f"Event: {event.event_type}, Path: {event.src_path}")
+            if event.event_type == "deleted":
+                # crnt判定
+                self.picmanager.flick_crnt_picstats_from(event.src_path)
+            elif event.event_type == "moved":
+                # リネームの場合はリネーム前のファイルについてcrnt判定し、リネーム先を削除
+                self.picmanager.flick_crnt_picstats_from(event.src_path)
+            elif event.event_type == "created":
+                # 作成されたファイルを削除
+                self.picmanager.flick_crnt_picstats_from(event.src_path)
+            else:
+                # modified は無視
+                return
+
+            self.picmanager.refresh_piclist()
+
     def __init__(self, rootdir: Path):
         """
         コンストラクタ\n
@@ -196,6 +220,17 @@ class PicManager:
         self.piclist: List[Dict[str, List[PicStats]]] = []
         self.refresh_piclist()
         self.crnt_picstats: PicStats | None = None
+
+        # pics 監視モジュール
+        self.observer = Observer()
+        self.observer.schedule(self.PicEventHandler(self), path="pics", recursive=True)
+        self.observer.start()
+
+    def finalize(self):
+        """
+        終了処理
+        """
+        self.observer.stop()
 
     def refresh_piclist(self) -> None:
         """
@@ -251,6 +286,61 @@ class PicManager:
         picstats_list = self.get_picstats_list(self.crnt_picstats.dir)
         idx = picstats_list.index(self.crnt_picstats)
         return picstats_list[max(idx - 1, 0)]
+
+    def count_picstats_of(self, target_key: str) -> int:
+        """
+        指定したキーに一致するファイルリストの長さ(i.e. ファイル数)を数え上げる\n
+        キーが存在しない場合は 0 を返す
+
+        Args:
+            target_key (str): キー名
+
+        Returns:
+            int: 総数
+        """
+        return sum(
+            len(pic_list) for d in self.piclist for key, pic_list in d.items() if key == target_key
+        )
+
+    def count_picstats(self) -> int:
+        """
+        全キーに渡るファイルリストの長さ(i.e. 総ファイル数)を数え上げる
+
+        Returns:
+            int: 総数
+        """
+        keys = {key for d in self.piclist for key in d.keys()}
+        return sum(self.count_picstats_of(key) for key in keys)
+
+    def is_void(self) -> bool:
+        """
+        void 状態(表示すべき画像がない, もしくは表示対象が指定されていない状態)か
+
+        Returns:
+            bool: True: void 状態, False: void 状態でない
+        """
+        return (self.piclist is None) or (self.crnt_picstats is None)
+
+    def flick_crnt_picstats_from(self, path: Path) -> None:
+        """
+        crnt_picstats を別の PicStats に設定する\n
+        ほかの候補が存在する場合はランダムに, 存在しない場合は None にする\n
+        すでに None の場合は何もしない
+
+        Args:
+            path (Path): 更新対象
+        """
+        if (PicStats(path) != self.crnt_picstats) or (self.crnt_picstats is None):
+            return
+
+        crnt_picstats_list = self.get_picstats_list(self.crnt_picstats.dir)
+        self.crnt_picstats = (
+            None
+            if self.count_picstats() == 0
+            else None
+            if crnt_picstats_list is None
+            else random.choice(crnt_picstats_list)
+        )
 
     def to_json(self) -> Dict:
         """
