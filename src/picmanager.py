@@ -197,6 +197,12 @@ class PicManager:
         self.refresh_piclist()
         self.crnt_picstats: PicStats | None = None
 
+    def finalize(self) -> None:
+        """
+        終了処理
+        """
+        return
+
     def refresh_piclist(self) -> None:
         """
         監視対象ディレクトリ内の画像ファイルを PicStats の形で再帰的にリスト化する

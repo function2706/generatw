@@ -106,6 +106,13 @@ class PicMakerBase(ABC):
 
         self.picmanager = PicManager(self.pics_dir_path())
 
+    def finalize(self) -> None:
+        """
+        終了処理
+        """
+        self.picmanager.finalize()
+        self.displayer.destroy_config_window()
+
     def whoami(self) -> str:
         """
         自身のクラス名を取得する

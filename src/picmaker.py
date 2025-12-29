@@ -24,19 +24,25 @@ def main() -> None:
     parser.add_argument("-v", "--verbose", action="store_true", help="Show all clipboard and stats")
     parser.add_argument("-c", "--check", action="store_true", help="Check option values")
     args = parser.parse_args()
-    if args.check:
-        print(f"[debug] mode={args.mode}, verbose={args.verbose}")
-        return
-    if args.mode == "TW":
-        pm = PicMakerTW(args.verbose)
-    elif args.mode == "R":
-        pm = PicMakerReverse(args.verbose)
-    else:
-        print(f"[debug] mode={args.mode}, verbose={args.verbose}")
-        return
-    signal.signal(signal.SIGINT, pm.sigint_handler)
 
-    pm.displayer.entrypoint()
+    pm = None
+    try:
+        if args.check:
+            print(f"[debug] mode={args.mode}, verbose={args.verbose}")
+            return
+        if args.mode == "TW":
+            pm = PicMakerTW(args.verbose)
+        elif args.mode == "R":
+            pm = PicMakerReverse(args.verbose)
+        else:
+            print(f"[debug] mode={args.mode}, verbose={args.verbose}")
+            return
+        if pm is not None:
+            signal.signal(signal.SIGINT, pm.sigint_handler)
+            pm.displayer.entrypoint()
+    finally:
+        if pm is not None:
+            pm.finalize()
 
 
 if __name__ == "__main__":
