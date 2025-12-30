@@ -40,8 +40,6 @@ class PMFlags:
     このクラスで用いるフラグ
     """
 
-    # クリップボードの更新があったか
-    is_new_clipboard: bool = False
     # ステータスデータの更新があったか
     is_new_stats: bool = False
     # 画像生成中か
@@ -195,28 +193,29 @@ class PicMakerBase(ABC):
         """
         return
 
-    def reflesh_clipboard(self) -> None:
+    def refresh_clipboard(self) -> bool:
         """
         クリップボードを監視し, 記録中文字列と異なる場合に記録する\n
         同時にフラグの更新も行う
+
+        Returns:
+            bool: 更新があった場合は True, なかった場合は False
         """
         try:
             new_clipboard = pyperclip.paste()
         except Exception as e:
-            self.flags.is_new_clipboard = False
             print("An exception occur for watching clipboard.", e)
-            return
+            return False
 
         if self.crnt_clipboard == new_clipboard:
-            self.flags.is_new_clipboard = False
-            return
+            return False
 
         if self.pm_configs.is_verbose:
             print("new_clipboard:")
             print(new_clipboard)
 
-        self.flags.is_new_clipboard = True
         self.crnt_clipboard = new_clipboard
+        return True
 
     @abstractmethod
     def parse_clipboard(self) -> Dict[str, Any]:
@@ -233,8 +232,8 @@ class PicMakerBase(ABC):
         記録中クリップボード文字列をもとにステータスを更新する\n
         同時に記録中ステータスと一致するかを示すフラグの管理も行う
         """
-        self.reflesh_clipboard()
-        if not self.flags.is_new_clipboard:
+        has_refreshed = self.refresh_clipboard()
+        if not has_refreshed:
             self.flags.is_new_stats = False
             return
 
@@ -450,7 +449,7 @@ class PicMakerBase(ABC):
         """
         pass
 
-    def refresh_pic_main(self) -> None:
+    def refresh_pic(self) -> None:
         """
         画像の更新, 生成から表示までを実施する\n
         生成すべきでないと判断した場合は, すでに生成した画像が存在するならそれを表示する\n
@@ -487,7 +486,7 @@ class PicMakerBase(ABC):
         """
         if not self.is_stats_enough_for_prompt():
             return
-        threading.Thread(target=self.refresh_pic_main, args=(), daemon=True).start()
+        threading.Thread(target=self.refresh_pic, args=(), daemon=True).start()
 
     def doit(self) -> None:
         """
