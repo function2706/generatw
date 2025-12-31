@@ -6,11 +6,12 @@ from __future__ import annotations
 
 import tkinter
 from dataclasses import dataclass
-from pathlib import Path
 from tkinter import Frame, TclError, ttk
 from typing import Callable, Optional
 
 from PIL import Image, ImageTk
+
+from picmanager import PicManager, PicStats
 
 
 @dataclass
@@ -40,13 +41,10 @@ class Displayer:
 
     def __init__(
         self,
-        on_entrypoint: Callable[[], None],
-        on_endpoint: Callable[[], None],
-        on_gen: Callable[[], None],
-        on_output: Callable[[], None],
+        picmanager: PicManager,
+        on_edgepoint: Callable[[], None],
+        on_append: Callable[[], None],
         on_debug: Callable[[], None],
-        on_next: Callable[[], None],
-        on_prev: Callable[[], None],
         on_good: Callable[[], None],
         on_bad: Callable[[], None],
     ):
@@ -54,23 +52,17 @@ class Displayer:
         コンストラクタ
 
         Args:
-            on_entrypoint (Callable[[], None]): エントリポイントコールバック
-            on_endpoint (Callable[[], None]): エンドポイントコールバック
-            on_gen (Callable[[], None]): 生成処理コールバック
-            on_output (Callable[[], None]): 表示処理コールバック
+            picmanager (PicManager): PicManager インスタンス
+            on_edgepoint (Callable[[], None]): 端点処理コールバック
+            on_append (Callable[[], None]): タスク登録処理コールバック
             on_debug (Callable[[], None]): デバッグ処理コールバック
-            on_next (Callable[[], None]): Next 画像処理コールバック
-            on_prev (Callable[[], None]): Prev 画像処理コールバック
             on_good (Callable[[], None]): Good 処理コールバック
             on_bad (Callable[[], None]): Bad 処理コールバック
         """
-        self.on_entrypoint: Callable[[], None] = on_entrypoint
-        self.on_endpoint: Callable[[], None] = on_endpoint
-        self.on_gen: Callable[[], None] = on_gen
-        self.on_output: Callable[[], None] = on_output
+        self.picmanager: PicManager = picmanager
+        self.on_edgepoint: Callable[[], None] = on_edgepoint
+        self.on_append: Callable[[], None] = on_append
         self.on_debug: Callable[[], None] = on_debug
-        self.on_next: Callable[[], None] = on_next
-        self.on_prev: Callable[[], None] = on_prev
         self.on_good: Callable[[], None] = on_good
         self.on_bad: Callable[[], None] = on_bad
 
@@ -158,6 +150,25 @@ class Displayer:
             self.pic_window.destroy()
         self.pic_window = None
 
+    def on_output(self) -> None:
+        """
+        表示ボタンハンドラ\n
+        表示すべき画像がないときは何もしない
+        """
+        self.update_pic(self.picmanager.crnt_picstats)
+
+    def on_next(self) -> None:
+        """
+        > ボタンハンドラ
+        """
+        self.update_pic(self.picmanager.next_picstats())
+
+    def on_prev(self) -> None:
+        """
+        < ボタンハンドラ
+        """
+        self.update_pic(self.picmanager.prev_picstats())
+
     def construct_config_window(self) -> None:
         """
         GUI の構築
@@ -179,7 +190,7 @@ class Displayer:
         # ボタン用フレーム
         # ボタン(今すぐ生成)
         self.button_gen = ttk.Button(
-            self.config_button_frame, text="今すぐ生成", command=self.on_gen
+            self.config_button_frame, text="タスク登録", command=self.on_append
         )
         self.button_gen.grid(row=0, column=0, padx=6, pady=6, sticky="w")
         # ボタン(画像を表示)
@@ -258,18 +269,25 @@ class Displayer:
         self.button_bad = ttk.Button(self.pic_eval_frame, text="BAD", command=self.on_bad)
         self.button_bad.grid(row=0, column=1, padx=6, pady=6, sticky="wes")
 
-    def popup_with(self, path: Path) -> None:
+    def update_pic(self, picstats: PicStats) -> None:
         """
-        指定の画像を画像ウィンドウに表示する
+        画像フレームを指定の PicStats で更新する\n
+        picstats が None の場合は何もしない
 
         Args:
-            path (Path): 画像のパス
+            picstats (PicStats): 更新予定の PicStats
         """
-        image = Image.open(path)
+        if not picstats:
+            return
+
+        image = Image.open(picstats.path)
         tk_img = ImageTk.PhotoImage(image)
         self.construct_pic_window()
         self.pic_label.configure(image=tk_img)
         self.pic_label.image = tk_img
+
+        self.picmanager.crnt_picstats = picstats
+        self.switch_output_button_state(True)
 
     def switch_output_button_state(self, toggle: bool) -> None:
         """
@@ -307,11 +325,11 @@ class Displayer:
         """
         エントリポイントの処理
         """
-        self.tk_root.after(100, self.on_entrypoint)
+        self.tk_root.after(100, self.on_edgepoint)
         self.tk_root.mainloop()
 
     def endpoint(self) -> None:
         """
         エンドポイントの処理
         """
-        self.tk_root.after(500, self.on_endpoint)
+        self.tk_root.after(500, self.on_edgepoint)

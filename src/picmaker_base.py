@@ -10,7 +10,9 @@ import io
 import json
 import random
 import threading
+import time
 from abc import ABC, abstractmethod
+from collections import deque
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -22,6 +24,17 @@ from PIL import Image
 
 from displayer import Displayer, SDConfigs
 from picmanager import PicManager, PicStats, SDPngInfo
+
+
+@dataclass(frozen=True)
+class PMConsts:
+    """
+    このクラス関連の定数
+
+    """
+
+    # デバッグ用キャラクター名の部分文字列
+    charaname_substr_debug: str = "DebuggingPM"
 
 
 @dataclass
@@ -42,8 +55,8 @@ class PMFlags:
 
     # ステータスデータの更新があったか
     is_new_stats: bool = False
-    # 画像生成中か
-    is_generating: bool = False
+    # SIGINT が発生したか
+    is_task_thread_alive: bool = True
 
 
 def dump_json(data: Dict, label: str) -> None:
@@ -62,6 +75,41 @@ class PicMakerBase(ABC):
     """
     クリップボード監視, GUI 管理, 画像生成管理を実施するクラス
     """
+
+    class TaskBlueprint:
+        """
+        タスクの設計図\n
+        プロンプトの組, 生成キュー用に使用する\n
+        インスタンス化した際, その時点のプロンプトを記録中ステータスから生成し, セットする
+        """
+
+        def __init__(
+            self, picmaker_base: PicMakerBase = None, pos_prompt: str = "", neg_prompt: str = ""
+        ):
+            """
+            コンストラクタ\n
+            PicManagerBase が指定されている場合は, 必ず記録中ステータスをもとに生成する\n
+            ただしプロンプト生成に十分なステータスでない場合は何もしない\n
+            PicManagerBase が指定されておらず, 両プロンプトが指定されている場合は直接初期化する\n
+            それ以外は空文字列で初期化する
+
+            Args:
+                picmaker_base (PicMakerBase, optional): PicMakerBase インスタンス, Defaults to None.
+                pos_prompt (str, optional): ポジティブプロンプト, Defaults to "".
+                neg_prompt (str, optional): ネガティブプロンプト, Defaults to "".
+            """
+            if picmaker_base is not None:
+                if not picmaker_base.is_stats_enough_for_prompt():
+                    return
+
+                self.pos_prompt = picmaker_base.make_pos_prompt()
+                self.neg_prompt = picmaker_base.make_neg_prompt()
+            elif (pos_prompt is not None) and (neg_prompt is not None):
+                self.pos_prompt = pos_prompt
+                self.neg_prompt = neg_prompt
+            else:
+                self.pos_prompt = ""
+                self.neg_prompt = ""
 
     @property
     @abstractmethod
@@ -87,29 +135,47 @@ class PicMakerBase(ABC):
         self.crnt_clipboard = ""
         self.crnt_stats = {}
 
-        self.displayer = Displayer(
-            self.doit,
-            self.doit,
-            self.doit_oneshot,
-            self.on_output,
-            self.on_debug,
-            self.on_next,
-            self.on_prev,
-            self.on_good,
-            self.on_bad,
-        )
-
         self.pm_configs = PMConfigs()
         self.pm_configs.is_verbose = is_verbose
 
         self.picmanager = PicManager(self.pics_dir_path())
 
+        self.displayer = Displayer(
+            self.picmanager,
+            self.run_main,
+            self.reserve_task,
+            self.on_debug,
+            self.on_good,
+            self.on_bad,
+        )
+
+        self.tasks: deque[PicMakerBase.TaskBlueprint] = deque()
+        self.crnt_task: PicMakerBase.TaskBlueprint = None
+
+        self.task_thread = threading.Thread(target=self.do_task, args=(), daemon=True)
+        self.task_thread.start()
+
     def finalize(self) -> None:
         """
         終了処理
         """
+        if not self.flags.is_task_thread_alive:
+            return
+
+        self.flags.is_task_thread_alive = False
+        self.task_thread.join()
         self.picmanager.finalize()
         self.displayer.destroy_config_window()
+
+    def sigint_handler(self, sig, frame) -> None:
+        """
+        SIGINT ハンドラ
+
+        Args:
+            sig (_type_): シグナル
+            frame (_type_): Tkinter フレーム
+        """
+        self.finalize()
 
     def whoami(self) -> str:
         """
@@ -131,55 +197,22 @@ class PicMakerBase(ABC):
         return Path("pics") / Path(self.whoami())
 
     @abstractmethod
-    def set_dummy_stats(self) -> None:
+    def get_dummy_stats(self) -> Dict[str, Any]:
         """
-        ダミーデータをステータスにセットする(デバッグ用)\n
+        クリップボード上の文字列からダミーステータスを取得する(デバッグ用)\n
         データはモードに即して定義される
+
+        Returns:
+            Dict[str, Any]: ダミーステータス
         """
         pass
-
-    def on_output(self) -> None:
-        """
-        表示ボタンハンドラ\n
-        表示すべき画像がないときは何もしない
-        """
-        self.update_pic(self.picmanager.crnt_picstats)
 
     def on_debug(self) -> None:
         """
         デバッグボタンハンドラ\n
-        ダミーデータをステータスにセットし, 即時ポストする
+        ダミークリップボードを設定する
         """
-        self.set_dummy_stats()
-        self.doit_oneshot()
-
-    def update_pic(self, picstats: PicStats) -> None:
-        """
-        画像フレームを指定の PicStats で更新する\n
-        picstats が None の場合は何もしない
-
-        Args:
-            picstats (PicStats): 更新予定の PicStats
-        """
-        if not picstats:
-            return
-
-        self.displayer.popup_with(picstats.path)
-
-        self.picmanager.crnt_picstats = picstats
-        self.displayer.switch_output_button_state(True)
-
-    def on_next(self) -> None:
-        """
-        > ボタンハンドラ
-        """
-        self.update_pic(self.picmanager.next_picstats())
-
-    def on_prev(self) -> None:
-        """
-        < ボタンハンドラ
-        """
-        self.update_pic(self.picmanager.prev_picstats())
+        pyperclip.copy(PMConsts.charaname_substr_debug + str(random.randint(1, 8)))
 
     def on_good(self) -> None:
         """
@@ -195,8 +228,7 @@ class PicMakerBase(ABC):
 
     def refresh_clipboard(self) -> bool:
         """
-        クリップボードを監視し, 記録中文字列と異なる場合に記録する\n
-        同時にフラグの更新も行う
+        クリップボードを監視し, 記録中文字列と異なる場合に記録する
 
         Returns:
             bool: 更新があった場合は True, なかった場合は False
@@ -287,8 +319,8 @@ class PicMakerBase(ABC):
             Dict: ポストする json
         """
         api_json = {}
-        api_json["prompt"] = self.make_pos_prompt()
-        api_json["negative_prompt"] = self.make_neg_prompt()
+        api_json["prompt"] = self.crnt_task.pos_prompt
+        api_json["negative_prompt"] = self.crnt_task.neg_prompt
         api_json["steps"] = sd_configs.steps
         api_json["batch_size"] = sd_configs.batch_size
         api_json["sampler_name"] = sd_configs.sampler_name
@@ -306,38 +338,25 @@ class PicMakerBase(ABC):
         Returns:
             Tuple[Any, Any]: image フィールド, info フィールド, 失敗時は None
         """
-        try:
-            self.flags.is_generating = True
-            sd_configs = self.displayer.get_sd_configs()
-            payload = self.make_json_for_txt2img(sd_configs)
-            if not payload:
-                return None
+        sd_configs = self.displayer.get_sd_configs()
+        payload = self.make_json_for_txt2img(sd_configs)
+        if not payload:
+            return None
 
-            # txt2img
-            response = requests.post(
-                f"http://{sd_configs.ipaddr}:{sd_configs.port}/sdapi/v1/txt2img",
-                json=payload,
-                timeout=self.pm_configs.timeout_sec,
-            )
-            response.raise_for_status()
-            body = response.json()
-            images = body.get("images", [])
-            if not images:
-                print("API response without images.")
-                return None
+        # txt2img
+        response = requests.post(
+            f"http://{sd_configs.ipaddr}:{sd_configs.port}/sdapi/v1/txt2img",
+            json=payload,
+            timeout=self.pm_configs.timeout_sec,
+        )
+        response.raise_for_status()
+        body = response.json()
+        images = body.get("images", [])
+        if not images:
+            print("API response without images.")
+            return None
 
-            return images, json.loads(body.get("info", "{}"))
-        except requests.exceptions.Timeout:
-            print("API timeout.")
-        except requests.exceptions.RequestException as e:
-            print("API Failed to request:", e)
-        except (ValueError, KeyError, IndexError) as e:
-            print("Failed to generate image:", e)
-        except Exception as e:
-            print("Another error occurs about image:", e)
-        finally:
-            self.flags.is_generating = False
-        return None
+        return images, json.loads(body.get("info", "{}"))
 
     def make_dirname_from_prompts(self, pos_prompt: str, neg_prompt: str) -> str:
         """
@@ -439,58 +458,62 @@ class PicMakerBase(ABC):
             self.make_dirname_from_prompts(pos_prompt, neg_prompt)
         )
 
-    @abstractmethod
-    def should_gen_pic(self) -> bool:
-        """
-        画像生成を実施すべきか
-
-        Returns:
-            bool: True: 生成すべき, False: 生成すべきでない
-        """
-        pass
-
     def refresh_pic(self) -> None:
         """
-        画像の更新, 生成から表示までを実施する\n
-        生成すべきでないと判断した場合は, すでに生成した画像が存在するならそれを表示する\n
-        存在しない場合は生成を実施する\n
-        表示可能な画像が複数個存在する場合はランダムで決定する\n
-        生成に失敗した場合は何もしない
+        表示可能な画像が複数個存在する場合にランダムで表示する\n
+        存在しない場合は何もしない
         """
-        if self.should_gen_pic() or not self.get_crnt_picstats_list():
-            # 生成すべき or 画像が無いなら生成する
-            result = self.post_to_txt2img()
-            if result is None:
-                # 生成失敗
-                return
-            else:
-                images, infos = result
-            self.save_images(images, infos)
-        output_picstats = random.choice(self.get_crnt_picstats_list())
-        self.update_pic(output_picstats)
+        if not self.get_crnt_picstats_list():
+            return
 
-    def sigint_handler(self, sig, frame) -> None:
-        """
-        SIGINT ハンドラ
+        self.displayer.update_pic(random.choice(self.get_crnt_picstats_list()))
 
-        Args:
-            sig (_type_): シグナル
-            frame (_type_): Tkinter フレーム
+    def reserve_task(self) -> None:
         """
-        self.displayer.destroy_config_window()
-
-    def doit_oneshot(self) -> None:
-        """
-        ワンショット処理 (ステータス確認 -> 非同期で生成 -> 表示更新)\n
-        記録中ステータスをもとに即座に生成する
+        新しいタスクを生成し, タスクリストに予約する\n
+        ただしプロンプト生成に十分なステータスが記録されていない,\n
+        すでにリストに存在する, あるいは作業中のタスクの場合は何もしない
         """
         if not self.is_stats_enough_for_prompt():
             return
-        threading.Thread(target=self.refresh_pic, args=(), daemon=True).start()
 
-    def doit(self) -> None:
+        new_task = PicMakerBase.TaskBlueprint(self)
+        if (new_task in self.tasks) or (new_task == self.crnt_task):
+            return
+
+        self.tasks.append(new_task)
+
+    def do_task(self) -> None:
         """
-        メイン処理 (ステータス更新 -> ワンショット処理)\n
+        タスクを実行する, つまり生成 -> 保存をアトミックに繰り返し実行する\n
+        タスクが空, すでに実行中タスクが存在する, あるいは生成が失敗した場合はスキップする\n
+        例外発生時はループを抜ける
+        """
+        while self.flags.is_task_thread_alive:
+            time.sleep(0.5)
+            if (not self.tasks) or (self.crnt_task is not None):
+                # ここでは実行中タスクを解除してはいけない
+                continue
+
+            try:
+                self.crnt_task = self.tasks.popleft()
+                result = self.post_to_txt2img()
+                if result is None:
+                    # 生成失敗
+                    print("Failed to post.")
+                    continue
+                else:
+                    images, infos = result
+                    self.save_images(images, infos)
+            except Exception as e:
+                print("Any exception occurred: ", e)
+                break
+            finally:
+                self.crnt_task = None
+
+    def run_main(self) -> None:
+        """
+        メイン処理 (ステータス更新 -> 更新がある場合にタスクを予約 -> すでに存在する画像を表示)\n
         Tkinter メインループにて周期的に呼び出される処理
         """
         try:
@@ -501,6 +524,7 @@ class PicMakerBase(ABC):
             if not self.flags.is_new_stats:
                 return
 
-            self.doit_oneshot()
+            self.reserve_task()
+            self.refresh_pic()
         finally:
             self.displayer.endpoint()

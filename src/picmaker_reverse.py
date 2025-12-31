@@ -5,12 +5,11 @@
 from __future__ import annotations
 
 import copy
-import random
 import re
 from types import MappingProxyType
-from typing import Any, Mapping
+from typing import Any, Dict, Mapping
 
-from picmaker_base import Dict, PicMakerBase
+from picmaker_base import PicMakerBase, PMConsts
 
 
 class PicMakerReverse(PicMakerBase):
@@ -128,23 +127,30 @@ class PicMakerReverse(PicMakerBase):
                 "隠岐奈": "matara okina",
                 "女苑": "yorigami jo'on,tsurime",
                 "紫苑": "yorigami shion",
-                "テスト": "test",
+                PMConsts.charaname_substr_debug + "1": "human girl",
+                PMConsts.charaname_substr_debug + "2": "dog girl",
+                PMConsts.charaname_substr_debug + "3": "cat girl",
+                PMConsts.charaname_substr_debug + "4": "rabbit girl",
+                PMConsts.charaname_substr_debug + "5": "mouth girl",
+                PMConsts.charaname_substr_debug + "6": "sheep girl",
+                PMConsts.charaname_substr_debug + "7": "fox girl",
+                PMConsts.charaname_substr_debug + "8": "elf girl",
             }
         )
 
     def __init__(self, is_verbose: bool):
         super().__init__(is_verbose)
 
-    def set_dummy_stats(self) -> None:
-        self.crnt_stats = {}
-
-        self.crnt_stats["character"] = {}
-        chara_data = self.crnt_stats["character"]
-        chara_data["name"] = "テスト"
+    def get_dummy_stats(self) -> Dict[str, Any]:
+        stats = {}
+        stats["character"] = {}
+        chara_data = stats["character"]
+        chara_data["name"] = self.crnt_clipboard
         chara_data["status"] = "普通"
         chara_data["equip"] = ["シャツ", "パンツ"]
         chara_data["posture"] = "直立"
         chara_data["tool"] = ["腕時計", "イヤホン"]
+        return stats
 
     def get_charastats(self, stats: Dict[str, Any]) -> None:
         """
@@ -205,6 +211,9 @@ class PicMakerReverse(PicMakerBase):
         Returns:
             Dict[str, Any]: ステータス
         """
+        if PMConsts.charaname_substr_debug in self.crnt_clipboard:
+            return self.get_dummy_stats()
+
         new_stats = copy.deepcopy(self.crnt_stats)
         if re.search(r"^\s*(\S+)\s\[LV", self.crnt_clipboard, re.MULTILINE):
             self.get_charastats(new_stats)
@@ -233,6 +242,10 @@ class PicMakerReverse(PicMakerBase):
         return pos_prompt
 
     def make_neg_prompt(self) -> str:
+        if PMConsts.charaname_substr_debug in self.crnt_stats["character"]["name"]:
+            # デバッグステータス
+            return "R debug"
+
         neg_prompt = (
             "motion lines,speed lines,3d,((shiny skin)),bad quality,"
             "worst quality,worst detail,text,logo,cropped,deformed,blurry,((cropped face)),"
@@ -246,12 +259,3 @@ class PicMakerReverse(PicMakerBase):
             "(extra toes:2),(fewer toes:2),(missing toes:2)"
         )
         return neg_prompt
-
-    def should_gen_pic(self) -> bool:
-        """
-        仮実装, 30% で true を返す
-
-        Returns:
-            bool: 30% で True
-        """
-        return random.random() < 0.3

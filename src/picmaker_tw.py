@@ -5,12 +5,11 @@
 from __future__ import annotations
 
 import copy
-import random
 import re
 from types import MappingProxyType
 from typing import Any, Dict, Mapping
 
-from picmaker_base import PicMakerBase
+from picmaker_base import PicMakerBase, PMConsts
 
 
 # eratohoTW
@@ -219,33 +218,41 @@ class PicMakerTW(PicMakerBase):
                     "miyadeguchi mizuchi,blue hair,blue eyes,ponytail,"
                     "crossed bangs,hair between eyes"
                 ),
-                "テスト": "test",
+                PMConsts.charaname_substr_debug + "1": "human girl",
+                PMConsts.charaname_substr_debug + "2": "dog girl",
+                PMConsts.charaname_substr_debug + "3": "cat girl",
+                PMConsts.charaname_substr_debug + "4": "rabbit girl",
+                PMConsts.charaname_substr_debug + "5": "mouth girl",
+                PMConsts.charaname_substr_debug + "6": "sheep girl",
+                PMConsts.charaname_substr_debug + "7": "fox girl",
+                PMConsts.charaname_substr_debug + "8": "elf girl",
             }
         )
 
     def __init__(self, is_verbose: bool):
         super().__init__(is_verbose)
 
-    def set_dummy_stats(self) -> None:
-        self.crnt_stats = {}
+    def get_dummy_stats(self) -> Dict[str, Any]:
+        stats = {}
 
-        self.crnt_stats["metastats"] = {}
-        meta_stats = self.crnt_stats["metastats"]
+        stats["metastats"] = {}
+        meta_stats = stats["metastats"]
         meta_stats["season"] = "春"
         meta_stats["time"] = {"hour": "12", "minute": "34"}
         meta_stats["place"] = {"address": "デバッグルーム", "cleanliness": "清潔"}
         meta_stats["weather"] = "☀"
         meta_stats["temperature"] = "25"
 
-        self.crnt_stats["character"] = {}
-        chara_data = self.crnt_stats["character"]
-        chara_data["name"] = "テスト"
+        stats["character"] = {}
+        chara_data = stats["character"]
+        chara_data["name"] = self.crnt_clipboard
         chara_data["affection"] = {"rank": "C", "value": "100"}
         chara_data["trust"] = {"rank": "C", "value": "100"}
         chara_data["heat"] = "1"
         chara_data["equip"] = {}
         chara_data["equip"]["上半身"] = "シャツ"
         chara_data["equip"]["下半身"] = "パンツ"
+        return stats
 
     def get_metastats(self, stats: Dict[str, Any]) -> None:
         """
@@ -328,6 +335,9 @@ class PicMakerTW(PicMakerBase):
         Returns:
             Dict[str, Any]: ステータス
         """
+        if PMConsts.charaname_substr_debug in self.crnt_clipboard:
+            return self.get_dummy_stats()
+
         new_stats = copy.deepcopy(self.crnt_stats)
         if re.search(r"(\S+)の月", self.crnt_clipboard):
             self.get_metastats(new_stats)
@@ -358,6 +368,10 @@ class PicMakerTW(PicMakerBase):
         return pos_prompt
 
     def make_neg_prompt(self) -> str:
+        if PMConsts.charaname_substr_debug in self.crnt_stats["character"]["name"]:
+            # デバッグステータス
+            return "TW debug"
+
         neg_prompt = (
             "motion lines,speed lines,3d,((shiny skin)),bad quality,"
             "worst quality,worst detail,text,logo,cropped,deformed,blurry,((cropped face)),"
@@ -371,12 +385,3 @@ class PicMakerTW(PicMakerBase):
             "(extra toes:2),(fewer toes:2),(missing toes:2)"
         )
         return neg_prompt
-
-    def should_gen_pic(self) -> bool:
-        """
-        仮実装, 30% で true を返す
-
-        Returns:
-            bool: 30% で True
-        """
-        return random.random() < 0.3
