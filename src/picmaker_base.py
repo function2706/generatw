@@ -517,14 +517,14 @@ class PicMakerBase(ABC):
         Tkinter メインループにて周期的に呼び出される処理
         """
         try:
-            if not self.is_stats_enough_for_prompt():
-                self.displayer.switch_output_button_state(False)
-
             self.refresh_stats()
-            if not self.flags.is_new_stats:
+            if (not self.flags.is_new_stats) or (not self.is_stats_enough_for_prompt()):
                 return
 
             self.reserve_task()
             self.refresh_pic()
         finally:
             self.displayer.endpoint()
+            self.displayer.switch_output_button_state(
+                self.is_stats_enough_for_prompt() and self.picmanager.crnt_picstats
+            )
