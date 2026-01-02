@@ -5,39 +5,18 @@ GUI 管理クラス
 from __future__ import annotations
 
 import tkinter
-from dataclasses import dataclass
 from tkinter import Frame, TclError, ttk
-from typing import Callable, Optional
+from typing import Callable
 
 from PIL import Image, ImageTk
 
 from picmanager import PicManager, PicStats
 
 
-@dataclass
-class SDConfigs:
-    """
-    Stable Diffusion API 関連の設定一覧
-    """
-
-    ipaddr: Optional[str] = "127.0.0.1"
-    port: Optional[int] = 7860
-    steps: Optional[int] = 30
-    batch_size: Optional[int] = 2
-    sampler_name: Optional[str] = "DPM++ 2S a"
-    scheduler: Optional[str] = "Karras"
-    cfg_scale: Optional[float] = 7.0
-    seed: Optional[int] = -1
-    width: Optional[int] = 540
-    height: Optional[int] = 960
-
-
 class Displayer:
     """
     GUI 管理クラス
     """
-
-    SD_CONFIGS_DEFAULT = SDConfigs()
 
     def __init__(
         self,
@@ -47,6 +26,7 @@ class Displayer:
         on_debug: Callable[[], None],
         on_good: Callable[[], None],
         on_bad: Callable[[], None],
+        ownername: str,
     ):
         """
         コンストラクタ
@@ -58,7 +38,10 @@ class Displayer:
             on_debug (Callable[[], None]): デバッグ処理コールバック
             on_good (Callable[[], None]): Good 処理コールバック
             on_bad (Callable[[], None]): Bad 処理コールバック
+            ownername (str): 所有者の名前
         """
+        self.ownername = ownername
+
         self.picmanager: PicManager = picmanager
         self.on_edgepoint: Callable[[], None] = on_edgepoint
         self.on_append: Callable[[], None] = on_append
@@ -175,11 +158,20 @@ class Displayer:
         """
         # ウィンドウ定義
         self.tk_root.protocol("WM_DELETE_WINDOW", self.destroy_config_window)
-        self.tk_root.title("設定")
+        self.tk_root.title("picmaker - 設定")
         self.tk_root.columnconfigure(0, weight=1)
         self.tk_root.rowconfigure(0, weight=1)
-        # フレーム定義
-        self.config_main_frame = ttk.Frame(self.tk_root, padding=12)
+        # Notebook（タブ）
+        notebook = ttk.Notebook(self.tk_root)
+        notebook.grid(row=0, column=0, sticky="nsew")
+        # タブ定義
+        tab_main = ttk.Frame(notebook, padding=12)
+        tab_debug = ttk.Frame(notebook, padding=12)
+        notebook.add(tab_main, text="メイン")
+        notebook.add(tab_debug, text="デバッグ")
+
+        # メインタブ
+        self.config_main_frame = ttk.Frame(tab_main)
         self.config_main_frame.grid(row=0, column=0, sticky="nsew")
         self.config_button_frame = ttk.Frame(self.config_main_frame)
         self.config_button_frame.grid(row=0, column=0, sticky="w")
@@ -187,8 +179,11 @@ class Displayer:
         self.config_param1_frame.grid(row=1, column=0, sticky="w")
         self.config_param2_frame = ttk.Frame(self.config_main_frame)
         self.config_param2_frame.grid(row=2, column=0, sticky="w")
+        self.config_param3_frame = ttk.Frame(self.config_main_frame)
+        self.config_param3_frame.grid(row=3, column=0, sticky="ew")
+        self.config_param3_frame.columnconfigure(0, weight=1)
         # ボタン用フレーム
-        # ボタン(今すぐ生成)
+        # ボタン(タスク登録)
         self.button_gen = ttk.Button(
             self.config_button_frame, text="タスク登録", command=self.on_append
         )
@@ -198,37 +193,96 @@ class Displayer:
             self.config_button_frame, text="画像を表示", command=self.on_output
         )
         self.button_output.grid(row=0, column=1, padx=6, pady=6, sticky="w")
-        # ボタン(デバッグ)
-        self.button_debug = ttk.Button(
-            self.config_button_frame, text="デバッグ", command=self.on_debug
-        )
-        self.button_debug.grid(row=0, column=2, padx=6, pady=6, sticky="w")
         # フレーム 1
         # テキストボックス(幅)
-        self.entry_width = self.put_textbox(
-            self.config_param1_frame, "幅", 1, 0, 5, str(self.SD_CONFIGS_DEFAULT.width)
-        )
+        self.entry_width = self.put_textbox(self.config_param1_frame, "幅", 1, 0, 5, str(540))
         # テキストボックス(高さ)
-        self.entry_height = self.put_textbox(
-            self.config_param1_frame, "高さ", 1, 2, 5, str(self.SD_CONFIGS_DEFAULT.height)
-        )
+        self.entry_height = self.put_textbox(self.config_param1_frame, "高さ", 1, 2, 5, str(960))
         # テキストボックス(ステップ数)
-        self.entry_steps = self.put_textbox(
-            self.config_param1_frame, "Steps", 2, 0, 4, str(self.SD_CONFIGS_DEFAULT.steps)
-        )
+        self.entry_steps = self.put_textbox(self.config_param1_frame, "Steps", 2, 0, 4, str(30))
         # テキストボックス(生成数)
         self.entry_batch_size = self.put_textbox(
-            self.config_param1_frame, "生成数", 2, 2, 4, str(self.SD_CONFIGS_DEFAULT.batch_size)
+            self.config_param1_frame, "生成数", 2, 2, 4, str(2)
         )
         # フレーム 2
         # テキストボックス(IPアドレス)
         self.entry_ipaddr = self.put_textbox(
-            self.config_param2_frame, "IPアドレス", 0, 0, 16, str(self.SD_CONFIGS_DEFAULT.ipaddr)
+            self.config_param2_frame, "IPアドレス", 0, 0, 16, "127.0.0.1"
         )
         # テキストボックス(ポート)
-        self.entry_port = self.put_textbox(
-            self.config_param2_frame, "ポート", 0, 2, 6, str(self.SD_CONFIGS_DEFAULT.port)
+        self.entry_port = self.put_textbox(self.config_param2_frame, "ポート", 0, 2, 6, str(7860))
+        # 動作モード
+        ttk.Label(self.config_param3_frame, text=f"動作モード: {self.ownername}").grid(
+            row=0, column=0, padx=6, pady=6, sticky="e"
         )
+
+        # デバッグタブ
+        self.config_main_frame_debug = ttk.Frame(tab_debug)
+        self.config_main_frame_debug.grid(row=0, column=0, sticky="nsew")
+        self.config_param1_frame_debug = ttk.Frame(self.config_main_frame_debug)
+        self.config_param1_frame_debug.grid(row=1, column=0, sticky="w")
+        self.config_param2_frame_debug = ttk.Frame(self.config_main_frame_debug)
+        self.config_param2_frame_debug.grid(row=2, column=0, sticky="w")
+        # デバッグメインフレーム
+        # フレーム 1
+        # ボタン(デバッグ)
+        self.button_debug = ttk.Button(
+            self.config_param1_frame_debug, text="デバッグ", command=self.on_debug
+        )
+        self.button_debug.grid(row=0, column=0, padx=6, pady=6, sticky="w")
+        # チェックボックス
+        self.check_allow_edit_clipboard = tkinter.BooleanVar()
+        ttk.Checkbutton(
+            self.config_param1_frame_debug,
+            text="デバッグ時にクリップボードを書き換える",
+            variable=self.check_allow_edit_clipboard,
+        ).grid(row=0, column=1, padx=6, pady=6, sticky="w")
+        # フレーム 2
+        self.radio_modes = ["表示しない", "表示する"]
+        ttk.Label(self.config_param2_frame_debug, text=" クリップボード").grid(
+            row=1, column=0, padx=6, pady=6, sticky="w"
+        )
+        self.radio_verbose_clipboard = tkinter.StringVar(value=self.radio_modes[0])
+        for i, m in enumerate(self.radio_modes):
+            ttk.Radiobutton(
+                self.config_param2_frame_debug,
+                text=m,
+                value=m,
+                variable=self.radio_verbose_clipboard,
+            ).grid(row=1, column=1 + i, padx=4, pady=6, sticky="w")
+        ttk.Label(self.config_param2_frame_debug, text=" ステータス").grid(
+            row=2, column=0, padx=6, pady=6, sticky="w"
+        )
+        self.radio_verbose_stats = tkinter.StringVar(value=self.radio_modes[0])
+        for i, m in enumerate(self.radio_modes):
+            ttk.Radiobutton(
+                self.config_param2_frame_debug,
+                text=m,
+                value=m,
+                variable=self.radio_verbose_stats,
+            ).grid(row=2, column=1 + i, padx=4, pady=6, sticky="w")
+        ttk.Label(self.config_param2_frame_debug, text=" 応答(image)").grid(
+            row=3, column=0, padx=6, pady=6, sticky="w"
+        )
+        self.radio_verbose_image = tkinter.StringVar(value=self.radio_modes[0])
+        for i, m in enumerate(self.radio_modes):
+            ttk.Radiobutton(
+                self.config_param2_frame_debug,
+                text=m,
+                value=m,
+                variable=self.radio_verbose_image,
+            ).grid(row=3, column=1 + i, padx=4, pady=6, sticky="w")
+        ttk.Label(self.config_param2_frame_debug, text=" PicInfo").grid(
+            row=4, column=0, padx=6, pady=6, sticky="w"
+        )
+        self.radio_verbose_picinfo = tkinter.StringVar(value=self.radio_modes[0])
+        for i, m in enumerate(self.radio_modes):
+            ttk.Radiobutton(
+                self.config_param2_frame_debug,
+                text=m,
+                value=m,
+                variable=self.radio_verbose_picinfo,
+            ).grid(row=4, column=1 + i, padx=4, pady=6, sticky="w")
 
     def construct_pic_window(self) -> None:
         """
@@ -240,7 +294,7 @@ class Displayer:
             return
 
         self.pic_window = tkinter.Toplevel(self.tk_root)
-        self.pic_window.title("画像")
+        self.pic_window.title("pipmaker - 画像")
         self.pic_window.protocol("WM_DELETE_WINDOW", self.destroy_pic_window)
         # フレーム定義
         self.pic_main_frame = ttk.Frame(self.pic_window, padding=5)
@@ -304,23 +358,6 @@ class Displayer:
         else:
             self.button_output.configure(state="disabled")
 
-    def get_sd_configs(self) -> SDConfigs:
-        """
-        GUI から SD コンフィグを取得する
-        """
-        sd_configs = SDConfigs()
-        sd_configs.ipaddr = self.entry_ipaddr.get()
-        sd_configs.port = self.entry_port.get()
-        sd_configs.steps = int(self.entry_steps.get())
-        sd_configs.batch_size = int(self.entry_batch_size.get())
-        sd_configs.sampler_name = "DPM++ 2S a"
-        sd_configs.scheduler = "Karras"
-        sd_configs.cfg_scale = 7.0
-        sd_configs.seed = -1
-        sd_configs.width = int(self.entry_width.get())
-        sd_configs.height = int(self.entry_height.get())
-        return sd_configs
-
     def entrypoint(self) -> None:
         """
         エントリポイントの処理
@@ -333,3 +370,47 @@ class Displayer:
         エンドポイントの処理
         """
         self.tk_root.after(500, self.on_edgepoint)
+
+    @property
+    def srv_ipaddr(self) -> str:
+        return self.entry_ipaddr.get()
+
+    @property
+    def srv_port(self) -> str:
+        return self.entry_port.get()
+
+    @property
+    def sd_steps(self) -> int:
+        return int(self.entry_steps.get())
+
+    @property
+    def sd_batch_size(self) -> int:
+        return int(self.entry_batch_size.get())
+
+    @property
+    def sd_width(self) -> int:
+        return int(self.entry_width.get())
+
+    @property
+    def sd_height(self) -> int:
+        return int(self.entry_height.get())
+
+    @property
+    def allow_edit_clipboard(self) -> bool:
+        return self.check_allow_edit_clipboard.get()
+
+    @property
+    def print_new_clipboard(self) -> bool:
+        return self.radio_verbose_clipboard.get() == self.radio_modes[1]
+
+    @property
+    def print_new_stats(self) -> bool:
+        return self.radio_verbose_stats.get() == self.radio_modes[1]
+
+    @property
+    def print_images(self) -> bool:
+        return self.radio_verbose_image.get() == self.radio_modes[1]
+
+    @property
+    def print_picinfo(self) -> bool:
+        return self.radio_verbose_picinfo.get() == self.radio_modes[1]

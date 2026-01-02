@@ -229,8 +229,8 @@ class PicMakerTW(PicMakerBase):
             }
         )
 
-    def __init__(self, is_verbose: bool):
-        super().__init__(is_verbose)
+    def __init__(self):
+        super().__init__()
 
     def get_dummy_stats(self) -> Dict[str, Any]:
         stats = {}

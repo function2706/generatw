@@ -22,7 +22,7 @@ import pyperclip
 import requests
 from PIL import Image
 
-from displayer import Displayer, SDConfigs
+from displayer import Displayer
 from picmanager import PicManager, PicStats, SDPngInfo
 
 
@@ -35,16 +35,6 @@ class PMConsts:
 
     # デバッグ用キャラクター名の部分文字列
     charaname_substr_debug: str = "DebuggingPM"
-
-
-@dataclass
-class PMConfigs:
-    """
-    このクラス関連の設定一覧
-    """
-
-    is_verbose: bool = False
-    timeout_sec: int = 60
 
 
 @dataclass
@@ -123,20 +113,14 @@ class PicMakerBase(ABC):
         """
         raise NotImplementedError
 
-    def __init__(self, is_verbose: bool):
+    def __init__(self):
         """
         コンストラクタ\n
-
-        Args:
-            is_verbose (bool): 冗長的表示を行うか
         """
         self.flags = PMFlags()
 
         self.crnt_clipboard = ""
         self.crnt_stats = {}
-
-        self.pm_configs = PMConfigs()
-        self.pm_configs.is_verbose = is_verbose
 
         self.picmanager = PicManager(self.pics_dir_path())
 
@@ -147,6 +131,7 @@ class PicMakerBase(ABC):
             self.on_debug,
             self.on_good,
             self.on_bad,
+            self.whoami(),
         )
 
         self.tasks: deque[PicMakerBase.TaskBlueprint] = deque()
@@ -212,7 +197,15 @@ class PicMakerBase(ABC):
         デバッグボタンハンドラ\n
         ダミークリップボードを設定する
         """
-        pyperclip.copy(PMConsts.charaname_substr_debug + str(random.randint(1, 8)))
+        if self.displayer.allow_edit_clipboard:
+            pyperclip.copy(PMConsts.charaname_substr_debug + str(random.randint(1, 8)))
+        else:
+            stats = self.get_dummy_stats()
+            stats["character"]["name"] = PMConsts.charaname_substr_debug + str(random.randint(1, 8))
+            self.crnt_stats = stats
+            if self.displayer.print_new_stats:
+                dump_json(stats, "new_stats(debug)")
+            self.run_oneshot()
 
     def on_good(self) -> None:
         """
@@ -242,7 +235,7 @@ class PicMakerBase(ABC):
         if self.crnt_clipboard == new_clipboard:
             return False
 
-        if self.pm_configs.is_verbose:
+        if self.displayer.print_new_clipboard:
             print("new_clipboard:")
             print(new_clipboard)
 
@@ -275,7 +268,7 @@ class PicMakerBase(ABC):
             self.flags.is_new_stats = False
             return
 
-        if self.pm_configs.is_verbose:
+        if self.displayer.print_new_stats:
             dump_json(new_stats, "new_stats")
 
         self.flags.is_new_stats = True
@@ -311,7 +304,7 @@ class PicMakerBase(ABC):
         """
         pass
 
-    def make_json_for_txt2img(self, sd_configs: SDConfigs) -> Dict:
+    def make_json_for_txt2img(self) -> Dict:
         """
         現在の Stable Diffusion 設定から txt2img エンドポイントにポストする json を生成する
 
@@ -321,14 +314,14 @@ class PicMakerBase(ABC):
         api_json = {}
         api_json["prompt"] = self.crnt_task.pos_prompt
         api_json["negative_prompt"] = self.crnt_task.neg_prompt
-        api_json["steps"] = sd_configs.steps
-        api_json["batch_size"] = sd_configs.batch_size
-        api_json["sampler_name"] = sd_configs.sampler_name
-        api_json["scheduler"] = sd_configs.scheduler
-        api_json["cfg_scale"] = sd_configs.cfg_scale
-        api_json["seed"] = sd_configs.seed
-        api_json["width"] = sd_configs.width
-        api_json["height"] = sd_configs.height
+        api_json["steps"] = self.displayer.sd_steps
+        api_json["batch_size"] = self.displayer.sd_batch_size
+        api_json["sampler_name"] = "DPM++ 2S a"
+        api_json["scheduler"] = "Karras"
+        api_json["cfg_scale"] = 7.0
+        api_json["seed"] = -1
+        api_json["width"] = self.displayer.sd_width
+        api_json["height"] = self.displayer.sd_height
         return api_json if api_json["prompt"] and api_json["negative_prompt"] else None
 
     def post_to_txt2img(self) -> Optional[Tuple[Any, Any]]:
@@ -338,16 +331,15 @@ class PicMakerBase(ABC):
         Returns:
             Tuple[Any, Any]: image フィールド, info フィールド, 失敗時は None
         """
-        sd_configs = self.displayer.get_sd_configs()
-        payload = self.make_json_for_txt2img(sd_configs)
+        payload = self.make_json_for_txt2img()
         if not payload:
             return None
 
         # txt2img
         response = requests.post(
-            f"http://{sd_configs.ipaddr}:{sd_configs.port}/sdapi/v1/txt2img",
+            f"http://{self.displayer.srv_ipaddr}:{self.displayer.srv_port}/sdapi/v1/txt2img",
             json=payload,
-            timeout=self.pm_configs.timeout_sec,
+            timeout=60,
         )
         response.raise_for_status()
         body = response.json()
@@ -423,7 +415,7 @@ class PicMakerBase(ABC):
         if not images or not infos:
             return
 
-        if self.pm_configs.is_verbose:
+        if self.displayer.print_picinfo:
             dump_json(infos, "infos")
 
         for idx, image_data in enumerate(images):
@@ -438,7 +430,7 @@ class PicMakerBase(ABC):
 
                 image.save(str(pic_path), pnginfo=SDPngInfo(infos, idx))
 
-                if self.pm_configs.is_verbose:
+                if self.displayer.print_images:
                     dump_json(PicStats(pic_path).info.to_dict(), "image")
             except Exception as e:
                 print(f"[WARN] Failed to save image idx={idx}: {e}")
@@ -511,6 +503,13 @@ class PicMakerBase(ABC):
             finally:
                 self.crnt_task = None
 
+    def run_oneshot(self) -> None:
+        """
+        タスク予約とすでに存在する画像の表示を1度だけ行う
+        """
+        self.reserve_task()
+        self.refresh_pic()
+
     def run_main(self) -> None:
         """
         メイン処理 (ステータス更新 -> 更新がある場合にタスクを予約 -> すでに存在する画像を表示)\n
@@ -521,8 +520,7 @@ class PicMakerBase(ABC):
             if (not self.flags.is_new_stats) or (not self.is_stats_enough_for_prompt()):
                 return
 
-            self.reserve_task()
-            self.refresh_pic()
+            self.run_oneshot()
         finally:
             self.displayer.endpoint()
             self.displayer.switch_output_button_state(
