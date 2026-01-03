@@ -131,7 +131,7 @@ class PicMakerReverse(PicMakerBase):
                 PMConsts.charaname_substr_debug + "2": "dog girl",
                 PMConsts.charaname_substr_debug + "3": "cat girl",
                 PMConsts.charaname_substr_debug + "4": "rabbit girl",
-                PMConsts.charaname_substr_debug + "5": "mouth girl",
+                PMConsts.charaname_substr_debug + "5": "mouse girl",
                 PMConsts.charaname_substr_debug + "6": "sheep girl",
                 PMConsts.charaname_substr_debug + "7": "fox girl",
                 PMConsts.charaname_substr_debug + "8": "elf girl",
