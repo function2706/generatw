@@ -129,6 +129,7 @@ class PicMakerBase(ABC):
             self.run_main,
             self.reserve_task,
             self.on_debug,
+            self.on_dump_picmanager,
             self.on_good,
             self.on_bad,
             self.whoami(),
@@ -206,6 +207,12 @@ class PicMakerBase(ABC):
             if self.displayer.print_new_stats:
                 dump_json(stats, "new_stats(debug)")
             self.run_oneshot()
+
+    def on_dump_picmanager(self) -> None:
+        """
+        PicManager ダンプボタンハンドラ
+        """
+        print(self.picmanager.to_json())
 
     def on_good(self) -> None:
         """

@@ -185,11 +185,18 @@ class Displayer:
                         command=owner.super_owner.super_owner.on_debug,
                     )
                     self.debug_button.grid(row=0, column=0, padx=6, pady=6, sticky="w")
+                    # ボタン(PicManager ダンプ)
+                    self.debug_button = ttk.Button(
+                        self.exe_debug_frame,
+                        text="PicManager",
+                        command=owner.super_owner.super_owner.on_dump_picmanager,
+                    )
+                    self.debug_button.grid(row=1, column=0, padx=6, pady=6, sticky="w")
                     # チェックボックス
                     self.allow_edit_clipboard_check = tkinter.BooleanVar()
                     ttk.Checkbutton(
                         self.exe_debug_frame,
-                        text="デバッグ時にクリップボードを書き換える",
+                        text="クリップボードの更新",
                         variable=self.allow_edit_clipboard_check,
                     ).grid(row=0, column=1, padx=6, pady=6, sticky="w")
 
@@ -370,6 +377,7 @@ class Displayer:
         on_edgepoint: Callable[[], None],
         on_append: Callable[[], None],
         on_debug: Callable[[], None],
+        on_dump_picmanager: Callable[[], None],
         on_good: Callable[[], None],
         on_bad: Callable[[], None],
         ownername: str,
@@ -382,6 +390,7 @@ class Displayer:
             on_edgepoint (Callable[[], None]): 端点処理コールバック
             on_append (Callable[[], None]): タスク登録処理コールバック
             on_debug (Callable[[], None]): デバッグ処理コールバック
+            on_dump_picmanager (Callable[[], None]): PicManager ダンプコールバック
             on_good (Callable[[], None]): Good 処理コールバック
             on_bad (Callable[[], None]): Bad 処理コールバック
             ownername (str): 所有者の名前
@@ -392,6 +401,7 @@ class Displayer:
         self.on_edgepoint: Callable[[], None] = on_edgepoint
         self.on_append: Callable[[], None] = on_append
         self.on_debug: Callable[[], None] = on_debug
+        self.on_dump_picmanager: Callable[[], None] = on_dump_picmanager
         self.on_good: Callable[[], None] = on_good
         self.on_bad: Callable[[], None] = on_bad
 
