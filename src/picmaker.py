@@ -11,7 +11,7 @@ from picmaker_reverse import PicMakerReverse
 from picmaker_tw import PicMakerTW
 
 
-class mode_window:
+class ModeWindow:
     """
     初期ウィンドウ管理クラス
     """
@@ -85,7 +85,7 @@ def main() -> None:
         elif args.mode == "R":
             pm = PicMakerReverse()
         else:
-            window = mode_window()
+            window = ModeWindow()
             window.entrypoint()
             if not window.flag_exe_main:
                 return
