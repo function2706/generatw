@@ -4,15 +4,158 @@
 
 from __future__ import annotations
 
-import copy
+import random
 import re
+from dataclasses import asdict, dataclass, field
+from enum import Enum, auto
 from types import MappingProxyType
-from typing import Any, Dict, Mapping
+from typing import Any, Dict, List, Mapping
 
-from picmaker_base import PicMakerBase, PMConsts
+from picmaker_base import PicMakerBase, PMConsts, search_regex
 
 
-class PicMakerReverse(PicMakerBase):
+class State(Enum):
+    normal = auto()
+    exhausted = auto()  # 疲弊
+    debilitated = auto()  # 衰弱
+    lethargic = auto()  # 無気力
+    dazed = auto()  # 朦朧
+    lustful = auto()  # 情欲
+    angry = auto()  # 怒り
+    bored = auto()  # 退屈
+    depressed = auto()  # 鬱屈
+    none = auto()
+
+
+class Opearation(Enum):
+    communication_ask_about_her = auto()
+    communication_sexual_talk = auto()
+    communication_comfort = auto()
+    communication_threaten = auto()
+    communication_order_undress = auto()
+    communication_require_agreement = auto()
+    communication_declare_punishment = auto()
+    communication_bellow = auto()
+    communication_laugh_creepily = auto()
+
+    caress_caress = auto()
+    caress_breasts = auto()
+    caress_pussy_oral = auto()
+    caress_anal = auto()
+    caress_anal_oral = auto()
+    caress_kiss = auto()
+    caress_sumata = auto()
+    caress_paizuri = auto()
+    caress_footjob = auto()
+    caress_vagina = auto()
+    caress_push = auto()
+    caress_push_down = auto()
+
+    none = auto()
+
+
+@dataclass
+class Character:
+    name: str = ""
+    state: State = State.none
+    equips: List[str] = field(default_factory=list)
+    posture: str = ""
+    tools: List[str] = field(default_factory=list)
+
+    @classmethod
+    def make(cls, s: str):
+        def make_name() -> str:
+            match = search_regex(s, r"^\s*(\S+)\s\[LV")
+            return "" if match is None else match
+
+        def make_state() -> State:
+            name = search_regex(s, r"^\s*(\S+)\s\[LV")
+            match = search_regex(s, rf"^\s*{re.escape(name)}の状態:\[(\S+)\]")
+            if match is None:
+                return State.none
+            elif match == "疲弊":
+                return State.exhausted
+            elif match == "衰弱":
+                return State.debilitated
+            elif match == "無気力":
+                return State.lethargic
+            elif match == "朦朧":
+                return State.dazed
+            elif match == "情欲":
+                return State.lustful
+            elif match == "怒り":
+                return State.angry
+            elif match == "退屈":
+                return State.bored
+            elif match == "鬱屈":
+                return State.depressed
+            else:
+                return State.normal
+
+        def make_equips() -> List[str]:
+            name = search_regex(s, r"^\s*(\S+)\s\[LV")
+            match = search_regex(s, rf"^\s*{re.escape(name)}の衣装：\s*(?:\[[^\[\]\n]+\])+", 0)
+            if match is None:
+                return []
+            equips: List[str] = []
+            items = re.findall(r"\[([^\[\]\n]+)\]", match)
+            for item in items:
+                equips.append(item)
+            return equips
+
+        def make_posture() -> str:
+            name = search_regex(s, r"^\s*(\S+)\s\[LV")
+            match = search_regex(s, rf"^\s*現在の姿勢：\S*\[{re.escape(name)}：(\S+)\]")
+            return "" if match is None else match
+
+        def make_tools() -> List[str]:
+            match = search_regex(s, r"^\s*使用中\s*(?:\[[^\[\]\n]+\])+", 0)
+            if match is None:
+                return []
+            tools: List[str] = []
+            items = re.findall(r"\[([^\[\]\n]+)\]", match)
+            for item in items:
+                tools.append(item)
+            return tools
+
+        return cls(
+            name=make_name(),
+            state=make_state(),
+            equips=make_equips(),
+            posture=make_posture(),
+            tools=make_tools(),
+        )
+
+
+@dataclass
+class Action:
+    action: Opearation = Opearation.none
+
+    @classmethod
+    def make(cls, s: str):
+        def make_action() -> Opearation:
+            return Opearation.none
+
+        return cls(action=make_action())
+
+
+@dataclass
+class ReverseStats:
+    character: Character = field(default_factory=Character)
+    action: Action = field(default_factory=Action)
+
+    def refresh(self, s: str) -> None:
+        if search_regex(s, r"^\s*\S+\s\[LV", 0):
+            self.character = Character.make(s)
+        if search_regex(s, r"hogehoge", 0):
+            # T.B.D.
+            self.action = Action.make(s)
+
+    def todict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+
+class PicMakerReverse(PicMakerBase[ReverseStats]):
     """
     クリップボード監視, GUI 管理, 画像生成管理を実施するクラス for Reverse
     """
@@ -139,110 +282,33 @@ class PicMakerReverse(PicMakerBase):
         )
 
     def __init__(self):
-        super().__init__()
+        super().__init__(ReverseStats())
 
-    def get_dummy_stats(self) -> Dict[str, Any]:
-        stats = {}
-        stats["character"] = {}
-        chara_data = stats["character"]
-        chara_data["name"] = self.crnt_clipboard
-        chara_data["status"] = "普通"
-        chara_data["equip"] = ["シャツ", "パンツ"]
-        chara_data["posture"] = "直立"
-        chara_data["tool"] = ["腕時計", "イヤホン"]
-        return stats
-
-    def get_charastats(self, stats: Dict[str, Any]) -> None:
-        """
-        指定のステータスからキャラクターステータスを取得する
-
-        Args:
-            stats (Dict[str, Any]): ステータス
-        """
-        stats["character"] = {}
-        chara_data = stats["character"]
-        # キャラ名
-        name_match = re.search(r"^\s*(\S+)\s\[LV", self.crnt_clipboard, re.MULTILINE)
-        if name_match:
-            chara_data["name"] = name_match.group(1)
-        name = chara_data["name"]
-        # 状態
-        status_match = re.search(
-            rf"^\s*{re.escape(name)}の状態:\[(\S+)\]", self.crnt_clipboard, re.MULTILINE
+    def make_dummy_stats(self, name: str = None) -> ReverseStats:
+        dummy_stats = ReverseStats()
+        dummy_stats.character.name = (
+            name
+            if name is not None
+            else PMConsts.charaname_substr_debug + str(random.randint(1, 8))
         )
-        if status_match:
-            chara_data["status"] = status_match.group(1)
-        # 衣装
-        equip_block_match = re.search(
-            rf"^\s*{re.escape(name)}の衣装：\s*(?:\[[^\[\]\n]+\])+",
-            self.crnt_clipboard,
-            re.MULTILINE,
-        )
-        if equip_block_match:
-            chara_data["equip"] = []
-            equip_list = chara_data["equip"]
-            equip_block = equip_block_match.group(0)
-            items = re.findall(r"\[([^\[\]\n]+)\]", equip_block)
-            for item in items:
-                equip_list.append(item)
-        # 姿勢
-        posture_match = re.search(
-            rf"^\s*現在の姿勢：\S*\[{re.escape(name)}：(\S+)\]", self.crnt_clipboard, re.MULTILINE
-        )
-        if posture_match:
-            chara_data["posture"] = posture_match.group(1)
-        # 使用中
-        tool_block_match = re.search(
-            r"^\s*使用中\s*(?:\[[^\[\]\n]+\])+", self.crnt_clipboard, re.MULTILINE
-        )
-        if tool_block_match:
-            chara_data["tool"] = []
-            tool_list = chara_data["tool"]
-            tool_block = tool_block_match.group(0)
-            items = re.findall(r"\[([^\[\]\n]+)\]", tool_block)
-            for item in items:
-                tool_list.append(item)
-
-    def parse_clipboard(self) -> Dict[str, Any]:
-        """
-        クリップボード文字列をもとにキャラクタステータスを取得する\n
-        変更が加わる箇所以外は更新されない
-
-        Returns:
-            Dict[str, Any]: ステータス
-        """
-        if PMConsts.charaname_substr_debug in self.crnt_clipboard:
-            return self.get_dummy_stats()
-
-        new_stats = copy.deepcopy(self.crnt_stats)
-        if re.search(r"^\s*(\S+)\s\[LV", self.crnt_clipboard, re.MULTILINE):
-            self.get_charastats(new_stats)
-
-        return new_stats
+        dummy_stats.character.state = State.normal
+        dummy_stats.character.equips = ["シャツ", "パンツ"]
+        dummy_stats.character.posture = "直立"
+        dummy_stats.character.tools = ["腕時計", "イヤホン"]
+        return dummy_stats
 
     def is_stats_enough_for_prompt(self) -> bool:
-        stats = self.crnt_stats
-        if not isinstance(stats, Dict) or not stats:
-            return False
-        character = stats.get("character")
-        if not isinstance(character, Dict) or not character:
-            return False
-        name = character.get("name")
-        if not isinstance(name, str) or not name:
-            return False
-
-        return True
+        return self.crnt_stats.character.name != ""
 
     def make_pos_prompt(self) -> str:
-        name = self.crnt_stats["character"]["name"]
-        pos_prompt = self.chara_tbl.get(name, "")
+        pos_prompt = self.chara_tbl.get(self.crnt_stats.character.name, "")
         if pos_prompt == "":
             return ""
         pos_prompt += ",best quality,masterpiece,absurdres,1girl,solo"
         return pos_prompt
 
     def make_neg_prompt(self) -> str:
-        if PMConsts.charaname_substr_debug in self.crnt_stats["character"]["name"]:
+        if PMConsts.charaname_substr_debug in self.crnt_stats.character.name:
             # デバッグステータス
             return "R debug"
 

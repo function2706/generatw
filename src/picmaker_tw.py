@@ -4,16 +4,245 @@
 
 from __future__ import annotations
 
-import copy
-import re
+import random
+from dataclasses import asdict, dataclass, field
+from enum import Enum, auto
 from types import MappingProxyType
 from typing import Any, Dict, Mapping
 
-from picmaker_base import PicMakerBase, PMConsts
+from picmaker_base import PicMakerBase, PMConsts, search_regex
+
+
+class Season(Enum):
+    spring = auto()
+    summer = auto()
+    autumn = auto()
+    winter = auto()
+    none = auto()
+
+
+class Weather(Enum):
+    sunny = auto()
+    cloudy = auto()
+    rainy = auto()
+    snowy = auto()
+    foggy = auto()
+    none = auto()
+
+
+class Vibe(Enum):
+    normal = auto()
+    good = auto()
+    bad = auto()
+    none = auto()
+
+
+@dataclass
+class Character:
+    name: str = ""
+    vibe: Vibe = Vibe.none
+    affection: int = -1
+    trust: int = -1
+    frustration: int = -1
+    angry: int = -1
+    in_heat: bool = -1
+    mood: int = -1
+    corruption: int = -1
+    upper: str = ""
+    upper_state: str = ""
+    lower: str = ""
+    lower_state: str = ""
+
+    @classmethod
+    def make(cls, s: str):
+        def make_name() -> str:
+            match = search_regex(s, r"^(.+?)\s*(?:（[^）]+）)?\s*\(好感度")
+            return "" if match is None else match
+
+        def make_vibe() -> Vibe:
+            match = search_regex(s, r"^.+?\s*(?:（([^）]+)）)?\s*\(好感度")
+            if match is None:
+                return Vibe.none
+            elif match == "ご機嫌":
+                return Vibe.good
+            elif match == "フキゲン":
+                return Vibe.bad
+            else:
+                return Vibe.normal
+
+        def make_affection() -> int:
+            match = search_regex(s, r"好感度:\s*[a-zA-Z]+\s*(\d+)")
+            return -1 if match is None else int(match)
+
+        def make_trust() -> int:
+            match = search_regex(s, r"信頼度:\s*[a-zA-Z]+\s*(\d+)")
+            return -1 if match is None else int(match)
+
+        def make_frustration() -> int:
+            match = search_regex(s, r"欲求不満度:\s*(\d+)％")
+            return -1 if match is None else int(match)
+
+        def make_angry() -> int:
+            match = search_regex(s, r"怒り:\s*(！*)|怒", 0)
+            if match is None:
+                return -1
+            elif match == "怒":
+                return 6
+            else:
+                return len(match.replace("怒り:", "").strip())
+
+        def make_in_heat() -> bool:
+            return False if search_regex(s, r"発情中", 0) is None else True
+
+        def make_mood() -> int:
+            match = search_regex(s, r"ムード:\s*(OverDrive!!|❤*)")
+            return -1 if match is None else 6 if match == "OverDrive!!" else len(match)
+
+        def make_corruption() -> int:
+            match = search_regex(s, r"理性:\s*(LimitBreak!!|★*)")
+            return -1 if match is None else 6 if match == "LimitBreak!!" else 5 - len(match)
+
+        def make_upper() -> str:
+            match = search_regex(s, r"【上半身】\s*([^\s]*)")
+            return "" if match is None else match.strip()
+
+        def make_upper_state() -> str:
+            match = search_regex(s, r"【上半身】\s*[^\s]*\s*([^【]*)")
+            return "" if match is None else match.strip()
+
+        def make_lower() -> str:
+            match = search_regex(s, r"【下半身】\s*([^\s]*)")
+            return "" if match is None else match.strip()
+
+        def make_lower_state() -> str:
+            match = search_regex(s, r"【下半身】\s*[^\s]*\s*([^【=<]*)")
+            return "" if match is None else match.strip()
+
+        return cls(
+            name=make_name(),
+            vibe=make_vibe(),
+            affection=make_affection(),
+            trust=make_trust(),
+            frustration=make_frustration(),
+            angry=make_angry(),
+            in_heat=make_in_heat(),
+            mood=make_mood(),
+            corruption=make_corruption(),
+            upper=make_upper(),
+            upper_state=make_upper_state(),
+            lower=make_lower(),
+            lower_state=make_lower_state(),
+        )
+
+
+@dataclass
+class Meta:
+    season: Season = Season.none
+    hour: int = -1
+    minute: int = -1
+    address: str = ""
+    cleanliness: str = ""
+    weather: Weather = Weather.none
+    rainbow: bool = False
+    temperature: float = 0
+
+    @classmethod
+    def make(cls, s: str):
+        def make_season() -> Season:
+            match = search_regex(s, r"([春夏秋冬])の月")
+            if match is None:
+                return Season.none
+            elif match == "春":
+                return Season.spring
+            elif match == "夏":
+                return Season.summer
+            elif match == "秋":
+                return Season.autumn
+            elif match == "冬":
+                return Season.winter
+            else:
+                return Season.none
+
+        def make_hour() -> int:
+            match = search_regex(s, r"(\d+)時")
+            return -1 if match is None else int(match)
+
+        def make_minute() -> int:
+            match = search_regex(s, r"(\d+)分")
+            return -1 if match is None else int(match)
+
+        def make_address() -> str:
+            match = search_regex(s, r"(\S+)\s+清潔度:")
+            if match is not None:
+                return match
+            match = search_regex(s, r"(\S+)\s+\(到着")
+            if match is not None:
+                return match
+            match = search_regex(s, r"\S+\s+-\s(\S+)\s-")
+            if match is not None:
+                return match
+            match = search_regex(s, r"\]\s*([^\s\[\-、=]+)\s*\[")
+            if match is not None:
+                return match
+            return ""
+
+        def make_cleanliness() -> str:
+            match = search_regex(s, r"清潔度:(\S+)")
+            return "" if match is None else match
+
+        def make_weather() -> Weather:
+            match = search_regex(
+                s,
+                r"(晴れ|快晴|薄曇|曇り|雨|大雨|霧雨|霧|雪|吹雪|細雪|霧雪|みぞれ|あられ)",
+            )
+            if match is None:
+                return Weather.none
+            elif "晴" in match:
+                return Weather.sunny
+            elif "曇" in match:
+                return Weather.cloudy
+            elif "雨" in match:
+                return Weather.rainy
+            elif "霧" in match:
+                return Weather.foggy
+            else:
+                return Weather.rainy
+
+        def make_rainbow() -> bool:
+            return False
+
+        def make_temperature() -> float:
+            match = search_regex(s, r"気温(\S+)℃")
+            return -1 if match is None else float(match)
+
+        return cls(
+            season=make_season(),
+            hour=make_hour(),
+            minute=make_minute(),
+            address=make_address(),
+            cleanliness=make_cleanliness(),
+            weather=make_weather(),
+            rainbow=make_rainbow(),
+            temperature=make_temperature(),
+        )
+
+
+@dataclass
+class TWStats:
+    character: Character = field(default_factory=Character)
+    meta: Meta = field(default_factory=Meta)
+
+    def refresh(self, s: str):
+        if search_regex(s, r"[春夏秋冬]の月", 0):
+            self.character = Character.make(s)
+            self.meta = Meta.make(s)
+
+    def todict(self) -> Dict[str, Any]:
+        return asdict(self)
 
 
 # eratohoTW
-class PicMakerTW(PicMakerBase):
+class PicMakerTW(PicMakerBase[TWStats]):
     """
     クリップボード監視, GUI 管理, 画像生成管理を実施するクラス for The World
     """
@@ -230,145 +459,50 @@ class PicMakerTW(PicMakerBase):
         )
 
     def __init__(self):
-        super().__init__()
+        super().__init__(TWStats())
 
-    def get_dummy_stats(self) -> Dict[str, Any]:
-        stats = {}
-
-        stats["metastats"] = {}
-        meta_stats = stats["metastats"]
-        meta_stats["season"] = "春"
-        meta_stats["time"] = {"hour": "12", "minute": "34"}
-        meta_stats["place"] = {"address": "デバッグルーム", "cleanliness": "清潔"}
-        meta_stats["weather"] = "☀"
-        meta_stats["temperature"] = "25"
-
-        stats["character"] = {}
-        chara_data = stats["character"]
-        chara_data["name"] = self.crnt_clipboard
-        chara_data["affection"] = {"rank": "C", "value": "100"}
-        chara_data["trust"] = {"rank": "C", "value": "100"}
-        chara_data["heat"] = "1"
-        chara_data["equip"] = {}
-        chara_data["equip"]["上半身"] = "シャツ"
-        chara_data["equip"]["下半身"] = "パンツ"
-        return stats
-
-    def get_metastats(self, stats: Dict[str, Any]) -> None:
-        """
-        指定のステータスからメタステータスを取得する
-
-        Args:
-            stats (Dict[str, Any]): ステータス
-        """
-        stats["metastats"] = {}
-        meta_stats = stats["metastats"]
-        # 季節
-        season_match = re.search(r"(\S+)の月", self.crnt_clipboard)
-        if season_match:
-            meta_stats["season"] = season_match.group(1)
-        # 時間
-        time_match = re.search(r"\)(\S+)時(\S+)分", self.crnt_clipboard)
-        if time_match:
-            meta_stats["time"] = {"hour": time_match.group(1), "minute": time_match.group(2)}
-        # 場所
-        place_match = re.search(r"(\S+)\s+清潔度:(\S+)", self.crnt_clipboard)
-        if place_match:
-            meta_stats["place"] = {
-                "address": place_match.group(1),
-                "cleanliness": place_match.group(2),
-            }
-        # 天気
-        weather_match = re.search(r"(☀|☁|☂|☃)", self.crnt_clipboard)
-        if weather_match:
-            meta_stats["weather"] = weather_match.group(1)
-        # 気温
-        temperature_match = re.search(r"気温(\S+)℃", self.crnt_clipboard)
-        if temperature_match:
-            meta_stats["temperature"] = temperature_match.group(1)
-
-    def get_charastats(self, stats: Dict[str, Any]) -> None:
-        """
-        指定のステータスからキャラクターステータスを取得する
-
-        Args:
-            stats (Dict[str, Any]): ステータス
-        """
-        stats["character"] = {}
-        chara_data = stats["character"]
-        # キャラ名
-        name_match = re.search(r"■(.+?)\(", self.crnt_clipboard)
-        if name_match:
-            chara_data["name"] = name_match.group(1)
-        # 好感度 / 信頼度
-        affection_match = re.search(
-            r"\(好感度:\s*([A-Z])\s*(\d+)\s*信頼度:\s*([A-Z])\s*(\d+)\)", self.crnt_clipboard
+    def make_dummy_stats(self, name: str = None) -> TWStats:
+        dummy_stats = TWStats()
+        dummy_stats.character.name = (
+            name
+            if name is not None
+            else PMConsts.charaname_substr_debug + str(random.randint(1, 8))
         )
-        if affection_match:
-            chara_data["affection"] = {
-                "rank": affection_match.group(1),
-                "value": int(affection_match.group(2)),
-            }
-            chara_data["trust"] = {
-                "rank": affection_match.group(3),
-                "value": int(affection_match.group(4)),
-            }
-        # 発情
-        heat_match = re.search(r"発情中", self.crnt_clipboard)
-        if heat_match:
-            chara_data["heat"] = "1"
-        # 装備
-        equip_match = re.findall(r"装備:([^\s]+)\s*?\[(.+?)\]", self.crnt_clipboard)
-        if equip_match:
-            chara_data["equip"] = {}
-            for category, item in equip_match:
-                if "？" in item:
-                    item = "unknown"
-                chara_data["equip"][category] = item
+        dummy_stats.character.vibe = Vibe.normal
+        dummy_stats.character.affection = 100
+        dummy_stats.character.trust = 100
+        dummy_stats.character.frustration = 10
+        dummy_stats.character.angry = 3
+        dummy_stats.character.in_heat = True
+        dummy_stats.character.mood = 3
+        dummy_stats.character.corruption = 3
+        dummy_stats.character.upper = "シャツ"
+        dummy_stats.character.upper_state = ""
+        dummy_stats.character.lower = "パンツ"
+        dummy_stats.character.lower_state = ""
 
-    def parse_clipboard(self) -> Dict[str, Any]:
-        """
-        クリップボード文字列が行動画面であればメタステータスを,\n
-        キャラクタ画面であればキャラクタステータスを取得する\n
-        変更が加わる箇所以外は更新されない
-
-        Returns:
-            Dict[str, Any]: ステータス
-        """
-        if PMConsts.charaname_substr_debug in self.crnt_clipboard:
-            return self.get_dummy_stats()
-
-        new_stats = copy.deepcopy(self.crnt_stats)
-        if re.search(r"(\S+)の月", self.crnt_clipboard):
-            self.get_metastats(new_stats)
-        elif re.search(r"■(.+?)\(", self.crnt_clipboard):
-            self.get_charastats(new_stats)
-
-        return new_stats
+        dummy_stats.meta.season = Season.spring
+        dummy_stats.meta.hour = 12
+        dummy_stats.meta.minute = 34
+        dummy_stats.meta.address = "居間"
+        dummy_stats.meta.cleanliness = "最高"
+        dummy_stats.meta.weather = Weather.sunny
+        dummy_stats.meta.rainbow = False
+        dummy_stats.meta.temperature = 25.0
+        return dummy_stats
 
     def is_stats_enough_for_prompt(self) -> bool:
-        stats = self.crnt_stats
-        if not isinstance(stats, Dict) or not stats:
-            return False
-        character = stats.get("character")
-        if not isinstance(character, Dict) or not character:
-            return False
-        name = character.get("name")
-        if not isinstance(name, str) or not name:
-            return False
-
-        return True
+        return self.crnt_stats.character.name != ""
 
     def make_pos_prompt(self) -> str:
-        name = self.crnt_stats["character"]["name"]
-        pos_prompt = self.chara_tbl.get(name, "")
+        pos_prompt = self.chara_tbl.get(self.crnt_stats.character.name, "")
         if pos_prompt == "":
             return ""
         pos_prompt += ",best quality,masterpiece,absurdres,1girl,solo"
         return pos_prompt
 
     def make_neg_prompt(self) -> str:
-        if PMConsts.charaname_substr_debug in self.crnt_stats["character"]["name"]:
+        if PMConsts.charaname_substr_debug in self.crnt_stats.character.name:
             # デバッグステータス
             return "TW debug"
 
