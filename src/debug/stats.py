@@ -165,7 +165,6 @@ class Meta:
             except Exception:
                 pass
             try:
-                print(search_regex(clipboard, r"(\S+)\s+\(到着"))
                 return search_regex(clipboard, r"(\S+)\s+\(到着")
             except Exception:
                 pass
