@@ -1,5 +1,3 @@
-import errno
-import inspect
 import json
 import re
 from dataclasses import asdict, dataclass
@@ -11,7 +9,7 @@ import pyperclip
 
 def json_default(o):
     if isinstance(o, Enum):
-        return o.name  # or o.value
+        return o.name
     raise TypeError(f"{o.__class__.__name__} is not JSON serializable")
 
 
@@ -32,6 +30,7 @@ class Season(Enum):
     summer = auto()
     autumn = auto()
     winter = auto()
+    none = auto()
 
 
 class Weather(Enum):
@@ -40,25 +39,28 @@ class Weather(Enum):
     rainy = auto()
     snowy = auto()
     foggy = auto()
+    none = auto()
 
 
 class Vibe(Enum):
     normal = auto()
     good = auto()
     bad = auto()
+    none = auto()
 
 
 def search_regex(s: str, regex: str, gridx: int = 1) -> str:
     m = re.search(regex, s, flags=re.MULTILINE)
     if not m:
-        raise OSError(errno.EINVAL, f'By "{regex}".')
+        print(f'No match with "{regex}".')
+        return None
     return m.group(gridx)
 
 
 @dataclass
 class Character:
     name: str = ""
-    vibe: Vibe = Vibe.normal
+    vibe: Vibe = Vibe.none
     affection: int = -1
     trust: int = -1
     frustration: int = -1
@@ -74,11 +76,14 @@ class Character:
     @classmethod
     def make(cls, clipboard: str):
         def make_name() -> str:
-            return search_regex(clipboard, r"^(.+?)\s*(?:（[^）]+）)?\s*\(好感度")
+            match = search_regex(clipboard, r"^(.+?)\s*(?:（[^）]+）)?\s*\(好感度")
+            return "" if match is None else match
 
         def make_vibe() -> Vibe:
             match = search_regex(clipboard, r"^.+?\s*(?:（([^）]+)）)?\s*\(好感度")
-            if match == "ご機嫌":
+            if match is None:
+                return Vibe.none
+            elif match == "ご機嫌":
                 return Vibe.good
             elif match == "フキゲン":
                 return Vibe.bad
@@ -86,48 +91,52 @@ class Character:
                 return Vibe.normal
 
         def make_affection() -> int:
-            return int(search_regex(clipboard, r"好感度:\s*[a-zA-Z]+\s*(\d+)"))
+            match = search_regex(clipboard, r"好感度:\s*[a-zA-Z]+\s*(\d+)")
+            return -1 if match is None else int(match)
 
         def make_trust() -> int:
-            return int(search_regex(clipboard, r"信頼度:\s*[a-zA-Z]+\s*(\d+)"))
+            match = search_regex(clipboard, r"信頼度:\s*[a-zA-Z]+\s*(\d+)")
+            return -1 if match is None else int(match)
 
         def make_frustration() -> int:
-            try:
-                return int(search_regex(clipboard, r"欲求不満度:\s*(\d+)％"))
-            except Exception:
-                return -1
+            match = search_regex(clipboard, r"欲求不満度:\s*(\d+)％")
+            return -1 if match is None else int(match)
 
         def make_angry() -> int:
             match = search_regex(clipboard, r"怒り:\s*(！*)|怒", 0)
-            if match == "怒":
+            if match is None:
+                return -1
+            elif match == "怒":
                 return 6
-            return len(match.replace("怒り:", "").strip())
+            else:
+                return len(match.replace("怒り:", "").strip())
 
         def make_in_heat() -> bool:
-            try:
-                return True if search_regex(clipboard, r"発情中", 0) is not None else False
-            except Exception:
-                return False
+            return False if search_regex(clipboard, r"発情中", 0) is None else True
 
         def make_mood() -> int:
             match = search_regex(clipboard, r"ムード:\s*(OverDrive!!|❤*)")
-            return 6 if match == "OverDrive!!" else len(match)
+            return -1 if match is None else 6 if match == "OverDrive!!" else len(match)
 
         def make_corruption() -> int:
             match = search_regex(clipboard, r"理性:\s*(LimitBreak!!|★*)")
-            return 6 if match == "LimitBreak!!" else 5 - len(match)
+            return -1 if match is None else 6 if match == "LimitBreak!!" else 5 - len(match)
 
         def make_upper() -> str:
-            return search_regex(clipboard, r"【上半身】\s*([^\s]*)").strip()
+            match = search_regex(clipboard, r"【上半身】\s*([^\s]*)")
+            return "" if match is None else match.strip()
 
         def make_upper_state() -> str:
-            return search_regex(clipboard, r"【上半身】\s*[^\s]*\s*([^【]*)").strip()
+            match = search_regex(clipboard, r"【上半身】\s*[^\s]*\s*([^【]*)")
+            return "" if match is None else match.strip()
 
         def make_lower() -> str:
-            return search_regex(clipboard, r"【下半身】\s*([^\s]*)").strip()
+            match = search_regex(clipboard, r"【下半身】\s*([^\s]*)")
+            return "" if match is None else match.strip()
 
         def make_lower_state() -> str:
-            return search_regex(clipboard, r"【下半身】\s*[^\s]*\s*([^【=]*)").strip()
+            match = search_regex(clipboard, r"【下半身】\s*[^\s]*\s*([^【=<]*)")
+            return "" if match is None else match.strip()
 
         return cls(
             name=make_name(),
@@ -148,12 +157,12 @@ class Character:
 
 @dataclass
 class Meta:
-    season: Season = Season.spring
-    hour: int = 0
-    minute: int = 0
+    season: Season = Season.none
+    hour: int = -1
+    minute: int = -1
     address: str = ""
     cleanliness: str = ""
-    weather: Weather = Weather.sunny
+    weather: Weather = Weather.none
     rainbow: bool = False
     temperature: float = 0
 
@@ -161,7 +170,9 @@ class Meta:
     def make(cls, clipboard: str):
         def make_season() -> Season:
             match = search_regex(clipboard, r"([春夏秋冬])の月")
-            if match == "春":
+            if match is None:
+                return Season.none
+            elif match == "春":
                 return Season.spring
             elif match == "夏":
                 return Season.summer
@@ -170,44 +181,43 @@ class Meta:
             elif match == "冬":
                 return Season.winter
             else:
-                raise OSError(errno.EINVAL, inspect.currentframe().f_code.co_name)
+                return Season.none
 
         def make_hour() -> int:
-            return int(search_regex(clipboard, r"(\d+)時"))
+            match = search_regex(clipboard, r"(\d+)時")
+            return -1 if match is None else int(match)
 
         def make_minute() -> int:
-            return int(search_regex(clipboard, r"(\d+)分"))
+            match = search_regex(clipboard, r"(\d+)分")
+            return -1 if match is None else int(match)
 
         def make_address() -> str:
-            try:
-                return search_regex(clipboard, r"(\S+)\s+清潔度:")
-            except Exception:
-                pass
-            try:
-                return search_regex(clipboard, r"(\S+)\s+\(到着")
-            except Exception:
-                pass
-            try:
-                return search_regex(clipboard, r"\S+\s+-\s(\S+)\s-")
-            except Exception:
-                pass
-            try:
-                return search_regex(clipboard, r"\]\s*([^\s\[\-、=]+)\s*\[")
-            except Exception:
-                return ""
+            match = search_regex(clipboard, r"(\S+)\s+清潔度:")
+            if match is not None:
+                return match
+            match = search_regex(clipboard, r"(\S+)\s+\(到着")
+            if match is not None:
+                return match
+            match = search_regex(clipboard, r"\S+\s+-\s(\S+)\s-")
+            if match is not None:
+                return match
+            match = search_regex(clipboard, r"\]\s*([^\s\[\-、=]+)\s*\[")
+            if match is not None:
+                return match
+            return ""
 
         def make_cleanliness() -> str:
-            try:
-                return search_regex(clipboard, r"清潔度:(\S+)")
-            except Exception:
-                return ""
+            match = search_regex(clipboard, r"清潔度:(\S+)")
+            return "" if match is None else match
 
         def make_weather() -> Weather:
             match = search_regex(
                 clipboard,
                 r"(晴れ|快晴|薄曇|曇り|雨|大雨|霧雨|霧|雪|吹雪|細雪|霧雪|みぞれ|あられ)",
             )
-            if "晴" in match:
+            if match is None:
+                return Weather.none
+            elif "晴" in match:
                 return Weather.sunny
             elif "曇" in match:
                 return Weather.cloudy
@@ -222,7 +232,8 @@ class Meta:
             return False
 
         def make_temperature() -> float:
-            return float(search_regex(clipboard, r"気温(\S+)℃"))
+            match = search_regex(clipboard, r"気温(\S+)℃")
+            return -1 if match is None else float(match)
 
         return cls(
             season=make_season(),
@@ -254,4 +265,5 @@ class Stats:
 clipboard = pyperclip.paste()
 
 a = Stats.make(clipboard)
-dump_json(a.todict(), "test")
+# dump_json(a.todict(), "test")
+print(a.todict())
