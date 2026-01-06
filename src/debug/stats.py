@@ -186,20 +186,17 @@ class Stats:
                     return ""
 
             def make_weather() -> Weather:
-                match = re.search(
-                    r"(晴れ|快晴|薄曇|曇り|雨|大雨|霧雨|霧|雪|吹雪|細雪|霧雪|みぞれ|あられ)",
+                match = search_regex(
                     clipboard,
+                    r"(晴れ|快晴|薄曇|曇り|雨|大雨|霧雨|霧|雪|吹雪|細雪|霧雪|みぞれ|あられ)",
                 )
-                if not match:
-                    raise OSError(errno.EINVAL, inspect.currentframe().f_code.co_name)
-                val = match.group(1)
-                if "晴" in val:
+                if "晴" in match:
                     return Weather.sunny
-                elif "曇" in val:
+                elif "曇" in match:
                     return Weather.cloudy
-                elif "雨" in val:
+                elif "雨" in match:
                     return Weather.rainy
-                elif "霧" in val:
+                elif "霧" in match:
                     return Weather.foggy
                 else:
                     return Weather.rainy
@@ -208,10 +205,7 @@ class Stats:
                 return False
 
             def make_temperature() -> float:
-                match = re.search(r"気温(\S+)℃", clipboard)
-                if not match:
-                    raise OSError(errno.EINVAL, inspect.currentframe().f_code.co_name)
-                return float(match.group(1))
+                return float(search_regex(clipboard, r"気温(\S+)℃"))
 
             return cls(
                 season=make_season(),
