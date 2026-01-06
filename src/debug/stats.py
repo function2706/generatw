@@ -1,11 +1,30 @@
 import errno
 import inspect
+import json
 import re
 from dataclasses import asdict, dataclass
 from enum import Enum, auto
 from typing import Any, Dict
 
 import pyperclip
+
+
+def json_default(o):
+    if isinstance(o, Enum):
+        return o.name  # or o.value
+    raise TypeError(f"{o.__class__.__name__} is not JSON serializable")
+
+
+def dump_json(data: Dict, label: str) -> None:
+    """
+    指定の Dict を json 形式でダンプする
+
+    Args:
+        data (Dict): ダンプ対象
+        label (str): 表示するラベル("label": {...})
+    """
+    print(f'"{label}":')
+    print(json.dumps(data, ensure_ascii=False, indent=2, default=json_default))
 
 
 class Season(Enum):
@@ -235,4 +254,4 @@ class Stats:
 clipboard = pyperclip.paste()
 
 a = Stats.make(clipboard)
-print(a.todict())
+dump_json(a.todict(), "test")

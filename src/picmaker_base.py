@@ -259,6 +259,13 @@ class PicMakerBase(ABC):
         """
         pass
 
+    @abstractmethod
+    def dump_crnt_stats(self) -> None:
+        """
+        各派生クラスが管理するステータスをダンプする
+        """
+        pass
+
     def refresh_stats(self) -> None:
         """
         記録中クリップボード文字列をもとにステータスを更新する\n
@@ -269,17 +276,15 @@ class PicMakerBase(ABC):
             self.flags.is_new_stats = False
             return
 
-        new_stats = self.parse_clipboard()
+        self.parse_clipboard()  # <- 各クラスの実装でフラグと内部の stats を更新
 
-        if self.crnt_stats == new_stats:
-            self.flags.is_new_stats = False
+        if self.flags.is_new_stats is False:
             return
 
         if self.displayer.print_new_stats:
-            dump_json(new_stats, "new_stats")
+            self.dump_crnt_stats()  # <- 各クラスで定義
 
         self.flags.is_new_stats = True
-        self.crnt_stats = new_stats
 
     @abstractmethod
     def is_stats_enough_for_prompt(self) -> bool:
