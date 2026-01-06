@@ -42,13 +42,13 @@ class Stats:
     class Character:
         name: str = ""
         vibe: Vibe = Vibe.normal
-        affection: int = 0
-        trust: int = 0
-        frustration: int = 0
-        angry: int = 0
-        in_heat: bool = 0
-        mood: int = 0
-        rationality: int = 0
+        affection: int = -1
+        trust: int = -1
+        frustration: int = -1
+        angry: int = -1
+        in_heat: bool = -1
+        mood: int = -1
+        corruption: int = -1
         upper: str = ""
         upper_state: str = ""
         lower: str = ""
@@ -75,11 +75,16 @@ class Stats:
                 return int(search_regex(clipboard, r"信頼度:\s*[a-zA-Z]+\s*(\d+)"))
 
             def make_frustration() -> int:
-                return int(search_regex(clipboard, r"欲求不満度:\s*(\d+)％"))
+                try:
+                    return int(search_regex(clipboard, r"欲求不満度:\s*(\d+)％"))
+                except Exception:
+                    return -1
 
             def make_angry() -> int:
-                match = search_regex(clipboard, r"(?:怒り:\s*(！*)|怒)")
-                return 6 if match is None else len(match)
+                match = search_regex(clipboard, r"怒り:\s*(！*)|怒", 0)
+                if match == "怒":
+                    return 6
+                return len(match.replace("怒り:", "").strip())
 
             def make_in_heat() -> bool:
                 try:
@@ -88,24 +93,24 @@ class Stats:
                     return False
 
             def make_mood() -> int:
-                match = search_regex(clipboard, r"(ムード:\s*(❤*)|OverDrive!!)")
-                return 6 if match is None else len(match)
+                match = search_regex(clipboard, r"ムード:\s*(OverDrive!!|❤*)")
+                return 6 if match == "OverDrive!!" else len(match)
 
-            def make_rationality() -> int:
-                match = search_regex(clipboard, r"(理性:\s*(★*)|LimitBreak!!)")
-                return -1 if match is None else len(match)
+            def make_corruption() -> int:
+                match = search_regex(clipboard, r"理性:\s*(LimitBreak!!|★*)")
+                return 6 if match == "LimitBreak!!" else 5 - len(match)
 
             def make_upper() -> str:
                 return search_regex(clipboard, r"【上半身】\s*([^\s]*)").strip()
 
             def make_upper_state() -> str:
-                return search_regex(clipboard, r"【上半身】\s*[^\s]*\s*([^\s]*)").strip()
+                return search_regex(clipboard, r"【上半身】\s*[^\s]*\s*([^【]*)").strip()
 
             def make_lower() -> str:
                 return search_regex(clipboard, r"【下半身】\s*([^\s]*)").strip()
 
             def make_lower_state() -> str:
-                return search_regex(clipboard, r"【下半身】\s*[^\s]*\s*([^【]*)").strip()
+                return search_regex(clipboard, r"【下半身】\s*[^\s]*\s*([^【=]*)").strip()
 
             return cls(
                 name=make_name(),
@@ -116,7 +121,7 @@ class Stats:
                 angry=make_angry(),
                 in_heat=make_in_heat(),
                 mood=make_mood(),
-                rationality=make_rationality(),
+                corruption=make_corruption(),
                 upper=make_upper(),
                 upper_state=make_upper_state(),
                 lower=make_lower(),
@@ -128,7 +133,6 @@ class Stats:
         season: Season = Season.spring
         hour: int = 0
         minute: int = 0
-        prefecture: str = ""
         address: str = ""
         cleanliness: str = ""
         weather: Weather = Weather.sunny
@@ -159,6 +163,19 @@ class Stats:
             def make_address() -> str:
                 try:
                     return search_regex(clipboard, r"(\S+)\s+清潔度:")
+                except Exception:
+                    pass
+                try:
+                    print(search_regex(clipboard, r"(\S+)\s+\(到着"))
+                    return search_regex(clipboard, r"(\S+)\s+\(到着")
+                except Exception:
+                    pass
+                try:
+                    return search_regex(clipboard, r"\S+\s+-\s(\S+)\s-")
+                except Exception:
+                    pass
+                try:
+                    return search_regex(clipboard, r"\]\s*([^\s\[\-、=]+)\s*\[")
                 except Exception:
                     return ""
 
