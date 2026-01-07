@@ -141,7 +141,7 @@ class PicMakerReverse(PicMakerBase):
     def __init__(self):
         super().__init__()
 
-    def get_dummy_stats(self) -> Dict[str, Any]:
+    def set_dummy_stats(self) -> Dict[str, Any]:
         stats = {}
         stats["character"] = {}
         chara_data = stats["character"]
@@ -212,7 +212,7 @@ class PicMakerReverse(PicMakerBase):
             Dict[str, Any]: ステータス
         """
         if PMConsts.charaname_substr_debug in self.crnt_clipboard:
-            return self.get_dummy_stats()
+            return self.set_dummy_stats()
 
         new_stats = copy.deepcopy(self.crnt_stats)
         if re.search(r"^\s*(\S+)\s\[LV", self.crnt_clipboard, re.MULTILINE):

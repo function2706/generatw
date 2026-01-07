@@ -15,6 +15,7 @@ from abc import ABC, abstractmethod
 from collections import deque
 from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
@@ -24,6 +25,36 @@ from PIL import Image
 
 from displayer import Displayer
 from picmanager import PicManager, PicStats, SDPngInfo
+
+
+def json_default(obj: Any) -> str:
+    """
+    Enum 型を Enum.name() に統一する
+
+    Args:
+        obj (Any): オブジェクト
+
+    Raises:
+        TypeError: 型違反
+
+    Returns:
+        str: Enum.name()
+    """
+    if isinstance(obj, Enum):
+        return obj.name
+    raise TypeError(f"{obj.__class__.__name__} is not JSON serializable")
+
+
+def dump_json(data: Dict, label: str) -> None:
+    """
+    指定の Dict を json 形式でダンプする
+
+    Args:
+        data (Dict): ダンプ対象
+        label (str): 表示するラベル("label": {...})
+    """
+    print(f'"{label}":')
+    print(json.dumps(data, ensure_ascii=False, indent=2, default=json_default))
 
 
 @dataclass(frozen=True)
@@ -43,22 +74,8 @@ class PMFlags:
     このクラスで用いるフラグ
     """
 
-    # ステータスデータの更新があったか
-    is_new_stats: bool = False
     # SIGINT が発生したか
     is_task_thread_alive: bool = True
-
-
-def dump_json(data: Dict, label: str) -> None:
-    """
-    指定の Dict を json 形式でダンプする
-
-    Args:
-        data (Dict): ダンプ対象
-        label (str): 表示するラベル("label": {...})
-    """
-    print(f'"{label}":')
-    print(json.dumps(data, ensure_ascii=False, indent=2))
 
 
 class PicMakerBase(ABC):
@@ -120,7 +137,6 @@ class PicMakerBase(ABC):
         self.flags = PMFlags()
 
         self.crnt_clipboard = ""
-        self.crnt_stats = {}
 
         self.picmanager = PicManager(self.pics_dir_path())
 
@@ -183,13 +199,13 @@ class PicMakerBase(ABC):
         return Path("pics") / Path(self.whoami())
 
     @abstractmethod
-    def get_dummy_stats(self) -> Dict[str, Any]:
+    def set_dummy_stats(self, name: str = None) -> None:
         """
-        クリップボード上の文字列からダミーステータスを取得する(デバッグ用)\n
+        ダミーステータスをセットする(デバッグ用)\n
         データはモードに即して定義される
 
-        Returns:
-            Dict[str, Any]: ダミーステータス
+        Args:
+            name (str, optional): name フィールドに代入する文字列, None でない場合はこの値で初期化
         """
         pass
 
@@ -201,11 +217,9 @@ class PicMakerBase(ABC):
         if self.displayer.allow_edit_clipboard:
             pyperclip.copy(PMConsts.charaname_substr_debug + str(random.randint(1, 8)))
         else:
-            stats = self.get_dummy_stats()
-            stats["character"]["name"] = PMConsts.charaname_substr_debug + str(random.randint(1, 8))
-            self.crnt_stats = stats
+            self.set_dummy_stats()
             if self.displayer.print_new_stats:
-                dump_json(stats, "new_stats(debug)")
+                self.dump_crnt_stats("new_stats(debug)")
             self.run_oneshot()
 
     def on_dump_picmanager(self) -> None:
@@ -250,41 +264,42 @@ class PicMakerBase(ABC):
         return True
 
     @abstractmethod
-    def parse_clipboard(self) -> Dict[str, Any]:
+    def parse_clipboard(self) -> bool:
         """
         クリップボード文字列をもとに各ステータスを取得する
 
         Returns:
-            Dict[str, Any]: ステータス
+            bool: True: ステータス更新あり, False: 更新なし
         """
         pass
 
     @abstractmethod
-    def dump_crnt_stats(self) -> None:
+    def dump_crnt_stats(self, label: str = None) -> None:
         """
         各派生クラスが管理するステータスをダンプする
+
+        Args:
+            label (str, optional): 表示ラベル名
         """
         pass
 
-    def refresh_stats(self) -> None:
+    def refresh_stats(self) -> bool:
         """
         記録中クリップボード文字列をもとにステータスを更新する\n
-        同時に記録中ステータスと一致するかを示すフラグの管理も行う
+
+        Returns:
+            bool: True: ステータス更新あり, False: 更新なし
         """
         has_refreshed = self.refresh_clipboard()
         if not has_refreshed:
-            self.flags.is_new_stats = False
-            return
+            return False
 
-        self.parse_clipboard()  # <- 各クラスの実装でフラグと内部の stats を更新
-
-        if self.flags.is_new_stats is False:
-            return
+        if self.parse_clipboard() is False:
+            return False
 
         if self.displayer.print_new_stats:
-            self.dump_crnt_stats()  # <- 各クラスで定義
-
-        self.flags.is_new_stats = True
+            self.dump_crnt_stats()
+        return True
 
     @abstractmethod
     def is_stats_enough_for_prompt(self) -> bool:
@@ -528,8 +543,8 @@ class PicMakerBase(ABC):
         Tkinter メインループにて周期的に呼び出される処理
         """
         try:
-            self.refresh_stats()
-            if (not self.flags.is_new_stats) or (not self.is_stats_enough_for_prompt()):
+            is_new_stats = self.refresh_stats()
+            if (not is_new_stats) or (not self.is_stats_enough_for_prompt()):
                 return
 
             self.run_oneshot()
