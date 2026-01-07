@@ -1,8 +1,8 @@
 import json
 import re
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from enum import Enum, auto
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import pyperclip
 
@@ -25,27 +25,43 @@ def dump_json(data: Dict, label: str) -> None:
     print(json.dumps(data, ensure_ascii=False, indent=2, default=json_default))
 
 
-class Season(Enum):
-    spring = auto()
-    summer = auto()
-    autumn = auto()
-    winter = auto()
-    none = auto()
-
-
-class Weather(Enum):
-    sunny = auto()
-    cloudy = auto()
-    rainy = auto()
-    snowy = auto()
-    foggy = auto()
-    none = auto()
-
-
-class Vibe(Enum):
+class State(Enum):
     normal = auto()
-    good = auto()
-    bad = auto()
+    exhausted = auto()  # 疲弊
+    debilitated = auto()  # 衰弱
+    lethargic = auto()  # 無気力
+    dazed = auto()  # 朦朧
+    lustful = auto()  # 情欲
+    angry = auto()  # 怒り
+    bored = auto()  # 退屈
+    depressed = auto()  # 鬱屈
+    none = auto()
+
+
+class Opearation(Enum):
+    communication_ask_about_her = auto()
+    communication_sexual_talk = auto()
+    communication_comfort = auto()
+    communication_threaten = auto()
+    communication_order_undress = auto()
+    communication_require_agreement = auto()
+    communication_declare_punishment = auto()
+    communication_bellow = auto()
+    communication_laugh_creepily = auto()
+
+    caress_caress = auto()
+    caress_breasts = auto()
+    caress_pussy_oral = auto()
+    caress_anal = auto()
+    caress_anal_oral = auto()
+    caress_kiss = auto()
+    caress_sumata = auto()
+    caress_paizuri = auto()
+    caress_footjob = auto()
+    caress_vagina = auto()
+    caress_push = auto()
+    caress_push_down = auto()
+
     none = auto()
 
 
@@ -60,203 +76,98 @@ def search_regex(s: str, regex: str, gridx: int = 1) -> str:
 @dataclass
 class Character:
     name: str = ""
-    vibe: Vibe = Vibe.none
-    affection: int = -1
-    trust: int = -1
-    frustration: int = -1
-    angry: int = -1
-    in_heat: bool = -1
-    mood: int = -1
-    corruption: int = -1
-    upper: str = ""
-    upper_state: str = ""
-    lower: str = ""
-    lower_state: str = ""
+    state: State = State.none
+    equips: List[str] = field(default_factory=list)
+    posture: str = ""
+    tools: List[str] = field(default_factory=list)
 
     @classmethod
-    def make(cls, clipboard: str):
+    def make(cls, s: str):
         def make_name() -> str:
-            match = search_regex(clipboard, r"^(.+?)\s*(?:（[^）]+）)?\s*\(好感度")
+            match = search_regex(s, r"^\s*(\S+)\s\[LV")
             return "" if match is None else match
 
-        def make_vibe() -> Vibe:
-            match = search_regex(clipboard, r"^.+?\s*(?:（([^）]+)）)?\s*\(好感度")
+        def make_state() -> State:
+            name = search_regex(s, r"^\s*(\S+)\s\[LV")
+            match = search_regex(s, rf"^\s*{re.escape(name)}の状態:\[(\S+)\]")
             if match is None:
-                return Vibe.none
-            elif match == "ご機嫌":
-                return Vibe.good
-            elif match == "フキゲン":
-                return Vibe.bad
+                return State.none
+            elif match == "疲弊":
+                return State.exhausted
+            elif match == "衰弱":
+                return State.debilitated
+            elif match == "無気力":
+                return State.lethargic
+            elif match == "朦朧":
+                return State.dazed
+            elif match == "情欲":
+                return State.lustful
+            elif match == "怒り":
+                return State.angry
+            elif match == "退屈":
+                return State.bored
+            elif match == "鬱屈":
+                return State.depressed
             else:
-                return Vibe.normal
+                return State.normal
 
-        def make_affection() -> int:
-            match = search_regex(clipboard, r"好感度:\s*[a-zA-Z]+\s*(\d+)")
-            return -1 if match is None else int(match)
-
-        def make_trust() -> int:
-            match = search_regex(clipboard, r"信頼度:\s*[a-zA-Z]+\s*(\d+)")
-            return -1 if match is None else int(match)
-
-        def make_frustration() -> int:
-            match = search_regex(clipboard, r"欲求不満度:\s*(\d+)％")
-            return -1 if match is None else int(match)
-
-        def make_angry() -> int:
-            match = search_regex(clipboard, r"怒り:\s*(！*)|怒", 0)
+        def make_equips() -> List[str]:
+            name = search_regex(s, r"^\s*(\S+)\s\[LV")
+            match = search_regex(s, rf"^\s*{re.escape(name)}の衣装：\s*(?:\[[^\[\]\n]+\])+", 0)
             if match is None:
-                return -1
-            elif match == "怒":
-                return 6
-            else:
-                return len(match.replace("怒り:", "").strip())
+                return []
+            equips: List[str] = []
+            items = re.findall(r"\[([^\[\]\n]+)\]", match)
+            for item in items:
+                equips.append(item)
+            return equips
 
-        def make_in_heat() -> bool:
-            return False if search_regex(clipboard, r"発情中", 0) is None else True
+        def make_posture() -> str:
+            name = search_regex(s, r"^\s*(\S+)\s\[LV")
+            match = search_regex(s, rf"^\s*現在の姿勢：\S*\[{re.escape(name)}：(\S+)\]")
+            return "" if match is None else match
 
-        def make_mood() -> int:
-            match = search_regex(clipboard, r"ムード:\s*(OverDrive!!|❤*)")
-            return -1 if match is None else 6 if match == "OverDrive!!" else len(match)
-
-        def make_corruption() -> int:
-            match = search_regex(clipboard, r"理性:\s*(LimitBreak!!|★*)")
-            return -1 if match is None else 6 if match == "LimitBreak!!" else 5 - len(match)
-
-        def make_upper() -> str:
-            match = search_regex(clipboard, r"【上半身】\s*([^\s]*)")
-            return "" if match is None else match.strip()
-
-        def make_upper_state() -> str:
-            match = search_regex(clipboard, r"【上半身】\s*[^\s]*\s*([^【]*)")
-            return "" if match is None else match.strip()
-
-        def make_lower() -> str:
-            match = search_regex(clipboard, r"【下半身】\s*([^\s]*)")
-            return "" if match is None else match.strip()
-
-        def make_lower_state() -> str:
-            match = search_regex(clipboard, r"【下半身】\s*[^\s]*\s*([^【=<]*)")
-            return "" if match is None else match.strip()
+        def make_tools() -> List[str]:
+            match = search_regex(s, r"^\s*使用中\s*(?:\[[^\[\]\n]+\])+", 0)
+            if match is None:
+                return []
+            tools: List[str] = []
+            items = re.findall(r"\[([^\[\]\n]+)\]", match)
+            for item in items:
+                tools.append(item)
+            return tools
 
         return cls(
             name=make_name(),
-            vibe=make_vibe(),
-            affection=make_affection(),
-            trust=make_trust(),
-            frustration=make_frustration(),
-            angry=make_angry(),
-            in_heat=make_in_heat(),
-            mood=make_mood(),
-            corruption=make_corruption(),
-            upper=make_upper(),
-            upper_state=make_upper_state(),
-            lower=make_lower(),
-            lower_state=make_lower_state(),
+            state=make_state(),
+            equips=make_equips(),
+            posture=make_posture(),
+            tools=make_tools(),
         )
 
 
 @dataclass
-class Meta:
-    season: Season = Season.none
-    hour: int = -1
-    minute: int = -1
-    address: str = ""
-    cleanliness: str = ""
-    weather: Weather = Weather.none
-    rainbow: bool = False
-    temperature: float = 0
+class Action:
+    action: Opearation = Opearation.none
 
     @classmethod
-    def make(cls, clipboard: str):
-        def make_season() -> Season:
-            match = search_regex(clipboard, r"([春夏秋冬])の月")
-            if match is None:
-                return Season.none
-            elif match == "春":
-                return Season.spring
-            elif match == "夏":
-                return Season.summer
-            elif match == "秋":
-                return Season.autumn
-            elif match == "冬":
-                return Season.winter
-            else:
-                return Season.none
+    def make(cls, s: str):
+        def make_action() -> Opearation:
+            return Opearation.none
 
-        def make_hour() -> int:
-            match = search_regex(clipboard, r"(\d+)時")
-            return -1 if match is None else int(match)
-
-        def make_minute() -> int:
-            match = search_regex(clipboard, r"(\d+)分")
-            return -1 if match is None else int(match)
-
-        def make_address() -> str:
-            match = search_regex(clipboard, r"(\S+)\s+清潔度:")
-            if match is not None:
-                return match
-            match = search_regex(clipboard, r"(\S+)\s+\(到着")
-            if match is not None:
-                return match
-            match = search_regex(clipboard, r"\S+\s+-\s(\S+)\s-")
-            if match is not None:
-                return match
-            match = search_regex(clipboard, r"\]\s*([^\s\[\-、=]+)\s*\[")
-            if match is not None:
-                return match
-            return ""
-
-        def make_cleanliness() -> str:
-            match = search_regex(clipboard, r"清潔度:(\S+)")
-            return "" if match is None else match
-
-        def make_weather() -> Weather:
-            match = search_regex(
-                clipboard,
-                r"(晴れ|快晴|薄曇|曇り|雨|大雨|霧雨|霧|雪|吹雪|細雪|霧雪|みぞれ|あられ)",
-            )
-            if match is None:
-                return Weather.none
-            elif "晴" in match:
-                return Weather.sunny
-            elif "曇" in match:
-                return Weather.cloudy
-            elif "雨" in match:
-                return Weather.rainy
-            elif "霧" in match:
-                return Weather.foggy
-            else:
-                return Weather.rainy
-
-        def make_rainbow() -> bool:
-            return False
-
-        def make_temperature() -> float:
-            match = search_regex(clipboard, r"気温(\S+)℃")
-            return -1 if match is None else float(match)
-
-        return cls(
-            season=make_season(),
-            hour=make_hour(),
-            minute=make_minute(),
-            address=make_address(),
-            cleanliness=make_cleanliness(),
-            weather=make_weather(),
-            rainbow=make_rainbow(),
-            temperature=make_temperature(),
-        )
+        return cls(action=make_action())
 
 
 @dataclass
 class Stats:
     character: Character
-    meta: Meta
+    action: Action
 
     @classmethod
-    def make(cls, clipboard: str):
-        character_lc = Character.make(clipboard)
-        meta_lc = Meta.make(clipboard)
-        return cls(character=character_lc, meta=meta_lc)
+    def make(cls, s: str):
+        character_lc = Character.make(s)
+        action_lc = Action.make(s)
+        return cls(character=character_lc, action=action_lc)
 
     def todict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -265,5 +176,5 @@ class Stats:
 clipboard = pyperclip.paste()
 
 a = Stats.make(clipboard)
-# dump_json(a.todict(), "test")
-print(a.todict())
+dump_json(a.todict(), "test")
+# print(a.todict())
