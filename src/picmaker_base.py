@@ -9,6 +9,7 @@ import hashlib
 import io
 import json
 import random
+import re
 import threading
 import time
 from abc import ABC, abstractmethod
@@ -17,7 +18,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Tuple
+from typing import Any, Dict, Generic, List, Mapping, Optional, Tuple, TypeVar
 
 import pyperclip
 import requests
@@ -57,6 +58,14 @@ def dump_json(data: Dict, label: str) -> None:
     print(json.dumps(data, ensure_ascii=False, indent=2, default=json_default))
 
 
+def search_regex(s: str, regex: str, gridx: int = 1) -> str:
+    m = re.search(regex, s, flags=re.MULTILINE)
+    if not m:
+        print(f'No match with "{regex}".')
+        return None
+    return m.group(gridx)
+
+
 @dataclass(frozen=True)
 class PMConsts:
     """
@@ -78,7 +87,10 @@ class PMFlags:
     is_task_thread_alive: bool = True
 
 
-class PicMakerBase(ABC):
+Stats = TypeVar("Stats")
+
+
+class PicMakerBase(ABC, Generic[Stats]):
     """
     クリップボード監視, GUI 管理, 画像生成管理を実施するクラス
     """
@@ -118,6 +130,13 @@ class PicMakerBase(ABC):
                 self.pos_prompt = ""
                 self.neg_prompt = ""
 
+        def __eq__(self, other: PicMakerBase.TaskBlueprint):
+            return (
+                isinstance(other, PicMakerBase.TaskBlueprint)
+                and self.pos_prompt == other.pos_prompt
+                and self.neg_prompt == other.neg_prompt
+            )
+
     @property
     @abstractmethod
     def chara_tbl(self) -> Mapping[str, str]:
@@ -130,13 +149,17 @@ class PicMakerBase(ABC):
         """
         raise NotImplementedError
 
-    def __init__(self):
+    def __init__(self, stats: Stats):
         """
-        コンストラクタ\n
+        コンストラクタ
+
+        Args:
+            stats (Stats): ステータスインスタンス
         """
         self.flags = PMFlags()
 
         self.crnt_clipboard = ""
+        self.crnt_stats = stats
 
         self.picmanager = PicManager(self.pics_dir_path())
 
@@ -199,13 +222,16 @@ class PicMakerBase(ABC):
         return Path("pics") / Path(self.whoami())
 
     @abstractmethod
-    def set_dummy_stats(self, name: str = None) -> None:
+    def make_dummy_stats(self, name: str = None) -> Stats:
         """
-        ダミーステータスをセットする(デバッグ用)\n
+        ダミーステータスを生成する(デバッグ用)\n
         データはモードに即して定義される
 
         Args:
             name (str, optional): name フィールドに代入する文字列, None でない場合はこの値で初期化
+
+        Returns:
+            Stats: ダミーステータス
         """
         pass
 
@@ -217,7 +243,11 @@ class PicMakerBase(ABC):
         if self.displayer.allow_edit_clipboard:
             pyperclip.copy(PMConsts.charaname_substr_debug + str(random.randint(1, 8)))
         else:
-            self.set_dummy_stats()
+            new_stats = self.make_dummy_stats()
+            if new_stats is None or new_stats == self.crnt_stats:
+                return False
+
+            self.crnt_stats = new_stats
             if self.displayer.print_new_stats:
                 self.dump_crnt_stats("new_stats(debug)")
             self.run_oneshot()
@@ -264,12 +294,12 @@ class PicMakerBase(ABC):
         return True
 
     @abstractmethod
-    def parse_clipboard(self) -> bool:
+    def parse_clipboard(self) -> Stats:
         """
         クリップボード文字列をもとに各ステータスを取得する
 
         Returns:
-            bool: True: ステータス更新あり, False: 更新なし
+            Stats: 新たなステータス
         """
         pass
 
@@ -286,6 +316,7 @@ class PicMakerBase(ABC):
     def refresh_stats(self) -> bool:
         """
         記録中クリップボード文字列をもとにステータスを更新する\n
+        前回のステータスと同じかどうかの判断も行う
 
         Returns:
             bool: True: ステータス更新あり, False: 更新なし
@@ -294,11 +325,13 @@ class PicMakerBase(ABC):
         if not has_refreshed:
             return False
 
-        if self.parse_clipboard() is False:
+        new_stats = self.parse_clipboard()
+        if new_stats is None or new_stats == self.crnt_stats:
             return False
 
+        self.crnt_stats = new_stats
         if self.displayer.print_new_stats:
-            self.dump_crnt_stats()
+            self.dump_crnt_stats("new_stats")
         return True
 
     @abstractmethod

@@ -5,21 +5,12 @@
 from __future__ import annotations
 
 import random
-import re
 from dataclasses import asdict, dataclass, field
 from enum import Enum, auto
 from types import MappingProxyType
 from typing import Any, Dict, Mapping
 
-from picmaker_base import PicMakerBase, PMConsts, dump_json
-
-
-def search_regex(s: str, regex: str, gridx: int = 1) -> str:
-    m = re.search(regex, s, flags=re.MULTILINE)
-    if not m:
-        print(f'No match with "{regex}".')
-        return None
-    return m.group(gridx)
+from picmaker_base import PicMakerBase, PMConsts, dump_json, search_regex
 
 
 class Season(Enum):
@@ -237,7 +228,7 @@ class Meta:
 
 
 @dataclass
-class Stats:
+class TWStats:
     character: Character = field(default_factory=Character)
     meta: Meta = field(default_factory=Meta)
 
@@ -252,7 +243,7 @@ class Stats:
 
 
 # eratohoTW
-class PicMakerTW(PicMakerBase):
+class PicMakerTW(PicMakerBase[TWStats]):
     """
     クリップボード監視, GUI 管理, 画像生成管理を実施するクラス for The World
     """
@@ -469,21 +460,10 @@ class PicMakerTW(PicMakerBase):
         )
 
     def __init__(self):
-        super().__init__()
-        self.stats = Stats()
-        self.prev_stats = Stats()
+        super().__init__(TWStats())
 
-    def make_dummy_stats(self, name: str = None) -> Stats:
-        """
-        ダミーステータスを生成する(デバッグ用)
-
-        Args:
-            name (str, optional): name フィールドに代入する文字列, None でない場合はこの値で初期化
-
-        Returns:
-            Stats: ダミーステータス
-        """
-        dummy_stats = Stats()
+    def make_dummy_stats(self, name: str = None) -> TWStats:
+        dummy_stats = TWStats()
         dummy_stats.character.name = (
             name
             if name is not None
@@ -512,41 +492,29 @@ class PicMakerTW(PicMakerBase):
         dummy_stats.meta.temperature = 25.0
         return dummy_stats
 
-    def set_dummy_stats(self, name: str = None) -> None:
-        self.stats = self.make_dummy_stats(name)
-
-    def parse_clipboard(self) -> bool:
+    def parse_clipboard(self) -> TWStats:
         if PMConsts.charaname_substr_debug in self.crnt_clipboard:
-            new_stats = self.make_dummy_stats(self.crnt_clipboard)
-            if new_stats == self.stats:
-                return False
-            self.stats = new_stats
-            return True
+            return self.make_dummy_stats(self.crnt_clipboard)
         elif search_regex(self.crnt_clipboard, r"[春夏秋冬]の月", 0):
-            new_stats = Stats.make(self.crnt_clipboard)
-            if new_stats == self.stats:
-                return False
-            self.stats = new_stats
-            return True
+            return TWStats.make(self.crnt_clipboard)
         else:
-            return False
+            return None
 
     def dump_crnt_stats(self, label: str = None) -> None:
-        dump_json(self.stats.todict(), "crnt_stats" if label is None else label)
+        dump_json(self.crnt_stats.todict(), "stats" if label is None else label)
 
     def is_stats_enough_for_prompt(self) -> bool:
-        return self.stats.character.name != ""
+        return self.crnt_stats.character.name != ""
 
     def make_pos_prompt(self) -> str:
-        name = self.stats.character.name
-        pos_prompt = self.chara_tbl.get(name, "")
+        pos_prompt = self.chara_tbl.get(self.crnt_stats.character.name, "")
         if pos_prompt == "":
             return ""
         pos_prompt += ",best quality,masterpiece,absurdres,1girl,solo"
         return pos_prompt
 
     def make_neg_prompt(self) -> str:
-        if PMConsts.charaname_substr_debug in self.stats.character.name:
+        if PMConsts.charaname_substr_debug in self.crnt_stats.character.name:
             # デバッグステータス
             return "TW debug"
 
