@@ -4,10 +4,10 @@
 
 from __future__ import annotations
 
-import json
 import os
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from PIL import Image, PngImagePlugin
 
@@ -47,143 +47,127 @@ class SDPngInfo(PngImagePlugin.PngInfo):
         self.add_text("parameters", infos.get("infotexts", [])[idx])
 
 
+@dataclass
 class PicInfo:
     """
     画像のメタデータ
     """
 
-    def __init__(self, image: Image):
+    prompt: Optional[str] = None
+    negative_prompt: Optional[str] = None
+    steps: Optional[int] = None
+    sampler: Optional[str] = None
+    schedule_type: Optional[str] = None
+    cfg_scale: Optional[float] = None
+    seed: Optional[int] = None
+    width: Optional[int] = None
+    height: Optional[int] = None
+    sd_model_name: Optional[str] = None
+    sd_model_hash: Optional[str] = None
+    clip_skip: Optional[int] = None
+    parameters: Optional[str] = None
+
+    @classmethod
+    def make(cls, image: Image):
         """
         コンストラクタ
 
         Args:
             image (Image): Open して得られる Image インスタンス
         """
-        self.prompt = image.info.get("prompt")
-        self.negative_prompt = image.info.get("negative_prompt")
-        self.steps = int(image.info.get("steps"))
-        self.sampler = image.info.get("sampler")
-        self.schedule_type = image.info.get("schedule_type")
-        self.cfg_scale = float(image.info.get("cfg_scale"))
-        self.seed = int(image.info.get("seed"))
-        self.width = int(image.info.get("width"))
-        self.height = int(image.info.get("height"))
-        self.sd_model_name = image.info.get("sd_model_name")
-        self.sd_model_hash = image.info.get("sd_model_hash")
-        self.clip_skip = int(image.info.get("clip_skip"))
-        self.parameters = image.info.get("parameters")
-
-    def __eq__(self, other: PicInfo):
-        """
-        各値が指定の PicInfo のものと等しいか
-
-        Args:
-            other (PicInfo): 比較対象
-
-        Returns:
-            _type_: True: 等しい, False: 等しくない
-        """
-        return (
-            isinstance(other, PicInfo)
-            and self.prompt == other.prompt
-            and self.negative_prompt == other.negative_prompt
-            and self.steps == other.steps
-            and self.sampler == other.sampler
-            and self.schedule_type == other.schedule_type
-            and self.cfg_scale == other.cfg_scale
-            and self.seed == other.seed
-            and self.width == other.width
-            and self.height == other.height
-            and self.sd_model_name == other.sd_model_name
-            and self.sd_model_hash == other.sd_model_hash
-            and self.clip_skip == other.clip_skip
-            and self.parameters == other.parameters
+        info = image.info
+        return cls(
+            prompt=info.get("prompt"),
+            negative_prompt=info.get("negative_prompt"),
+            steps=cls.to_int(info.get("steps")),
+            sampler=info.get("sampler"),
+            schedule_type=info.get("schedule_type"),
+            cfg_scale=cls.to_float(info.get("cfg_scale")),
+            seed=cls.to_int(info.get("seed")),
+            width=cls.to_int(info.get("width")),
+            height=cls.to_int(info.get("height")),
+            sd_model_name=info.get("sd_model_name"),
+            sd_model_hash=info.get("sd_model_hash"),
+            clip_skip=cls.to_int(info.get("clip_skip")),
+            parameters=info.get("parameters"),
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    @staticmethod
+    def to_int(v):
+        return int(v) if v is not None else None
+
+    @staticmethod
+    def to_float(v):
+        return float(v) if v is not None else None
+
+    def todict(self) -> Dict[str, Any]:
         """
-        このクラスを Dict[str, Any] に変形する
+        Dict への変換
 
         Returns:
-            Dict[str, Any]: 変形後インスタンス
+            Dict[str, Any]: Dict インスタンス
         """
-        dict = {}
-        dict["prompt"] = self.prompt
-        dict["negative_prompt"] = self.negative_prompt
-        dict["steps"] = self.steps
-        dict["sampler"] = self.sampler
-        dict["schedule_type"] = self.schedule_type
-        dict["cfg_scale"] = self.cfg_scale
-        dict["seed"] = self.seed
-        dict["width"] = self.width
-        dict["height"] = self.height
-        dict["sd_model_name"] = self.sd_model_name
-        dict["sd_model_hash"] = self.sd_model_hash
-        dict["clip_skip"] = self.clip_skip
-        dict["parameters"] = self.parameters
-        return dict
+        return asdict(self)
 
 
+@dataclass
 class PicStats:
     """
     画像情報 (パス, ディレクトリ名, ファイル名, メタデータ)
     """
 
-    def __init__(self, path: Path):
+    path: Path
+    dir: Optional[str] = None
+    name: Optional[str] = None
+    info: Optional[PicInfo] = None
+
+    @classmethod
+    def make(cls, path: Path):
         """
         コンストラクタ
 
         Args:
             path (Path): 画像のパス
         """
-        self.path = path
-        self.dir = path.parent.name
-        self.name = path.name
+        dir_name = path.parent.name
+        file_name = path.name
+
         try:
             with Image.open(path) as image:
-                self.info = PicInfo(image)
+                info = PicInfo.make(image)
         except Exception as e:
             print(f"Error PicStats {path}: {e}")
+            info = None
 
-    def __eq__(self, other: PicStats):
-        """
-        各値が指定の PicStats のものと等しいか
-
-        Args:
-            other (PicStats): 比較対象
-
-        Returns:
-            _type_: True: 等しい, False: 等しくない
-        """
-        return (
-            isinstance(other, PicStats)
-            and self.path == other.path
-            and self.dir == other.dir
-            and self.name == other.name
-            and self.info == other.info
+        return cls(
+            path=path,
+            dir=dir_name,
+            name=file_name,
+            info=info,
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def todict(self) -> Dict[str, Any]:
         """
-        このクラスを Dict[str, Any] に変形する
+        Dict への変換
 
         Returns:
-            Dict[str, Any]: 変形後インスタンス
+            Dict[str, Any]: Dict インスタンス
         """
-        dict = {}
-        dict["path"] = str(self.path)
-        dict["dir"] = self.dir
-        dict["name"] = self.name
-        dict["info"] = self.info.to_dict()
-        return dict
+        return asdict(self)
 
 
+@dataclass
 class PicManager:
     """
     画像監視クラス
     """
 
-    def __init__(self, rootdir: Path):
+    rootdir: Optional[Path] = None
+    piclist: List[Dict[str, List[PicStats]]] = field(default_factory=list)
+    crnt_picstats: Optional[PicStats] = None
+
+    @classmethod
+    def make(cls, rootdir: Path):
         """
         コンストラクタ\n
         piclist は ディレクトリ名とそのディレクトリに属するファイル名群を各成分とするリスト\n
@@ -192,16 +176,9 @@ class PicManager:
         Args:
             rootdir (Path): 監視対象ディレクトリ
         """
-        self.rootdir = rootdir
-        self.piclist: List[Dict[str, List[PicStats]]] = []
+        self = cls(rootdir=rootdir)
         self.refresh_piclist()
-        self.crnt_picstats: PicStats | None = None
-
-    def finalize(self) -> None:
-        """
-        終了処理
-        """
-        return
+        return self
 
     def refresh_piclist(self) -> None:
         """
@@ -213,7 +190,7 @@ class PicManager:
             for filename in filenames:
                 if filename.lower().endswith(".png"):
                     path = Path(dirpath) / filename
-                    picstats.append(PicStats(path))
+                    picstats.append(PicStats.make(path))
             if picstats:
                 dirname = Path(dirpath).name
                 self.piclist.append({dirname: picstats})
@@ -258,15 +235,11 @@ class PicManager:
         idx = picstats_list.index(self.crnt_picstats)
         return picstats_list[max(idx - 1, 0)]
 
-    def to_json(self) -> Dict:
+    def todict(self) -> Dict[str, Any]:
         """
-        このクラスを json に成形する
+        Dict への変換
 
         Returns:
-            Dict: json
+            Dict[str, Any]: Dict インスタンス
         """
-        serializable = []
-        for d in self.piclist:
-            for dirname, stats_list in d.items():
-                serializable.append({"dir": dirname, "pics": [s.to_dict() for s in stats_list]})
-        return json.dumps(serializable, ensure_ascii=False, indent=2)
+        return asdict(self)

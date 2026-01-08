@@ -44,6 +44,8 @@ def json_default(obj: Any) -> str:
     """
     if isinstance(obj, Enum):
         return obj.name
+    if isinstance(obj, Path):
+        return str(obj)
     raise TypeError(f"{obj.__class__.__name__} is not JSON serializable")
 
 
@@ -173,7 +175,7 @@ class PicMakerBase(ABC, Generic[Stats]):
         self.crnt_clipboard = ""
         self.crnt_stats = stats
 
-        self.picmanager = PicManager(self.pics_dir_path())
+        self.picmanager = PicManager.make(self.pics_dir_path())
 
         self.displayer = Displayer(
             self.picmanager,
@@ -201,7 +203,6 @@ class PicMakerBase(ABC, Generic[Stats]):
 
         self.flags.is_task_thread_alive = False
         self.task_thread.join()
-        self.picmanager.finalize()
         self.displayer.destroy_config_window()
 
     def sigint_handler(self, sig, frame) -> None:
@@ -268,7 +269,7 @@ class PicMakerBase(ABC, Generic[Stats]):
         """
         PicManager ダンプボタンハンドラ
         """
-        print(self.picmanager.to_json())
+        dump_json(self.picmanager.todict(), "new_stats(debug)")
 
     def on_good(self) -> None:
         """
@@ -497,7 +498,7 @@ class PicMakerBase(ABC, Generic[Stats]):
                 image.save(str(pic_path), pnginfo=SDPngInfo(infos, idx))
 
                 if self.displayer.print_images:
-                    dump_json(PicStats(pic_path).info.to_dict(), "image")
+                    dump_json(PicStats.make(pic_path).info.todict(), "image")
             except Exception as e:
                 print(f"[WARN] Failed to save image idx={idx}: {e}")
 
