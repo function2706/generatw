@@ -133,32 +133,36 @@ class PicMakerBase(ABC, Generic[Stats]):
 
         pos_prompt: str = ""
         neg_prompt: str = ""
+        sd_width: int = 0
+        sd_height: int = 0
+        sd_steps: int = 0
+        sd_batch_size: int = 0
+        sd_addr: str = ""
+        sd_port: str = ""
 
         @classmethod
-        def make(cls, picmaker_base: PicMakerBase = None, pos: str = "", neg: str = ""):
+        def make(cls, picmaker_base: PicMakerBase):
             """
             コンストラクタ\n
-            PicManagerBase が指定されている場合は, 必ず記録中ステータスをもとに生成する\n
-            ただしプロンプト生成に十分なステータスでない場合は何もしない\n
-            PicManagerBase が指定されておらず, 両プロンプトが指定されている場合は直接初期化する\n
-            それ以外は空文字列で初期化する
+            記録中ステータスをもとに生成する\n
+            また幅, 高さ, Step 数, バッチサイズも記録する
 
             Args:
-                picmaker_base (PicMakerBase, optional): PicMakerBase インスタンス, Defaults to None.
-                pos_prompt (str, optional): ポジティブプロンプト, Defaults to "".
-                neg_prompt (str, optional): ネガティブプロンプト, Defaults to "".
+                picmaker_base (PicMakerBase): PicMakerBase インスタンス
             """
-            if picmaker_base is not None:
-                if not picmaker_base.is_stats_enough_for_prompt():
-                    return cls()
+            if not picmaker_base.is_stats_enough_for_prompt():
+                return cls()
 
-                return cls(
-                    pos_prompt=picmaker_base.make_pos_prompt(),
-                    neg_prompt=picmaker_base.make_neg_prompt(),
-                )
-            elif (pos is not None) and (neg is not None):
-                return cls(pos_prompt=pos, neg_prompt=neg)
-            return cls()
+            return cls(
+                pos_prompt=picmaker_base.make_pos_prompt(),
+                neg_prompt=picmaker_base.make_neg_prompt(),
+                sd_width=picmaker_base.displayer.sd_width,
+                sd_height=picmaker_base.displayer.sd_height,
+                sd_steps=picmaker_base.displayer.sd_steps,
+                sd_batch_size=picmaker_base.displayer.sd_batch_size,
+                sd_addr=picmaker_base.displayer.srv_ipaddr,
+                sd_port=picmaker_base.displayer.srv_port,
+            )
 
         def todict(self) -> Dict[str, Any]:
             """
@@ -219,7 +223,12 @@ class PicMakerBase(ABC, Generic[Stats]):
         if not self.flags.is_task_thread_alive:
             return
 
+        if self.crnt_task is not None:
+            requests.post(
+                f"http://{self.crnt_task.sd_addr}:{self.crnt_task.sd_port}/sdapi/v1/interrupt"
+            )
         self.flags.is_task_thread_alive = False
+        self.tasks.clear()
         self.task_thread.join()
         self.displayer.destroy_config_window()
 
@@ -399,14 +408,14 @@ class PicMakerBase(ABC, Generic[Stats]):
         api_json = {}
         api_json["prompt"] = self.crnt_task.pos_prompt
         api_json["negative_prompt"] = self.crnt_task.neg_prompt
-        api_json["steps"] = self.displayer.sd_steps
-        api_json["batch_size"] = self.displayer.sd_batch_size
+        api_json["steps"] = self.crnt_task.sd_steps
+        api_json["batch_size"] = self.crnt_task.sd_batch_size
         api_json["sampler_name"] = "DPM++ 2S a"
         api_json["scheduler"] = "Karras"
         api_json["cfg_scale"] = 7.0
         api_json["seed"] = -1
-        api_json["width"] = self.displayer.sd_width
-        api_json["height"] = self.displayer.sd_height
+        api_json["width"] = self.crnt_task.sd_width
+        api_json["height"] = self.crnt_task.sd_height
         return api_json if api_json["prompt"] and api_json["negative_prompt"] else None
 
     def post_to_txt2img(self) -> Optional[Tuple[Any, Any]]:
@@ -422,9 +431,9 @@ class PicMakerBase(ABC, Generic[Stats]):
 
         # txt2img
         response = requests.post(
-            f"http://{self.displayer.srv_ipaddr}:{self.displayer.srv_port}/sdapi/v1/txt2img",
+            f"http://{self.crnt_task.sd_addr}:{self.crnt_task.sd_port}/sdapi/v1/txt2img",
             json=payload,
-            timeout=60,
+            timeout=(5, 60),
         )
         response.raise_for_status()
         body = response.json()
