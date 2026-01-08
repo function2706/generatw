@@ -10,7 +10,7 @@ from enum import Enum, auto
 from types import MappingProxyType
 from typing import Any, Dict, Mapping
 
-from picmaker_base import PicMakerBase, PMConsts, dump_json, search_regex
+from picmaker_base import PicMakerBase, PMConsts, search_regex
 
 
 class Season(Enum):
@@ -232,11 +232,10 @@ class TWStats:
     character: Character = field(default_factory=Character)
     meta: Meta = field(default_factory=Meta)
 
-    @classmethod
-    def make(cls, s: str):
-        character_lc = Character.make(s)
-        meta_lc = Meta.make(s)
-        return cls(character=character_lc, meta=meta_lc)
+    def refresh(self, s: str):
+        if search_regex(s, r"[春夏秋冬]の月", 0):
+            self.character = Character.make(s)
+            self.meta = Meta.make(s)
 
     def todict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -491,17 +490,6 @@ class PicMakerTW(PicMakerBase[TWStats]):
         dummy_stats.meta.rainbow = False
         dummy_stats.meta.temperature = 25.0
         return dummy_stats
-
-    def parse_clipboard(self) -> TWStats:
-        if PMConsts.charaname_substr_debug in self.crnt_clipboard:
-            return self.make_dummy_stats(self.crnt_clipboard)
-        elif search_regex(self.crnt_clipboard, r"[春夏秋冬]の月", 0):
-            return TWStats.make(self.crnt_clipboard)
-        else:
-            return None
-
-    def dump_crnt_stats(self, label: str = None) -> None:
-        dump_json(self.crnt_stats.todict(), "stats" if label is None else label)
 
     def is_stats_enough_for_prompt(self) -> bool:
         return self.crnt_stats.character.name != ""

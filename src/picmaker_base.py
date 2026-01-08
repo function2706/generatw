@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import base64
+import copy
 import hashlib
 import io
 import json
@@ -18,7 +19,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, Generic, List, Mapping, Optional, Tuple, TypeVar
+from typing import Any, Dict, Generic, List, Mapping, Optional, Protocol, Tuple, TypeVar
 
 import pyperclip
 import requests
@@ -61,7 +62,7 @@ def dump_json(data: Dict, label: str) -> None:
 def search_regex(s: str, regex: str, gridx: int = 1) -> str:
     m = re.search(regex, s, flags=re.MULTILINE)
     if not m:
-        print(f'No match with "{regex}".')
+        # print(f'No match with "{regex}".')
         return None
     return m.group(gridx)
 
@@ -87,7 +88,18 @@ class PMFlags:
     is_task_thread_alive: bool = True
 
 
-Stats = TypeVar("Stats")
+class HasCommonMembers(Protocol):
+    """
+    Generic な Stats が 共通メンバを持つことを伝えるためのクラス
+    """
+
+    # var: int <- ここで共通メンバ変数の存在を通告することもできる
+
+    def refresh(self) -> None: ...
+    def todict(self) -> Dict[str, Any]: ...
+
+
+Stats = TypeVar("Stats", bound=HasCommonMembers)
 
 
 class PicMakerBase(ABC, Generic[Stats]):
@@ -249,7 +261,7 @@ class PicMakerBase(ABC, Generic[Stats]):
 
             self.crnt_stats = new_stats
             if self.displayer.print_new_stats:
-                self.dump_crnt_stats("new_stats(debug)")
+                dump_json(self.crnt_stats.todict(), "new_stats(debug)")
             self.run_oneshot()
 
     def on_dump_picmanager(self) -> None:
@@ -293,7 +305,6 @@ class PicMakerBase(ABC, Generic[Stats]):
         self.crnt_clipboard = new_clipboard
         return True
 
-    @abstractmethod
     def parse_clipboard(self) -> Stats:
         """
         クリップボード文字列をもとに各ステータスを取得する
@@ -301,17 +312,12 @@ class PicMakerBase(ABC, Generic[Stats]):
         Returns:
             Stats: 新たなステータス
         """
-        pass
+        if PMConsts.charaname_substr_debug in self.crnt_clipboard:
+            return self.make_dummy_stats()
 
-    @abstractmethod
-    def dump_crnt_stats(self, label: str = None) -> None:
-        """
-        各派生クラスが管理するステータスをダンプする
-
-        Args:
-            label (str, optional): 表示ラベル名
-        """
-        pass
+        new_stats = copy.deepcopy(self.crnt_stats)
+        new_stats.refresh(self.crnt_clipboard)
+        return new_stats
 
     def refresh_stats(self) -> bool:
         """
@@ -331,7 +337,7 @@ class PicMakerBase(ABC, Generic[Stats]):
 
         self.crnt_stats = new_stats
         if self.displayer.print_new_stats:
-            self.dump_crnt_stats("new_stats")
+            dump_json(self.crnt_stats.todict(), "new_stats")
         return True
 
     @abstractmethod
@@ -559,7 +565,6 @@ class PicMakerBase(ABC, Generic[Stats]):
                     self.save_images(images, infos)
             except Exception as e:
                 print("Any exception occurred: ", e)
-                break
             finally:
                 self.crnt_task = None
 
