@@ -15,7 +15,7 @@ import threading
 import time
 from abc import ABC, abstractmethod
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -62,6 +62,18 @@ def dump_json(data: Dict, label: str) -> None:
 
 
 def search_regex(s: str, regex: str, gridx: int = 1) -> str:
+    """
+    指定の正規表現にマッチする部分文字列を s から抜き出す\n
+    抜き出す部分文字列は gridx 番目のグループに相当する(未指定時 1)
+
+    Args:
+        s (str): 全体文字列
+        regex (str): 正規表現
+        gridx (int, optional): 抜き出すグループインデックス
+
+    Returns:
+        str: 部分文字列
+    """
     m = re.search(regex, s, flags=re.MULTILINE)
     if not m:
         # print(f'No match with "{regex}".')
@@ -111,6 +123,7 @@ class PicMakerBase(ABC, Generic[Stats]):
     クリップボード監視, GUI 管理, 画像生成管理を実施するクラス
     """
 
+    @dataclass
     class TaskBlueprint:
         """
         タスクの設計図\n
@@ -118,9 +131,11 @@ class PicMakerBase(ABC, Generic[Stats]):
         インスタンス化した際, その時点のプロンプトを記録中ステータスから生成し, セットする
         """
 
-        def __init__(
-            self, picmaker_base: PicMakerBase = None, pos_prompt: str = "", neg_prompt: str = ""
-        ):
+        pos_prompt: str = ""
+        neg_prompt: str = ""
+
+        @classmethod
+        def make(cls, picmaker_base: PicMakerBase = None, pos: str = "", neg: str = ""):
             """
             コンストラクタ\n
             PicManagerBase が指定されている場合は, 必ず記録中ステータスをもとに生成する\n
@@ -135,23 +150,24 @@ class PicMakerBase(ABC, Generic[Stats]):
             """
             if picmaker_base is not None:
                 if not picmaker_base.is_stats_enough_for_prompt():
-                    return
+                    return cls()
 
-                self.pos_prompt = picmaker_base.make_pos_prompt()
-                self.neg_prompt = picmaker_base.make_neg_prompt()
-            elif (pos_prompt is not None) and (neg_prompt is not None):
-                self.pos_prompt = pos_prompt
-                self.neg_prompt = neg_prompt
-            else:
-                self.pos_prompt = ""
-                self.neg_prompt = ""
+                return cls(
+                    pos_prompt=picmaker_base.make_pos_prompt(),
+                    neg_prompt=picmaker_base.make_neg_prompt(),
+                )
+            elif (pos is not None) and (neg is not None):
+                return cls(pos_prompt=pos, neg_prompt=neg)
+            return cls()
 
-        def __eq__(self, other: PicMakerBase.TaskBlueprint):
-            return (
-                isinstance(other, PicMakerBase.TaskBlueprint)
-                and self.pos_prompt == other.pos_prompt
-                and self.neg_prompt == other.neg_prompt
-            )
+        def todict(self) -> Dict[str, Any]:
+            """
+            Dict への変換
+
+            Returns:
+                Dict[str, Any]: Dict インスタンス
+            """
+            return asdict(self)
 
     @property
     @abstractmethod
@@ -538,7 +554,7 @@ class PicMakerBase(ABC, Generic[Stats]):
         if not self.is_stats_enough_for_prompt():
             return
 
-        new_task = PicMakerBase.TaskBlueprint(self)
+        new_task = PicMakerBase.TaskBlueprint.make(self)
         if (new_task in self.tasks) or (new_task == self.crnt_task):
             return
 
@@ -558,6 +574,9 @@ class PicMakerBase(ABC, Generic[Stats]):
 
             try:
                 self.crnt_task = self.tasks.popleft()
+                if self.displayer.print_new_task:
+                    dump_json(self.crnt_task.todict(), "crnt_task")
+
                 result = self.post_to_txt2img()
                 if result is None:
                     # 生成失敗

@@ -36,7 +36,7 @@ class Displayer:
                     Args:
                         owner (Displayer.ConfigWindow.MainTab): MainTab インスタンス
                     """
-                    self.owner = owner
+                    self.super_owner = owner
 
                     self.button_frame = ttk.Frame(owner.main_frame)
                     self.button_frame.grid(row=0, column=0, sticky="w")
@@ -68,7 +68,7 @@ class Displayer:
                     Args:
                         owner (Displayer.ConfigWindow.MainTab): MainTab インスタンス
                     """
-                    self.owner = owner
+                    self.super_owner = owner
 
                     self.sd_interior_config_frame = ttk.Frame(owner.main_frame)
                     self.sd_interior_config_frame.grid(row=1, column=0, sticky="w")
@@ -102,7 +102,7 @@ class Displayer:
                     Args:
                         owner (Displayer.ConfigWindow.MainTab): MainTab インスタンス
                     """
-                    self.owner = owner
+                    self.super_owner = owner
 
                     self.sd_exterior_config_frame = ttk.Frame(owner.main_frame)
                     self.sd_exterior_config_frame.grid(row=2, column=0, sticky="w")
@@ -128,7 +128,7 @@ class Displayer:
                     Args:
                         owner (Displayer.ConfigWindow.MainTab): MainTab インスタンス
                     """
-                    self.owner = owner
+                    self.super_owner = owner
 
                     self.running_mode_frame = ttk.Frame(owner.main_frame)
                     self.running_mode_frame.grid(row=3, column=0, sticky="ew")
@@ -230,20 +230,27 @@ class Displayer:
                         text="ステータス",
                         variable=self.verbose_stats_check,
                     ).grid(row=0, column=1, padx=6, pady=6, sticky="w")
+                    # タスクの表示
+                    self.verbose_task_check = tkinter.BooleanVar()
+                    ttk.Checkbutton(
+                        self.verbose_frame,
+                        text="タスク",
+                        variable=self.verbose_task_check,
+                    ).grid(row=1, column=0, padx=6, pady=6, sticky="w")
                     # 応答(image)の表示
                     self.verbose_image_check = tkinter.BooleanVar()
                     ttk.Checkbutton(
                         self.verbose_frame,
                         text="応答(image)",
                         variable=self.verbose_image_check,
-                    ).grid(row=1, column=0, padx=6, pady=6, sticky="w")
+                    ).grid(row=1, column=1, padx=6, pady=6, sticky="w")
                     # PicInfoの表示
                     self.verbose_picinfo_check = tkinter.BooleanVar()
                     ttk.Checkbutton(
                         self.verbose_frame,
                         text="PicInfo",
                         variable=self.verbose_picinfo_check,
-                    ).grid(row=1, column=1, padx=6, pady=6, sticky="w")
+                    ).grid(row=2, column=0, padx=6, pady=6, sticky="w")
 
             def __init__(self, owner: Displayer.ConfigWindow):
                 """
@@ -259,6 +266,43 @@ class Displayer:
 
                 self.exe_debug_frame = self.ExeDebugFrame(self)
                 self.verbose_frame = self.VerboseFrame(self)
+
+        class InfoTab:
+            """
+            情報タブ
+            """
+
+            class AppInfoFrame:
+                """
+                アプリケーション情報フレーム
+                """
+
+                def __init__(self, owner: Displayer.ConfigWindow.InfoTab):
+                    """
+                    実行中モード表示フレームコンストラクタ
+
+                    Args:
+                        owner (Displayer.ConfigWindow.MainTab): MainTab インスタンス
+                    """
+                    self.super_owner = owner
+
+                    self.running_mode_frame = ttk.Frame(owner.main_frame)
+                    self.running_mode_frame.grid(row=3, column=0, sticky="ew")
+                    self.running_mode_frame.columnconfigure(0, weight=1)
+
+            def __init__(self, owner: Displayer.ConfigWindow):
+                """
+                情報タブコンストラクタ
+
+                Args:
+                    owner (Displayer.ConfigWindow): ConfigWindow インスタンス
+                """
+                self.super_owner = owner
+
+                self.main_frame = ttk.Frame(owner.info_tab)
+                self.main_frame.grid(row=0, column=0, sticky="nsew")
+
+                self.appinfo_frame = self.AppInfoFrame(self)
 
         def __init__(self, owner: Displayer):
             """
@@ -280,11 +324,15 @@ class Displayer:
             # メインタブ
             self.main_tab = ttk.Frame(self.notebook, padding=12)
             self.notebook.add(self.main_tab, text="メイン")
-            self.main_tab = self.MainTab(self)
+            self.main_tab_obj = self.MainTab(self)
             # デバッグタブ
             self.debug_tab = ttk.Frame(self.notebook, padding=12)
             self.notebook.add(self.debug_tab, text="デバッグ")
-            self.debug_tab = self.DebugTab(self)
+            self.debug_tab_obj = self.DebugTab(self)
+            # 情報タブ
+            self.info_tab = ttk.Frame(self.notebook, padding=12)
+            self.notebook.add(self.info_tab, text="情報")
+            self.info_tab_obj = self.InfoTab(self)
 
     class PicWindow:
         """
@@ -539,9 +587,9 @@ class Displayer:
             return
 
         if toggle:
-            self.config_window.main_tab.button_frame.output_button.configure(state="normal")
+            self.config_window.main_tab_obj.button_frame.output_button.configure(state="normal")
         else:
-            self.config_window.main_tab.button_frame.output_button.configure(state="disabled")
+            self.config_window.main_tab_obj.button_frame.output_button.configure(state="disabled")
 
     def entrypoint(self) -> None:
         """
@@ -564,7 +612,7 @@ class Displayer:
         Returns:
             str: ポスト先 IP アドレス
         """
-        return self.config_window.main_tab.sd_exterior_config_frame.ipaddr_entry.get()
+        return self.config_window.main_tab_obj.sd_exterior_config_frame.ipaddr_entry.get()
 
     @property
     def srv_port(self) -> str:
@@ -574,7 +622,7 @@ class Displayer:
         Returns:
             str: ポスト先ポート
         """
-        return self.config_window.main_tab.sd_exterior_config_frame.port_entry.get()
+        return self.config_window.main_tab_obj.sd_exterior_config_frame.port_entry.get()
 
     @property
     def sd_steps(self) -> int:
@@ -584,7 +632,7 @@ class Displayer:
         Returns:
             int: ステップ数
         """
-        return int(self.config_window.main_tab.sd_interior_config_frame.steps_entry.get())
+        return int(self.config_window.main_tab_obj.sd_interior_config_frame.steps_entry.get())
 
     @property
     def sd_batch_size(self) -> int:
@@ -594,7 +642,7 @@ class Displayer:
         Returns:
             int: バッチサイズ
         """
-        return int(self.config_window.main_tab.sd_interior_config_frame.batch_size_entry.get())
+        return int(self.config_window.main_tab_obj.sd_interior_config_frame.batch_size_entry.get())
 
     @property
     def sd_width(self) -> int:
@@ -604,7 +652,7 @@ class Displayer:
         Returns:
             int: 幅
         """
-        return int(self.config_window.main_tab.sd_interior_config_frame.width_entry.get())
+        return int(self.config_window.main_tab_obj.sd_interior_config_frame.width_entry.get())
 
     @property
     def sd_height(self) -> int:
@@ -614,7 +662,7 @@ class Displayer:
         Returns:
             int: 高さ
         """
-        return int(self.config_window.main_tab.sd_interior_config_frame.height_entry.get())
+        return int(self.config_window.main_tab_obj.sd_interior_config_frame.height_entry.get())
 
     @property
     def allow_edit_clipboard(self) -> bool:
@@ -624,7 +672,7 @@ class Displayer:
         Returns:
             bool: True: 認める, False: 認めない
         """
-        return self.config_window.debug_tab.exe_debug_frame.allow_edit_clipboard_check.get()
+        return self.config_window.debug_tab_obj.exe_debug_frame.allow_edit_clipboard_check.get()
 
     @property
     def print_new_clipboard(self) -> bool:
@@ -634,7 +682,7 @@ class Displayer:
         Returns:
             bool: True: 表示する, False: 表示しない
         """
-        return self.config_window.debug_tab.verbose_frame.verbose_clipboard_check.get()
+        return self.config_window.debug_tab_obj.verbose_frame.verbose_clipboard_check.get()
 
     @property
     def print_new_stats(self) -> bool:
@@ -644,7 +692,17 @@ class Displayer:
         Returns:
             bool: True: 表示する, False: 表示しない
         """
-        return self.config_window.debug_tab.verbose_frame.verbose_stats_check.get()
+        return self.config_window.debug_tab_obj.verbose_frame.verbose_stats_check.get()
+
+    @property
+    def print_new_task(self) -> bool:
+        """
+        タスク開始の際にログ出力するか
+
+        Returns:
+            bool: True: 表示する, False: 表示しない
+        """
+        return self.config_window.debug_tab_obj.verbose_frame.verbose_task_check.get()
 
     @property
     def print_images(self) -> bool:
@@ -654,7 +712,7 @@ class Displayer:
         Returns:
             bool: True: 表示する, False: 表示しない
         """
-        return self.config_window.debug_tab.verbose_frame.verbose_image_check.get()
+        return self.config_window.debug_tab_obj.verbose_frame.verbose_image_check.get()
 
     @property
     def print_picinfo(self) -> bool:
@@ -664,4 +722,4 @@ class Displayer:
         Returns:
             bool: True: 表示する, False: 表示しない
         """
-        return self.config_window.debug_tab.verbose_frame.verbose_picinfo_check.get()
+        return self.config_window.debug_tab_obj.verbose_frame.verbose_picinfo_check.get()
