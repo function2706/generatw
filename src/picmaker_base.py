@@ -76,6 +76,8 @@ class PMConsts:
 
     """
 
+    # 画像保存先ディレクトリ
+    pichome_dir: str = "pics"
     # デバッグ用キャラクター名の部分文字列
     charaname_substr_debug: str = "DebuggingPM"
 
@@ -232,7 +234,7 @@ class PicMakerBase(ABC, Generic[Stats]):
         Returns:
             Path: ディレクトリパス
         """
-        return Path("pics") / Path(self.whoami())
+        return Path(PMConsts.pichome_dir) / Path(self.whoami())
 
     @abstractmethod
     def make_dummy_stats(self, name: str = None) -> Stats:
@@ -269,7 +271,7 @@ class PicMakerBase(ABC, Generic[Stats]):
         """
         PicManager ダンプボタンハンドラ
         """
-        dump_json(self.picmanager.todict(), "new_stats(debug)")
+        dump_json(self.picmanager.todict(), PMConsts.pichome_dir)
 
     def on_good(self) -> None:
         """
