@@ -100,8 +100,10 @@ class PMFlags:
     このクラスで用いるフラグ
     """
 
-    # SIGINT が発生したか
+    # スレッドを生存させるか
     is_task_thread_alive: bool = True
+    # interrupt 要求を行ったか
+    have_posted_interrupt: bool = False
 
 
 class HasCommonMembers(Protocol):
@@ -216,21 +218,42 @@ class PicMakerBase(ABC, Generic[Stats]):
         self.task_thread = threading.Thread(target=self.do_task, args=(), daemon=True)
         self.task_thread.start()
 
-    def finalize(self) -> None:
+    def post_to_interrupt(self) -> None:
         """
-        終了処理
+        Stable Diffusion interrupt エンドポイントへポストする\n
+        現在のタスクが空の場合は何もしない
         """
-        if not self.flags.is_task_thread_alive:
+        if self.crnt_task is None:
             return
 
-        if self.crnt_task is not None:
-            requests.post(
-                f"http://{self.crnt_task.sd_addr}:{self.crnt_task.sd_port}/sdapi/v1/interrupt"
-            )
-        self.flags.is_task_thread_alive = False
-        self.tasks.clear()
-        self.task_thread.join()
-        self.displayer.destroy_config_window()
+        PMFlags.have_posted_interrupt = True
+        requests.post(
+            f"http://{self.crnt_task.sd_addr}:{self.crnt_task.sd_port}/sdapi/v1/interrupt",
+            timeout=(5, 10),
+        )
+
+    def finalize(self) -> None:
+        """
+        終了処理\n
+        txt2img へリクエスト中の場合は interrupt ポストを行い, Tkinter メインループ内で\n
+        タスクスレッドの join とウィンドウの destroy を実施する
+        """
+
+        def finalize_gui():
+            if self.task_thread.is_alive():
+                self.task_thread.join()
+            self.displayer.destroy_config_window()
+
+        if not self.flags.is_task_thread_alive:
+            return
+        try:
+            self.tasks.clear()
+            self.post_to_interrupt()
+        except Exception as e:
+            print("Any exception occurred on finalize: ", e)
+        finally:
+            self.flags.is_task_thread_alive = False
+            self.displayer.root.after(0, finalize_gui())
 
     def sigint_handler(self, sig, frame) -> None:
         """
@@ -439,7 +462,6 @@ class PicMakerBase(ABC, Generic[Stats]):
         body = response.json()
         images = body.get("images", [])
         if not images:
-            print("API response without images.")
             return None
 
         return images, json.loads(body.get("info", "{}"))
@@ -587,9 +609,11 @@ class PicMakerBase(ABC, Generic[Stats]):
                     dump_json(self.crnt_task.todict(), "crnt_task")
 
                 result = self.post_to_txt2img()
+                if PMFlags.have_posted_interrupt:
+                    continue
                 if result is None:
                     # 生成失敗
-                    print("Failed to post.")
+                    print("Failed to post, API response without images.")
                     continue
                 else:
                     images, infos = result
@@ -598,6 +622,7 @@ class PicMakerBase(ABC, Generic[Stats]):
                 print("Any exception occurred: ", e)
             finally:
                 self.crnt_task = None
+                PMFlags.have_posted_interrupt = False
 
     def run_oneshot(self) -> None:
         """
