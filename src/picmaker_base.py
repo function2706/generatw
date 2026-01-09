@@ -46,6 +46,10 @@ def json_default(obj: Any) -> str:
         return obj.name
     if isinstance(obj, Path):
         return str(obj)
+    if isinstance(obj, deque):
+        return list(obj)
+    if isinstance(obj, PicMakerBase.TaskBlueprint):
+        return obj.todict()
     raise TypeError(f"{obj.__class__.__name__} is not JSON serializable")
 
 
@@ -205,8 +209,10 @@ class PicMakerBase(ABC, Generic[Stats]):
             self.picmanager,
             self.run_main,
             self.reserve_task,
+            self.post_to_interrupt,
             self.on_debug,
             self.on_dump_picmanager,
+            self.on_dump_tasks,
             self.on_good,
             self.on_bad,
             self.whoami(),
@@ -320,6 +326,12 @@ class PicMakerBase(ABC, Generic[Stats]):
         PicManager ダンプボタンハンドラ
         """
         dump_json(self.picmanager.todict(), PMConsts.pichome_dir)
+
+    def on_dump_tasks(self) -> None:
+        """
+        タスクリストダンプボタンハンドラ
+        """
+        dump_json(list(self.tasks), "tasks")
 
     def on_good(self) -> None:
         """
