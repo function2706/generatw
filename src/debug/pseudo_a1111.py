@@ -15,8 +15,14 @@ from fastapi import FastAPI
 from PIL import Image, ImageDraw, ImageFont
 from pydantic import BaseModel, Field
 
-app = FastAPI(title="Mock A1111 sdapi/v1/txt2img")
+app = FastAPI(title="Mock A1111 sdapi/v1")
 app.state.cooldown = 0
+app.state.interrupted = False
+
+
+# =========================
+# Request Models
+# =========================
 
 
 class Txt2ImgRequest(BaseModel):
@@ -64,6 +70,21 @@ class Txt2ImgRequest(BaseModel):
     alwayson_scripts: Optional[Dict] = None
 
 
+class Img2ImgRequest(Txt2ImgRequest):
+    init_images: List[str]
+    denoising_strength: Optional[float] = Field(default=0.75, ge=0.0, le=1.0)
+    resize_mode: Optional[int] = 0
+    mask: Optional[str] = None
+    inpainting_fill: Optional[int] = 0
+    inpaint_full_res: Optional[bool] = True
+    inpaint_full_res_padding: Optional[int] = 32
+
+
+# =========================
+# Utilities
+# =========================
+
+
 def dump_infos(obj) -> str:
     return json.dumps(obj, ensure_ascii=False)
 
@@ -83,11 +104,34 @@ def make_infotext(
     return line
 
 
+async def interruptible_sleep(seconds: float):
+    end = time.monotonic() + seconds
+    while time.monotonic() < end:
+        if app.state.interrupted:
+            return False
+        await asyncio.sleep(0.1)
+    return True
+
+
+# =========================
+# API Endpoints
+# =========================
+
+
+@app.post("/sdapi/v1/interrupt")
+async def interrupt():
+    app.state.interrupted = True
+    return {"status": "interrupted"}
+
+
 @app.post("/sdapi/v1/txt2img")
 async def txt2img(req: Txt2ImgRequest):
     cooldown = getattr(app.state, "cooldown", 0)
     if cooldown > 0:
-        await asyncio.sleep(cooldown)
+        ok = await interruptible_sleep(cooldown)
+        if not ok:
+            app.state.interrupted = False
+            return {"error": "Interrupted"}
 
     MAX_SIDE = 8192
     width = max(1, min(req.width, MAX_SIDE))
@@ -183,6 +227,92 @@ async def txt2img(req: Txt2ImgRequest):
     }
 
 
+@app.post("/sdapi/v1/img2img")
+async def img2img(req: Img2ImgRequest):
+    cooldown = getattr(app.state, "cooldown", 0)
+    if cooldown > 0:
+        ok = await interruptible_sleep(cooldown)
+        if not ok:
+            app.state.interrupted = False
+            return {"error": "Interrupted"}
+
+    try:
+        init_bytes = base64.b64decode(req.init_images[0])
+        base_img = Image.open(io.BytesIO(init_bytes)).convert("RGB")
+    except Exception as e:
+        return {"error": f"invalid init_images: {e}"}
+
+    width, height = base_img.size
+    batch_size = max(1, req.batch_size or 1)
+    n_iter = max(1, req.n_iter or 1)
+    total_images = batch_size * n_iter
+
+    if req.seed is None or req.seed < 0:
+        rng_sys = random.SystemRandom()
+        seeds = [rng_sys.randint(0, 2**31 - 1) for _ in range(total_images)]
+    else:
+        seeds = [req.seed + i for i in range(total_images)]
+
+    images_b64: List[str] = []
+
+    for idx, s in enumerate(seeds):
+        if app.state.interrupted:
+            app.state.interrupted = False
+            return {"error": "Interrupted"}
+
+        img = base_img.copy()
+        draw = ImageDraw.Draw(img)
+
+        try:
+            font = ImageFont.truetype("arial.ttf", 24)
+        except IOError:
+            font = ImageFont.load_default()
+
+        draw.text(
+            (10, 10),
+            f"img2img idx={idx}\nseed={s}\ndenoise={req.denoising_strength}",
+            fill=(255, 255, 255),
+            font=font,
+        )
+
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        images_b64.append(base64.b64encode(buf.getvalue()).decode("ascii"))
+
+    prompt = req.prompt or ""
+    neg = req.negative_prompt or ""
+
+    infotexts = [
+        make_infotext(req, prompt, neg, seeds[i], width, height)
+        + f", Denoising strength: {req.denoising_strength}"
+        for i in range(total_images)
+    ]
+
+    infos = {
+        "prompt": prompt,
+        "negative_prompt": neg,
+        "seed": seeds[0],
+        "all_seeds": seeds,
+        "width": width,
+        "height": height,
+        "denoising_strength": req.denoising_strength,
+        "infotexts": infotexts,
+        "job_timestamp": datetime.datetime.now().strftime("%Y%m%d%H%M%S"),
+        "version": "v1.10.1",
+    }
+
+    return {
+        "images": images_b64,
+        "parameters": req.model_dump(),
+        "info": dump_infos(infos),
+    }
+
+
+# =========================
+# Server bootstrap
+# =========================
+
+
 def find_available_port(host, port):
     while True:
         try:
@@ -194,7 +324,6 @@ def find_available_port(host, port):
                 print(f"Port {port} is in use. Trying another port...")
                 port = 0
                 time.sleep(0.1)
-                continue
             else:
                 raise
 
