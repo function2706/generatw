@@ -11,22 +11,20 @@ import io
 import json
 import random
 import re
-import threading
-import time
 from abc import ABC, abstractmethod
 from collections import deque
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, Generic, List, Mapping, Optional, Protocol, Tuple, TypeVar
+from typing import Any, Dict, Generic, List, Mapping, Protocol, TypeVar
 
 import pyperclip
-import requests
 from PIL import Image
 
 from displayer import Displayer
 from picmanager import PicManager, PicStats, SDPngInfo
+from taskmanager import TaskBlueprint, TaskManager
 
 
 def json_default(obj: Any) -> str:
@@ -48,7 +46,7 @@ def json_default(obj: Any) -> str:
         return str(obj)
     if isinstance(obj, deque):
         return list(obj)
-    if isinstance(obj, PicMakerBase.TaskBlueprint):
+    if isinstance(obj, TaskBlueprint):
         return obj.todict()
     raise TypeError(f"{obj.__class__.__name__} is not JSON serializable")
 
@@ -98,18 +96,6 @@ class PMConsts:
     charaname_substr_debug: str = "DebuggingPM"
 
 
-@dataclass
-class PMFlags:
-    """
-    このクラスで用いるフラグ
-    """
-
-    # スレッドを生存させるか
-    is_task_thread_alive: bool = True
-    # interrupt 要求を行ったか
-    have_posted_interrupt: bool = False
-
-
 class HasCommonMembers(Protocol):
     """
     Generic な Stats が 共通メンバを持つことを伝えるためのクラス
@@ -126,58 +112,9 @@ Stats = TypeVar("Stats", bound=HasCommonMembers)
 
 class PicMakerBase(ABC, Generic[Stats]):
     """
-    クリップボード監視, GUI 管理, 画像生成管理を実施するクラス
+    クリップボード監視, GUI 管理, 画像生成管理を実施するクラス\n
+    このクラス自体はクリップボード監視とファイル操作, ロギングを直接行う(対 OS 処理に限定)
     """
-
-    @dataclass
-    class TaskBlueprint:
-        """
-        タスクの設計図\n
-        プロンプトの組, 生成キュー用に使用する\n
-        インスタンス化した際, その時点のプロンプトを記録中ステータスから生成し, セットする
-        """
-
-        pos_prompt: str = ""
-        neg_prompt: str = ""
-        sd_width: int = 0
-        sd_height: int = 0
-        sd_steps: int = 0
-        sd_batch_size: int = 0
-        sd_addr: str = ""
-        sd_port: str = ""
-
-        @classmethod
-        def make(cls, picmaker_base: PicMakerBase):
-            """
-            コンストラクタ\n
-            記録中ステータスをもとに生成する\n
-            また幅, 高さ, Step 数, バッチサイズも記録する
-
-            Args:
-                picmaker_base (PicMakerBase): PicMakerBase インスタンス
-            """
-            if not picmaker_base.is_stats_enough_for_prompt():
-                return cls()
-
-            return cls(
-                pos_prompt=picmaker_base.make_pos_prompt(),
-                neg_prompt=picmaker_base.make_neg_prompt(),
-                sd_width=picmaker_base.displayer.sd_width,
-                sd_height=picmaker_base.displayer.sd_height,
-                sd_steps=picmaker_base.displayer.sd_steps,
-                sd_batch_size=picmaker_base.displayer.sd_batch_size,
-                sd_addr=picmaker_base.displayer.srv_ipaddr,
-                sd_port=picmaker_base.displayer.srv_port,
-            )
-
-        def todict(self) -> Dict[str, Any]:
-            """
-            Dict への変換
-
-            Returns:
-                Dict[str, Any]: Dict インスタンス
-            """
-            return asdict(self)
 
     @property
     @abstractmethod
@@ -198,18 +135,18 @@ class PicMakerBase(ABC, Generic[Stats]):
         Args:
             stats (Stats): ステータスインスタンス
         """
-        self.flags = PMFlags()
 
         self.crnt_clipboard = ""
         self.crnt_stats = stats
 
         self.picmanager = PicManager.make(self.pics_dir_path())
-
+        self.taskmanager = TaskManager(self.save_images)
         self.displayer = Displayer(
             self.picmanager,
+            self.taskmanager,
             self.run_main,
             self.reserve_task,
-            self.post_to_interrupt,
+            self.taskmanager.post_interrupt,
             self.on_debug,
             self.on_dump_picmanager,
             self.on_dump_tasks,
@@ -217,49 +154,15 @@ class PicMakerBase(ABC, Generic[Stats]):
             self.on_bad,
             self.whoami(),
         )
-
-        self.tasks: deque[PicMakerBase.TaskBlueprint] = deque()
-        self.crnt_task: PicMakerBase.TaskBlueprint = None
-
-        self.task_thread = threading.Thread(target=self.do_task, args=(), daemon=True)
-        self.task_thread.start()
-
-    def post_to_interrupt(self) -> None:
-        """
-        Stable Diffusion interrupt エンドポイントへポストする\n
-        現在のタスクが空の場合は何もしない
-        """
-        if self.crnt_task is None:
-            return
-
-        PMFlags.have_posted_interrupt = True
-        requests.post(
-            f"http://{self.crnt_task.sd_addr}:{self.crnt_task.sd_port}/sdapi/v1/interrupt",
-            timeout=(5, 10),
-        )
+        self.taskmanager.start()
 
     def finalize(self) -> None:
         """
-        終了処理\n
-        txt2img へリクエスト中の場合は interrupt ポストを行い, Tkinter メインループ内で\n
-        タスクスレッドの join とウィンドウの destroy を実施する
+        終了処理
         """
 
-        def finalize_gui():
-            if self.task_thread.is_alive():
-                self.task_thread.join()
-            self.displayer.destroy_config_window()
-
-        if not self.flags.is_task_thread_alive:
-            return
-        try:
-            self.tasks.clear()
-            self.post_to_interrupt()
-        except Exception as e:
-            print("Any exception occurred on finalize: ", e)
-        finally:
-            self.flags.is_task_thread_alive = False
-            self.displayer.root.after(0, finalize_gui())
+        self.taskmanager.finalize()
+        self.displayer.finalize()
 
     def sigint_handler(self, sig, frame) -> None:
         """
@@ -331,7 +234,7 @@ class PicMakerBase(ABC, Generic[Stats]):
         """
         タスクリストダンプボタンハンドラ
         """
-        dump_json(list(self.tasks), "tasks")
+        dump_json(list(self.taskmanager.tasks), "tasks")
 
     def on_good(self) -> None:
         """
@@ -433,51 +336,6 @@ class PicMakerBase(ABC, Generic[Stats]):
         """
         pass
 
-    def make_json_for_txt2img(self) -> Dict:
-        """
-        現在の Stable Diffusion 設定から txt2img エンドポイントにポストする json を生成する
-
-        Returns:
-            Dict: ポストする json
-        """
-        api_json = {}
-        api_json["prompt"] = self.crnt_task.pos_prompt
-        api_json["negative_prompt"] = self.crnt_task.neg_prompt
-        api_json["steps"] = self.crnt_task.sd_steps
-        api_json["batch_size"] = self.crnt_task.sd_batch_size
-        api_json["sampler_name"] = "DPM++ 2S a"
-        api_json["scheduler"] = "Karras"
-        api_json["cfg_scale"] = 7.0
-        api_json["seed"] = -1
-        api_json["width"] = self.crnt_task.sd_width
-        api_json["height"] = self.crnt_task.sd_height
-        return api_json if api_json["prompt"] and api_json["negative_prompt"] else None
-
-    def post_to_txt2img(self) -> Optional[Tuple[Any, Any]]:
-        """
-        json を生成し Stable Diffusion txt2img エンドポイントへポストする
-
-        Returns:
-            Tuple[Any, Any]: image フィールド, info フィールド, 失敗時は None
-        """
-        payload = self.make_json_for_txt2img()
-        if not payload:
-            return None
-
-        # txt2img
-        response = requests.post(
-            f"http://{self.crnt_task.sd_addr}:{self.crnt_task.sd_port}/sdapi/v1/txt2img",
-            json=payload,
-            timeout=(5, 60),
-        )
-        response.raise_for_status()
-        body = response.json()
-        images = body.get("images", [])
-        if not images:
-            return None
-
-        return images, json.loads(body.get("info", "{}"))
-
     def make_dirname_from_prompts(self, pos_prompt: str, neg_prompt: str) -> str:
         """
         プロンプトからディレクトリ名を生成する\n
@@ -578,16 +436,6 @@ class PicMakerBase(ABC, Generic[Stats]):
             self.make_dirname_from_prompts(pos_prompt, neg_prompt)
         )
 
-    def refresh_pic(self) -> None:
-        """
-        表示可能な画像が複数個存在する場合にランダムで表示する\n
-        存在しない場合は何もしない
-        """
-        if not self.get_crnt_picstats_list():
-            return
-
-        self.displayer.update_pic(random.choice(self.get_crnt_picstats_list()))
-
     def reserve_task(self) -> None:
         """
         新しいタスクを生成し, タスクリストに予約する\n
@@ -597,44 +445,26 @@ class PicMakerBase(ABC, Generic[Stats]):
         if not self.is_stats_enough_for_prompt():
             return
 
-        new_task = PicMakerBase.TaskBlueprint.make(self)
-        if (new_task in self.tasks) or (new_task == self.crnt_task):
+        self.taskmanager.reserve(
+            self.make_pos_prompt(),
+            self.make_neg_prompt(),
+            self.displayer.sd_steps,
+            self.displayer.sd_batch_size,
+            self.displayer.sd_width,
+            self.displayer.sd_height,
+            self.displayer.srv_ipaddr,
+            self.displayer.srv_port,
+        )
+
+    def refresh_pic(self) -> None:
+        """
+        表示可能な画像が複数個存在する場合にランダムで表示する\n
+        存在しない場合は何もしない
+        """
+        if not self.get_crnt_picstats_list():
             return
 
-        self.tasks.append(new_task)
-
-    def do_task(self) -> None:
-        """
-        タスクを実行する, つまり生成 -> 保存をアトミックに繰り返し実行する\n
-        タスクが空, すでに実行中タスクが存在する, あるいは生成が失敗した場合はスキップする\n
-        例外発生時はループを抜ける
-        """
-        while self.flags.is_task_thread_alive:
-            time.sleep(0.5)
-            if (not self.tasks) or (self.crnt_task is not None):
-                # ここでは実行中タスクを解除してはいけない
-                continue
-
-            try:
-                self.crnt_task = self.tasks.popleft()
-                if self.displayer.print_new_task:
-                    dump_json(self.crnt_task.todict(), "crnt_task")
-
-                result = self.post_to_txt2img()
-                if PMFlags.have_posted_interrupt:
-                    continue
-                if result is None:
-                    # 生成失敗
-                    print("Failed to post, API response without images.")
-                    continue
-                else:
-                    images, infos = result
-                    self.save_images(images, infos)
-            except Exception as e:
-                print("Any exception occurred: ", e)
-            finally:
-                self.crnt_task = None
-                PMFlags.have_posted_interrupt = False
+        self.displayer.update_pic(random.choice(self.get_crnt_picstats_list()))
 
     def run_oneshot(self) -> None:
         """

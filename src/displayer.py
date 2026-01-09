@@ -11,6 +11,7 @@ from typing import Callable
 from PIL import Image, ImageTk
 
 from picmanager import PicManager, PicStats
+from taskmanager import TaskManager
 
 
 class Displayer:
@@ -245,27 +246,20 @@ class Displayer:
                         text="ステータス",
                         variable=self.verbose_stats_check,
                     ).grid(row=0, column=1, padx=6, pady=6, sticky="w")
-                    # タスクの表示
-                    self.verbose_task_check = tkinter.BooleanVar()
-                    ttk.Checkbutton(
-                        self.verbose_frame,
-                        text="タスク",
-                        variable=self.verbose_task_check,
-                    ).grid(row=1, column=0, padx=6, pady=6, sticky="w")
                     # 応答(image)の表示
                     self.verbose_image_check = tkinter.BooleanVar()
                     ttk.Checkbutton(
                         self.verbose_frame,
                         text="応答(image)",
                         variable=self.verbose_image_check,
-                    ).grid(row=1, column=1, padx=6, pady=6, sticky="w")
+                    ).grid(row=1, column=0, padx=6, pady=6, sticky="w")
                     # PicInfoの表示
                     self.verbose_picinfo_check = tkinter.BooleanVar()
                     ttk.Checkbutton(
                         self.verbose_frame,
                         text="PicInfo",
                         variable=self.verbose_picinfo_check,
-                    ).grid(row=2, column=0, padx=6, pady=6, sticky="w")
+                    ).grid(row=1, column=1, padx=6, pady=6, sticky="w")
 
             def __init__(self, owner: Displayer.ConfigWindow):
                 """
@@ -437,6 +431,7 @@ class Displayer:
     def __init__(
         self,
         picmanager: PicManager,
+        taskmanager: TaskManager,
         on_edgepoint: Callable[[], None],
         on_append: Callable[[], None],
         on_interrupt: Callable[[], None],
@@ -452,6 +447,7 @@ class Displayer:
 
         Args:
             picmanager (PicManager): PicManager インスタンス
+            taskmanager (PicManager): TaskManager インスタンス
             on_edgepoint (Callable[[], None]): 端点処理コールバック
             on_append (Callable[[], None]): タスク登録処理コールバック
             on_interrupt (Callable[[], None]): 中断処理コールバック
@@ -465,6 +461,7 @@ class Displayer:
         self.ownername = ownername
 
         self.picmanager: PicManager = picmanager
+        self.taskmanager: TaskManager = taskmanager
         self.on_edgepoint: Callable[[], None] = on_edgepoint
         self.on_append: Callable[[], None] = on_append
         self.on_interrupt: Callable[[], None] = on_interrupt
@@ -477,6 +474,18 @@ class Displayer:
         self.root = tkinter.Tk()
         self.config_window = self.ConfigWindow(self)
         self.pic_window: Displayer.PicWindow = None
+
+    def finalize(self) -> None:
+        """
+        終了処理\n
+        Tkinter メインループ内でタスクスレッドの join とウィンドウの destroy を実施する
+        """
+
+        def worker():
+            self.taskmanager.join()
+            self.destroy_config_window()
+
+        self.root.after(0, worker())
 
     def put_textbox(
         self, frame: Frame, name: str, row: int, col: int, width: int, default: str
@@ -714,16 +723,6 @@ class Displayer:
             bool: True: 表示する, False: 表示しない
         """
         return self.config_window.debug_tab_obj.verbose_frame.verbose_stats_check.get()
-
-    @property
-    def print_new_task(self) -> bool:
-        """
-        タスク開始の際にログ出力するか
-
-        Returns:
-            bool: True: 表示する, False: 表示しない
-        """
-        return self.config_window.debug_tab_obj.verbose_frame.verbose_task_check.get()
 
     @property
     def print_images(self) -> bool:
