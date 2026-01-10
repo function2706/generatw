@@ -11,7 +11,7 @@ from typing import Callable
 from PIL import Image, ImageTk
 
 from picmanager import PicManager, PicStats
-from taskmanager import TaskManager
+from taskmanager import TaskBlueprint, TaskManager
 
 
 class Displayer:
@@ -49,21 +49,27 @@ class Displayer:
                         command=owner.super_owner.super_owner.on_append,
                     )
                     self.gen_button.grid(row=0, column=0, padx=6, pady=6, sticky="w")
-                    # ボタン(画像を表示)
-                    self.output_button = ttk.Button(
-                        self.button_frame,
-                        text="画像を表示",
-                        command=owner.super_owner.super_owner.on_output,
-                    )
-                    self.output_button.grid(row=0, column=1, padx=6, pady=6, sticky="w")
-
                     # ボタン(中断)
                     self.output_button = ttk.Button(
                         self.button_frame,
                         text="中断",
                         command=owner.super_owner.super_owner.on_interrupt,
                     )
-                    self.output_button.grid(row=0, column=2, padx=6, pady=6, sticky="w")
+                    self.output_button.grid(row=0, column=1, padx=6, pady=6, sticky="w")
+                    # ボタン(画像を表示)
+                    self.output_button = ttk.Button(
+                        self.button_frame,
+                        text="画像を表示",
+                        command=owner.super_owner.super_owner.on_output,
+                    )
+                    self.output_button.grid(row=1, column=0, padx=6, pady=6, sticky="w")
+                    # ボタン(情報を表示)
+                    self.gen_button = ttk.Button(
+                        self.button_frame,
+                        text="情報を表示",
+                        command=owner.super_owner.super_owner.on_open_info_window,
+                    )
+                    self.gen_button.grid(row=1, column=1, padx=6, pady=6, sticky="w")
 
             class SDInteriorConfigFrame:
                 """
@@ -125,30 +131,6 @@ class Displayer:
                         self.sd_exterior_config_frame, "ポート", 0, 2, 6, str(7860)
                     )
 
-            class RunningModeFrame:
-                """
-                実行中モード表示フレーム
-                """
-
-                def __init__(self, owner: Displayer.ConfigWindow.MainTab):
-                    """
-                    実行中モード表示フレームコンストラクタ
-
-                    Args:
-                        owner (Displayer.ConfigWindow.MainTab): MainTab インスタンス
-                    """
-                    self.super_owner = owner
-
-                    self.running_mode_frame = ttk.Frame(owner.main_frame)
-                    self.running_mode_frame.grid(row=3, column=0, sticky="ew")
-                    self.running_mode_frame.columnconfigure(0, weight=1)
-
-                    # 動作モード
-                    ttk.Label(
-                        self.running_mode_frame,
-                        text=f"動作モード: {owner.super_owner.super_owner.ownername}",
-                    ).grid(row=0, column=0, padx=6, pady=6, sticky="e")
-
             def __init__(self, owner: Displayer.ConfigWindow):
                 """
                 メインタブコンストラクタ
@@ -164,7 +146,6 @@ class Displayer:
                 self.button_frame = self.ButtonFrame(self)
                 self.sd_interior_config_frame = self.SDInteriorConfigFrame(self)
                 self.sd_exterior_config_frame = self.SDExteriorConfigFrame(self)
-                self.running_mode_frame = self.RunningModeFrame(self)
 
         class DebugTab:
             """
@@ -194,6 +175,13 @@ class Displayer:
                         command=owner.super_owner.super_owner.on_debug,
                     )
                     self.debug_button.grid(row=0, column=0, padx=6, pady=6, sticky="w")
+                    # チェックボックス
+                    self.allow_edit_clipboard_check = tkinter.BooleanVar()
+                    ttk.Checkbutton(
+                        self.exe_debug_frame,
+                        text="クリップボードの更新",
+                        variable=self.allow_edit_clipboard_check,
+                    ).grid(row=0, column=1, padx=6, pady=6, sticky="w")
                     # ボタン(PicManager ダンプ)
                     self.debug_button = ttk.Button(
                         self.exe_debug_frame,
@@ -208,13 +196,13 @@ class Displayer:
                         command=owner.super_owner.super_owner.on_dump_tasks,
                     )
                     self.debug_button.grid(row=1, column=1, padx=6, pady=6, sticky="w")
-                    # チェックボックス
-                    self.allow_edit_clipboard_check = tkinter.BooleanVar()
-                    ttk.Checkbutton(
+                    # ボタン(タスクリストダンプ)
+                    self.debug_button = ttk.Button(
                         self.exe_debug_frame,
-                        text="クリップボードの更新",
-                        variable=self.allow_edit_clipboard_check,
-                    ).grid(row=0, column=1, padx=6, pady=6, sticky="w")
+                        text="タスクリセット",
+                        command=owner.super_owner.super_owner.on_dump_tasks,
+                    )
+                    self.debug_button.grid(row=2, column=0, padx=6, pady=6, sticky="w")
 
             class VerboseFrame:
                 """
@@ -276,43 +264,6 @@ class Displayer:
                 self.exe_debug_frame = self.ExeDebugFrame(self)
                 self.verbose_frame = self.VerboseFrame(self)
 
-        class InfoTab:
-            """
-            情報タブ
-            """
-
-            class AppInfoFrame:
-                """
-                アプリケーション情報フレーム
-                """
-
-                def __init__(self, owner: Displayer.ConfigWindow.InfoTab):
-                    """
-                    実行中モード表示フレームコンストラクタ
-
-                    Args:
-                        owner (Displayer.ConfigWindow.MainTab): MainTab インスタンス
-                    """
-                    self.super_owner = owner
-
-                    self.running_mode_frame = ttk.Frame(owner.main_frame)
-                    self.running_mode_frame.grid(row=3, column=0, sticky="ew")
-                    self.running_mode_frame.columnconfigure(0, weight=1)
-
-            def __init__(self, owner: Displayer.ConfigWindow):
-                """
-                情報タブコンストラクタ
-
-                Args:
-                    owner (Displayer.ConfigWindow): ConfigWindow インスタンス
-                """
-                self.super_owner = owner
-
-                self.main_frame = ttk.Frame(owner.info_tab)
-                self.main_frame.grid(row=0, column=0, sticky="nsew")
-
-                self.appinfo_frame = self.AppInfoFrame(self)
-
         def __init__(self, owner: Displayer):
             """
             設定ウィンドウコンストラクタ
@@ -338,10 +289,125 @@ class Displayer:
             self.debug_tab = ttk.Frame(self.notebook, padding=12)
             self.notebook.add(self.debug_tab, text="デバッグ")
             self.debug_tab_obj = self.DebugTab(self)
-            # 情報タブ
-            self.info_tab = ttk.Frame(self.notebook, padding=12)
-            self.notebook.add(self.info_tab, text="情報")
-            self.info_tab_obj = self.InfoTab(self)
+
+    class InfoWindow:
+        """
+        情報ウィンドウ
+        """
+
+        class AppInfoFrame:
+            """
+            アプリケーション情報フレーム
+            """
+
+            def __init__(self, owner: Displayer.InfoWindow):
+                """
+                アプリケーション情報フレームコンストラクタ
+
+                Args:
+                    owner (Displayer.InfoWindow): InfoWindow インスタンス
+                """
+                self.super_owner = owner
+
+                self.appinfo_frame = ttk.Frame(owner.main_frame)
+                self.appinfo_frame.grid(row=0, column=0, sticky="new")
+
+                # 残りタスク数
+                self.len_tasks_strvar = owner.super_owner.put_textlabel(
+                    self.appinfo_frame, "残りタスク数", 0, 0, "0"
+                )
+
+        class CrntTaskInfoFrame:
+            """
+            現在のタスク情報フレーム
+            """
+
+            def __init__(self, owner: Displayer.InfoWindow):
+                """
+                現在のタスク情報フレームコンストラクタ
+
+                Args:
+                    owner (Displayer.InfoWindow): InfoWindow インスタンス
+                """
+                self.super_owner = owner
+
+                self.crnt_taskinfo_frame = ttk.Frame(owner.main_frame)
+                self.crnt_taskinfo_frame.grid(row=1, column=0, sticky="swe")
+                self.crnt_taskinfo_frame.columnconfigure(0, weight=1)
+                self.crnt_taskinfo_frame.columnconfigure(1, weight=1)
+
+                ttk.Label(self.crnt_taskinfo_frame, text="現在のタスク：").grid(
+                    row=0, column=0, padx=6, pady=6, sticky="w"
+                )
+                # ポジティブプロンプト
+                self.pos_prompt_strvar = owner.super_owner.put_textlabel(
+                    self.crnt_taskinfo_frame, "ポジティブプロンプト", 1, 0, "N/A"
+                )
+                # ネガティブプロンプト
+                self.neg_prompt_strvar = owner.super_owner.put_textlabel(
+                    self.crnt_taskinfo_frame, "ネガティブプロンプト", 2, 0, "N/A"
+                )
+                # ステップ数
+                self.steps_strvar = owner.super_owner.put_textlabel(
+                    self.crnt_taskinfo_frame, "ステップ数", 3, 0, "N/A"
+                )
+                # バッチサイズ
+                self.batch_size_strvar = owner.super_owner.put_textlabel(
+                    self.crnt_taskinfo_frame, "バッチサイズ", 3, 2, "N/A"
+                )
+                # サンプラ
+                self.sampler_strvar = owner.super_owner.put_textlabel(
+                    self.crnt_taskinfo_frame, "サンプラ", 4, 0, "N/A"
+                )
+                # スケジューラ
+                self.scheduler_strvar = owner.super_owner.put_textlabel(
+                    self.crnt_taskinfo_frame, "スケジューラ", 4, 2, "N/A"
+                )
+                # スケール
+                self.scale_strvar = owner.super_owner.put_textlabel(
+                    self.crnt_taskinfo_frame, "スケール", 4, 4, "N/A"
+                )
+                # シード値
+                self.seed_strvar = owner.super_owner.put_textlabel(
+                    self.crnt_taskinfo_frame, "シード値", 5, 0, "N/A"
+                )
+                # 幅
+                self.width_strvar = owner.super_owner.put_textlabel(
+                    self.crnt_taskinfo_frame, "幅", 6, 0, "N/A"
+                )
+                # 高さ
+                self.height_strvar = owner.super_owner.put_textlabel(
+                    self.crnt_taskinfo_frame, "高さ", 6, 2, "N/A"
+                )
+                # 宛先アドレス
+                self.addr_strvar = owner.super_owner.put_textlabel(
+                    self.crnt_taskinfo_frame, "宛先アドレス", 7, 0, "N/A"
+                )
+                # 宛先ポート
+                self.port_strvar = owner.super_owner.put_textlabel(
+                    self.crnt_taskinfo_frame, "宛先ポート", 7, 2, "N/A"
+                )
+
+        def __init__(self, owner: Displayer):
+            """
+            情報ウィンドウコンストラクタ
+
+            Args:
+                owner (Displayer): Display インスタンス
+            """
+            self.super_owner = owner
+
+            self.info_window = tkinter.Toplevel(self.super_owner.root)
+            self.info_window.title(f"pipmaker - 画像 [{owner.ownername}]")
+            self.info_window.protocol("WM_DELETE_WINDOW", self.super_owner.destroy_info_window)
+
+            self.main_frame = ttk.Frame(self.info_window, padding=5)
+            self.main_frame.grid(row=0, column=0, sticky="nsew")
+
+            self._tasks_strvar = tkinter.StringVar(value="0")
+
+            self.appinfo_frame = self.AppInfoFrame(self)
+            self.crnt_taskinfo_frame = self.CrntTaskInfoFrame(self)
 
     class PicWindow:
         """
@@ -473,6 +539,8 @@ class Displayer:
 
         self.root = tkinter.Tk()
         self.config_window = self.ConfigWindow(self)
+        self.info_window: Displayer.InfoWindow = None
+        self.construct_info_window()
         self.pic_window: Displayer.PicWindow = None
 
     def finalize(self) -> None:
@@ -491,7 +559,7 @@ class Displayer:
         self, frame: Frame, name: str, row: int, col: int, width: int, default: str
     ) -> ttk.Entry:
         """
-        テキストボックスの作成\n
+        テキストボックスの作成([name] [entry])\n
         本オブジェクトは column 2つ分を占めることに注意
 
         Args:
@@ -510,6 +578,31 @@ class Displayer:
         entry.grid(row=row, column=(col + 1), padx=2, pady=6, sticky="w")
         entry.insert(0, default)
         return entry
+
+    def put_textlabel(
+        self, frame: Frame, name: str, row: int, col: int, default: str
+    ) -> tkinter.StringVar:
+        """
+        テキストラベルの作成([name] [label])\n
+        本オブジェクトは column 2つ分を占めることに注意\n
+        返り値は更新可能な文字列ベースのオブジェクト
+
+        Args:
+            frame (Frame): 挿入先フレーム
+            name (str): ラベル
+            row (int): フレーム内の row
+            col (int): フレーム内の column
+            default (str): デフォルト値
+
+        Returns:
+            tkinter.StringVar: オブジェクトインスタンス
+        """
+        ttk.Label(frame, text=name).grid(row=row, column=col, padx=6, pady=6, sticky="w")
+        strvar = tkinter.StringVar(value=default)
+        ttk.Label(frame, textvariable=strvar).grid(
+            row=row, column=(col + 1), padx=6, pady=6, sticky="w"
+        )
+        return strvar
 
     def is_config_window_open(self) -> bool:
         """
@@ -530,8 +623,107 @@ class Displayer:
         設定ウィンドウのクローズ時のハンドラ
         """
         self.destroy_pic_window()
+        self.destroy_info_window()
         if self.is_config_window_open():
             self.root.destroy()
+
+    def construct_info_window(self) -> None:
+        """
+        情報ウィンドウを構築する\n
+        すでに開いている場合は最前面に表示のみ行う
+        """
+        if self.is_info_window_open() and self.info_window:
+            self.info_window.info_window.deiconify()
+            self.info_window.info_window.lift()
+            return
+
+        self.info_window = self.InfoWindow(self)
+
+    def is_info_window_open(self) -> bool:
+        """
+        画像ウィンドウが開かれているか
+
+        Returns:
+            bool: True: 開かれている, False: 開かれていない or TclError 例外発生
+        """
+        if self.info_window is None:
+            return False
+        try:
+            return bool(self.info_window.info_window.winfo_exists())
+        except TclError:
+            return False
+
+    def destroy_info_window(self) -> None:
+        """
+        画像ウィンドウのクローズ時のハンドラ
+        """
+        if self.is_info_window_open():
+            self.info_window.info_window.destroy()
+        self.info_window = None
+
+    def update_info_window(self) -> None:
+        """
+        情報ウィンドウの更新を行う\n
+        ウィンドウが開いていない場合は何もしない\n
+        更新は呼び出した瞬間の TaskManager をもとに行う
+        """
+        if not self.info_window:
+            return
+
+        self.info_window.appinfo_frame.len_tasks_strvar.set(f"{len(self.taskmanager.tasks)}")
+        crnt_task: TaskBlueprint = self.taskmanager.crnt_task
+        if crnt_task is None:
+            self.info_window.crnt_taskinfo_frame.pos_prompt_strvar.set("N/A")
+            self.info_window.crnt_taskinfo_frame.neg_prompt_strvar.set("N/A")
+            self.info_window.crnt_taskinfo_frame.steps_strvar.set("N/A")
+            self.info_window.crnt_taskinfo_frame.batch_size_strvar.set("N/A")
+            self.info_window.crnt_taskinfo_frame.sampler_strvar.set("N/A")
+            self.info_window.crnt_taskinfo_frame.scheduler_strvar.set("N/A")
+            self.info_window.crnt_taskinfo_frame.scale_strvar.set("N/A")
+            self.info_window.crnt_taskinfo_frame.seed_strvar.set("N/A")
+            self.info_window.crnt_taskinfo_frame.width_strvar.set("N/A")
+            self.info_window.crnt_taskinfo_frame.height_strvar.set("N/A")
+            self.info_window.crnt_taskinfo_frame.addr_strvar.set("N/A")
+            self.info_window.crnt_taskinfo_frame.port_strvar.set("N/A")
+        else:
+            self.info_window.crnt_taskinfo_frame.pos_prompt_strvar.set(crnt_task.prompt)
+            self.info_window.crnt_taskinfo_frame.neg_prompt_strvar.set(crnt_task.negative_prompt)
+            self.info_window.crnt_taskinfo_frame.steps_strvar.set(f"{crnt_task.steps}")
+            self.info_window.crnt_taskinfo_frame.batch_size_strvar.set(f"{crnt_task.batch_size}")
+            self.info_window.crnt_taskinfo_frame.sampler_strvar.set(crnt_task.sampler_name)
+            self.info_window.crnt_taskinfo_frame.scheduler_strvar.set(crnt_task.scheduler)
+            self.info_window.crnt_taskinfo_frame.scale_strvar.set(f"{crnt_task.cfg_scale}")
+            self.info_window.crnt_taskinfo_frame.seed_strvar.set(f"{crnt_task.seed}")
+            self.info_window.crnt_taskinfo_frame.width_strvar.set(f"{crnt_task.width}")
+            self.info_window.crnt_taskinfo_frame.height_strvar.set(f"{crnt_task.height}")
+            self.info_window.crnt_taskinfo_frame.addr_strvar.set(crnt_task.dst_addr)
+            self.info_window.crnt_taskinfo_frame.port_strvar.set(crnt_task.dst_port)
+
+    def on_open_info_window(self) -> None:
+        """
+        情報ウィンドウの表示ハンドラ\n
+        すでに開いている場合は最前面に表示のみ行う\n
+        情報の更新も直後に行う
+        """
+        if self.is_info_window_open() and self.info_window:
+            self.info_window.info_window.deiconify()
+            self.info_window.info_window.lift()
+        else:
+            self.construct_info_window()
+
+        self.update_info_window()
+
+    def construct_pic_window(self) -> None:
+        """
+        画像ウィンドウを構築する\n
+        すでに開いている場合は最前面に表示のみ行う
+        """
+        if self.is_pic_window_open() and self.pic_window:
+            self.pic_window.pic_window.deiconify()
+            self.pic_window.pic_window.lift()
+            return
+
+        self.pic_window = self.PicWindow(self)
 
     def is_pic_window_open(self) -> bool:
         """
@@ -555,40 +747,9 @@ class Displayer:
             self.pic_window.pic_window.destroy()
         self.pic_window = None
 
-    def on_output(self) -> None:
+    def update_pic_window(self, picstats: PicStats) -> None:
         """
-        表示ボタンハンドラ\n
-        表示すべき画像がないときは何もしない
-        """
-        self.update_pic(self.picmanager.crnt_picstats)
-
-    def on_next(self) -> None:
-        """
-        > ボタンハンドラ
-        """
-        self.update_pic(self.picmanager.next_picstats())
-
-    def on_prev(self) -> None:
-        """
-        < ボタンハンドラ
-        """
-        self.update_pic(self.picmanager.prev_picstats())
-
-    def construct_pic_window(self) -> None:
-        """
-        画像ウィンドウを構築する\n
-        すでに開いている場合は最前面に表示のみ行う
-        """
-        if self.is_pic_window_open() and self.pic_window:
-            self.pic_window.pic_window.deiconify()
-            self.pic_window.pic_window.lift()
-            return
-
-        self.pic_window = self.PicWindow(self)
-
-    def update_pic(self, picstats: PicStats) -> None:
-        """
-        画像フレームを指定の PicStats で更新する\n
+        画像ウィンドウを指定の PicStats で更新する\n
         picstats が None の場合は何もしない
 
         Args:
@@ -605,6 +766,25 @@ class Displayer:
 
         self.picmanager.crnt_picstats = picstats
         self.switch_output_button_state(True)
+
+    def on_output(self) -> None:
+        """
+        表示ボタンハンドラ\n
+        表示すべき画像がないときは何もしない
+        """
+        self.update_pic_window(self.picmanager.crnt_picstats)
+
+    def on_next(self) -> None:
+        """
+        > ボタンハンドラ
+        """
+        self.update_pic_window(self.picmanager.next_picstats())
+
+    def on_prev(self) -> None:
+        """
+        < ボタンハンドラ
+        """
+        self.update_pic_window(self.picmanager.prev_picstats())
 
     def switch_output_button_state(self, toggle: bool) -> None:
         """

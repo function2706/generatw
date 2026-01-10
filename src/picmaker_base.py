@@ -464,7 +464,7 @@ class PicMakerBase(ABC, Generic[Stats]):
         if not self.get_crnt_picstats_list():
             return
 
-        self.displayer.update_pic(random.choice(self.get_crnt_picstats_list()))
+        self.displayer.update_pic_window(random.choice(self.get_crnt_picstats_list()))
 
     def run_oneshot(self) -> None:
         """
@@ -472,6 +472,15 @@ class PicMakerBase(ABC, Generic[Stats]):
         """
         self.reserve_task()
         self.refresh_pic()
+
+    def on_terminal(self) -> None:
+        """
+        終端処理ハンドラ
+        """
+        self.displayer.switch_output_button_state(
+            self.is_stats_enough_for_prompt() and self.picmanager.crnt_picstats
+        )
+        self.displayer.update_info_window()
 
     def run_main(self) -> None:
         """
@@ -485,7 +494,5 @@ class PicMakerBase(ABC, Generic[Stats]):
 
             self.run_oneshot()
         finally:
+            self.on_terminal()
             self.displayer.endpoint()
-            self.displayer.switch_output_button_state(
-                self.is_stats_enough_for_prompt() and self.picmanager.crnt_picstats
-            )
