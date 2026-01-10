@@ -5,6 +5,7 @@ GUI 管理クラス
 from __future__ import annotations
 
 import tkinter
+from dataclasses import dataclass
 from tkinter import Frame, TclError, ttk
 from typing import Callable
 
@@ -12,6 +13,121 @@ from PIL import Image, ImageTk
 
 from picmanager import PicManager, PicStats
 from taskmanager import TaskBlueprint, TaskManager
+
+
+@dataclass(frozen=True)
+class Consts:
+    """
+    このクラス関連の定数
+    """
+
+    # 表示する文字列の最大長
+    max_output_strlen: int = 75
+    # N/A テキスト
+    not_available_text: str = "N/A"
+
+
+class TipLabel:
+    """
+    Label とそれに付随する Tip を構築するクラス\n
+    表示する文字列が最大長を超過する場合は, ラベル上の文字列を省略し,\n
+    ツールチップをマウスオーバーで表示する
+    """
+
+    def __init__(self, frame: ttk.Frame, row: int, column: int, default: str, maxlen: int):
+        """
+        コンストラクタ
+
+        Args:
+            frame (ttk.Frame): 挿入先フレーム
+            row (int): フレーム内の row
+            column (int): フレーム内の column
+            default (str): デフォルト値
+            maxlen (int): 表示の最大長
+        """
+        self.tip_text = default
+        self.maxlen = maxlen
+
+        self.strvar = tkinter.StringVar(value=default)
+        self.label = ttk.Label(frame, textvariable=self.strvar)
+        self.label.grid(row=row, column=column, padx=6, pady=6, sticky="w")
+        self.tip: tkinter.Toplevel = None
+
+        self.label.bind("<Enter>", self.show)
+        self.label.bind("<Leave>", self.hide)
+        self.label.bind("<Motion>", self.move)
+
+    def set_text(self, text: str) -> None:
+        """
+        Label 及び Tip に表示する文字列をセットする
+
+        Args:
+            text (str): 文字列
+        """
+        self.tip_text = text
+        if len(text) <= self.maxlen:
+            self.strvar.set(text)
+        elif self.maxlen <= 3:
+            self.strvar.set("." * self.maxlen)
+        else:
+            self.strvar.set(text[: self.maxlen - 3] + "...")
+
+    def show(self, event: tkinter.Event = None):
+        """
+        マウスオーバーハンドラ
+
+        Args:
+            event (tkinter.Event, optional): イベントオブジェクト. Defaults to None.
+        """
+        if self.tip is not None:
+            return
+        elif len(self.tip_text) <= self.maxlen:
+            return
+
+        self.tip = tkinter.Toplevel(self.label)
+        self.tip.wm_overrideredirect(True)
+        self.tip.attributes("-topmost", True)
+
+        x = self.label.winfo_rootx() + self.label.winfo_width()
+        y = self.label.winfo_rooty() + self.label.winfo_height()
+        self.tip.geometry(f"+{x}+{y}")
+
+        label = tkinter.Label(
+            self.tip,
+            text=self.tip_text,
+            background="#ffffe0",
+            relief="solid",
+            borderwidth=1,
+            padx=4,
+            pady=2,
+        )
+        label.pack()
+
+    def hide(self, event: tkinter.Event = None):
+        """
+        マウスアウトハンドラ
+
+        Args:
+            event (tkinter.Event, optional): イベントオブジェクト. Defaults to None.
+        """
+        if self.tip:
+            self.tip.destroy()
+            self.tip = None
+
+    def move(self, event: tkinter.Event):
+        """
+        マウスムーブハンドラ
+
+        Args:
+            event (tkinter.Event): イベントオブジェクト
+        """
+        if not self.tip:
+            return
+
+        x = event.x_root + 12
+        y = event.y_root + 12
+
+        self.tip.geometry(f"+{x}+{y}")
 
 
 class Displayer:
@@ -50,12 +166,19 @@ class Displayer:
                     )
                     self.gen_button.grid(row=0, column=0, padx=6, pady=6, sticky="w")
                     # ボタン(中断)
-                    self.output_button = ttk.Button(
+                    self.interrupt_button = ttk.Button(
                         self.button_frame,
                         text="中断",
                         command=owner.super_owner.super_owner.on_interrupt,
                     )
-                    self.output_button.grid(row=0, column=1, padx=6, pady=6, sticky="w")
+                    self.interrupt_button.grid(row=0, column=1, padx=6, pady=6, sticky="w")
+                    # タスククリア
+                    self.clear_button = ttk.Button(
+                        self.button_frame,
+                        text="タスククリア",
+                        command=owner.super_owner.super_owner.taskmanager.clear,
+                    )
+                    self.clear_button.grid(row=0, column=2, padx=6, pady=6, sticky="w")
                     # ボタン(画像を表示)
                     self.output_button = ttk.Button(
                         self.button_frame,
@@ -64,12 +187,12 @@ class Displayer:
                     )
                     self.output_button.grid(row=1, column=0, padx=6, pady=6, sticky="w")
                     # ボタン(情報を表示)
-                    self.gen_button = ttk.Button(
+                    self.open_info_button = ttk.Button(
                         self.button_frame,
                         text="情報を表示",
                         command=owner.super_owner.super_owner.on_open_info_window,
                     )
-                    self.gen_button.grid(row=1, column=1, padx=6, pady=6, sticky="w")
+                    self.open_info_button.grid(row=1, column=1, padx=6, pady=6, sticky="w")
 
             class SDInteriorConfigFrame:
                 """
@@ -196,13 +319,6 @@ class Displayer:
                         command=owner.super_owner.super_owner.on_dump_tasks,
                     )
                     self.debug_button.grid(row=1, column=1, padx=6, pady=6, sticky="w")
-                    # ボタン(タスクリストダンプ)
-                    self.debug_button = ttk.Button(
-                        self.exe_debug_frame,
-                        text="タスクリセット",
-                        command=owner.super_owner.super_owner.on_dump_tasks,
-                    )
-                    self.debug_button.grid(row=2, column=0, padx=6, pady=6, sticky="w")
 
             class VerboseFrame:
                 """
@@ -317,88 +433,130 @@ class Displayer:
                     self.appinfo_frame, "残りタスク数", 0, 0, "0"
                 )
 
-        class CrntTaskInfoFrame:
+        class CrntTaskPromptsFrame:
             """
-            現在のタスク情報フレーム
+            現在のタスク情報(プロンプト)フレーム
             """
 
             def __init__(self, owner: Displayer.InfoWindow):
                 """
-                現在のタスク情報フレームコンストラクタ
+                現在のタスク情報(プロンプト)フレームコンストラクタ
 
                 Args:
                     owner (Displayer.InfoWindow): InfoWindow インスタンス
                 """
                 self.super_owner = owner
 
-                self.crnt_taskinfo_frame = ttk.Frame(owner.main_frame)
-                self.crnt_taskinfo_frame.grid(row=1, column=0, sticky="swe")
-                self.crnt_taskinfo_frame.columnconfigure(0, weight=1)
-                self.crnt_taskinfo_frame.columnconfigure(1, weight=1)
+                self.crnt_task_prompts_frame = ttk.Frame(owner.main_frame)
+                self.crnt_task_prompts_frame.grid(row=1, column=0, sticky="w")
+                self.crnt_task_prompts_frame.columnconfigure(0, weight=1)
+                self.crnt_task_prompts_frame.columnconfigure(1, weight=1)
 
-                ttk.Label(self.crnt_taskinfo_frame, text="現在のタスク：").grid(
+                ttk.Label(self.crnt_task_prompts_frame, text="- 現在のタスク -").grid(
                     row=0, column=0, padx=6, pady=6, sticky="w"
                 )
                 # ポジティブプロンプト
-                self.pos_prompt_strvar = owner.super_owner.put_textlabel(
-                    self.crnt_taskinfo_frame, "ポジティブプロンプト", 1, 0, "N/A"
+                ttk.Label(self.crnt_task_prompts_frame, text="ポジティブプロンプト").grid(
+                    row=1, column=0, padx=6, pady=6, sticky="w"
+                )
+                self.pos_prompt_tiplabel = TipLabel(
+                    self.crnt_task_prompts_frame,
+                    1,
+                    1,
+                    Consts.not_available_text,
+                    Consts.max_output_strlen,
                 )
                 # ネガティブプロンプト
-                self.neg_prompt_strvar = owner.super_owner.put_textlabel(
-                    self.crnt_taskinfo_frame, "ネガティブプロンプト", 2, 0, "N/A"
+                ttk.Label(self.crnt_task_prompts_frame, text="ネガティブプロンプト").grid(
+                    row=2, column=0, padx=6, pady=6, sticky="w"
                 )
+                self.neg_prompt_tiplabel = TipLabel(
+                    self.crnt_task_prompts_frame,
+                    2,
+                    1,
+                    Consts.not_available_text,
+                    Consts.max_output_strlen,
+                )
+
+        class CrntTaskMetaInfoFrame:
+            """
+            現在のタスクメタ情報フレーム
+            """
+
+            def __init__(self, owner: Displayer.InfoWindow):
+                """
+                現在のタスクメタ情報フレームコンストラクタ
+
+                Args:
+                    owner (Displayer.InfoWindow): InfoWindow インスタンス
+                """
+                self.super_owner = owner
+
+                self.crnt_task_metainfo_frame = ttk.Frame(owner.main_frame)
+                self.crnt_task_metainfo_frame.grid(row=2, column=0, sticky="swe")
+                self.crnt_task_metainfo_frame.columnconfigure(0, weight=1)
+                self.crnt_task_metainfo_frame.columnconfigure(1, weight=1)
+
                 # ステップ数
                 self.steps_strvar = owner.super_owner.put_textlabel(
-                    self.crnt_taskinfo_frame, "ステップ数", 3, 0, "N/A"
+                    self.crnt_task_metainfo_frame, "ステップ数", 0, 0, Consts.not_available_text
                 )
                 # バッチサイズ
                 self.batch_size_strvar = owner.super_owner.put_textlabel(
-                    self.crnt_taskinfo_frame, "バッチサイズ", 3, 2, "N/A"
+                    self.crnt_task_metainfo_frame, "バッチサイズ", 0, 2, Consts.not_available_text
                 )
                 # サンプラ
                 self.sampler_strvar = owner.super_owner.put_textlabel(
-                    self.crnt_taskinfo_frame, "サンプラ", 4, 0, "N/A"
+                    self.crnt_task_metainfo_frame, "サンプラ", 1, 0, Consts.not_available_text
                 )
                 # スケジューラ
                 self.scheduler_strvar = owner.super_owner.put_textlabel(
-                    self.crnt_taskinfo_frame, "スケジューラ", 4, 2, "N/A"
+                    self.crnt_task_metainfo_frame, "スケジューラ", 1, 2, Consts.not_available_text
                 )
                 # スケール
                 self.scale_strvar = owner.super_owner.put_textlabel(
-                    self.crnt_taskinfo_frame, "スケール", 4, 4, "N/A"
+                    self.crnt_task_metainfo_frame, "スケール", 1, 4, Consts.not_available_text
                 )
                 # シード値
                 self.seed_strvar = owner.super_owner.put_textlabel(
-                    self.crnt_taskinfo_frame, "シード値", 5, 0, "N/A"
+                    self.crnt_task_metainfo_frame, "シード値", 2, 0, Consts.not_available_text
                 )
                 # 幅
                 self.width_strvar = owner.super_owner.put_textlabel(
-                    self.crnt_taskinfo_frame, "幅", 6, 0, "N/A"
+                    self.crnt_task_metainfo_frame, "幅", 3, 0, Consts.not_available_text
                 )
                 # 高さ
                 self.height_strvar = owner.super_owner.put_textlabel(
-                    self.crnt_taskinfo_frame, "高さ", 6, 2, "N/A"
+                    self.crnt_task_metainfo_frame, "高さ", 3, 2, Consts.not_available_text
                 )
                 # 宛先アドレス
                 self.addr_strvar = owner.super_owner.put_textlabel(
-                    self.crnt_taskinfo_frame, "宛先アドレス", 7, 0, "N/A"
+                    self.crnt_task_metainfo_frame, "宛先アドレス", 4, 0, Consts.not_available_text
                 )
                 # 宛先ポート
                 self.port_strvar = owner.super_owner.put_textlabel(
-                    self.crnt_taskinfo_frame, "宛先ポート", 7, 2, "N/A"
+                    self.crnt_task_metainfo_frame, "宛先ポート", 4, 2, Consts.not_available_text
                 )
 
-        def __init__(self, owner: Displayer):
+        def __init__(self, owner: Displayer, fix_position: bool = False):
             """
             情報ウィンドウコンストラクタ
 
             Args:
                 owner (Displayer): Display インスタンス
+                fix_position (bool, optional): 表示位置を固定するか
             """
             self.super_owner = owner
 
             self.info_window = tkinter.Toplevel(self.super_owner.root)
-            self.info_window.title(f"pipmaker - 画像 [{owner.ownername}]")
+            if fix_position:
+                self.info_window.geometry(
+                    (
+                        f"+{owner.config_window_x}"
+                        f"+{owner.config_window_y + owner.config_window_height + 50}"
+                    )
+                )
+            self.info_window.title(f"pipmaker - 情報 [{owner.ownername}]")
             self.info_window.protocol("WM_DELETE_WINDOW", self.super_owner.destroy_info_window)
 
             self.main_frame = ttk.Frame(self.info_window, padding=5)
@@ -407,7 +565,8 @@ class Displayer:
             self._tasks_strvar = tkinter.StringVar(value="0")
 
             self.appinfo_frame = self.AppInfoFrame(self)
-            self.crnt_taskinfo_frame = self.CrntTaskInfoFrame(self)
+            self.crnt_task_prompts_frame = self.CrntTaskPromptsFrame(self)
+            self.crnt_task_metainfo_frame = self.CrntTaskMetaInfoFrame(self)
 
     class PicWindow:
         """
@@ -475,16 +634,24 @@ class Displayer:
                 )
                 self.bad_button.grid(row=0, column=1, padx=6, pady=6, sticky="wes")
 
-        def __init__(self, owner: Displayer):
+        def __init__(self, owner: Displayer, fix_position: bool = False):
             """
             画像ウィンドウコンストラクタ
 
             Args:
                 owner (Displayer): Display インスタンス
+                fix_position (bool, optional): 表示位置を固定するか
             """
             self.super_owner = owner
 
             self.pic_window = tkinter.Toplevel(self.super_owner.root)
+            if fix_position:
+                self.pic_window.geometry(
+                    (
+                        f"-{owner.config_window_x + owner.config_window_width + 50}"
+                        f"+{owner.config_window_y}"
+                    )
+                )
             self.pic_window.title("pipmaker - 画像")
             self.pic_window.protocol("WM_DELETE_WINDOW", self.super_owner.destroy_pic_window)
 
@@ -637,11 +804,11 @@ class Displayer:
             self.info_window.info_window.lift()
             return
 
-        self.info_window = self.InfoWindow(self)
+        self.info_window = self.InfoWindow(self, fix_position=True)
 
     def is_info_window_open(self) -> bool:
         """
-        画像ウィンドウが開かれているか
+        情報ウィンドウが開かれているか
 
         Returns:
             bool: True: 開かれている, False: 開かれていない or TclError 例外発生
@@ -655,7 +822,7 @@ class Displayer:
 
     def destroy_info_window(self) -> None:
         """
-        画像ウィンドウのクローズ時のハンドラ
+        情報ウィンドウのクローズ時のハンドラ
         """
         if self.is_info_window_open():
             self.info_window.info_window.destroy()
@@ -670,34 +837,46 @@ class Displayer:
         if not self.info_window:
             return
 
-        self.info_window.appinfo_frame.len_tasks_strvar.set(f"{len(self.taskmanager.tasks)}")
+        self.info_window.appinfo_frame.len_tasks_strvar.set(f"{self.taskmanager.len_tasks()}")
         crnt_task: TaskBlueprint = self.taskmanager.crnt_task
         if crnt_task is None:
-            self.info_window.crnt_taskinfo_frame.pos_prompt_strvar.set("N/A")
-            self.info_window.crnt_taskinfo_frame.neg_prompt_strvar.set("N/A")
-            self.info_window.crnt_taskinfo_frame.steps_strvar.set("N/A")
-            self.info_window.crnt_taskinfo_frame.batch_size_strvar.set("N/A")
-            self.info_window.crnt_taskinfo_frame.sampler_strvar.set("N/A")
-            self.info_window.crnt_taskinfo_frame.scheduler_strvar.set("N/A")
-            self.info_window.crnt_taskinfo_frame.scale_strvar.set("N/A")
-            self.info_window.crnt_taskinfo_frame.seed_strvar.set("N/A")
-            self.info_window.crnt_taskinfo_frame.width_strvar.set("N/A")
-            self.info_window.crnt_taskinfo_frame.height_strvar.set("N/A")
-            self.info_window.crnt_taskinfo_frame.addr_strvar.set("N/A")
-            self.info_window.crnt_taskinfo_frame.port_strvar.set("N/A")
+            self.info_window.crnt_task_prompts_frame.pos_prompt_tiplabel.set_text(
+                Consts.not_available_text
+            )
+            self.info_window.crnt_task_prompts_frame.neg_prompt_tiplabel.set_text(
+                Consts.not_available_text
+            )
+            self.info_window.crnt_task_metainfo_frame.steps_strvar.set(Consts.not_available_text)
+            self.info_window.crnt_task_metainfo_frame.batch_size_strvar.set(
+                Consts.not_available_text
+            )
+            self.info_window.crnt_task_metainfo_frame.sampler_strvar.set(Consts.not_available_text)
+            self.info_window.crnt_task_metainfo_frame.scheduler_strvar.set(
+                Consts.not_available_text
+            )
+            self.info_window.crnt_task_metainfo_frame.scale_strvar.set(Consts.not_available_text)
+            self.info_window.crnt_task_metainfo_frame.seed_strvar.set(Consts.not_available_text)
+            self.info_window.crnt_task_metainfo_frame.width_strvar.set(Consts.not_available_text)
+            self.info_window.crnt_task_metainfo_frame.height_strvar.set(Consts.not_available_text)
+            self.info_window.crnt_task_metainfo_frame.addr_strvar.set(Consts.not_available_text)
+            self.info_window.crnt_task_metainfo_frame.port_strvar.set(Consts.not_available_text)
         else:
-            self.info_window.crnt_taskinfo_frame.pos_prompt_strvar.set(crnt_task.prompt)
-            self.info_window.crnt_taskinfo_frame.neg_prompt_strvar.set(crnt_task.negative_prompt)
-            self.info_window.crnt_taskinfo_frame.steps_strvar.set(f"{crnt_task.steps}")
-            self.info_window.crnt_taskinfo_frame.batch_size_strvar.set(f"{crnt_task.batch_size}")
-            self.info_window.crnt_taskinfo_frame.sampler_strvar.set(crnt_task.sampler_name)
-            self.info_window.crnt_taskinfo_frame.scheduler_strvar.set(crnt_task.scheduler)
-            self.info_window.crnt_taskinfo_frame.scale_strvar.set(f"{crnt_task.cfg_scale}")
-            self.info_window.crnt_taskinfo_frame.seed_strvar.set(f"{crnt_task.seed}")
-            self.info_window.crnt_taskinfo_frame.width_strvar.set(f"{crnt_task.width}")
-            self.info_window.crnt_taskinfo_frame.height_strvar.set(f"{crnt_task.height}")
-            self.info_window.crnt_taskinfo_frame.addr_strvar.set(crnt_task.dst_addr)
-            self.info_window.crnt_taskinfo_frame.port_strvar.set(crnt_task.dst_port)
+            self.info_window.crnt_task_prompts_frame.pos_prompt_tiplabel.set_text(crnt_task.prompt)
+            self.info_window.crnt_task_prompts_frame.neg_prompt_tiplabel.set_text(
+                crnt_task.negative_prompt
+            )
+            self.info_window.crnt_task_metainfo_frame.steps_strvar.set(f"{crnt_task.steps}")
+            self.info_window.crnt_task_metainfo_frame.batch_size_strvar.set(
+                f"{crnt_task.batch_size}"
+            )
+            self.info_window.crnt_task_metainfo_frame.sampler_strvar.set(crnt_task.sampler_name)
+            self.info_window.crnt_task_metainfo_frame.scheduler_strvar.set(crnt_task.scheduler)
+            self.info_window.crnt_task_metainfo_frame.scale_strvar.set(f"{crnt_task.cfg_scale}")
+            self.info_window.crnt_task_metainfo_frame.seed_strvar.set(f"{crnt_task.seed}")
+            self.info_window.crnt_task_metainfo_frame.width_strvar.set(f"{crnt_task.width}")
+            self.info_window.crnt_task_metainfo_frame.height_strvar.set(f"{crnt_task.height}")
+            self.info_window.crnt_task_metainfo_frame.addr_strvar.set(crnt_task.dst_addr)
+            self.info_window.crnt_task_metainfo_frame.port_strvar.set(crnt_task.dst_port)
 
     def on_open_info_window(self) -> None:
         """
@@ -723,7 +902,7 @@ class Displayer:
             self.pic_window.pic_window.lift()
             return
 
-        self.pic_window = self.PicWindow(self)
+        self.pic_window = self.PicWindow(self, fix_position=True)
 
     def is_pic_window_open(self) -> bool:
         """
@@ -812,7 +991,51 @@ class Displayer:
         """
         エンドポイントの処理
         """
-        self.root.after(500, self.on_edgepoint)
+        self.root.after(100, self.on_edgepoint)
+
+    @property
+    def config_window_x(self) -> int:
+        """
+        設定ウィンドウ(メインウィンドウ)の x 座標
+
+        Returns:
+            int: 設定ウィンドウ(メインウィンドウ)の x 座標
+        """
+        self.root.update_idletasks()
+        return self.root.winfo_x()
+
+    @property
+    def config_window_y(self) -> int:
+        """
+        設定ウィンドウ(メインウィンドウ)の y 座標
+
+        Returns:
+            int: 設定ウィンドウ(メインウィンドウ)の y 座標
+        """
+        self.root.update_idletasks()
+        return self.root.winfo_y()
+
+    @property
+    def config_window_width(self) -> int:
+        """
+        設定ウィンドウ(メインウィンドウ)の幅
+
+        Returns:
+            int: 設定ウィンドウ(メインウィンドウ)の幅
+        """
+        self.root.update_idletasks()
+        return self.root.winfo_width()
+
+    @property
+    def config_window_height(self) -> int:
+        """
+        設定ウィンドウ(メインウィンドウ)の高さ
+
+        Returns:
+            int: 設定ウィンドウ(メインウィンドウ)の高さ
+        """
+        self.root.update_idletasks()
+        return self.root.winfo_height()
 
     @property
     def srv_ipaddr(self) -> str:

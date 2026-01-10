@@ -155,6 +155,23 @@ class TaskManager:
 
         self.tasks.append(new_task)
 
+    def clear(self) -> None:
+        """
+        タスクリストを空にする
+        """
+        print("clean")
+        self.tasks.clear()
+
+    def len_tasks(self) -> int:
+        """
+        現在のタスクと残りタスクの合計数を算出する
+
+        Returns:
+            int: 合計数
+        """
+        nexts = len(self.tasks)
+        return nexts if self.crnt_task is None else nexts + 1
+
     def post_interrupt(self) -> None:
         """
         Stable Diffusion interrupt エンドポイントへポストする\n

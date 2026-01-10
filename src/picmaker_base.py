@@ -87,7 +87,6 @@ def search_regex(s: str, regex: str, gridx: int = 1) -> str:
 class PMConsts:
     """
     このクラス関連の定数
-
     """
 
     # 画像保存先ディレクトリ
