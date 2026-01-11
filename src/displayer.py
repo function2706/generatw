@@ -953,7 +953,8 @@ class Displayer:
     def create_no_image_placeholder(self) -> Image:
         """
         表示すべき画像がない場合の画像を作成する\n
-        グレースケールのチェックパターンに"NO IMAGE"
+        グレースケールのチェックパターンに"NO IMAGE"\n
+        幅と高さは自動的に 8 の倍数に切り下げられる(Stable Diffusion の仕様に準拠)
 
         Returns:
             Image: 画像オブジェクト
@@ -961,14 +962,16 @@ class Displayer:
         light = "#e0e0e0"
         dark = "#c0c0c0"
         text_color = "#444444"
+        width = self.sd_width & -8
+        height = self.sd_height & -8
 
-        img = Image.new("RGB", (self.sd_width, self.sd_height), light)
+        img = Image.new("RGB", (width, height), light)
         draw = ImageDraw.Draw(img)
 
-        cell = max(8, min(self.sd_width, self.sd_height) // 20)
+        cell = max(8, min(width, height) // 20)
 
-        for y in range(0, self.sd_height, cell):
-            for x in range(0, self.sd_width, cell):
+        for y in range(0, height, cell):
+            for x in range(0, width, cell):
                 if (x // cell + y // cell) % 2 == 0:
                     draw.rectangle((x, y, x + cell, y + cell), fill=light)
                 else:
@@ -978,7 +981,7 @@ class Displayer:
         fallback_font = ImageFont.load_default()
         font = fallback_font
 
-        max_font_size = int(self.sd_height * 0.15)
+        max_font_size = int(height * 0.15)
         font_size = max_font_size
 
         while font_size > 5:
@@ -990,7 +993,7 @@ class Displayer:
             bbox = draw.textbbox((0, 0), text, font=font)
             text_w = bbox[2] - bbox[0]
 
-            if text_w <= self.sd_width * 0.8:
+            if text_w <= width * 0.8:
                 break
 
             font_size -= 2
@@ -999,8 +1002,8 @@ class Displayer:
         text_w = bbox[2] - bbox[0]
         text_h = bbox[3] - bbox[1]
 
-        text_x = (self.sd_width - text_w) // 2
-        text_y = (self.sd_height - text_h) // 2
+        text_x = (width - text_w) // 2
+        text_y = (height - text_h) // 2
 
         draw.text((text_x, text_y), text, fill=text_color, font=font)
 
