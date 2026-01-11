@@ -159,7 +159,6 @@ class TaskManager:
         """
         タスクリストを空にする
         """
-        print("clean")
         self.tasks.clear()
 
     def len_tasks(self) -> int:

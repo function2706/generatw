@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from tkinter import Frame, TclError, ttk
 from typing import Callable
 
-from PIL import Image, ImageTk
+from PIL import Image, ImageDraw, ImageFont, ImageTk
 
 from picmanager import PicManager, PicStats
 from taskmanager import TaskBlueprint, TaskManager
@@ -710,6 +710,8 @@ class Displayer:
         self.construct_info_window()
         self.pic_window: Displayer.PicWindow = None
 
+        self.noimage_img = ImageTk.PhotoImage(self.create_no_image_placeholder())
+
     def finalize(self) -> None:
         """
         終了処理\n
@@ -945,6 +947,71 @@ class Displayer:
 
         self.picmanager.crnt_picstats = picstats
         self.switch_output_button_state(True)
+
+    def create_no_image_placeholder(self) -> Image:
+        """
+        表示すべき画像がない場合の画像を作成する\n
+        グレースケールのチェックパターンに"NO IMAGE"
+
+        Returns:
+            Image: 画像オブジェクト
+        """
+        light = "#e0e0e0"
+        dark = "#c0c0c0"
+        text_color = "#444444"
+
+        img = Image.new("RGB", (self.sd_width, self.sd_height), light)
+        draw = ImageDraw.Draw(img)
+
+        cell = max(8, min(self.sd_width, self.sd_height) // 20)
+
+        for y in range(0, self.sd_height, cell):
+            for x in range(0, self.sd_width, cell):
+                if (x // cell + y // cell) % 2 == 0:
+                    draw.rectangle((x, y, x + cell, y + cell), fill=light)
+                else:
+                    draw.rectangle((x, y, x + cell, y + cell), fill=dark)
+
+        text = "NO IMAGE"
+        fallback_font = ImageFont.load_default()
+        font = fallback_font
+
+        max_font_size = int(self.sd_height * 0.15)
+        font_size = max_font_size
+
+        while font_size > 5:
+            try:
+                font = ImageFont.truetype("arial.ttf", font_size)
+            except Exception:
+                font = fallback_font
+
+            bbox = draw.textbbox((0, 0), text, font=font)
+            text_w = bbox[2] - bbox[0]
+
+            if text_w <= self.sd_width * 0.8:
+                break
+
+            font_size -= 2
+
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_w = bbox[2] - bbox[0]
+        text_h = bbox[3] - bbox[1]
+
+        text_x = (self.sd_width - text_w) // 2
+        text_y = (self.sd_height - text_h) // 2
+
+        draw.text((text_x, text_y), text, fill=text_color, font=font)
+
+        return img
+
+    def put_no_image_placeholder(self) -> None:
+        """
+        表示すべき画像がない場合の画像を画像ラベルに表示する\n
+        幅と高さは設定に依存
+        """
+        self.construct_pic_window()
+        self.pic_window.cursor_frame.pic_label.configure(image=self.noimage_img)
+        self.pic_window.cursor_frame.pic_label.image = self.noimage_img
 
     def on_output(self) -> None:
         """

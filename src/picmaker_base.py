@@ -461,6 +461,8 @@ class PicMakerBase(ABC, Generic[Stats]):
         存在しない場合は何もしない
         """
         if not self.get_crnt_picstats_list():
+            # ここに来るのは, ステータス自体は生成に十分な状態だがまだ画像がない場合
+            self.displayer.put_no_image_placeholder()
             return
 
         self.displayer.update_pic_window(random.choice(self.get_crnt_picstats_list()))
@@ -488,7 +490,10 @@ class PicMakerBase(ABC, Generic[Stats]):
         """
         try:
             is_new_stats = self.refresh_stats()
-            if (not is_new_stats) or (not self.is_stats_enough_for_prompt()):
+            if not is_new_stats:
+                return
+            elif not self.is_stats_enough_for_prompt():
+                self.displayer.put_no_image_placeholder()
                 return
 
             self.run_oneshot()
