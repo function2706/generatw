@@ -478,9 +478,6 @@ class PicMakerBase(ABC, Generic[Stats]):
         """
         終端処理ハンドラ
         """
-        self.displayer.switch_output_button_state(
-            self.is_stats_enough_for_prompt() and self.picmanager.crnt_picstats
-        )
         self.displayer.update_info_window()
 
     def run_main(self) -> None:

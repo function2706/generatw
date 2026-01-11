@@ -947,6 +947,7 @@ class Displayer:
 
         self.picmanager.crnt_picstats = picstats
         self.switch_output_button_state(True)
+        self.switch_picwindow_button_state(True)
 
     def create_no_image_placeholder(self) -> Image:
         """
@@ -1012,6 +1013,8 @@ class Displayer:
         self.construct_pic_window()
         self.pic_window.cursor_frame.pic_label.configure(image=self.noimage_img)
         self.pic_window.cursor_frame.pic_label.image = self.noimage_img
+        self.switch_output_button_state(False)
+        self.switch_picwindow_button_state(False)
 
     def on_output(self) -> None:
         """
@@ -1046,6 +1049,27 @@ class Displayer:
             self.config_window.main_tab_obj.button_frame.output_button.configure(state="normal")
         else:
             self.config_window.main_tab_obj.button_frame.output_button.configure(state="disabled")
+
+    def switch_picwindow_button_state(self, toggle: bool) -> None:
+        """
+        画像ウィンドウ上のボタンの有効/無効(グレーアウト)を切り替える
+
+        Args:
+            toggle (bool): True で有効, False で無効
+        """
+        if not self.is_pic_window_open():
+            return
+
+        if toggle:
+            self.pic_window.cursor_frame.next_button.configure(state="normal")
+            self.pic_window.cursor_frame.prev_button.configure(state="normal")
+            self.pic_window.eval_frame.good_button.configure(state="normal")
+            self.pic_window.eval_frame.bad_button.configure(state="normal")
+        else:
+            self.pic_window.cursor_frame.next_button.configure(state="disabled")
+            self.pic_window.cursor_frame.prev_button.configure(state="disabled")
+            self.pic_window.eval_frame.good_button.configure(state="disabled")
+            self.pic_window.eval_frame.bad_button.configure(state="disabled")
 
     def entrypoint(self) -> None:
         """
