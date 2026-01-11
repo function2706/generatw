@@ -474,12 +474,6 @@ class PicMakerBase(ABC, Generic[Stats]):
         self.reserve_task()
         self.refresh_pic()
 
-    def on_terminal(self) -> None:
-        """
-        終端処理ハンドラ
-        """
-        self.displayer.update_info_window()
-
     def run_main(self) -> None:
         """
         メイン処理 (ステータス更新 -> 更新がある場合にタスクを予約 -> すでに存在する画像を表示)\n
@@ -495,5 +489,4 @@ class PicMakerBase(ABC, Generic[Stats]):
 
             self.run_oneshot()
         finally:
-            self.on_terminal()
             self.displayer.endpoint()

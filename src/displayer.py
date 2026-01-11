@@ -709,6 +709,7 @@ class Displayer:
         self.info_window: Displayer.InfoWindow = None
         self.construct_info_window()
         self.pic_window: Displayer.PicWindow = None
+        self.switch_output_button_state(False)
 
         self.noimage_img = ImageTk.PhotoImage(self.create_no_image_placeholder())
 
@@ -1082,6 +1083,7 @@ class Displayer:
         """
         エンドポイントの処理
         """
+        self.update_info_window()
         self.root.after(100, self.on_edgepoint)
 
     @property
