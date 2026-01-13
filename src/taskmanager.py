@@ -25,8 +25,9 @@ class TaskProgress:
     skipped: bool = False
     interrupted: bool = False
     job: str = ""
-    job_no: int = 0
     job_count: int = 0
+    job_timestamp: int = 0
+    job_no: int = 0
     sampling_step: int = 0
     sampling_steps: int = 0
 
@@ -63,8 +64,9 @@ class TaskProgress:
             skipped=skipped,
             interrupted=interrupted,
             job=info.get("job", ""),
-            job_no=cls.to_int(info.get("job_no", 0)),
             job_count=cls.to_int(info.get("job_count", 0)),
+            job_timestamp=cls.to_int(info.get("job_timestamp", 0)),
+            job_no=cls.to_int(info.get("job_no", 0)),
             sampling_step=cls.to_int(info.get("sampling_step", 0)),
             sampling_steps=cls.to_int(info.get("sampling_steps", 0)),
         )
