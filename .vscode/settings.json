@@ -41,7 +41,7 @@
                 /* 関数への引数代入時の左辺 */
                 "scope": "variable.parameter.function-call.python",
                 "settings": {
-                    "foreground": "#757575"
+                    "fontStyle": "italic"
                 }
             }
         ]

@@ -199,19 +199,19 @@ async def txt2img(req: Txt2ImgRequest):
     else:
         seeds = [req.seed + i for i in range(total_images)]
 
+    # sampling loop (once per job)
+    for step in range(app.state.sampling_steps):
+        if app.state.interrupted:
+            app.state.active = False
+            return {"images": [], "info": "{}"}
+
+        app.state.sampling_step = step + 1
+        cooldown = float(getattr(app.state, "cooldown", 0)) / app.state.sampling_steps
+        await asyncio.sleep(cooldown)
+
     # 画像生成（単色 + 時刻等）
     images_b64: List[str] = []
     for idx, s in enumerate(seeds):
-        # step を進める（A1111 風）
-        for step in range(app.state.sampling_steps):
-            if app.state.interrupted:
-                app.state.active = False
-                return {"images": [], "info": "{}"}
-
-            app.state.sampling_step = step + 1
-            cooldown = float(getattr(app.state, "cooldown", 0)) / req.steps
-            await asyncio.sleep(cooldown)  # 擬似生成時間
-
         rng = random.Random(s)
         color = (rng.randint(0, 255), rng.randint(0, 255), rng.randint(0, 255))
         img = Image.new("RGB", (width, height), color=color)
@@ -317,17 +317,17 @@ async def img2img(req: Img2ImgRequest):
 
     images_b64: List[str] = []
 
+    # sampling loop (once per job)
+    for step in range(app.state.sampling_steps):
+        if app.state.interrupted:
+            app.state.active = False
+            return {"images": [], "info": "{}"}
+
+        app.state.sampling_step = step + 1
+        cooldown = float(getattr(app.state, "cooldown", 0)) / app.state.sampling_steps
+        await asyncio.sleep(cooldown)
+
     for idx, s in enumerate(seeds):
-        # step を進める（A1111 風）
-        for step in range(app.state.sampling_steps):
-            if app.state.interrupted:
-                app.state.active = False
-                return {"images": [], "info": "{}"}
-
-            app.state.sampling_step = step + 1
-            cooldown = float(getattr(app.state, "cooldown", 0)) / req.steps
-            await asyncio.sleep(cooldown)  # 擬似生成時間
-
         img = base_img.copy()
         draw = ImageDraw.Draw(img)
 

@@ -213,19 +213,19 @@ class Displayer:
 
                     # テキストボックス(幅)
                     self.width_entry = owner.super_owner.super_owner.put_textbox(
-                        self.sd_interior_config_frame, "幅", 1, 0, 5, str(540)
+                        self.sd_interior_config_frame, "幅", 1, 0, 5, str(540), "w"
                     )
                     # テキストボックス(高さ)
                     self.height_entry = owner.super_owner.super_owner.put_textbox(
-                        self.sd_interior_config_frame, "高さ", 1, 2, 5, str(960)
+                        self.sd_interior_config_frame, "高さ", 1, 2, 5, str(960), "w"
                     )
                     # テキストボックス(ステップ数)
                     self.steps_entry = owner.super_owner.super_owner.put_textbox(
-                        self.sd_interior_config_frame, "Steps", 2, 0, 4, str(30)
+                        self.sd_interior_config_frame, "Steps", 2, 0, 4, str(30), "w"
                     )
                     # テキストボックス(生成数)
                     self.batch_size_entry = owner.super_owner.super_owner.put_textbox(
-                        self.sd_interior_config_frame, "生成数", 2, 2, 4, str(2)
+                        self.sd_interior_config_frame, "生成数", 2, 2, 4, str(2), "w"
                     )
 
             class SDExteriorConfigFrame:
@@ -247,11 +247,11 @@ class Displayer:
 
                     # テキストボックス(IPアドレス)
                     self.ipaddr_entry = owner.super_owner.super_owner.put_textbox(
-                        self.sd_exterior_config_frame, "IPアドレス", 0, 0, 16, "127.0.0.1"
+                        self.sd_exterior_config_frame, "IPアドレス", 0, 0, 16, "127.0.0.1", "w"
                     )
                     # テキストボックス(ポート)
                     self.port_entry = owner.super_owner.super_owner.put_textbox(
-                        self.sd_exterior_config_frame, "ポート", 0, 2, 6, str(7860)
+                        self.sd_exterior_config_frame, "ポート", 0, 2, 6, str(7860), "w"
                     )
 
             def __init__(self, owner: Displayer.ConfigWindow):
@@ -429,8 +429,23 @@ class Displayer:
                 self.appinfo_frame.grid(row=0, column=0, sticky="new")
 
                 # 残りタスク数
+                self.len_tasks_frame = ttk.Frame(self.appinfo_frame)
+                self.len_tasks_frame.grid(row=0, column=0, sticky="w")
                 self.len_tasks_strvar = owner.super_owner.put_textlabel(
-                    self.appinfo_frame, "残りタスク数", 0, 0, "0"
+                    self.len_tasks_frame, "残りタスク数", 0, 0, "0", "w"
+                )
+                # プログレスバー
+                self.progress_frame = ttk.Frame(self.appinfo_frame)
+                self.progress_frame.grid(row=1, column=0, sticky="ew")
+                self.task_progress = ttk.Progressbar(
+                    self.progress_frame, orient="horizontal", length=300, mode="determinate"
+                )
+                self.task_progress.grid(row=0, column=0, padx=6, pady=6, sticky="w")
+                self.task_progress["maximum"] = 1
+                self.task_progress["value"] = 0
+                self.progress_strvar = tkinter.StringVar(value="0%")
+                ttk.Label(self.progress_frame, textvariable=self.progress_strvar).grid(
+                    row=0, column=1, padx=6, pady=6, sticky="w"
                 )
 
         class CrntTaskPromptsFrame:
@@ -499,43 +514,68 @@ class Displayer:
 
                 # ステップ数
                 self.steps_strvar = owner.super_owner.put_textlabel(
-                    self.crnt_task_metainfo_frame, "ステップ数", 0, 0, Consts.not_available_text
+                    self.crnt_task_metainfo_frame,
+                    "ステップ数",
+                    0,
+                    0,
+                    Consts.not_available_text,
+                    "w",
                 )
                 # バッチサイズ
                 self.batch_size_strvar = owner.super_owner.put_textlabel(
-                    self.crnt_task_metainfo_frame, "バッチサイズ", 0, 2, Consts.not_available_text
+                    self.crnt_task_metainfo_frame,
+                    "バッチサイズ",
+                    0,
+                    2,
+                    Consts.not_available_text,
+                    "w",
                 )
                 # サンプラ
                 self.sampler_strvar = owner.super_owner.put_textlabel(
-                    self.crnt_task_metainfo_frame, "サンプラ", 1, 0, Consts.not_available_text
+                    self.crnt_task_metainfo_frame, "サンプラ", 1, 0, Consts.not_available_text, "w"
                 )
                 # スケジューラ
                 self.scheduler_strvar = owner.super_owner.put_textlabel(
-                    self.crnt_task_metainfo_frame, "スケジューラ", 1, 2, Consts.not_available_text
+                    self.crnt_task_metainfo_frame,
+                    "スケジューラ",
+                    1,
+                    2,
+                    Consts.not_available_text,
+                    "w",
                 )
                 # スケール
                 self.scale_strvar = owner.super_owner.put_textlabel(
-                    self.crnt_task_metainfo_frame, "スケール", 1, 4, Consts.not_available_text
+                    self.crnt_task_metainfo_frame, "スケール", 1, 4, Consts.not_available_text, "w"
                 )
                 # シード値
                 self.seed_strvar = owner.super_owner.put_textlabel(
-                    self.crnt_task_metainfo_frame, "シード値", 2, 0, Consts.not_available_text
+                    self.crnt_task_metainfo_frame, "シード値", 2, 0, Consts.not_available_text, "w"
                 )
                 # 幅
                 self.width_strvar = owner.super_owner.put_textlabel(
-                    self.crnt_task_metainfo_frame, "幅", 3, 0, Consts.not_available_text
+                    self.crnt_task_metainfo_frame, "幅", 3, 0, Consts.not_available_text, "w"
                 )
                 # 高さ
                 self.height_strvar = owner.super_owner.put_textlabel(
-                    self.crnt_task_metainfo_frame, "高さ", 3, 2, Consts.not_available_text
+                    self.crnt_task_metainfo_frame, "高さ", 3, 2, Consts.not_available_text, "w"
                 )
                 # 宛先アドレス
                 self.addr_strvar = owner.super_owner.put_textlabel(
-                    self.crnt_task_metainfo_frame, "宛先アドレス", 4, 0, Consts.not_available_text
+                    self.crnt_task_metainfo_frame,
+                    "宛先アドレス",
+                    4,
+                    0,
+                    Consts.not_available_text,
+                    "w",
                 )
                 # 宛先ポート
                 self.port_strvar = owner.super_owner.put_textlabel(
-                    self.crnt_task_metainfo_frame, "宛先ポート", 4, 2, Consts.not_available_text
+                    self.crnt_task_metainfo_frame,
+                    "宛先ポート",
+                    4,
+                    2,
+                    Consts.not_available_text,
+                    "w",
                 )
 
         def __init__(self, owner: Displayer, fix_position: bool = False):
@@ -727,7 +767,7 @@ class Displayer:
         self.root.after(0, worker())
 
     def put_textbox(
-        self, frame: Frame, name: str, row: int, col: int, width: int, default: str
+        self, frame: Frame, name: str, row: int, col: int, width: int, default: str, sticky: str
     ) -> ttk.Entry:
         """
         テキストボックスの作成([name] [entry])\n
@@ -740,18 +780,19 @@ class Displayer:
             col (int): フレーム内の column
             width (int): 長さ
             default (str): デフォルト値
+            sticky (str): 張り付き方
 
         Returns:
             ttk.Entry: オブジェクトインスタンス
         """
-        ttk.Label(frame, text=name).grid(row=row, column=col, padx=6, pady=6, sticky="w")
+        ttk.Label(frame, text=name).grid(row=row, column=col, padx=6, pady=6, sticky=sticky)
         entry = ttk.Entry(frame, width=width)
-        entry.grid(row=row, column=(col + 1), padx=2, pady=6, sticky="w")
+        entry.grid(row=row, column=(col + 1), padx=2, pady=6, sticky=sticky)
         entry.insert(0, default)
         return entry
 
     def put_textlabel(
-        self, frame: Frame, name: str, row: int, col: int, default: str
+        self, frame: Frame, name: str, row: int, col: int, default: str, sticky: str
     ) -> tkinter.StringVar:
         """
         テキストラベルの作成([name] [label])\n
@@ -764,14 +805,15 @@ class Displayer:
             row (int): フレーム内の row
             col (int): フレーム内の column
             default (str): デフォルト値
+            sticky (str): 張り付き方
 
         Returns:
             tkinter.StringVar: オブジェクトインスタンス
         """
-        ttk.Label(frame, text=name).grid(row=row, column=col, padx=6, pady=6, sticky="w")
+        ttk.Label(frame, text=name).grid(row=row, column=col, padx=6, pady=6, sticky=sticky)
         strvar = tkinter.StringVar(value=default)
         ttk.Label(frame, textvariable=strvar).grid(
-            row=row, column=(col + 1), padx=6, pady=6, sticky="w"
+            row=row, column=(col + 1), padx=6, pady=6, sticky=sticky
         )
         return strvar
 
@@ -832,16 +874,29 @@ class Displayer:
             self.info_window.info_window.destroy()
         self.info_window = None
 
-    def update_info_window(self) -> None:
+    def update_appinfo_frame(self) -> None:
         """
-        情報ウィンドウの更新を行う\n
-        ウィンドウが開いていない場合は何もしない\n
+        アプリケーション情報フレームの更新を行う\n
         更新は呼び出した瞬間の TaskManager をもとに行う
         """
-        if not self.info_window:
-            return
-
         self.info_window.appinfo_frame.len_tasks_strvar.set(f"{self.taskmanager.len_tasks()}")
+        crnt_task: TaskBlueprint = self.taskmanager.crnt_task
+        if crnt_task is None:
+            self.info_window.appinfo_frame.task_progress["value"] = 0
+            self.info_window.appinfo_frame.progress_strvar.set("0%")
+        else:
+            task_progress = self.taskmanager.post_progress()
+            self.info_window.appinfo_frame.task_progress["value"] = (
+                task_progress.progress if task_progress is not None else 0
+            )
+            task_progress_val = task_progress.progress * 100 if task_progress is not None else 0
+            self.info_window.appinfo_frame.progress_strvar.set(f"{task_progress_val:.0f}%")
+
+    def update_taskinfo_frame(self) -> None:
+        """
+        プロンプト, タスクメタ情報フレームの更新を行う\n
+        更新は呼び出した瞬間の TaskManager をもとに行う
+        """
         crnt_task: TaskBlueprint = self.taskmanager.crnt_task
         if crnt_task is None:
             self.info_window.crnt_task_prompts_frame.pos_prompt_tiplabel.set_text(
@@ -881,6 +936,18 @@ class Displayer:
             self.info_window.crnt_task_metainfo_frame.height_strvar.set(f"{crnt_task.height}")
             self.info_window.crnt_task_metainfo_frame.addr_strvar.set(crnt_task.dst_addr)
             self.info_window.crnt_task_metainfo_frame.port_strvar.set(crnt_task.dst_port)
+
+    def update_info_window(self) -> None:
+        """
+        情報ウィンドウの更新を行う\n
+        ウィンドウが開いていない場合は何もしない\n
+        更新は呼び出した瞬間の TaskManager をもとに行う
+        """
+        if not self.info_window:
+            return
+
+        self.update_appinfo_frame()
+        self.update_taskinfo_frame()
 
     def on_open_info_window(self) -> None:
         """
@@ -1088,7 +1155,7 @@ class Displayer:
         エンドポイントの処理
         """
         self.update_info_window()
-        self.root.after(100, self.on_edgepoint)
+        self.root.after(300, self.on_edgepoint)
 
     @property
     def config_window_x(self) -> int:
