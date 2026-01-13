@@ -24,12 +24,12 @@
             "class.decorator": "#4ec9b0", // @property など
             "class.typeHint": "#4ec9b0", // 型ヒント
             "enum": "#4ec9b0", // enum
-            "method": "#adad74", // メソッド
+            "method": "#e2c691", // メソッド
             "function": "#dcdcaa", // 関数名
             "function.decorator": "#dcdcaa", // @abstractmethod など
-            "magicFunction": "#adad74", // __init__ など
+            "magicFunction": "#e2c691", // __init__ など
             "parameter": "#9a9a9a", // 関数引数
-            "property": "#8db9c5", // メンバ変数
+            "property": "#aec1e9", // メンバ変数
             "variable": "#9cdcfe", // ローカル変数
             "module": "#d499a9", // from (namespace)
             "builtinConstant": "#3ab7fa" // True, False, None

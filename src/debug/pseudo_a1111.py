@@ -19,6 +19,15 @@ app = FastAPI(title="Mock A1111 sdapi/v1")
 app.state.cooldown = 0
 app.state.interrupted = False
 
+# progress 用状態
+app.state.active = False
+app.state.started_at = 0.0
+app.state.sampling_step = 0
+app.state.sampling_steps = 0
+app.state.job = ""
+app.state.job_no = 0
+app.state.job_count = 1
+app.state.current_image = None
 
 # =========================
 # Request Models
@@ -124,14 +133,55 @@ async def interrupt():
     return {"status": "interrupted"}
 
 
+@app.get("/sdapi/v1/progress")
+async def progress():
+    if not app.state.active:
+        return {
+            "progress": 0.0,
+            "eta_relative": 0.0,
+            "state": {
+                "skipped": False,
+                "interrupted": app.state.interrupted,
+                "job": "",
+                "job_no": 0,
+                "job_count": 0,
+                "sampling_step": 0,
+                "sampling_steps": 0,
+            },
+            "current_image": None,
+        }
+
+    step = app.state.sampling_step
+    steps = max(1, app.state.sampling_steps)
+    progress = step / steps
+
+    elapsed = time.time() - app.state.started_at
+    eta = elapsed * (1.0 - progress) / progress if progress > 0 else 0.0
+
+    return {
+        "progress": progress,
+        "eta_relative": eta,
+        "state": {
+            "skipped": False,
+            "interrupted": app.state.interrupted,
+            "job": app.state.job,
+            "job_no": app.state.job_no,
+            "job_count": app.state.job_count,
+            "sampling_step": step,
+            "sampling_steps": steps,
+        },
+        "current_image": app.state.current_image,
+    }
+
+
 @app.post("/sdapi/v1/txt2img")
 async def txt2img(req: Txt2ImgRequest):
-    cooldown = getattr(app.state, "cooldown", 0)
-    if cooldown > 0:
-        ok = await interruptible_sleep(cooldown)
-        if not ok:
-            app.state.interrupted = False
-            return {"error": "Interrupted"}
+    app.state.active = True
+    app.state.interrupted = False
+    app.state.started_at = time.time()
+    app.state.sampling_step = 0
+    app.state.sampling_steps = req.steps or 20
+    app.state.job = "txt2img"
 
     MAX_SIDE = 8192
     width = max(1, min(req.width, MAX_SIDE))
@@ -152,6 +202,16 @@ async def txt2img(req: Txt2ImgRequest):
     # 画像生成（単色 + 時刻等）
     images_b64: List[str] = []
     for idx, s in enumerate(seeds):
+        # step を進める（A1111 風）
+        for step in range(app.state.sampling_steps):
+            if app.state.interrupted:
+                app.state.active = False
+                return {"images": [], "info": "{}"}
+
+            app.state.sampling_step = step + 1
+            cooldown = float(getattr(app.state, "cooldown", 0)) / req.steps
+            await asyncio.sleep(cooldown)  # 擬似生成時間
+
         rng = random.Random(s)
         color = (rng.randint(0, 255), rng.randint(0, 255), rng.randint(0, 255))
         img = Image.new("RGB", (width, height), color=color)
@@ -220,6 +280,8 @@ async def txt2img(req: Txt2ImgRequest):
     # parameters は A1111 と同名キーで返す
     parameters = req.model_dump()
 
+    app.state.active = False
+
     return {
         "images": images_b64,
         "parameters": parameters,
@@ -229,12 +291,12 @@ async def txt2img(req: Txt2ImgRequest):
 
 @app.post("/sdapi/v1/img2img")
 async def img2img(req: Img2ImgRequest):
-    cooldown = getattr(app.state, "cooldown", 0)
-    if cooldown > 0:
-        ok = await interruptible_sleep(cooldown)
-        if not ok:
-            app.state.interrupted = False
-            return {"error": "Interrupted"}
+    app.state.active = True
+    app.state.interrupted = False
+    app.state.started_at = time.time()
+    app.state.sampling_step = 0
+    app.state.sampling_steps = req.steps or 20
+    app.state.job = "img2img"
 
     try:
         init_bytes = base64.b64decode(req.init_images[0])
@@ -256,9 +318,15 @@ async def img2img(req: Img2ImgRequest):
     images_b64: List[str] = []
 
     for idx, s in enumerate(seeds):
-        if app.state.interrupted:
-            app.state.interrupted = False
-            return {"error": "Interrupted"}
+        # step を進める（A1111 風）
+        for step in range(app.state.sampling_steps):
+            if app.state.interrupted:
+                app.state.active = False
+                return {"images": [], "info": "{}"}
+
+            app.state.sampling_step = step + 1
+            cooldown = float(getattr(app.state, "cooldown", 0)) / req.steps
+            await asyncio.sleep(cooldown)  # 擬似生成時間
 
         img = base_img.copy()
         draw = ImageDraw.Draw(img)
@@ -282,24 +350,51 @@ async def img2img(req: Img2ImgRequest):
     prompt = req.prompt or ""
     neg = req.negative_prompt or ""
 
-    infotexts = [
-        make_infotext(req, prompt, neg, seeds[i], width, height)
-        + f", Denoising strength: {req.denoising_strength}"
-        for i in range(total_images)
-    ]
+    infotexts: List[str] = []
+    all_prompts: List[str] = []
+    all_negative_prompts: List[str] = []
 
+    for i in range(total_images):
+        seed_val = seeds[i]
+        infotexts.append(
+            make_infotext(req, prompt, neg, seed_val, width, height)
+            + f", Denoising strength: {req.denoising_strength}"
+        )
+        all_prompts.append(prompt)
+        all_negative_prompts.append(neg)
+
+    extra_generation_params = {
+        "Schedule type": req.scheduler,
+    }
     infos = {
         "prompt": prompt,
+        "all_prompts": all_prompts,
         "negative_prompt": neg,
+        "all_negative_prompts": all_negative_prompts,
         "seed": seeds[0],
         "all_seeds": seeds,
+        "subseed": seeds[0],
+        "all_subseeds": seeds,
+        "subseed_strength": 0,
         "width": width,
         "height": height,
         "denoising_strength": req.denoising_strength,
+        "sampler_name": req.sampler_name or req.sampler_index,
+        "cfg_scale": req.cfg_scale,
+        "steps": req.steps,
+        "n_iter": n_iter,
+        "batch_size": batch_size,
+        "sd_model_name": "Foobar_Hogefuga",
+        "sd_model_hash": "12345abcde",
+        "extra_generation_params": extra_generation_params,
+        "index_of_first_image": 0,
         "infotexts": infotexts,
         "job_timestamp": datetime.datetime.now().strftime("%Y%m%d%H%M%S"),
+        "clip_skip": 2,
         "version": "v1.10.1",
     }
+
+    app.state.active = False
 
     return {
         "images": images_b64,
