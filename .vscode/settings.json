@@ -14,5 +14,36 @@
     "autoDocstring.includeName": true,
     "autoDocstring.includeExtendedSummary": false,
     "autoDocstring.startOnNewLine": true,
-    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python"
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+    "editor.semanticHighlighting.enabled": true,
+    "editor.semanticTokenColorCustomizations": {
+        "rules": {
+            "selfParameter": "#968186", // self
+            "clsParameter": "#968186", // cls
+            "class": "#4ec9b0", // クラス名
+            "class.decorator": "#4ec9b0", // @property など
+            "class.typeHint": "#4ec9b0", // 型ヒント
+            "enum": "#4ec9b0", // enum
+            "method": "#adad74", // メソッド
+            "function": "#dcdcaa", // 関数名
+            "function.decorator": "#dcdcaa", // @abstractmethod など
+            "magicFunction": "#adad74", // __init__ など
+            "parameter": "#9a9a9a", // 関数引数
+            "property": "#8db9c5", // メンバ変数
+            "variable": "#9cdcfe", // ローカル変数
+            "module": "#d499a9", // from (namespace)
+            "builtinConstant": "#3ab7fa" // True, False, None
+        }
+    },
+    "editor.tokenColorCustomizations": {
+        "textMateRules": [
+            {
+                /* 関数への引数代入時の左辺 */
+                "scope": "variable.parameter.function-call.python",
+                "settings": {
+                    "foreground": "#757575"
+                }
+            }
+        ]
+    }
 }
