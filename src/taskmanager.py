@@ -103,7 +103,7 @@ class TaskManager:
         self.tasks: deque[TaskBlueprint] = deque()
         self.crnt_task: TaskBlueprint = None
 
-        self.task_thread = threading.Thread(target=self.task_thread, args=(), daemon=True)
+        self.task_thread = threading.Thread(target=self.task_thread_main, args=(), daemon=True)
 
     def start(self) -> None:
         """
@@ -210,14 +210,14 @@ class TaskManager:
             return None
 
         response.raise_for_status()
-        body = response.json()
+        body: Dict = response.json()
         images = body.get("images", [])
         if not images:
             return None
 
         return images, json.loads(body.get("info", "{}"))
 
-    def task_thread(self) -> None:
+    def task_thread_main(self) -> None:
         """
         タスクを実行する, つまり生成 -> 保存をアトミックに繰り返し実行する\n
         タスクが空, すでに実行中タスクが存在する, あるいは生成が失敗した場合はスキップする

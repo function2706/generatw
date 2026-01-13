@@ -593,6 +593,7 @@ class Displayer:
                 # ラベル
                 self.pic_label = ttk.Label(self.cursor_frame)
                 self.pic_label.grid(row=0, column=1, padx=6, pady=6, sticky="nswe")
+                self.pic_label_image = None
                 # ボタン(<)
                 self.prev_button = ttk.Button(
                     self.cursor_frame, text="<", width=2, command=owner.super_owner.on_prev
@@ -944,7 +945,7 @@ class Displayer:
         tk_img = ImageTk.PhotoImage(image)
         self.construct_pic_window()
         self.pic_window.cursor_frame.pic_label.configure(image=tk_img)
-        self.pic_window.cursor_frame.pic_label.image = tk_img
+        self.pic_window.cursor_frame.pic_label_image = tk_img
 
         self.picmanager.crnt_picstats = picstats
         self.switch_output_button_state(True)
@@ -1016,7 +1017,7 @@ class Displayer:
         """
         self.construct_pic_window()
         self.pic_window.cursor_frame.pic_label.configure(image=self.noimage_img)
-        self.pic_window.cursor_frame.pic_label.image = self.noimage_img
+        self.pic_window.cursor_frame.pic_label_image = self.noimage_img
         self.switch_output_button_state(False)
         self.switch_picwindow_button_state(False)
 

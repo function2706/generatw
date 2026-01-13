@@ -350,13 +350,13 @@ class PicMakerBase(ABC, Generic[Stats]):
         dirpath_raw: str = pos_prompt + neg_prompt
         return hashlib.md5(dirpath_raw.encode()).hexdigest()
 
-    def make_dirname_from_info(self, infos: Any, idx: int) -> str:
+    def make_dirname_from_info(self, infos: Dict, idx: int) -> str:
         """
         info 領域上のデータからディレクトリ名を生成する\n
         info 領域上のデータは同時生成した画像群に関する配列構造のため, インデックスの指定も必要
 
         Args:
-            infos (Any): info 領域上のデータ
+            infos (Dict): info 領域上のデータ
             idx (int): 配列のインデックス
 
         Returns:
@@ -366,14 +366,14 @@ class PicMakerBase(ABC, Generic[Stats]):
         neg_prompts = infos.get("all_negative_prompts", [])
         return self.make_dirname_from_prompts(pos_prompts[idx], neg_prompts[idx])
 
-    def make_filepath(self, infos: Any, idx: int) -> Path:
+    def make_filepath(self, infos: Dict, idx: int) -> Path:
         """
         info 領域上のデータからファイルパスを生成する\n
         info 領域上のデータは同時生成した画像群に関する配列構造のため, インデックスの指定も必要\n
         ファイル名は"YYYYMMDDhhmmss-<seed>.png"
 
         Args:
-            infos (Any): info 領域上のデータ
+            infos (Dict): info 領域上のデータ
             idx (int): 配列のインデックス
 
         Returns:
@@ -405,6 +405,7 @@ class PicMakerBase(ABC, Generic[Stats]):
 
         for idx, image_data in enumerate(images):
             try:
+                image_data = str(image_data)
                 b64 = image_data.split(",", 1)[-1]
                 image = Image.open(io.BytesIO(base64.b64decode(b64)))
 

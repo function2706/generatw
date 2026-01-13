@@ -17,7 +17,7 @@ class SDPngInfo(PngImagePlugin.PngInfo):
     Stable Diffusion 特化の PngInfo
     """
 
-    def __init__(self, infos: Any, idx: int):
+    def __init__(self, infos: Dict, idx: int):
         """
         コンストラクタ
         PNG に付与する PNG Info を生成する\n
@@ -25,7 +25,7 @@ class SDPngInfo(PngImagePlugin.PngInfo):
         info 領域上のデータは同時生成した画像群に関する配列構造のため, インデックスの指定も必要
 
         Args:
-            infos (Any): info 領域上のデータ
+            infos (Dict): info 領域上のデータ
             idx (int): 配列のインデックス
         """
         super().__init__()
@@ -35,7 +35,7 @@ class SDPngInfo(PngImagePlugin.PngInfo):
         self.add_text("sampler", infos.get("sampler_name", ""))
         self.add_text(
             "schedule_type",
-            infos.get("extra_generation_params", {}).get("Schedule type", ""),
+            dict(infos.get("extra_generation_params", {})).get("Schedule type", ""),
         )
         self.add_text("cfg_scale", str(infos.get("cfg_scale", 0)))
         self.add_text("seed", str(infos.get("all_seeds", [])[idx]))
@@ -75,7 +75,7 @@ class PicInfo:
         Args:
             image (Image): Open して得られる Image インスタンス
         """
-        info = image.info
+        info: Dict = image.info
         return cls(
             prompt=info.get("prompt"),
             negative_prompt=info.get("negative_prompt"),
