@@ -1014,7 +1014,6 @@ class Displayer:
         self.pic_window.cursor_frame.pic_label.configure(image=tk_img)
         self.pic_window.cursor_frame.pic_label_image = tk_img
 
-        self.picmanager.crnt_picstats = picstats
         self.switch_output_button_state(True)
         self.switch_picwindow_button_state(True)
 
@@ -1099,13 +1098,15 @@ class Displayer:
         """
         > ボタンハンドラ
         """
-        self.update_pic_window(self.picmanager.next_picstats())
+        self.picmanager.next_picstats()
+        self.update_pic_window(self.picmanager.crnt_picstats)
 
     def on_prev(self) -> None:
         """
         < ボタンハンドラ
         """
-        self.update_pic_window(self.picmanager.prev_picstats())
+        self.picmanager.prev_picstats()
+        self.update_pic_window(self.picmanager.crnt_picstats)
 
     def switch_output_button_state(self, toggle: bool) -> None:
         """

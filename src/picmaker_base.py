@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, Generic, List, Mapping, Protocol, TypeVar
+from typing import Any, Dict, Generic, Mapping, Protocol, TypeVar
 
 import pyperclip
 from PIL import Image
@@ -423,18 +423,16 @@ class PicMakerBase(ABC, Generic[Stats]):
 
         self.picmanager.refresh_piclist()
 
-    def get_crnt_picstats_list(self) -> List[PicStats]:
+    def get_crnt_picstats_dir(self) -> str:
         """
-        記録中ステータスに適合するディレクトリ下の画像群に関する PicStats のリストを取得する
+        記録中ステータスに適合するディレクトリ名を返す
 
         Returns:
-            List[Path]: 画像パス群
+            str: ディレクトリ名
         """
         pos_prompt = self.make_pos_prompt()
         neg_prompt = self.make_neg_prompt()
-        return self.picmanager.get_picstats_list(
-            self.make_dirname_from_prompts(pos_prompt, neg_prompt)
-        )
+        return self.make_dirname_from_prompts(pos_prompt, neg_prompt)
 
     def reserve_task(self) -> None:
         """
@@ -456,24 +454,26 @@ class PicMakerBase(ABC, Generic[Stats]):
             self.displayer.srv_port,
         )
 
-    def refresh_pic(self) -> None:
+    def refresh_pic_randomly(self) -> None:
         """
-        表示可能な画像が複数個存在する場合にランダムで表示する\n
-        存在しない場合は何もしない
+        現在の PicStats 表示可能な画像が存在する場合にランダムで表示する\n
+        存在しない場合は NO IMAGE を表示する
         """
-        if not self.get_crnt_picstats_list():
-            # ここに来るのは, ステータス自体は生成に十分な状態だがまだ画像がない場合
+        piclist = self.picmanager.get_picstats_list(self.get_crnt_picstats_dir())
+        if not piclist:
+            # 記録中ステータスに紐づくディレクトリ内に画像がない
             self.displayer.put_no_image_placeholder()
             return
 
-        self.displayer.update_pic_window(random.choice(self.get_crnt_picstats_list()))
+        self.picmanager.warp_picstats(self.get_crnt_picstats_dir())
+        self.displayer.update_pic_window(self.picmanager.crnt_picstats)
 
     def run_oneshot(self) -> None:
         """
         タスク予約とすでに存在する画像の表示を1度だけ行う
         """
         self.reserve_task()
-        self.refresh_pic()
+        self.refresh_pic_randomly()
 
     def run_main(self) -> None:
         """
@@ -485,6 +485,7 @@ class PicMakerBase(ABC, Generic[Stats]):
             if not is_new_stats:
                 return
             elif not self.is_stats_enough_for_prompt():
+                # 記録中ステータスが生成に不十分 i.e. ステータスに紐づくディレクトリがない
                 self.displayer.put_no_image_placeholder()
                 return
 

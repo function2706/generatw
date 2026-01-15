@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import os
+import random
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -211,29 +212,69 @@ class PicManager:
                 return d[dirname]
         return []
 
-    def next_picstats(self) -> PicStats:
+    def next_picstats(self) -> None:
         """
-        PicStats リストにおいて, 注目中 PicStats の次のものを返す\n
-        末尾を注目中である場合はそれ自体を返す
+        PicStats リストにおいて, 注目中 PicStats の次のものに移動する\n
+        末尾を注目中である場合は移動しない\n
+        注目していない場合, リストが空の場合は何もしない
+        """
+        if self.crnt_picstats is None:
+            return
 
-        Returns:
-            PicStats: 次の PicStats
-        """
         picstats_list = self.get_picstats_list(self.crnt_picstats.dir)
+        if not picstats_list:
+            return
+
         idx = picstats_list.index(self.crnt_picstats)
-        return picstats_list[min(idx + 1, len(picstats_list) - 1)]
+        self.crnt_picstats = picstats_list[min(idx + 1, len(picstats_list) - 1)]
 
-    def prev_picstats(self) -> PicStats:
+    def prev_picstats(self) -> None:
         """
-        PicStats リストにおいて, 注目中 PicStats の前のものを返す\n
-        先頭を注目中である場合はそれ自体を返す
+        PicStats リストにおいて, 注目中 PicStats の前のものに移動する\n
+        末尾を注目中である場合は移動しない\n
+        注目していない場合, リストが空の場合は何もしない
+        """
+        if self.crnt_picstats is None:
+            return
 
-        Returns:
-            PicStats: 前の PicStats
-        """
         picstats_list = self.get_picstats_list(self.crnt_picstats.dir)
+        if not picstats_list:
+            return
+
         idx = picstats_list.index(self.crnt_picstats)
-        return picstats_list[max(idx - 1, 0)]
+        self.crnt_picstats = picstats_list[max(idx - 1, 0)]
+
+    def warp_picstats(self, dir: str) -> None:
+        """
+        PicStats リストにおいて, そのディレクトリ内のランダムな PicStats に移動する\n
+        リストが空の場合は何もしない
+        """
+        picstats_list = self.get_picstats_list(dir)
+        if not picstats_list:
+            return
+
+        self.crnt_picstats = random.choice(picstats_list)
+
+    def remove_crnt_picstats(self) -> None:
+        """
+        注目中 PicStats にあたる画像を削除し, リストも更新する(該当 PicStats が削除される)\n
+        最後の 1 枚であった場合はディレクトリも削除する\n
+        ※ディレクトリのみが存在するという状況が仕様上あってはならないので, これらの処理を分けない\n
+        注目中 PicStats が None の場合はなにもしない
+        """
+        if self.crnt_picstats is None:
+            return
+
+        os.remove(self.crnt_picstats.path)
+        if not self.get_crnt_picstats_list():
+            # 最後の 1 枚 -> ディレクトリを削除し, 注目中 PicStats を None に
+            os.rmdir(self.rootdir / Path(self.crnt_picstats.dir))
+            self.crnt_picstats = None
+        else:
+            self.refresh_piclist()
+
+    def sweep_emptydir(self) -> None:
+        pass
 
     def todict(self) -> Dict[str, Any]:
         """
