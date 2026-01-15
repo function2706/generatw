@@ -141,17 +141,12 @@ class PicMakerBase(ABC, Generic[Stats]):
         self.picmanager = PicManager.make(self.pics_dir_path())
         self.taskmanager = TaskManager(self.save_images)
         self.displayer = Displayer(
-            self.picmanager,
-            self.taskmanager,
-            self.run_main,
-            self.reserve_task,
-            self.taskmanager.post_interrupt,
-            self.on_debug,
-            self.on_dump_picmanager,
-            self.on_dump_tasks,
-            self.on_good,
-            self.on_bad,
-            self.whoami(),
+            picmanager=self.picmanager,
+            taskmanager=self.taskmanager,
+            on_edgepoint=self.run_main,
+            on_append=self.reserve_task,
+            on_debug=self.on_debug,
+            ownername=self.whoami(),
         )
         self.taskmanager.start()
 
@@ -222,30 +217,6 @@ class PicMakerBase(ABC, Generic[Stats]):
             if self.displayer.print_new_stats:
                 dump_json(self.crnt_stats.todict(), "new_stats(debug)")
             self.run_oneshot()
-
-    def on_dump_picmanager(self) -> None:
-        """
-        PicManager ダンプボタンハンドラ
-        """
-        dump_json(self.picmanager.todict(), PMConsts.pichome_dir)
-
-    def on_dump_tasks(self) -> None:
-        """
-        タスクリストダンプボタンハンドラ
-        """
-        dump_json(list(self.taskmanager.tasks), "tasks")
-
-    def on_good(self) -> None:
-        """
-        GOOD ボタンハンドラ
-        """
-        return
-
-    def on_bad(self) -> None:
-        """
-        BAD ボタンハンドラ
-        """
-        return
 
     def refresh_clipboard(self) -> bool:
         """
@@ -444,14 +415,14 @@ class PicMakerBase(ABC, Generic[Stats]):
             return
 
         self.taskmanager.reserve(
-            self.make_pos_prompt(),
-            self.make_neg_prompt(),
-            self.displayer.sd_steps,
-            self.displayer.sd_batch_size,
-            self.displayer.sd_width,
-            self.displayer.sd_height,
-            self.displayer.srv_ipaddr,
-            self.displayer.srv_port,
+            pos=self.make_pos_prompt(),
+            neg=self.make_neg_prompt(),
+            stps=self.displayer.sd_steps,
+            b_size=self.displayer.sd_batch_size,
+            w=self.displayer.sd_width,
+            h=self.displayer.sd_height,
+            d_addr=self.displayer.srv_ipaddr,
+            d_port=self.displayer.srv_port,
         )
 
     def refresh_pic_randomly(self) -> None:

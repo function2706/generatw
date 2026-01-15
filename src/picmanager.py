@@ -258,7 +258,7 @@ class PicManager:
     def remove_crnt_picstats(self) -> None:
         """
         注目中 PicStats にあたる画像を削除し, リストも更新する(該当 PicStats が削除される)\n
-        最後の 1 枚であった場合はディレクトリも削除する\n
+        最後の 1 枚であった場合はディレクトリも削除し, 注目を解除する\n
         ※ディレクトリのみが存在するという状況が仕様上あってはならないので, これらの処理を分けない\n
         注目中 PicStats が None の場合はなにもしない
         """
@@ -266,12 +266,12 @@ class PicManager:
             return
 
         os.remove(self.crnt_picstats.path)
-        if not self.get_crnt_picstats_list():
-            # 最後の 1 枚 -> ディレクトリを削除し, 注目中 PicStats を None に
+        self.refresh_piclist()
+        if not self.get_picstats_list(self.crnt_picstats.dir):
             os.rmdir(self.rootdir / Path(self.crnt_picstats.dir))
             self.crnt_picstats = None
-        else:
-            self.refresh_piclist()
+
+        self.refresh_piclist()
 
     def sweep_emptydir(self) -> None:
         pass

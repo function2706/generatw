@@ -169,7 +169,7 @@ class Displayer:
                     self.interrupt_button = ttk.Button(
                         self.button_frame,
                         text="中断",
-                        command=owner.super_owner.super_owner.on_interrupt,
+                        command=owner.super_owner.super_owner.taskmanager.post_interrupt,
                     )
                     self.interrupt_button.grid(row=0, column=1, padx=6, pady=6, sticky="w")
                     # タスククリア
@@ -183,7 +183,7 @@ class Displayer:
                     self.output_button = ttk.Button(
                         self.button_frame,
                         text="画像を表示",
-                        command=owner.super_owner.super_owner.on_output,
+                        command=owner.super_owner.super_owner.on_open_pic_window,
                     )
                     self.output_button.grid(row=1, column=0, padx=6, pady=6, sticky="w")
                     # ボタン(情報を表示)
@@ -213,11 +213,11 @@ class Displayer:
 
                     # テキストボックス(幅)
                     self.width_entry = owner.super_owner.super_owner.put_textbox(
-                        self.sd_interior_config_frame, "幅", 1, 0, 5, str(540), "w"
+                        self.sd_interior_config_frame, "幅", 1, 0, 5, str(256), "w"
                     )
                     # テキストボックス(高さ)
                     self.height_entry = owner.super_owner.super_owner.put_textbox(
-                        self.sd_interior_config_frame, "高さ", 1, 2, 5, str(960), "w"
+                        self.sd_interior_config_frame, "高さ", 1, 2, 5, str(256), "w"
                     )
                     # テキストボックス(ステップ数)
                     self.steps_entry = owner.super_owner.super_owner.put_textbox(
@@ -708,12 +708,7 @@ class Displayer:
         taskmanager: TaskManager,
         on_edgepoint: Callable[[], None],
         on_append: Callable[[], None],
-        on_interrupt: Callable[[], None],
         on_debug: Callable[[], None],
-        on_dump_picmanager: Callable[[], None],
-        on_dump_tasks: Callable[[], None],
-        on_good: Callable[[], None],
-        on_bad: Callable[[], None],
         ownername: str,
     ):
         """
@@ -724,12 +719,7 @@ class Displayer:
             taskmanager (PicManager): TaskManager インスタンス
             on_edgepoint (Callable[[], None]): 端点処理コールバック
             on_append (Callable[[], None]): タスク登録処理コールバック
-            on_interrupt (Callable[[], None]): 中断処理コールバック
             on_debug (Callable[[], None]): デバッグ処理コールバック
-            on_dump_picmanager (Callable[[], None]): PicManager ダンプコールバック
-            on_dump_tasks (Callable[[], None]): タスクリストダンプコールバック
-            on_good (Callable[[], None]): Good 処理コールバック
-            on_bad (Callable[[], None]): Bad 処理コールバック
             ownername (str): 所有者の名前
         """
         self.ownername = ownername
@@ -738,12 +728,7 @@ class Displayer:
         self.taskmanager: TaskManager = taskmanager
         self.on_edgepoint: Callable[[], None] = on_edgepoint
         self.on_append: Callable[[], None] = on_append
-        self.on_interrupt: Callable[[], None] = on_interrupt
         self.on_debug: Callable[[], None] = on_debug
-        self.on_dump_picmanager: Callable[[], None] = on_dump_picmanager
-        self.on_dump_tasks: Callable[[], None] = on_dump_tasks
-        self.on_good: Callable[[], None] = on_good
-        self.on_bad: Callable[[], None] = on_bad
 
         self.root = tkinter.Tk()
         self.config_window = self.ConfigWindow(self)
@@ -949,20 +934,6 @@ class Displayer:
         self.update_appinfo_frame()
         self.update_taskinfo_frame()
 
-    def on_open_info_window(self) -> None:
-        """
-        情報ウィンドウの表示ハンドラ\n
-        すでに開いている場合は最前面に表示のみ行う\n
-        情報の更新も直後に行う
-        """
-        if self.is_info_window_open() and self.info_window:
-            self.info_window.info_window.deiconify()
-            self.info_window.info_window.lift()
-        else:
-            self.construct_info_window()
-
-        self.update_info_window()
-
     def construct_pic_window(self) -> None:
         """
         画像ウィンドウを構築する\n
@@ -1031,12 +1002,10 @@ class Displayer:
         text_color = "#444444"
         width = self.sd_width & -8
         height = self.sd_height & -8
-
         img = Image.new("RGB", (width, height), light)
         draw = ImageDraw.Draw(img)
 
         cell = max(8, min(width, height) // 20)
-
         for y in range(0, height, cell):
             for x in range(0, width, cell):
                 if (x // cell + y // cell) % 2 == 0:
@@ -1047,31 +1016,24 @@ class Displayer:
         text = "NO IMAGE"
         fallback_font = ImageFont.load_default()
         font = fallback_font
-
         max_font_size = int(height * 0.15)
         font_size = max_font_size
-
         while font_size > 5:
             try:
                 font = ImageFont.truetype("arial.ttf", font_size)
             except Exception:
                 font = fallback_font
-
             bbox = draw.textbbox((0, 0), text, font=font)
             text_w = bbox[2] - bbox[0]
-
             if text_w <= width * 0.8:
                 break
-
             font_size -= 2
 
         bbox = draw.textbbox((0, 0), text, font=font)
         text_w = bbox[2] - bbox[0]
         text_h = bbox[3] - bbox[1]
-
         text_x = (width - text_w) // 2
         text_y = (height - text_h) // 2
-
         draw.text((text_x, text_y), text, fill=text_color, font=font)
 
         return img
@@ -1079,34 +1041,18 @@ class Displayer:
     def put_no_image_placeholder(self) -> None:
         """
         表示すべき画像がない場合の画像を画像ラベルに表示する\n
-        幅と高さは設定に依存
+        幅と高さは設定に依存, 生成済みの画像と設定値のサイズが異なる場合は再生成
         """
+        width = self.sd_width & -8
+        height = self.sd_height & -8
+        if self.noimage_img.width() != width or self.noimage_img.height() != height:
+            self.noimage_img = ImageTk.PhotoImage(self.create_no_image_placeholder())
+
         self.construct_pic_window()
         self.pic_window.cursor_frame.pic_label.configure(image=self.noimage_img)
         self.pic_window.cursor_frame.pic_label_image = self.noimage_img
         self.switch_output_button_state(False)
         self.switch_picwindow_button_state(False)
-
-    def on_output(self) -> None:
-        """
-        表示ボタンハンドラ\n
-        表示すべき画像がないときは何もしない
-        """
-        self.update_pic_window(self.picmanager.crnt_picstats)
-
-    def on_next(self) -> None:
-        """
-        > ボタンハンドラ
-        """
-        self.picmanager.next_picstats()
-        self.update_pic_window(self.picmanager.crnt_picstats)
-
-    def on_prev(self) -> None:
-        """
-        < ボタンハンドラ
-        """
-        self.picmanager.prev_picstats()
-        self.update_pic_window(self.picmanager.crnt_picstats)
 
     def switch_output_button_state(self, toggle: bool) -> None:
         """
@@ -1157,6 +1103,78 @@ class Displayer:
         """
         self.update_info_window()
         self.root.after(300, self.on_edgepoint)
+
+    def on_open_pic_window(self) -> None:
+        """
+        表示ボタンハンドラ\n
+        表示すべき画像がないときは何もしない
+        """
+        self.update_pic_window(self.picmanager.crnt_picstats)
+
+    def on_open_info_window(self) -> None:
+        """
+        情報ウィンドウの表示ハンドラ\n
+        すでに開いている場合は最前面に表示のみ行う\n
+        情報の更新も直後に行う
+        """
+        if self.is_info_window_open() and self.info_window:
+            self.info_window.info_window.deiconify()
+            self.info_window.info_window.lift()
+        else:
+            self.construct_info_window()
+
+        self.update_info_window()
+
+    def on_dump_picmanager(self) -> None:
+        """
+        PicManager ダンプボタンハンドラ
+        """
+        from picmaker_base import dump_json
+
+        dump_json(self.picmanager.todict(), "picstats")
+
+    def on_dump_tasks(self) -> None:
+        """
+        タスクリストダンプボタンハンドラ
+        """
+        from picmaker_base import dump_json
+
+        dump_json(list(self.taskmanager.tasks), "tasks")
+
+    def on_next(self) -> None:
+        """
+        > ボタンハンドラ
+        """
+        self.picmanager.next_picstats()
+        self.update_pic_window(self.picmanager.crnt_picstats)
+
+    def on_prev(self) -> None:
+        """
+        < ボタンハンドラ
+        """
+        self.picmanager.prev_picstats()
+        self.update_pic_window(self.picmanager.crnt_picstats)
+
+    def on_good(self) -> None:
+        """
+        GOOD ボタンハンドラ
+        """
+        return
+
+    def on_bad(self) -> None:
+        """
+        BAD ボタンハンドラ\n
+        表示中の画像を削除する\n
+        削除後に同じディレクトリ内に画像が残っている場合はランダムで表示する\n
+        残っていない場合はディレクトリを削除し, NO IMAGE を表示する
+        """
+        self.picmanager.remove_crnt_picstats()
+        if self.picmanager.crnt_picstats is None:
+            # 削除後に表示すべき画像がない
+            self.put_no_image_placeholder()
+        else:
+            self.picmanager.warp_picstats(self.picmanager.crnt_picstats.dir)
+            self.update_pic_window(self.picmanager.crnt_picstats)
 
     @property
     def config_window_x(self) -> int:
