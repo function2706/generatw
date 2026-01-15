@@ -11,6 +11,7 @@ from typing import Callable
 
 from PIL import Image, ImageDraw, ImageFont, ImageTk
 
+from functions import dump_json
 from picmanager import PicManager, PicStats
 from taskmanager import TaskBlueprint, TaskManager
 
@@ -1129,15 +1130,12 @@ class Displayer:
         """
         PicManager ダンプボタンハンドラ
         """
-        from picmaker_base import dump_json
-
         dump_json(self.picmanager.todict(), "picstats")
 
     def on_dump_tasks(self) -> None:
         """
         タスクリストダンプボタンハンドラ
         """
-        from picmaker_base import dump_json
 
         dump_json(list(self.taskmanager.tasks), "tasks")
 

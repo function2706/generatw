@@ -10,7 +10,8 @@ from enum import Enum, auto
 from types import MappingProxyType
 from typing import Any, Dict, Mapping
 
-from picmaker_base import PicMakerBase, PMConsts, search_regex
+from functions import search_regex
+from picmaker_base import PicMakerBase, PMConsts
 
 
 class Season(Enum):
