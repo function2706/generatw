@@ -308,11 +308,11 @@ class Displayer:
 
                     # テキストボックス(幅)
                     self.width_entry = owner.super_owner.super_owner.put_textbox(
-                        self.sd_interior_config_frame, "幅", 1, 0, 5, str(256), "w"
+                        self.sd_interior_config_frame, "幅", 1, 0, 5, str(540), "w"
                     )
                     # テキストボックス(高さ)
                     self.height_entry = owner.super_owner.super_owner.put_textbox(
-                        self.sd_interior_config_frame, "高さ", 1, 2, 5, str(256), "w"
+                        self.sd_interior_config_frame, "高さ", 1, 2, 5, str(960), "w"
                     )
                     # テキストボックス(ステップ数)
                     self.steps_entry = owner.super_owner.super_owner.put_textbox(
@@ -525,27 +525,24 @@ class Displayer:
                     """
                     self.super_owner = owner
 
-                    self.appinfo_frame = ttk.Frame(owner.main_frame)
-                    self.appinfo_frame.grid(row=0, column=0, sticky="new")
+                    self.infobar_frame = ttk.Frame(owner.main_frame)
+                    self.infobar_frame.grid(row=0, column=0, padx=6, pady=6, sticky="ew")
+                    self.infobar_frame.columnconfigure(0, weight=1)
 
                     # 残りタスク数
-                    self.len_tasks_frame = ttk.Frame(self.appinfo_frame)
-                    self.len_tasks_frame.grid(row=0, column=0, sticky="w")
                     self.len_tasks_strvar = owner.super_owner.super_owner.put_textlabel(
-                        self.len_tasks_frame, "残りタスク数", 0, 0, "0", "w"
+                        self.infobar_frame, "残りタスク数", 0, 0, "0", "w"
                     )
                     # プログレスバー
-                    self.progress_frame = ttk.Frame(self.appinfo_frame)
-                    self.progress_frame.grid(row=1, column=0, sticky="ew")
                     self.task_progress = ttk.Progressbar(
-                        self.progress_frame, orient="horizontal", length=300, mode="determinate"
+                        self.infobar_frame, orient="horizontal", length=300, mode="determinate"
                     )
-                    self.task_progress.grid(row=0, column=0, padx=6, pady=6, sticky="w")
+                    self.task_progress.grid(row=0, column=2, padx=6, pady=6, sticky="w")
                     self.task_progress["maximum"] = 1
                     self.task_progress["value"] = 0
                     self.progress_strvar = tkinter.StringVar(value="0%")
-                    ttk.Label(self.progress_frame, textvariable=self.progress_strvar).grid(
-                        row=0, column=1, padx=6, pady=6, sticky="w"
+                    ttk.Label(self.infobar_frame, textvariable=self.progress_strvar).grid(
+                        row=0, column=3, padx=6, pady=6, sticky="w"
                     )
 
             class InfoBoxFrame:
@@ -564,6 +561,9 @@ class Displayer:
 
                     self.infobox_frame = ttk.Frame(owner.main_frame)
                     self.infobox_frame.grid(row=1, column=0, sticky="nsew")
+                    self.infobox_frame.rowconfigure(0, weight=1)
+                    self.infobox_frame.columnconfigure(0, weight=1)
+
                     data = [
                         ("キー", "値"),
                         ("ポジティブプロンプト", Consts.not_available_text),
@@ -592,7 +592,8 @@ class Displayer:
 
                 self.main_frame = ttk.Frame(owner.taskinfo_tab)
                 self.main_frame.grid(row=0, column=0, sticky="nsew")
-                self.main_frame.rowconfigure(0, weight=1)
+                self.main_frame.rowconfigure(0, weight=0)
+                self.main_frame.rowconfigure(1, weight=1)
                 self.main_frame.columnconfigure(0, weight=1)
 
                 self.infobar_frame = self.InfoBarFrame(self)
@@ -645,7 +646,8 @@ class Displayer:
 
                 self.main_frame = ttk.Frame(owner.picinfo_tab)
                 self.main_frame.grid(row=0, column=0, sticky="nsew")
-                self.main_frame.rowconfigure(0, weight=1)
+                self.main_frame.rowconfigure(0, weight=0)
+                self.main_frame.rowconfigure(1, weight=1)
                 self.main_frame.columnconfigure(0, weight=1)
 
                 self.infobox_frame = self.InfoBoxFrame(self)
@@ -877,11 +879,9 @@ class Displayer:
         Returns:
             tkinter.StringVar: オブジェクトインスタンス
         """
-        ttk.Label(frame, text=name).grid(row=row, column=col, padx=6, pady=6, sticky=sticky)
+        ttk.Label(frame, text=name).grid(row=row, column=col, sticky=sticky)
         strvar = tkinter.StringVar(value=default)
-        ttk.Label(frame, textvariable=strvar).grid(
-            row=row, column=(col + 1), padx=6, pady=6, sticky=sticky
-        )
+        ttk.Label(frame, textvariable=strvar).grid(row=row, column=(col + 1), sticky=sticky)
         return strvar
 
     def is_config_window_open(self) -> bool:
