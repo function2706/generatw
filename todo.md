@@ -9,3 +9,9 @@
 　→最大数の設定？最大数に近づくほど確率を減らすモード(チェックボックス)
 　→最大数設定テキストボックス
 ・表示中画像情報ウィンドウ(画像というかディレクトリ？+サイズなどの画像自体の情報)
+・displayer内でしているpostをTaskmanagerに逃がす(そうしないと通信できない場合にtimeoutまでGUIが固まる)
+　→progressタスクもつくり、txt2imgと同じキューに積み、優先度はprogressがtxt/img2imgより強いとする
+　→その結果はTaskManagerのメンバに常に最新を保存し、Displayerがedgepointでこれを見てバーを更新
+　→interruptも最優先タスクとする、つまり基本的にポスト処理はタスクキューに積んでからスレッド内で実施
+・タスク情報のTreeView化
+・Displayerの不要なフレームの撤廃
