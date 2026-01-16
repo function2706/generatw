@@ -8,7 +8,7 @@ import os
 import random
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from PIL import Image, PngImagePlugin
 
@@ -164,7 +164,7 @@ class PicManager:
     """
 
     rootdir: Optional[Path] = None
-    piclist: List[Dict[str, List[PicStats]]] = field(default_factory=list)
+    piclist: list[Dict[str, list[PicStats]]] = field(default_factory=list)
     crnt_picstats: Optional[PicStats] = None
 
     @classmethod
@@ -187,7 +187,7 @@ class PicManager:
         """
         self.piclist = []
         for dirpath, _, filenames in os.walk(self.rootdir):
-            picstats: List[PicStats] = []
+            picstats: list[PicStats] = []
             for filename in filenames:
                 if filename.lower().endswith(".png"):
                     path = Path(dirpath) / filename
@@ -196,7 +196,7 @@ class PicManager:
                 dirname = Path(dirpath).name
                 self.piclist.append({dirname: picstats})
 
-    def get_picstats_list(self, dirname: str) -> List[PicStats]:
+    def get_picstats_list(self, dirname: str) -> list[PicStats]:
         """
         監視対象ディレクトリ内で指定のディレクトリ名に紐づく PicStats リストを取得する\n
         存在しない場合は空リストを返す
@@ -205,7 +205,7 @@ class PicManager:
             dirname (str): ディレクトリ名
 
         Returns:
-            List[PicStats]: PicStats リスト
+            list[PicStats]: PicStats リスト
         """
         for d in self.piclist:
             if dirname in d:

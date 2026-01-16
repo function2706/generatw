@@ -8,7 +8,7 @@ import json
 import random
 import socket
 import time
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 import uvicorn
 from fastapi import FastAPI
@@ -37,7 +37,7 @@ app.state.current_image = None
 class Txt2ImgRequest(BaseModel):
     prompt: Optional[str] = ""
     negative_prompt: Optional[str] = ""
-    styles: Optional[List[str]] = None
+    styles: Optional[list[str]] = None
 
     seed: Optional[int] = -1
     subseed: Optional[int] = -1
@@ -70,7 +70,7 @@ class Txt2ImgRequest(BaseModel):
     override_settings: Optional[Dict] = None
     override_settings_restore_afterwards: Optional[bool] = True
 
-    script_args: Optional[List] = None
+    script_args: Optional[list] = None
     script_name: Optional[str] = None
 
     send_images: Optional[bool] = True
@@ -80,7 +80,7 @@ class Txt2ImgRequest(BaseModel):
 
 
 class Img2ImgRequest(Txt2ImgRequest):
-    init_images: List[str]
+    init_images: list[str]
     denoising_strength: Optional[float] = Field(default=0.75, ge=0.0, le=1.0)
     resize_mode: Optional[int] = 0
     mask: Optional[str] = None
@@ -192,7 +192,7 @@ async def txt2img(req: Txt2ImgRequest):
     total_images = batch_size * n_iter
 
     # シード列の決定：seed=-1 なら各画像ごとランダム、>=0 なら連番
-    seeds: List[int] = []
+    seeds: list[int] = []
     if req.seed is None or req.seed < 0:
         rng_sys = random.SystemRandom()
         seeds = [rng_sys.randint(0, 2**31 - 1) for _ in range(total_images)]
@@ -210,7 +210,7 @@ async def txt2img(req: Txt2ImgRequest):
         await asyncio.sleep(cooldown)
 
     # 画像生成（単色 + 時刻等）
-    images_b64: List[str] = []
+    images_b64: list[str] = []
     for idx, s in enumerate(seeds):
         rng = random.Random(s)
         color = (rng.randint(0, 255), rng.randint(0, 255), rng.randint(0, 255))
@@ -235,10 +235,10 @@ async def txt2img(req: Txt2ImgRequest):
     prompt = req.prompt or ""
     neg = req.negative_prompt or ""
 
-    infotexts: List[str] = []
-    all_prompts: List[str] = []
-    all_negative_prompts: List[str] = []
-    all_seeds: List[int] = []
+    infotexts: list[str] = []
+    all_prompts: list[str] = []
+    all_negative_prompts: list[str] = []
+    all_seeds: list[int] = []
 
     for i in range(total_images):
         seed_val = seeds[i]
@@ -315,7 +315,7 @@ async def img2img(req: Img2ImgRequest):
     else:
         seeds = [req.seed + i for i in range(total_images)]
 
-    images_b64: List[str] = []
+    images_b64: list[str] = []
 
     # sampling loop (once per job)
     for step in range(app.state.sampling_steps):
@@ -350,9 +350,9 @@ async def img2img(req: Img2ImgRequest):
     prompt = req.prompt or ""
     neg = req.negative_prompt or ""
 
-    infotexts: List[str] = []
-    all_prompts: List[str] = []
-    all_negative_prompts: List[str] = []
+    infotexts: list[str] = []
+    all_prompts: list[str] = []
+    all_negative_prompts: list[str] = []
 
     for i in range(total_images):
         seed_val = seeds[i]

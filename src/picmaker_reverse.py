@@ -9,7 +9,7 @@ import re
 from dataclasses import asdict, dataclass, field
 from enum import Enum, auto
 from types import MappingProxyType
-from typing import Any, Dict, List, Mapping
+from typing import Any, Dict, Mapping
 
 from functions import search_regex
 from picmaker_base import PicMakerBase, PMConsts
@@ -59,9 +59,9 @@ class Opearation(Enum):
 class Character:
     name: str = ""
     state: State = State.none
-    equips: List[str] = field(default_factory=list)
+    equips: list[str] = field(default_factory=list)
     posture: str = ""
-    tools: List[str] = field(default_factory=list)
+    tools: list[str] = field(default_factory=list)
 
     @classmethod
     def make(cls, s: str):
@@ -93,12 +93,12 @@ class Character:
             else:
                 return State.normal
 
-        def make_equips() -> List[str]:
+        def make_equips() -> list[str]:
             name = search_regex(s, r"^\s*(\S+)\s\[LV")
             match = search_regex(s, rf"^\s*{re.escape(name)}の衣装：\s*(?:\[[^\[\]\n]+\])+", 0)
             if match is None:
                 return []
-            equips: List[str] = []
+            equips: list[str] = []
             items = re.findall(r"\[([^\[\]\n]+)\]", match)
             for item in items:
                 equips.append(item)
@@ -109,11 +109,11 @@ class Character:
             match = search_regex(s, rf"^\s*現在の姿勢：\S*\[{re.escape(name)}：(\S+)\]")
             return "" if match is None else match
 
-        def make_tools() -> List[str]:
+        def make_tools() -> list[str]:
             match = search_regex(s, r"^\s*使用中\s*(?:\[[^\[\]\n]+\])+", 0)
             if match is None:
                 return []
-            tools: List[str] = []
+            tools: list[str] = []
             items = re.findall(r"\[([^\[\]\n]+)\]", match)
             for item in items:
                 tools.append(item)
