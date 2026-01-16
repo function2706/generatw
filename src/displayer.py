@@ -511,7 +511,7 @@ class Displayer:
             タスク情報タブ
             """
 
-            class AppInfoFrame:
+            class InfoBarFrame:
                 """
                 アプリケーション情報フレーム
                 """
@@ -548,150 +548,38 @@ class Displayer:
                         row=0, column=1, padx=6, pady=6, sticky="w"
                     )
 
-            class CrntTaskPromptsFrame:
+            class InfoBoxFrame:
                 """
-                現在のタスク情報(プロンプト)フレーム
+                情報ボックスフレーム
                 """
 
                 def __init__(self, owner: Displayer.InfoWindow.TaskInfoTab):
                     """
-                    現在のタスク情報(プロンプト)フレームコンストラクタ
+                    情報ボックスフレームコンストラクタ
 
                     Args:
                         owner (Displayer.InfoWindow): InfoWindow インスタンス
                     """
                     self.super_owner = owner
 
-                    self.crnt_task_prompts_frame = ttk.Frame(owner.main_frame)
-                    self.crnt_task_prompts_frame.grid(row=1, column=0, sticky="w")
-                    self.crnt_task_prompts_frame.columnconfigure(0, weight=1)
-                    self.crnt_task_prompts_frame.columnconfigure(1, weight=1)
-
-                    ttk.Label(self.crnt_task_prompts_frame, text="- 現在のタスク -").grid(
-                        row=0, column=0, padx=6, pady=6, sticky="w"
-                    )
-                    # ポジティブプロンプト
-                    ttk.Label(self.crnt_task_prompts_frame, text="ポジティブプロンプト").grid(
-                        row=1, column=0, padx=6, pady=6, sticky="w"
-                    )
-                    self.pos_prompt_tiplabel = TipLabel(
-                        self.crnt_task_prompts_frame,
-                        1,
-                        1,
-                        Consts.not_available_text,
-                        Consts.max_output_strlen,
-                    )
-                    # ネガティブプロンプト
-                    ttk.Label(self.crnt_task_prompts_frame, text="ネガティブプロンプト").grid(
-                        row=2, column=0, padx=6, pady=6, sticky="w"
-                    )
-                    self.neg_prompt_tiplabel = TipLabel(
-                        self.crnt_task_prompts_frame,
-                        2,
-                        1,
-                        Consts.not_available_text,
-                        Consts.max_output_strlen,
-                    )
-
-            class CrntTaskMetaInfoFrame:
-                """
-                現在のタスクメタ情報フレーム
-                """
-
-                def __init__(self, owner: Displayer.InfoWindow.TaskInfoTab):
-                    """
-                    現在のタスクメタ情報フレームコンストラクタ
-
-                    Args:
-                        owner (Displayer.InfoWindow): InfoWindow インスタンス
-                    """
-                    self.super_owner = owner
-
-                    self.crnt_task_metainfo_frame = ttk.Frame(owner.main_frame)
-                    self.crnt_task_metainfo_frame.grid(row=2, column=0, sticky="swe")
-                    self.crnt_task_metainfo_frame.columnconfigure(0, weight=1)
-                    self.crnt_task_metainfo_frame.columnconfigure(1, weight=1)
-
-                    # ステップ数
-                    self.steps_strvar = owner.super_owner.super_owner.put_textlabel(
-                        self.crnt_task_metainfo_frame,
-                        "ステップ数",
-                        0,
-                        0,
-                        Consts.not_available_text,
-                        "w",
-                    )
-                    # バッチサイズ
-                    self.batch_size_strvar = owner.super_owner.super_owner.put_textlabel(
-                        self.crnt_task_metainfo_frame,
-                        "バッチサイズ",
-                        0,
-                        2,
-                        Consts.not_available_text,
-                        "w",
-                    )
-                    # サンプラ
-                    self.sampler_strvar = owner.super_owner.super_owner.put_textlabel(
-                        self.crnt_task_metainfo_frame,
-                        "サンプラ",
-                        1,
-                        0,
-                        Consts.not_available_text,
-                        "w",
-                    )
-                    # スケジューラ
-                    self.scheduler_strvar = owner.super_owner.super_owner.put_textlabel(
-                        self.crnt_task_metainfo_frame,
-                        "スケジューラ",
-                        1,
-                        2,
-                        Consts.not_available_text,
-                        "w",
-                    )
-                    # スケール
-                    self.scale_strvar = owner.super_owner.super_owner.put_textlabel(
-                        self.crnt_task_metainfo_frame,
-                        "スケール",
-                        1,
-                        4,
-                        Consts.not_available_text,
-                        "w",
-                    )
-                    # シード値
-                    self.seed_strvar = owner.super_owner.super_owner.put_textlabel(
-                        self.crnt_task_metainfo_frame,
-                        "シード値",
-                        2,
-                        0,
-                        Consts.not_available_text,
-                        "w",
-                    )
-                    # 幅
-                    self.width_strvar = owner.super_owner.super_owner.put_textlabel(
-                        self.crnt_task_metainfo_frame, "幅", 3, 0, Consts.not_available_text, "w"
-                    )
-                    # 高さ
-                    self.height_strvar = owner.super_owner.super_owner.put_textlabel(
-                        self.crnt_task_metainfo_frame, "高さ", 3, 2, Consts.not_available_text, "w"
-                    )
-                    # 宛先アドレス
-                    self.addr_strvar = owner.super_owner.super_owner.put_textlabel(
-                        self.crnt_task_metainfo_frame,
-                        "宛先アドレス",
-                        4,
-                        0,
-                        Consts.not_available_text,
-                        "w",
-                    )
-                    # 宛先ポート
-                    self.port_strvar = owner.super_owner.super_owner.put_textlabel(
-                        self.crnt_task_metainfo_frame,
-                        "宛先ポート",
-                        4,
-                        2,
-                        Consts.not_available_text,
-                        "w",
-                    )
+                    self.infobox_frame = ttk.Frame(owner.main_frame)
+                    self.infobox_frame.grid(row=1, column=0, sticky="nsew")
+                    data = [
+                        ("キー", "値"),
+                        ("ポジティブプロンプト", Consts.not_available_text),
+                        ("ネガティブプロンプト", Consts.not_available_text),
+                        ("ステップ数", Consts.not_available_text),
+                        ("バッチサイズ", Consts.not_available_text),
+                        ("サンプラ", Consts.not_available_text),
+                        ("スケジューラ", Consts.not_available_text),
+                        ("スケール", Consts.not_available_text),
+                        ("シード値", Consts.not_available_text),
+                        ("幅", Consts.not_available_text),
+                        ("高さ", Consts.not_available_text),
+                        ("宛先アドレス", Consts.not_available_text),
+                        ("宛先ポート", Consts.not_available_text),
+                    ]
+                    self.infobox_tree = InfoTree(self.infobox_frame, data)
 
             def __init__(self, owner: Displayer.InfoWindow):
                 """
@@ -704,10 +592,11 @@ class Displayer:
 
                 self.main_frame = ttk.Frame(owner.taskinfo_tab)
                 self.main_frame.grid(row=0, column=0, sticky="nsew")
+                self.main_frame.rowconfigure(0, weight=1)
+                self.main_frame.columnconfigure(0, weight=1)
 
-                self.appinfo_frame = self.AppInfoFrame(self)
-                self.crnt_task_prompts_frame = self.CrntTaskPromptsFrame(self)
-                self.crnt_task_metainfo_frame = self.CrntTaskMetaInfoFrame(self)
+                self.infobar_frame = self.InfoBarFrame(self)
+                self.infobox_frame = self.InfoBoxFrame(self)
 
         class PicInfoTab:
             """
@@ -1057,20 +946,20 @@ class Displayer:
         アプリケーション情報フレームの更新を行う\n
         更新は呼び出した瞬間の TaskManager をもとに行う
         """
-        self.info_window.taskinfo_tab_obj.appinfo_frame.len_tasks_strvar.set(
+        self.info_window.taskinfo_tab_obj.infobar_frame.len_tasks_strvar.set(
             f"{self.taskmanager.len_tasks()}"
         )
         crnt_task: TaskBlueprint = self.taskmanager.crnt_task
         if crnt_task is None:
-            self.info_window.taskinfo_tab_obj.appinfo_frame.task_progress["value"] = 0
-            self.info_window.taskinfo_tab_obj.appinfo_frame.progress_strvar.set("0%")
+            self.info_window.taskinfo_tab_obj.infobar_frame.task_progress["value"] = 0
+            self.info_window.taskinfo_tab_obj.infobar_frame.progress_strvar.set("0%")
         else:
             task_progress = self.taskmanager.post_progress()
-            self.info_window.taskinfo_tab_obj.appinfo_frame.task_progress["value"] = (
+            self.info_window.taskinfo_tab_obj.infobar_frame.task_progress["value"] = (
                 task_progress.progress if task_progress is not None else 0
             )
             task_progress_val = task_progress.progress * 100 if task_progress is not None else 0
-            self.info_window.taskinfo_tab_obj.appinfo_frame.progress_strvar.set(
+            self.info_window.taskinfo_tab_obj.infobar_frame.progress_strvar.set(
                 f"{task_progress_val:.0f}%"
             )
 
@@ -1081,78 +970,76 @@ class Displayer:
         """
         crnt_task: TaskBlueprint = self.taskmanager.crnt_task
         if crnt_task is None:
-            self.info_window.taskinfo_tab_obj.crnt_task_prompts_frame.pos_prompt_tiplabel.set_text(
-                Consts.not_available_text
+            self.info_window.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "ポジティブプロンプト", Consts.not_available_text
             )
-            self.info_window.taskinfo_tab_obj.crnt_task_prompts_frame.neg_prompt_tiplabel.set_text(
-                Consts.not_available_text
+            self.info_window.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "ネガティブプロンプト", Consts.not_available_text
             )
-            self.info_window.taskinfo_tab_obj.crnt_task_metainfo_frame.steps_strvar.set(
-                Consts.not_available_text
+            self.info_window.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "ステップ数", Consts.not_available_text
             )
-            self.info_window.taskinfo_tab_obj.crnt_task_metainfo_frame.batch_size_strvar.set(
-                Consts.not_available_text
+            self.info_window.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "バッチサイズ", Consts.not_available_text
             )
-            self.info_window.taskinfo_tab_obj.crnt_task_metainfo_frame.sampler_strvar.set(
-                Consts.not_available_text
+            self.info_window.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "サンプラ", Consts.not_available_text
             )
-            self.info_window.taskinfo_tab_obj.crnt_task_metainfo_frame.scheduler_strvar.set(
-                Consts.not_available_text
+            self.info_window.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "スケジューラ", Consts.not_available_text
             )
-            self.info_window.taskinfo_tab_obj.crnt_task_metainfo_frame.scale_strvar.set(
-                Consts.not_available_text
+            self.info_window.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "スケール", Consts.not_available_text
             )
-            self.info_window.taskinfo_tab_obj.crnt_task_metainfo_frame.seed_strvar.set(
-                Consts.not_available_text
+            self.info_window.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "シード値", Consts.not_available_text
             )
-            self.info_window.taskinfo_tab_obj.crnt_task_metainfo_frame.width_strvar.set(
-                Consts.not_available_text
+            self.info_window.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "幅", Consts.not_available_text
             )
-            self.info_window.taskinfo_tab_obj.crnt_task_metainfo_frame.height_strvar.set(
-                Consts.not_available_text
+            self.info_window.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "高さ", Consts.not_available_text
             )
-            self.info_window.taskinfo_tab_obj.crnt_task_metainfo_frame.addr_strvar.set(
-                Consts.not_available_text
+            self.info_window.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "宛先アドレス", Consts.not_available_text
             )
-            self.info_window.taskinfo_tab_obj.crnt_task_metainfo_frame.port_strvar.set(
-                Consts.not_available_text
+            self.info_window.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "宛先ポート", Consts.not_available_text
             )
         else:
-            self.info_window.taskinfo_tab_obj.crnt_task_prompts_frame.pos_prompt_tiplabel.set_text(
-                crnt_task.prompt
+            self.info_window.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "ポジティブプロンプト", crnt_task.prompt
             )
-            self.info_window.taskinfo_tab_obj.crnt_task_prompts_frame.neg_prompt_tiplabel.set_text(
-                crnt_task.negative_prompt
+            self.info_window.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "ネガティブプロンプト", crnt_task.negative_prompt
             )
-            self.info_window.taskinfo_tab_obj.crnt_task_metainfo_frame.steps_strvar.set(
-                f"{crnt_task.steps}"
+            self.info_window.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "ステップ数", crnt_task.steps
             )
-            self.info_window.taskinfo_tab_obj.crnt_task_metainfo_frame.batch_size_strvar.set(
-                f"{crnt_task.batch_size}"
+            self.info_window.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "バッチサイズ", crnt_task.batch_size
             )
-            self.info_window.taskinfo_tab_obj.crnt_task_metainfo_frame.sampler_strvar.set(
-                crnt_task.sampler_name
+            self.info_window.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "サンプラ", crnt_task.sampler_name
             )
-            self.info_window.taskinfo_tab_obj.crnt_task_metainfo_frame.scheduler_strvar.set(
-                crnt_task.scheduler
+            self.info_window.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "スケジューラ", crnt_task.scheduler
             )
-            self.info_window.taskinfo_tab_obj.crnt_task_metainfo_frame.scale_strvar.set(
-                f"{crnt_task.cfg_scale}"
+            self.info_window.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "スケール", crnt_task.cfg_scale
             )
-            self.info_window.taskinfo_tab_obj.crnt_task_metainfo_frame.seed_strvar.set(
-                f"{crnt_task.seed}"
+            self.info_window.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "シード値", crnt_task.seed
             )
-            self.info_window.taskinfo_tab_obj.crnt_task_metainfo_frame.width_strvar.set(
-                f"{crnt_task.width}"
+            self.info_window.taskinfo_tab_obj.infobox_frame.infobox_tree.set("幅", crnt_task.width)
+            self.info_window.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "高さ", crnt_task.height
             )
-            self.info_window.taskinfo_tab_obj.crnt_task_metainfo_frame.height_strvar.set(
-                f"{crnt_task.height}"
+            self.info_window.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "宛先アドレス", crnt_task.dst_addr
             )
-            self.info_window.taskinfo_tab_obj.crnt_task_metainfo_frame.addr_strvar.set(
-                crnt_task.dst_addr
-            )
-            self.info_window.taskinfo_tab_obj.crnt_task_metainfo_frame.port_strvar.set(
-                crnt_task.dst_port
+            self.info_window.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "宛先ポート", crnt_task.dst_port
             )
 
     def update_picinfo_tab(self, reset: bool = False) -> None:
