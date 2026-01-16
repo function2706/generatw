@@ -8,8 +8,9 @@ import json
 import threading
 import time
 from collections import deque
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Optional
 
 import requests
 
@@ -275,13 +276,13 @@ class TaskManager:
         response.raise_for_status()
         return TaskProgress.make(response.json())
 
-    def post_txt2img(self) -> Optional[Tuple[Any, Any]]:
+    def post_txt2img(self) -> Optional[tuple[Any, Any]]:
         """
         現在のタスクをもとに Stable Diffusion txt2img エンドポイントへポストする\n
         現在のタスクが空の場合は何もしない
 
         Returns:
-            Tuple[Any, Any]: image フィールドと info フィールドのタプル, 失敗時は None
+            tuple[Any, Any]: image フィールドと info フィールドのタプル, 失敗時は None
         """
         if self.crnt_task is None:
             return

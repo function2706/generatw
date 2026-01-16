@@ -5,9 +5,9 @@ GUI 管理クラス
 from __future__ import annotations
 
 import tkinter
+from collections.abc import Callable
 from dataclasses import dataclass
 from tkinter import Frame, TclError, ttk
-from typing import Callable
 
 from PIL import Image, ImageDraw, ImageFont, ImageTk
 
