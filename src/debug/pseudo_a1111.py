@@ -8,7 +8,6 @@ import json
 import random
 import socket
 import time
-from typing import Optional
 
 import uvicorn
 from fastapi import FastAPI
@@ -35,58 +34,58 @@ app.state.current_image = None
 
 
 class Txt2ImgRequest(BaseModel):
-    prompt: Optional[str] = ""
-    negative_prompt: Optional[str] = ""
-    styles: Optional[list[str]] = None
+    prompt: str | None = ""
+    negative_prompt: str | None = ""
+    styles: list[str] | None = None
 
-    seed: Optional[int] = -1
-    subseed: Optional[int] = -1
-    subseed_strength: Optional[float] = 0.0
-    seed_resize_from_h: Optional[int] = -1
-    seed_resize_from_w: Optional[int] = -1
+    seed: int | None = -1
+    subseed: int | None = -1
+    subseed_strength: float | None = 0.0
+    seed_resize_from_h: int | None = -1
+    seed_resize_from_w: int | None = -1
 
-    sampler_name: Optional[str] = None
-    sampler_index: Optional[str] = None
-    scheduler: Optional[str] = None
+    sampler_name: str | None = None
+    sampler_index: str | None = None
+    scheduler: str | None = None
 
-    batch_size: Optional[int] = Field(default=1, ge=1)
-    n_iter: Optional[int] = Field(default=1, ge=1)
+    batch_size: int | None = Field(default=1, ge=1)
+    n_iter: int | None = Field(default=1, ge=1)
 
-    steps: Optional[int] = 20
-    cfg_scale: Optional[float] = 7.0
-    width: Optional[int] = Field(default=512, ge=1)
-    height: Optional[int] = Field(default=512, ge=1)
+    steps: int | None = 20
+    cfg_scale: float | None = 7.0
+    width: int | None = Field(default=512, ge=1)
+    height: int | None = Field(default=512, ge=1)
 
-    restore_faces: Optional[bool] = False
-    tiling: Optional[bool] = False
+    restore_faces: bool | None = False
+    tiling: bool | None = False
 
-    eta: Optional[float] = None
-    s_min_uncond: Optional[float] = 0.0
-    s_churn: Optional[float] = 0.0
-    s_tmax: Optional[float] = None
-    s_tmin: Optional[float] = 0.0
-    s_noise: Optional[float] = 1.0
+    eta: float | None = None
+    s_min_uncond: float | None = 0.0
+    s_churn: float | None = 0.0
+    s_tmax: float | None = None
+    s_tmin: float | None = 0.0
+    s_noise: float | None = 1.0
 
-    override_settings: Optional[dict] = None
-    override_settings_restore_afterwards: Optional[bool] = True
+    override_settings: dict | None = None
+    override_settings_restore_afterwards: bool | None = True
 
-    script_args: Optional[list] = None
-    script_name: Optional[str] = None
+    script_args: list | None = None
+    script_name: str | None = None
 
-    send_images: Optional[bool] = True
-    save_images: Optional[bool] = False
+    send_images: bool | None = True
+    save_images: bool | None = False
 
-    alwayson_scripts: Optional[dict] = None
+    alwayson_scripts: dict | None = None
 
 
 class Img2ImgRequest(Txt2ImgRequest):
     init_images: list[str]
-    denoising_strength: Optional[float] = Field(default=0.75, ge=0.0, le=1.0)
-    resize_mode: Optional[int] = 0
-    mask: Optional[str] = None
-    inpainting_fill: Optional[int] = 0
-    inpaint_full_res: Optional[bool] = True
-    inpaint_full_res_padding: Optional[int] = 32
+    denoising_strength: float | None = Field(default=0.75, ge=0.0, le=1.0)
+    resize_mode: int | None = 0
+    mask: str | None = None
+    inpainting_fill: int | None = 0
+    inpaint_full_res: bool | None = True
+    inpaint_full_res_padding: int | None = 32
 
 
 # =========================

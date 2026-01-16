@@ -10,7 +10,7 @@ import time
 from collections import deque
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
-from typing import Any, Optional
+from typing import Any
 
 import requests
 
@@ -256,7 +256,7 @@ class TaskManager:
         except Exception as e:
             print("Any exception occurred on interrupt: ", e)
 
-    def post_progress(self) -> Optional[TaskProgress]:
+    def post_progress(self) -> TaskProgress | None:
         """
         Stable Diffusion progress エンドポイントへポストする\n
         現在のタスクが空の場合は何もしない
@@ -276,7 +276,7 @@ class TaskManager:
         response.raise_for_status()
         return TaskProgress.make(response.json())
 
-    def post_txt2img(self) -> Optional[tuple[Any, Any]]:
+    def post_txt2img(self) -> tuple[Any, Any] | None:
         """
         現在のタスクをもとに Stable Diffusion txt2img エンドポイントへポストする\n
         現在のタスクが空の場合は何もしない

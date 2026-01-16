@@ -8,7 +8,7 @@ import os
 import random
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from PIL import Image, PngImagePlugin
 
@@ -54,19 +54,19 @@ class PicInfo:
     画像のメタデータ
     """
 
-    prompt: Optional[str] = None
-    negative_prompt: Optional[str] = None
-    steps: Optional[int] = None
-    sampler: Optional[str] = None
-    schedule_type: Optional[str] = None
-    cfg_scale: Optional[float] = None
-    seed: Optional[int] = None
-    width: Optional[int] = None
-    height: Optional[int] = None
-    sd_model_name: Optional[str] = None
-    sd_model_hash: Optional[str] = None
-    clip_skip: Optional[int] = None
-    parameters: Optional[str] = None
+    prompt: str | None = None
+    negative_prompt: str | None = None
+    steps: int | None = None
+    sampler: str | None = None
+    schedule_type: str | None = None
+    cfg_scale: float | None = None
+    seed: int | None = None
+    width: int | None = None
+    height: int | None = None
+    sd_model_name: str | None = None
+    sd_model_hash: str | None = None
+    clip_skip: int | None = None
+    parameters: str | None = None
 
     @classmethod
     def make(cls, image: Image):
@@ -118,9 +118,9 @@ class PicStats:
     """
 
     path: Path
-    dir: Optional[str] = None
-    name: Optional[str] = None
-    info: Optional[PicInfo] = None
+    dir: str | None = None
+    name: str | None = None
+    info: PicInfo | None = None
 
     @classmethod
     def make(cls, path: Path):
@@ -163,9 +163,9 @@ class PicManager:
     画像監視クラス
     """
 
-    rootdir: Optional[Path] = None
+    rootdir: Path | None = None
     piclist: list[dict[str, list[PicStats]]] = field(default_factory=list)
-    crnt_picstats: Optional[PicStats] = None
+    crnt_picstats: PicStats | None = None
 
     @classmethod
     def make(cls, rootdir: Path):
