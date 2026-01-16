@@ -7,7 +7,8 @@ from __future__ import annotations
 import tkinter
 from collections.abc import Callable
 from dataclasses import dataclass
-from tkinter import Frame, TclError, ttk
+from tkinter import Frame, TclError, font, ttk
+from typing import Any
 
 from PIL import Image, ImageDraw, ImageFont, ImageTk
 
@@ -25,7 +26,7 @@ class Consts:
     # 表示する文字列の最大長
     max_output_strlen: int = 75
     # N/A テキスト
-    not_available_text: str = "N/A"
+    not_available_text: str = "-"
 
 
 class TipLabel:
@@ -129,6 +130,99 @@ class TipLabel:
         y = event.y_root + 12
 
         self.tip.geometry(f"+{x}+{y}")
+
+
+class InfoTree:
+    """
+    ツリービューを構築するクラス
+    """
+
+    def __init__(self, meta_frame: ttk.Frame, infotbl: list[tuple[str, ...]]):
+        """
+        コンストラクタ\n
+        infotbl の先頭行がカラムの見出しになる\n
+
+        ex.)\n
+        data = [\n
+            ("キー", "値", "備考"),\n
+            ("key1", "val11", "val12"),\n
+            ("key2", "val21", "val22"),\n
+            ("key3", "val31", "val32"),\n
+        ]
+
+        Args:
+            meta_frame (ttk.Frame): 配置先フレーム
+            infotbl (list[tuple[str, ...]]): 初期値テーブル
+        """
+        self.frame = ttk.Frame(meta_frame)
+        self.frame.pack(fill="both", expand=True)
+        self.frame.rowconfigure(0, weight=1)
+        self.frame.columnconfigure(0, weight=1)
+
+        self.columns = infotbl[0]
+
+        self.tree = ttk.Treeview(self.frame, columns=self.columns, show="headings")
+        xscroll = ttk.Scrollbar(self.frame, orient="horizontal", command=self.tree.xview)
+        self.tree.configure(xscrollcommand=xscroll.set)
+
+        self._font = font.nametofont("TkDefaultFont")
+
+        for col in self.columns:
+            self.tree.column(col, width=50, stretch=False, anchor="w")
+            self.tree.heading(col, text=col, anchor="w")
+
+        self.tree.grid(row=0, column=0, sticky="nsew")
+        xscroll.grid(row=1, column=0, sticky="ew")
+
+        self._key_to_iid = {}
+        for row in infotbl[1:]:
+            key = row[0]
+            iid = self.tree.insert("", "end", values=row)
+            self._key_to_iid[key] = iid
+
+        for col_idx, _ in enumerate(self.columns):
+            self.adjust(col_idx)
+
+    def adjust(self, col_idx: int):
+        """
+        特定列の幅を内容に合わせて調整する
+
+        Args:
+            col_idx (int): 調整する列のインデックス
+        """
+        col = self.columns[col_idx]
+        max_width = self._font.measure(col)
+        for iid in self.tree.get_children():
+            text = str(self.tree.item(iid, "values")[col_idx])
+            w = self._font.measure(text)
+            if w > max_width:
+                max_width = w
+
+        max_width += 20
+        self.tree.column(col, width=max_width)
+
+    def set(self, key: str, val: Any, idx: int = 1) -> None:
+        """
+        指定行・列の値を書き換える
+
+        Args:
+            key (str): 書き換える行のキー
+            idx (int): 書き換える列のインデックス
+            val (str): 値(未指定で 1)
+        """
+        if key not in self._key_to_iid:
+            return
+
+        iid = self._key_to_iid[key]
+        values = list(self.tree.item(iid, "values"))
+
+        if not (0 <= idx < len(values)):
+            return
+
+        values[idx] = str(val)
+        self.tree.item(iid, values=values)
+
+        self.adjust(idx)
 
 
 class Displayer:
@@ -636,12 +730,20 @@ class Displayer:
 
                     self.infobox_frame = ttk.Frame(owner.main_frame)
                     self.infobox_frame.grid(row=0, column=0, sticky="nsew")
-                    self.infobox_frame.grid_rowconfigure(0, weight=1)
-                    self.infobox_frame.grid_columnconfigure(0, weight=1)
-
-                    self.fullpath_strvar = owner.super_owner.super_owner.put_textlabel(
-                        self.infobox_frame, "TBD", 0, 0, Consts.not_available_text, "w"
-                    )
+                    data = [
+                        ("キー", "値"),
+                        ("場所", Consts.not_available_text),
+                        ("ポジティブプロンプト", Consts.not_available_text),
+                        ("ネガティブプロンプト", Consts.not_available_text),
+                        ("ステップ数", Consts.not_available_text),
+                        ("サンプラ", Consts.not_available_text),
+                        ("スケジューラ", Consts.not_available_text),
+                        ("スケール", Consts.not_available_text),
+                        ("シード値", Consts.not_available_text),
+                        ("幅", Consts.not_available_text),
+                        ("高さ", Consts.not_available_text),
+                    ]
+                    self.infobox_tree = InfoTree(self.infobox_frame, data)
 
             def __init__(self, owner: Displayer.InfoWindow):
                 """
@@ -654,6 +756,8 @@ class Displayer:
 
                 self.main_frame = ttk.Frame(owner.picinfo_tab)
                 self.main_frame.grid(row=0, column=0, sticky="nsew")
+                self.main_frame.rowconfigure(0, weight=1)
+                self.main_frame.columnconfigure(0, weight=1)
 
                 self.infobox_frame = self.InfoBoxFrame(self)
 
@@ -677,19 +781,23 @@ class Displayer:
                 )
             self.info_window.title(f"pipmaker - 情報 [{owner.ownername}]")
             self.info_window.protocol("WM_DELETE_WINDOW", self.super_owner.destroy_info_window)
-
-            self.main_frame = ttk.Frame(self.info_window)
-            self.main_frame.grid(row=0, column=0, sticky="nsew")
+            self.info_window.geometry("500x380")
+            self.info_window.rowconfigure(0, weight=1)
+            self.info_window.columnconfigure(0, weight=1)
 
             # Notebook（タブ）
-            self.notebook = ttk.Notebook(self.main_frame)
+            self.notebook = ttk.Notebook(self.info_window)
             self.notebook.grid(row=0, column=0, sticky="nsew")
             # タスク情報タブ
             self.taskinfo_tab = ttk.Frame(self.notebook, padding=12)
+            self.taskinfo_tab.rowconfigure(0, weight=1)
+            self.taskinfo_tab.columnconfigure(0, weight=1)
             self.notebook.add(self.taskinfo_tab, text="タスク")
             self.taskinfo_tab_obj = self.TaskInfoTab(self)
             # 画像情報タブ
             self.picinfo_tab = ttk.Frame(self.notebook, padding=12)
+            self.picinfo_tab.rowconfigure(0, weight=1)
+            self.picinfo_tab.columnconfigure(0, weight=1)
             self.notebook.add(self.picinfo_tab, text="画像")
             self.picinfo_tab_obj = self.PicInfoTab(self)
 
@@ -1047,6 +1155,71 @@ class Displayer:
                 crnt_task.dst_port
             )
 
+    def update_picinfo_tab(self, reset: bool = False) -> None:
+        crnt_picstats: PicStats = self.picmanager.crnt_picstats
+        if not crnt_picstats or reset:
+            self.info_window.picinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "場所", Consts.not_available_text
+            )
+            self.info_window.picinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "ポジティブプロンプト", Consts.not_available_text
+            )
+            self.info_window.picinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "ネガティブプロンプト", Consts.not_available_text
+            )
+            self.info_window.picinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "ステップ数", Consts.not_available_text
+            )
+            self.info_window.picinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "サンプラ", Consts.not_available_text
+            )
+            self.info_window.picinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "スケジューラ", Consts.not_available_text
+            )
+            self.info_window.picinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "スケール", Consts.not_available_text
+            )
+            self.info_window.picinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "シード値", Consts.not_available_text
+            )
+            self.info_window.picinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "幅", Consts.not_available_text
+            )
+            self.info_window.picinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "高さ", Consts.not_available_text
+            )
+        else:
+            self.info_window.picinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "場所", crnt_picstats.path
+            )
+            self.info_window.picinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "ポジティブプロンプト", crnt_picstats.info.prompt
+            )
+            self.info_window.picinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "ネガティブプロンプト", crnt_picstats.info.negative_prompt
+            )
+            self.info_window.picinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "ステップ数", crnt_picstats.info.steps
+            )
+            self.info_window.picinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "サンプラ", crnt_picstats.info.sampler
+            )
+            self.info_window.picinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "スケジューラ", crnt_picstats.info.schedule_type
+            )
+            self.info_window.picinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "スケール", crnt_picstats.info.cfg_scale
+            )
+            self.info_window.picinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "シード値", crnt_picstats.info.seed
+            )
+            self.info_window.picinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "幅", crnt_picstats.info.width
+            )
+            self.info_window.picinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "高さ", crnt_picstats.info.height
+            )
+
     def update_info_window(self) -> None:
         """
         情報ウィンドウの更新を行う\n
@@ -1113,6 +1286,8 @@ class Displayer:
         self.switch_output_button_state(True)
         self.switch_picwindow_button_state(True)
 
+        self.update_picinfo_tab()
+
     def create_no_image_placeholder(self) -> Image:
         """
         表示すべき画像がない場合の画像を作成する\n
@@ -1178,6 +1353,8 @@ class Displayer:
         self.pic_window.cursor_frame.pic_label_image = self.noimage_img
         self.switch_output_button_state(False)
         self.switch_picwindow_button_state(False)
+
+        self.update_picinfo_tab(reset=True)
 
     def switch_output_button_state(self, toggle: bool) -> None:
         """
