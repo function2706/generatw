@@ -9,7 +9,7 @@ import re
 from collections import deque
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 from taskmanager import TaskBlueprint
 
@@ -38,12 +38,12 @@ def json_default(obj: Any) -> str:
     raise TypeError(f"{obj.__class__.__name__} is not JSON serializable")
 
 
-def dump_json(data: Dict, label: str) -> None:
+def dump_json(data: dict, label: str) -> None:
     """
-    指定の Dict を json 形式でダンプする
+    指定の dict を json 形式でダンプする
 
     Args:
-        data (Dict): ダンプ対象
+        data (dict): ダンプ対象
         label (str): 表示するラベル("label": {...})
     """
     print(f'"{label}":')

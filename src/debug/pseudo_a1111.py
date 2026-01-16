@@ -8,7 +8,7 @@ import json
 import random
 import socket
 import time
-from typing import Dict, Optional
+from typing import Optional
 
 import uvicorn
 from fastapi import FastAPI
@@ -67,7 +67,7 @@ class Txt2ImgRequest(BaseModel):
     s_tmin: Optional[float] = 0.0
     s_noise: Optional[float] = 1.0
 
-    override_settings: Optional[Dict] = None
+    override_settings: Optional[dict] = None
     override_settings_restore_afterwards: Optional[bool] = True
 
     script_args: Optional[list] = None
@@ -76,7 +76,7 @@ class Txt2ImgRequest(BaseModel):
     send_images: Optional[bool] = True
     save_images: Optional[bool] = False
 
-    alwayson_scripts: Optional[Dict] = None
+    alwayson_scripts: Optional[dict] = None
 
 
 class Img2ImgRequest(Txt2ImgRequest):

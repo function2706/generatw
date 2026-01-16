@@ -13,7 +13,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Generic, Mapping, Protocol, TypeVar
+from typing import Any, Generic, Mapping, Protocol, TypeVar
 
 import pyperclip
 from PIL import Image
@@ -44,7 +44,7 @@ class HasCommonMembers(Protocol):
     # var: int <- ここで共通メンバ変数の存在を通告することもできる
 
     def refresh(self) -> None: ...
-    def todict(self) -> Dict[str, Any]: ...
+    def todict(self) -> dict[str, Any]: ...
 
 
 Stats = TypeVar("Stats", bound=HasCommonMembers)
@@ -262,13 +262,13 @@ class PicMakerBase(ABC, Generic[Stats]):
         dirpath_raw: str = pos_prompt + neg_prompt
         return hashlib.md5(dirpath_raw.encode()).hexdigest()
 
-    def make_dirname_from_info(self, infos: Dict, idx: int) -> str:
+    def make_dirname_from_info(self, infos: dict, idx: int) -> str:
         """
         info 領域上のデータからディレクトリ名を生成する\n
         info 領域上のデータは同時生成した画像群に関する配列構造のため, インデックスの指定も必要
 
         Args:
-            infos (Dict): info 領域上のデータ
+            infos (dict): info 領域上のデータ
             idx (int): 配列のインデックス
 
         Returns:
@@ -278,14 +278,14 @@ class PicMakerBase(ABC, Generic[Stats]):
         neg_prompts = infos.get("all_negative_prompts", [])
         return self.make_dirname_from_prompts(pos_prompts[idx], neg_prompts[idx])
 
-    def make_filepath(self, infos: Dict, idx: int) -> Path:
+    def make_filepath(self, infos: dict, idx: int) -> Path:
         """
         info 領域上のデータからファイルパスを生成する\n
         info 領域上のデータは同時生成した画像群に関する配列構造のため, インデックスの指定も必要\n
         ファイル名は"YYYYMMDDhhmmss-<seed>.png"
 
         Args:
-            infos (Dict): info 領域上のデータ
+            infos (dict): info 領域上のデータ
             idx (int): 配列のインデックス
 
         Returns:

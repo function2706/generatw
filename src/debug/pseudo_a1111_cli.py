@@ -4,7 +4,7 @@ import json
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import requests
 
@@ -13,7 +13,7 @@ def dump(obj: Any):
     print(json.dumps(obj, ensure_ascii=False, indent=2))
 
 
-def post(url: str, payload: Dict[str, Any]):
+def post(url: str, payload: dict[str, Any]):
     print(f"\n=== POST {url} ===")
     print("--- request ---")
     dump(payload)

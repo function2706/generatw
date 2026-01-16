@@ -8,7 +8,7 @@ import os
 import random
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from PIL import Image, PngImagePlugin
 
@@ -18,7 +18,7 @@ class SDPngInfo(PngImagePlugin.PngInfo):
     Stable Diffusion 特化の PngInfo
     """
 
-    def __init__(self, infos: Dict, idx: int):
+    def __init__(self, infos: dict, idx: int):
         """
         コンストラクタ
         PNG に付与する PNG Info を生成する\n
@@ -26,7 +26,7 @@ class SDPngInfo(PngImagePlugin.PngInfo):
         info 領域上のデータは同時生成した画像群に関する配列構造のため, インデックスの指定も必要
 
         Args:
-            infos (Dict): info 領域上のデータ
+            infos (dict): info 領域上のデータ
             idx (int): 配列のインデックス
         """
         super().__init__()
@@ -76,7 +76,7 @@ class PicInfo:
         Args:
             image (Image): Open して得られる Image インスタンス
         """
-        info: Dict = image.info
+        info: dict = image.info
         return cls(
             prompt=info.get("prompt"),
             negative_prompt=info.get("negative_prompt"),
@@ -101,12 +101,12 @@ class PicInfo:
     def to_float(v):
         return float(v) if v is not None else None
 
-    def todict(self) -> Dict[str, Any]:
+    def todict(self) -> dict[str, Any]:
         """
-        Dict への変換
+        dict への変換
 
         Returns:
-            Dict[str, Any]: Dict インスタンス
+            dict[str, Any]: dict インスタンス
         """
         return asdict(self)
 
@@ -147,12 +147,12 @@ class PicStats:
             info=info,
         )
 
-    def todict(self) -> Dict[str, Any]:
+    def todict(self) -> dict[str, Any]:
         """
-        Dict への変換
+        dict への変換
 
         Returns:
-            Dict[str, Any]: Dict インスタンス
+            dict[str, Any]: dict インスタンス
         """
         return asdict(self)
 
@@ -164,7 +164,7 @@ class PicManager:
     """
 
     rootdir: Optional[Path] = None
-    piclist: list[Dict[str, list[PicStats]]] = field(default_factory=list)
+    piclist: list[dict[str, list[PicStats]]] = field(default_factory=list)
     crnt_picstats: Optional[PicStats] = None
 
     @classmethod
@@ -276,11 +276,11 @@ class PicManager:
     def sweep_emptydir(self) -> None:
         pass
 
-    def todict(self) -> Dict[str, Any]:
+    def todict(self) -> dict[str, Any]:
         """
-        Dict への変換
+        dict への変換
 
         Returns:
-            Dict[str, Any]: Dict インスタンス
+            dict[str, Any]: dict インスタンス
         """
         return asdict(self)

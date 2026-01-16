@@ -9,7 +9,7 @@ import threading
 import time
 from collections import deque
 from dataclasses import asdict, dataclass
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any, Callable, Optional, Tuple
 
 import requests
 
@@ -40,12 +40,12 @@ class TaskProgress:
         return float(v) if v is not None else None
 
     @classmethod
-    def make(cls, info: Dict):
+    def make(cls, info: dict):
         """
         コンストラクタ
 
         Args:
-            info (Dict): info 領域上のデータ
+            info (dict): info 領域上のデータ
         """
         raw_skipped = info.get("skipped", False)
         skipped = (
@@ -71,12 +71,12 @@ class TaskProgress:
             sampling_steps=cls.to_int(info.get("sampling_steps", 0)),
         )
 
-    def todict(self) -> Dict[str, Any]:
+    def todict(self) -> dict[str, Any]:
         """
-        Dict への変換
+        dict への変換
 
         Returns:
-            Dict[str, Any]: Dict インスタンス
+            dict[str, Any]: dict インスタンス
         """
         return asdict(self)
 
@@ -141,12 +141,12 @@ class TaskBlueprint:
             dst_port=d_port,
         )
 
-    def todict(self) -> Dict[str, Any]:
+    def todict(self) -> dict[str, Any]:
         """
-        Dict への変換
+        dict への変換
 
         Returns:
-            Dict[str, Any]: Dict インスタンス
+            dict[str, Any]: dict インスタンス
         """
         return asdict(self)
 
@@ -297,7 +297,7 @@ class TaskManager:
             return None
 
         response.raise_for_status()
-        body: Dict = response.json()
+        body: dict = response.json()
         images = body.get("images", [])
         if not images:
             return None

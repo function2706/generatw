@@ -8,7 +8,7 @@ import random
 from dataclasses import asdict, dataclass, field
 from enum import Enum, auto
 from types import MappingProxyType
-from typing import Any, Dict, Mapping
+from typing import Any, Mapping
 
 from functions import search_regex
 from picmaker_base import PicMakerBase, PMConsts
@@ -238,7 +238,7 @@ class TWStats:
             self.character = Character.make(s)
             self.meta = Meta.make(s)
 
-    def todict(self) -> Dict[str, Any]:
+    def todict(self) -> dict[str, Any]:
         return asdict(self)
 
 
