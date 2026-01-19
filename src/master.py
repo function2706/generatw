@@ -51,7 +51,7 @@ class HasCommonMembers(Protocol):
 Stats = TypeVar("Stats", bound=HasCommonMembers)
 
 
-class PicMakerBase(ABC, Generic[Stats]):
+class Master(ABC, Generic[Stats]):
     """
     クリップボード監視, GUI 管理, 画像生成管理を実施するクラス\n
     このクラス自体はクリップボード監視とファイル操作, ロギングを直接行う(対 OS 処理に限定)

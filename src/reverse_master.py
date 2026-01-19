@@ -12,7 +12,7 @@ from types import MappingProxyType
 from typing import Any, Mapping
 
 from functions import search_regex
-from picmaker_base import PicMakerBase, PMConsts
+from master import Master, PMConsts
 
 
 class State(Enum):
@@ -156,7 +156,7 @@ class ReverseStats:
         return asdict(self)
 
 
-class PicMakerReverse(PicMakerBase[ReverseStats]):
+class ReverseMaster(Master[ReverseStats]):
     """
     クリップボード監視, GUI 管理, 画像生成管理を実施するクラス for Reverse
     """

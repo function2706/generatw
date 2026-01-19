@@ -7,8 +7,8 @@ import signal
 import tkinter
 from tkinter import ttk
 
-from picmaker_reverse import PicMakerReverse
-from picmaker_tw import PicMakerTW
+from reverse_master import ReverseMaster
+from theworld_master import TheWorldMaster
 
 
 class ModeWindow:
@@ -81,18 +81,18 @@ def main() -> None:
     pm = None
     try:
         if args.mode == "TW":
-            pm = PicMakerTW()
+            pm = TheWorldMaster()
         elif args.mode == "R":
-            pm = PicMakerReverse()
+            pm = ReverseMaster()
         else:
             window = ModeWindow()
             window.entrypoint()
             if not window.flag_exe_main:
                 return
             elif window.mode == "The World":
-                pm = PicMakerTW()
+                pm = TheWorldMaster()
             elif window.mode == "Reverse":
-                pm = PicMakerReverse()
+                pm = ReverseMaster()
         if pm is not None:
             signal.signal(signal.SIGINT, pm.sigint_handler)
             pm.start()

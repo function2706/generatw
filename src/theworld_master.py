@@ -11,7 +11,7 @@ from types import MappingProxyType
 from typing import Any, Mapping
 
 from functions import search_regex
-from picmaker_base import PicMakerBase, PMConsts
+from master import Master, PMConsts
 
 
 class Season(Enum):
@@ -243,7 +243,7 @@ class TWStats:
 
 
 # eratohoTW
-class PicMakerTW(PicMakerBase[TWStats]):
+class TheWorldMaster(Master[TWStats]):
     """
     クリップボード監視, GUI 管理, 画像生成管理を実施するクラス for The World
     """
