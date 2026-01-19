@@ -16,3 +16,14 @@
 ・タスク情報のTreeView化
 　→タスクの種類も記載
 　→タスクごとに記載する情報はどうする？すべて書いておく？
+・ComfyUI対応
+　→起動時の選択画面でIN=era種類の他にOUT=A1111/ComfyUIを選べるように
+　→TaskManagerをA1111ManagerとComfyUIManagerに継承
+・構造の刷新、eraから吸い出すクラス(Sniffer)を独立
+　　→[era]->[Sniffer]->[Master]┬>[TaskManager]->[Server]
+　　　　　　　　　　　　　　　　　└>[PicManager]->[Displayer]
+　→Masterと他のモジュールとの間の通信を行うイベント定義ファイルを作成する
+　→キューの種類はModuleX->Master->ModuleYのためのrequest, ModuleX->Master(状態報告)のためのreport
+　　これをMasterがもち、各Moduleにはキューのオブジェクトを渡す
+　→この過程でdisplayer内でしているpostも逃がせる
+　→tk.rootはMasterがもつ、afterもMasterが呼び出す、tkinterアプリのメインはtkinterループらしい(by ChatGPT)
