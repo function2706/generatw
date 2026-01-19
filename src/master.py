@@ -89,7 +89,7 @@ class Master(ABC, Generic[Stats]):
             taskmanager=self.taskmanager,
             on_append=self.reserve_task,
             on_debug=self.on_debug,
-            ownername=self.whoami(),
+            ownername=self.whoami().replace("Master", ""),
         )
         self.taskmanager.start()
 
@@ -135,7 +135,7 @@ class Master(ABC, Generic[Stats]):
         Returns:
             Path: ディレクトリパス
         """
-        return Path(PMConsts.pichome_dir) / Path(self.whoami())
+        return Path(PMConsts.pichome_dir) / Path(self.whoami().replace("Master", ""))
 
     @abstractmethod
     def make_dummy_stats(self, name: str = None) -> Stats:
