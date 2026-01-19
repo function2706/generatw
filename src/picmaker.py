@@ -95,7 +95,7 @@ def main() -> None:
                 pm = PicMakerReverse()
         if pm is not None:
             signal.signal(signal.SIGINT, pm.sigint_handler)
-            pm.displayer.entrypoint()
+            pm.start()
     finally:
         if pm is not None:
             pm.finalize()

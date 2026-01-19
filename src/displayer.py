@@ -788,9 +788,9 @@ class Displayer:
 
     def __init__(
         self,
+        root: tkinter.Tk,
         picmanager: PicManager,
         taskmanager: TaskManager,
-        on_edgepoint: Callable[[], None],
         on_append: Callable[[], None],
         on_debug: Callable[[], None],
         ownername: str,
@@ -808,13 +808,13 @@ class Displayer:
         """
         self.ownername = ownername
 
+        self.root = root
+
         self.picmanager: PicManager = picmanager
         self.taskmanager: TaskManager = taskmanager
-        self.on_edgepoint: Callable[[], None] = on_edgepoint
         self.on_append: Callable[[], None] = on_append
         self.on_debug: Callable[[], None] = on_debug
 
-        self.root = tkinter.Tk()
         self.config_window = self.ConfigWindow(self)
         self.info_window: Displayer.InfoWindow = None
         self.construct_info_window()
@@ -1278,20 +1278,6 @@ class Displayer:
             self.pic_window.cursor_frame.prev_button.configure(state="disabled")
             self.pic_window.eval_frame.good_button.configure(state="disabled")
             self.pic_window.eval_frame.bad_button.configure(state="disabled")
-
-    def entrypoint(self) -> None:
-        """
-        エントリポイントの処理
-        """
-        self.root.after(100, self.on_edgepoint)
-        self.root.mainloop()
-
-    def endpoint(self) -> None:
-        """
-        エンドポイントの処理
-        """
-        self.update_info_window()
-        self.root.after(300, self.on_edgepoint)
 
     def on_open_pic_window(self) -> None:
         """

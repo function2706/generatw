@@ -9,6 +9,7 @@ import copy
 import hashlib
 import io
 import random
+import tkinter
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
@@ -79,17 +80,25 @@ class PicMakerBase(ABC, Generic[Stats]):
         self.crnt_clipboard = ""
         self.crnt_stats = stats
 
+        self.root = tkinter.Tk()
         self.picmanager = PicManager.make(self.pics_dir_path())
         self.taskmanager = TaskManager(self.save_images)
         self.displayer = Displayer(
+            root=self.root,
             picmanager=self.picmanager,
             taskmanager=self.taskmanager,
-            on_edgepoint=self.run_main,
             on_append=self.reserve_task,
             on_debug=self.on_debug,
             ownername=self.whoami(),
         )
         self.taskmanager.start()
+
+    def start(self) -> None:
+        """
+        メインループの開始
+        """
+        self.root.after(100, self.run_main)
+        self.root.mainloop()
 
     def finalize(self) -> None:
         """
@@ -403,4 +412,5 @@ class PicMakerBase(ABC, Generic[Stats]):
 
             self.run_oneshot()
         finally:
-            self.displayer.endpoint()
+            self.displayer.update_info_window()
+            self.root.after(300, self.run_main)

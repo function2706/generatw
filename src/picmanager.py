@@ -273,9 +273,6 @@ class PicManager:
 
         self.refresh_piclist()
 
-    def sweep_emptydir(self) -> None:
-        pass
-
     def todict(self) -> dict[str, Any]:
         """
         dict への変換
