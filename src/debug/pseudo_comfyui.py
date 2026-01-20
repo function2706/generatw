@@ -55,21 +55,29 @@ async def simulate_generation(prompt_id: str):
     await asyncio.sleep(0.3)
 
     # ---- executed（画像生成完了） ----
-    img = Image.new("RGB", (512, 768), (0, 0, 0))
+    batch_size = prompt["4"]["inputs"]["batch_size"]
 
-    meta = PngImagePlugin.PngInfo()
-    meta.add_text("prompt", json.dumps(prompt))
+    images = []
 
-    buffer = BytesIO()
-    img.save(buffer, format="PNG", pnginfo=meta)
-    buffer.seek(0)
+    for i in range(batch_size):
+        # ---- 画像生成 ----
+        img = Image.new("RGB", (512, 768), (i * 40 % 255, 0, 0))  # 適当な色変化
 
-    filename = f"{uuid.uuid4()}.png"
-    IMAGES[filename] = buffer.getvalue()
+        meta = PngImagePlugin.PngInfo()
+        meta.add_text("prompt", json.dumps(prompt))
 
-    PROMPTS[prompt_id]["outputs"] = {
-        "7": {"images": [{"filename": filename, "subfolder": "", "type": "output"}]}
-    }
+        buffer = BytesIO()
+        img.save(buffer, format="PNG", pnginfo=meta)
+        buffer.seek(0)
+
+        # ---- メモリに保存 ----
+        filename = f"{uuid.uuid4()}.png"
+        IMAGES[filename] = buffer.getvalue()
+
+        images.append({"filename": filename, "subfolder": "", "type": "output"})
+
+    # PreviewImage ノードの出力として複数画像を返す
+    PROMPTS[prompt_id]["outputs"] = {"7": {"images": images}}
 
     if ws:
         await ws.send_json(
