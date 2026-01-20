@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from collections import deque
@@ -11,7 +12,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from taskmanager import TaskBlueprint
+from common.classes import TaskBlueprint
 
 
 def json_default(obj: Any) -> str:
@@ -68,3 +69,19 @@ def search_regex(s: str, regex: str, gridx: int = 1) -> str:
         # print(f'No match with "{regex}".')
         return None
     return m.group(gridx)
+
+
+def dirname_by_prompts(pos_prompt: str, neg_prompt: str) -> str:
+    """
+    プロンプトからディレクトリ名を生成する\n
+    ディレクトリ名は MD5 (32byte Ascii) として得られる
+
+    Args:
+        pos_prompt (str): ポジティブプロンプト
+        neg_prompt (str): ネガティブプロンプト
+
+    Returns:
+        str: ディレクトリ名
+    """
+    dirpath_raw: str = pos_prompt + neg_prompt
+    return hashlib.md5(dirpath_raw.encode()).hexdigest()

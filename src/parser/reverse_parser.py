@@ -1,5 +1,5 @@
 """
-クリップボード監視, GUI 管理, 画像生成管理を実施するモジュールの Reverse 版クラス
+クリップボード監視, ステータス記録クラス (Reverse 版)
 """
 
 from __future__ import annotations
@@ -8,11 +8,13 @@ import random
 import re
 from dataclasses import asdict, dataclass, field
 from enum import Enum, auto
+from parser.parser import Parser
 from types import MappingProxyType
 from typing import Any, Mapping
 
-from functions import search_regex
-from master import Master, PMConsts
+from common.classes import PMConsts
+from common.functions import search_regex
+from common.interfaces import MasterIF
 
 
 class State(Enum):
@@ -156,9 +158,9 @@ class ReverseStats:
         return asdict(self)
 
 
-class ReverseMaster(Master[ReverseStats]):
+class ReverseParser(Parser[ReverseStats]):
     """
-    クリップボード監視, GUI 管理, 画像生成管理を実施するクラス for Reverse
+    クリップボード監視, ステータス記録クラス (Reverse 版)
     """
 
     @property
@@ -282,8 +284,8 @@ class ReverseMaster(Master[ReverseStats]):
             }
         )
 
-    def __init__(self):
-        super().__init__(ReverseStats())
+    def __init__(self, master: MasterIF):
+        super().__init__(master, ReverseStats())
 
     def make_dummy_stats(self, name: str = None) -> ReverseStats:
         dummy_stats = ReverseStats()

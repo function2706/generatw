@@ -1,97 +1,55 @@
 """
-クリップボード監視, GUI 管理, 画像生成管理を実施するモジュールの基底クラス
+各モジュールの横断処理を統括するクラス
 """
 
 from __future__ import annotations
 
-import base64
-import copy
-import hashlib
-import io
-import random
 import tkinter
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from datetime import datetime
+from parser.reverse_parser import ReverseParser
+from parser.theworld_parser import TheWorldParser
 from pathlib import Path
-from typing import Any, Generic, Mapping, Protocol, TypeVar
+from typing import Any
 
-import pyperclip
-from PIL import Image
-
+from archiver import Archiver
+from common.classes import PicStats, TaskBlueprint
+from common.interfaces import BackEnd, CrntGUIConfigs, FrontEnd, MasterIF
 from displayer import Displayer
-from functions import dump_json
-from picmanager import PicManager, PicStats, SDPngInfo
-from taskmanager import TaskManager
+from generator.a1111_generator import A1111Generator
+from generator.comfyui_generator import ComfyUIGenerator
 
 
-@dataclass(frozen=True)
-class PMConsts:
+class Master(MasterIF):
     """
-    このクラス関連の定数
+    各モジュールの横断処理を統括するクラス
     """
 
-    # 画像保存先ディレクトリ
-    pichome_dir: str = "pics"
-    # デバッグ用キャラクター名の部分文字列
-    charaname_substr_debug: str = "DebuggingPM"
-
-
-class HasCommonMembers(Protocol):
-    """
-    Generic な Stats が 共通メンバを持つことを伝えるためのクラス
-    """
-
-    # var: int <- ここで共通メンバ変数の存在を通告することもできる
-
-    def refresh(self) -> None: ...
-    def todict(self) -> dict[str, Any]: ...
-
-
-Stats = TypeVar("Stats", bound=HasCommonMembers)
-
-
-class Master(ABC, Generic[Stats]):
-    """
-    クリップボード監視, GUI 管理, 画像生成管理を実施するクラス\n
-    このクラス自体はクリップボード監視とファイル操作, ロギングを直接行う(対 OS 処理に限定)
-    """
-
-    @property
-    @abstractmethod
-    def chara_tbl(self) -> Mapping[str, str]:
-        """
-        キャラクタプロンプトテーブル\n
-        キャラクタ名と対応するプロンプトの定義
-
-        Returns:
-            Mapping[str, str]: テーブル
-        """
-        raise NotImplementedError
-
-    def __init__(self, stats: Stats):
+    def __init__(self, frontend: FrontEnd, backend: BackEnd):
         """
         コンストラクタ
 
         Args:
             stats (Stats): ステータスインスタンス
         """
-
-        self.crnt_clipboard = ""
-        self.crnt_stats = stats
-
         self.root = tkinter.Tk()
-        self.picmanager = PicManager.make(self.pics_dir_path())
-        self.taskmanager = TaskManager(self.save_images)
-        self.displayer = Displayer(
-            root=self.root,
-            picmanager=self.picmanager,
-            taskmanager=self.taskmanager,
-            on_append=self.reserve_task,
-            on_debug=self.on_debug,
-            ownername=self.whoami().replace("Master", ""),
-        )
-        self.taskmanager.start()
+
+        if frontend == FrontEnd.reverse:
+            self.parser = ReverseParser(self)
+        elif frontend == FrontEnd.the_world:
+            self.parser = TheWorldParser(self)
+        else:
+            raise ValueError
+
+        self.archiver = Archiver.make(self.parser.pics_dir_path())
+
+        if backend == BackEnd.a1111:
+            self.generator = A1111Generator(self)
+        elif backend == BackEnd.comfy_ui:
+            self.generator = ComfyUIGenerator(self)
+        else:
+            raise ValueError
+
+        self.displayer = Displayer(self)
+        self.generator.start()
 
     def start(self) -> None:
         """
@@ -105,8 +63,13 @@ class Master(ABC, Generic[Stats]):
         終了処理
         """
 
-        self.taskmanager.finalize()
-        self.displayer.finalize()
+        self.generator.finalize()
+
+        def worker():
+            self.generator.join()
+            self.displayer.destroy_config_window()
+
+        self.root.after(100, worker())
 
     def sigint_handler(self, sig, frame) -> None:
         """
@@ -118,242 +81,180 @@ class Master(ABC, Generic[Stats]):
         """
         self.finalize()
 
-    def whoami(self) -> str:
+    @property
+    def frontend_name(self) -> str:
         """
-        自身のクラス名を取得する
+        フロントエンド名
 
         Returns:
-            str: クラス名
+            str: フロントエンド名
         """
-        return self.__class__.__name__
+        return self.parser.whoami()
 
+    @property
+    def backend_name(self) -> str:
+        """
+        バックエンド名
+
+        Returns:
+            str: バックエンド名
+        """
+        return self.generator.whoami()
+
+    @property
     def pics_dir_path(self) -> Path:
         """
         画像ディレクトリパスを取得する\n
-        (pics/<クラス名>)
+        (pics/<フロントエンド名>)
 
         Returns:
             Path: ディレクトリパス
         """
-        return Path(PMConsts.pichome_dir) / Path(self.whoami().replace("Master", ""))
+        return self.parser.pics_dir_path()
 
-    @abstractmethod
-    def make_dummy_stats(self, name: str = None) -> Stats:
+    @property
+    def crnt_gui_configs(self) -> CrntGUIConfigs:
         """
-        ダミーステータスを生成する(デバッグ用)\n
-        データはモードに即して定義される
-
-        Args:
-            name (str, optional): name フィールドに代入する文字列, None でない場合はこの値で初期化
+        現在の GUI 上の設定値
 
         Returns:
-            Stats: ダミーステータス
+            CrntGUIConfigs: 現在の GUI 上の設定値
         """
-        pass
+        return CrntGUIConfigs.make(
+            srv_ipaddr=self.displayer.srv_ipaddr,
+            srv_port=self.displayer.srv_port,
+            sd_steps=self.displayer.sd_steps,
+            sd_batch_size=self.displayer.sd_batch_size,
+            sd_width=self.displayer.sd_width,
+            sd_height=self.displayer.sd_height,
+            allow_edit_clipboard=self.displayer.allow_edit_clipboard,
+            print_new_clipboard=self.displayer.print_new_clipboard,
+            print_new_stats=self.displayer.print_new_stats,
+            print_images=self.displayer.print_images,
+            print_picinfo=self.displayer.print_picinfo,
+        )
+
+    @property
+    def crnt_picstats(self) -> PicStats:
+        """
+        現在の PicStats
+
+        Returns:
+            PicStats: 現在の PicStats
+        """
+        return self.archiver.crnt_picstats
+
+    @property
+    def crnt_archiver(self) -> dict[str, Any]:
+        """
+        現在の Archiver
+
+        Returns:
+            dict[str, Any]: 現在の Archiver
+        """
+        return self.archiver.todict()
+
+    @property
+    def crnt_task(self) -> TaskBlueprint:
+        """
+        現在のタスク
+
+        Returns:
+            TaskBlueprint: 現在のタスク
+        """
+        return self.generator.crnt_task
+
+    @property
+    def crnt_tasks(self) -> int:
+        """
+        現在のタスク数
+
+        Returns:
+            int: 現在のタスク数
+        """
+        return self.generator.len_tasks()
+
+    @property
+    def crnt_tasklist(self) -> list[TaskBlueprint]:
+        """
+        現在のタスクリスト
+
+        Returns:
+            list[TaskBlueprint]: 現在のタスクリスト
+        """
+        return list(self.generator.tasks)
+
+    @property
+    def crnt_progress(self) -> float:
+        """
+        現在のタスクの進捗度
+
+        Returns:
+            float: 現在のタスクの進捗度
+        """
+        return self.generator.crnt_progress
+
+    def on_next(self) -> None:
+        """
+        > ボタンハンドラ
+        """
+        self.archiver.next_picstats()
+        self.displayer.update_pic_window(self.archiver.crnt_picstats)
+
+    def on_prev(self) -> None:
+        """
+        < ボタンハンドラ
+        """
+        self.archiver.prev_picstats()
+        self.displayer.update_pic_window(self.archiver.crnt_picstats)
+
+    def on_good(self) -> None:
+        """
+        GOOD ボタンハンドラ
+        """
+        return
+
+    def on_bad(self) -> None:
+        """
+        BAD ボタンハンドラ\n
+        表示中の画像を削除する\n
+        削除後に同じディレクトリ内に画像が残っている場合はランダムで表示する\n
+        残っていない場合はディレクトリを削除し, NO IMAGE を表示する
+        """
+        self.archiver.remove_crnt_picstats()
+        if self.archiver.crnt_picstats is None:
+            # 削除後に表示すべき画像がない
+            self.displayer.put_no_image_placeholder()
+        else:
+            self.archiver.warp_picstats(self.archiver.crnt_picstats.dir)
+            self.displayer.update_pic_window(self.archiver.crnt_picstats)
 
     def on_debug(self) -> None:
         """
-        デバッグボタンハンドラ\n
-        ダミークリップボードを設定する
+        デバッグ処理\n
+        ダミーステータスをセットし, 必要に応じてメイン処理を実施
         """
-        if self.displayer.allow_edit_clipboard:
-            pyperclip.copy(PMConsts.charaname_substr_debug + str(random.randint(1, 8)))
-        else:
-            new_stats = self.make_dummy_stats()
-            if new_stats is None or new_stats == self.crnt_stats:
-                return False
-
-            self.crnt_stats = new_stats
-            if self.displayer.print_new_stats:
-                dump_json(self.crnt_stats.todict(), "new_stats(debug)")
+        run_oneshot = self.parser.ready_for_debug()
+        if run_oneshot:
             self.run_oneshot()
 
-    def refresh_clipboard(self) -> bool:
+    def on_interrupt(self) -> None:
         """
-        クリップボードを監視し, 記録中文字列と異なる場合に記録する
-
-        Returns:
-            bool: 更新があった場合は True, なかった場合は False
+        中断処理要求時
         """
-        try:
-            new_clipboard = pyperclip.paste()
-        except Exception as e:
-            print("An exception occur for watching clipboard.", e)
-            return False
+        self.generator.reserve_interrupt()
 
-        if self.crnt_clipboard == new_clipboard:
-            return False
-
-        if self.displayer.print_new_clipboard:
-            print("new_clipboard:")
-            print(new_clipboard)
-
-        self.crnt_clipboard = new_clipboard
-        return True
-
-    def parse_clipboard(self) -> Stats:
+    def refresh_piclist(self) -> None:
         """
-        クリップボード文字列をもとに各ステータスを取得する
-
-        Returns:
-            Stats: 新たなステータス
+        監視対象ディレクトリ内の画像ファイルを PicStats の形で再帰的にリスト化する
         """
-        if PMConsts.charaname_substr_debug in self.crnt_clipboard:
-            return self.make_dummy_stats()
+        self.archiver.refresh_piclist()
 
-        new_stats = copy.deepcopy(self.crnt_stats)
-        new_stats.refresh(self.crnt_clipboard)
-        return new_stats
-
-    def refresh_stats(self) -> bool:
+    def clear_tasks(self) -> None:
         """
-        記録中クリップボード文字列をもとにステータスを更新する\n
-        前回のステータスと同じかどうかの判断も行う
-
-        Returns:
-            bool: True: ステータス更新あり, False: 更新なし
+        タスクリストを空にする
         """
-        has_refreshed = self.refresh_clipboard()
-        if not has_refreshed:
-            return False
-
-        new_stats = self.parse_clipboard()
-        if new_stats is None or new_stats == self.crnt_stats:
-            return False
-
-        self.crnt_stats = new_stats
-        if self.displayer.print_new_stats:
-            dump_json(self.crnt_stats.todict(), "new_stats")
-        return True
-
-    @abstractmethod
-    def is_stats_enough_for_prompt(self) -> bool:
-        """
-        記録中ステータスがプロンプト生成に際し十分な情報を有しているか
-
-        Returns:
-            bool: True: 有している, False: 有していない
-        """
-        pass
-
-    @abstractmethod
-    def make_pos_prompt(self) -> str:
-        """
-        記録中ステータスからポジティブプロンプトを生成する
-
-        Returns:
-            str: プロンプト
-        """
-        pass
-
-    @abstractmethod
-    def make_neg_prompt(self) -> str:
-        """
-        記録中ステータスからネガティブプロンプトを生成する
-
-        Returns:
-            str: プロンプト
-        """
-        pass
-
-    def make_dirname_from_prompts(self, pos_prompt: str, neg_prompt: str) -> str:
-        """
-        プロンプトからディレクトリ名を生成する\n
-        ディレクトリ名は MD5 (32byte Ascii) として得られる
-
-        Args:
-            pos_prompt (str): ポジティブプロンプト
-            neg_prompt (str): ネガティブプロンプト
-
-        Returns:
-            str: ディレクトリ名
-        """
-        dirpath_raw: str = pos_prompt + neg_prompt
-        return hashlib.md5(dirpath_raw.encode()).hexdigest()
-
-    def make_dirname_from_info(self, infos: dict, idx: int) -> str:
-        """
-        info 領域上のデータからディレクトリ名を生成する\n
-        info 領域上のデータは同時生成した画像群に関する配列構造のため, インデックスの指定も必要
-
-        Args:
-            infos (dict): info 領域上のデータ
-            idx (int): 配列のインデックス
-
-        Returns:
-            str: ディレクトリ名
-        """
-        pos_prompts = infos.get("all_prompts", [])
-        neg_prompts = infos.get("all_negative_prompts", [])
-        return self.make_dirname_from_prompts(pos_prompts[idx], neg_prompts[idx])
-
-    def make_filepath(self, infos: dict, idx: int) -> Path:
-        """
-        info 領域上のデータからファイルパスを生成する\n
-        info 領域上のデータは同時生成した画像群に関する配列構造のため, インデックスの指定も必要\n
-        ファイル名は"YYYYMMDDhhmmss-<seed>.png"
-
-        Args:
-            infos (dict): info 領域上のデータ
-            idx (int): 配列のインデックス
-
-        Returns:
-            Path: ファイルパス
-        """
-        seeds = infos.get("all_seeds", [])
-
-        dirpath = self.pics_dir_path() / Path(self.make_dirname_from_info(infos, idx))
-        now = datetime.now().strftime("%Y%m%d%H%M%S")
-        filename = Path(f"{now}-{seeds[idx]}.png")
-        return dirpath / filename
-
-    def save_images(self, images: Any, infos: Any) -> None:
-        """
-        指定の画像群を保存する\n
-        各画像には次回起動時にメタデータの再取得ができるよう, info 領域上のデータが埋め込まれる\n
-        保存が正常に完了した場合は画像リストの更新が行われる\n
-        images か infos が None の場合は何もしない
-
-        Args:
-            images (Any): 画像群データ
-            infos (Any): info 領域上のデータ
-        """
-        if not images or not infos:
-            return
-
-        if self.displayer.print_picinfo:
-            dump_json(infos, "infos")
-
-        for idx, image_data in enumerate(images):
-            try:
-                image_data = str(image_data)
-                b64 = image_data.split(",", 1)[-1]
-                image = Image.open(io.BytesIO(base64.b64decode(b64)))
-
-                pic_path = self.make_filepath(infos, idx)
-                if pic_path.parent and not pic_path.parent.exists():
-                    # 親ディレクトリが存在しない場合は作成する
-                    pic_path.parent.mkdir(parents=True, exist_ok=True)
-
-                image.save(str(pic_path), pnginfo=SDPngInfo(infos, idx))
-
-                if self.displayer.print_images:
-                    dump_json(PicStats.make(pic_path).info.todict(), "image")
-            except Exception as e:
-                print(f"[WARN] Failed to save image idx={idx}: {e}")
-
-        self.picmanager.refresh_piclist()
-
-    def get_crnt_picstats_dir(self) -> str:
-        """
-        記録中ステータスに適合するディレクトリ名を返す
-
-        Returns:
-            str: ディレクトリ名
-        """
-        pos_prompt = self.make_pos_prompt()
-        neg_prompt = self.make_neg_prompt()
-        return self.make_dirname_from_prompts(pos_prompt, neg_prompt)
+        self.generator.clear()
 
     def reserve_task(self) -> None:
         """
@@ -361,12 +262,12 @@ class Master(ABC, Generic[Stats]):
         ただしプロンプト生成に十分なステータスが記録されていない,\n
         すでにリストに存在する, あるいは作業中のタスクの場合は何もしない
         """
-        if not self.is_stats_enough_for_prompt():
+        if not self.parser.is_stats_enough_for_prompt():
             return
 
-        self.taskmanager.reserve(
-            pos=self.make_pos_prompt(),
-            neg=self.make_neg_prompt(),
+        self.generator.reserve(
+            pos=self.parser.make_pos_prompt(),
+            neg=self.parser.make_neg_prompt(),
             stps=self.displayer.sd_steps,
             b_size=self.displayer.sd_batch_size,
             w=self.displayer.sd_width,
@@ -380,14 +281,14 @@ class Master(ABC, Generic[Stats]):
         現在の PicStats 表示可能な画像が存在する場合にランダムで表示する\n
         存在しない場合は NO IMAGE を表示する
         """
-        piclist = self.picmanager.get_picstats_list(self.get_crnt_picstats_dir())
+        piclist = self.archiver.get_picstats_list(self.parser.get_crnt_picstats_dir())
         if not piclist:
             # 記録中ステータスに紐づくディレクトリ内に画像がない
             self.displayer.put_no_image_placeholder()
             return
 
-        self.picmanager.warp_picstats(self.get_crnt_picstats_dir())
-        self.displayer.update_pic_window(self.picmanager.crnt_picstats)
+        self.archiver.warp_picstats(self.parser.get_crnt_picstats_dir())
+        self.displayer.update_pic_window(self.archiver.crnt_picstats)
 
     def run_oneshot(self) -> None:
         """
@@ -402,10 +303,10 @@ class Master(ABC, Generic[Stats]):
         Tkinter メインループにて周期的に呼び出される処理
         """
         try:
-            is_new_stats = self.refresh_stats()
+            is_new_stats = self.parser.refresh_stats()
             if not is_new_stats:
                 return
-            elif not self.is_stats_enough_for_prompt():
+            elif not self.parser.is_stats_enough_for_prompt():
                 # 記録中ステータスが生成に不十分 i.e. ステータスに紐づくディレクトリがない
                 self.displayer.put_no_image_placeholder()
                 return

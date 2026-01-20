@@ -1,5 +1,5 @@
 """
-クリップボード監視, GUI 管理, 画像生成管理を実施するモジュールの The World 版クラス
+クリップボード監視, ステータス記録クラス (The World 版)
 """
 
 from __future__ import annotations
@@ -7,11 +7,13 @@ from __future__ import annotations
 import random
 from dataclasses import asdict, dataclass, field
 from enum import Enum, auto
+from parser.parser import Parser
 from types import MappingProxyType
 from typing import Any, Mapping
 
-from functions import search_regex
-from master import Master, PMConsts
+from common.classes import PMConsts
+from common.functions import search_regex
+from common.interfaces import MasterIF
 
 
 class Season(Enum):
@@ -243,9 +245,9 @@ class TWStats:
 
 
 # eratohoTW
-class TheWorldMaster(Master[TWStats]):
+class TheWorldParser(Parser[TWStats]):
     """
-    クリップボード監視, GUI 管理, 画像生成管理を実施するクラス for The World
+    クリップボード監視, ステータス記録クラス (The World 版)
     """
 
     @property
@@ -462,8 +464,8 @@ class TheWorldMaster(Master[TWStats]):
             }
         )
 
-    def __init__(self):
-        super().__init__(TWStats())
+    def __init__(self, master: MasterIF):
+        super().__init__(master, TWStats())
 
     def make_dummy_stats(self, name: str = None) -> TWStats:
         dummy_stats = TWStats()

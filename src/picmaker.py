@@ -7,8 +7,8 @@ import signal
 import tkinter
 from tkinter import ttk
 
-from reverse_master import ReverseMaster
-from theworld_master import TheWorldMaster
+from common.interfaces import BackEnd, FrontEnd
+from master import Master
 
 
 class ModeWindow:
@@ -25,19 +25,34 @@ class ModeWindow:
         self.tk_root = tkinter.Tk()
         self.tk_root.protocol("WM_DELETE_WINDOW", self.on_close_mode_window)
         self.tk_root.title("picmaker - モード選択")
-        ttk.Label(self.tk_root, text="モード").grid(row=0, column=0, padx=6, pady=6, sticky="w")
-        mode_options = ["Reverse", "The World"]
-        self.combo_modes = tkinter.StringVar(value=mode_options[0])
-        combo = ttk.Combobox(
+        ttk.Label(self.tk_root, text="フロントエンド").grid(
+            row=0, column=0, padx=6, pady=6, sticky="w"
+        )
+        front_options = ["Reverse", "The World"]
+        self.combo_front = tkinter.StringVar(value=front_options[0])
+        combo_front = ttk.Combobox(
             self.tk_root,
-            textvariable=self.combo_modes,
-            values=mode_options,
+            textvariable=self.combo_front,
+            values=front_options,
             state="readonly",
             width=10,
         )
-        combo.grid(row=0, column=1, padx=6, pady=6, sticky="w")
+        combo_front.grid(row=0, column=1, padx=6, pady=6, sticky="w")
+        ttk.Label(self.tk_root, text="バックエンド").grid(
+            row=1, column=0, padx=6, pady=6, sticky="w"
+        )
+        back_options = ["A1111", "ComfyUI"]
+        self.combo_back = tkinter.StringVar(value=back_options[0])
+        combo_back = ttk.Combobox(
+            self.tk_root,
+            textvariable=self.combo_back,
+            values=back_options,
+            state="readonly",
+            width=10,
+        )
+        combo_back.grid(row=1, column=1, padx=6, pady=6, sticky="w")
         button_ok = ttk.Button(self.tk_root, text="OK", command=self.on_ok_mode_window)
-        button_ok.grid(row=0, column=2, padx=6, pady=6, sticky="w")
+        button_ok.grid(row=2, column=0, padx=6, pady=6, sticky="w")
 
     def on_ok_mode_window(self) -> None:
         """
@@ -59,8 +74,12 @@ class ModeWindow:
         self.tk_root.mainloop()
 
     @property
-    def mode(self) -> str:
-        return self.combo_modes.get()
+    def front(self) -> str:
+        return self.combo_front.get()
+
+    @property
+    def back(self) -> str:
+        return self.combo_back.get()
 
 
 def main() -> None:
@@ -74,31 +93,46 @@ def main() -> None:
         epilog="ex: python picmaker.py -m TW",
     )
     parser.add_argument(
-        "-m", "--mode", choices=["TW", "R", "None"], default="None", help="Run as this mode"
+        "-f", "--front", choices=["W", "R", "None"], default="None", help="Frontend"
     )
+    parser.add_argument("-b", "--back", choices=["A", "C", "None"], default="None", help="Backend")
     args = parser.parse_args()
 
-    pm = None
+    master: Master = None
     try:
-        if args.mode == "TW":
-            pm = TheWorldMaster()
-        elif args.mode == "R":
-            pm = ReverseMaster()
-        else:
-            window = ModeWindow()
-            window.entrypoint()
-            if not window.flag_exe_main:
-                return
-            elif window.mode == "The World":
-                pm = TheWorldMaster()
-            elif window.mode == "Reverse":
-                pm = ReverseMaster()
-        if pm is not None:
-            signal.signal(signal.SIGINT, pm.sigint_handler)
-            pm.start()
+        match (args.front, args.back):
+            case ("R", "A"):
+                master = Master(FrontEnd.reverse, BackEnd.a1111)
+            case ("R", "C"):
+                master = Master(FrontEnd.reverse, BackEnd.comfy_ui)
+            case ("W", "A"):
+                master = Master(FrontEnd.the_world, BackEnd.a1111)
+            case ("W", "C"):
+                master = Master(FrontEnd.the_world, BackEnd.comfy_ui)
+            case _:
+                window = ModeWindow()
+                window.entrypoint()
+                if not window.flag_exe_main:
+                    return
+                print(f"{window.front},{window.back}")
+                master = Master(
+                    frontend=FrontEnd.reverse
+                    if window.front == "Reverse"
+                    else FrontEnd.the_world
+                    if window.front == "The World"
+                    else None,
+                    backend=BackEnd.a1111
+                    if window.back == "A1111"
+                    else BackEnd.comfy_ui
+                    if window.back == "ComfyUI"
+                    else None,
+                )
+        if master is not None:
+            signal.signal(signal.SIGINT, master.sigint_handler)
+            master.start()
     finally:
-        if pm is not None:
-            pm.finalize()
+        if master is not None:
+            master.finalize()
 
 
 if __name__ == "__main__":

@@ -27,3 +27,4 @@
 　　これをMasterがもち、各Moduleにはキューのオブジェクトを渡す
 　→この過程でdisplayer内でしているpostも逃がせる
 　→tk.rootはMasterがもつ、afterもMasterが呼び出す、tkinterアプリのメインはtkinterループらしい(by ChatGPT)
+・Generatorを派生させた際にDisplayerの情報ウィンドウのタイトルバー文字列に追加

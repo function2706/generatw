@@ -5,16 +5,15 @@ GUI 管理クラス
 from __future__ import annotations
 
 import tkinter
-from collections.abc import Callable
 from dataclasses import dataclass
 from tkinter import Frame, TclError, font, ttk
 from typing import Any
 
 from PIL import Image, ImageDraw, ImageFont, ImageTk
 
-from functions import dump_json
-from picmanager import PicManager, PicStats
-from taskmanager import TaskBlueprint, TaskManager
+from common.classes import PicStats, TaskBlueprint
+from common.functions import dump_json
+from common.interfaces import MasterIF
 
 
 @dataclass(frozen=True)
@@ -257,21 +256,21 @@ class Displayer:
                     self.gen_button = ttk.Button(
                         self.button_frame,
                         text="タスク登録",
-                        command=owner.super_owner.super_owner.on_append,
+                        command=owner.super_owner.super_owner.master.reserve_task,
                     )
                     self.gen_button.grid(row=0, column=0, padx=6, pady=6, sticky="w")
                     # ボタン(中断)
                     self.interrupt_button = ttk.Button(
                         self.button_frame,
                         text="中断",
-                        command=owner.super_owner.super_owner.taskmanager.post_interrupt,
+                        command=owner.super_owner.super_owner.master.on_interrupt,
                     )
                     self.interrupt_button.grid(row=0, column=1, padx=6, pady=6, sticky="w")
                     # タスククリア
                     self.clear_button = ttk.Button(
                         self.button_frame,
                         text="タスククリア",
-                        command=owner.super_owner.super_owner.taskmanager.clear,
+                        command=owner.super_owner.super_owner.master.clear_tasks,
                     )
                     self.clear_button.grid(row=0, column=2, padx=6, pady=6, sticky="w")
                     # ボタン(画像を表示)
@@ -390,7 +389,7 @@ class Displayer:
                     self.debug_button = ttk.Button(
                         self.exe_debug_frame,
                         text="デバッグ",
-                        command=owner.super_owner.super_owner.on_debug,
+                        command=owner.super_owner.super_owner.master.on_debug,
                     )
                     self.debug_button.grid(row=0, column=0, padx=6, pady=6, sticky="w")
                     # チェックボックス
@@ -400,11 +399,11 @@ class Displayer:
                         text="クリップボードの更新",
                         variable=self.allow_edit_clipboard_check,
                     ).grid(row=0, column=1, padx=6, pady=6, sticky="w")
-                    # ボタン(PicManager ダンプ)
+                    # ボタン(アーカイブ出力 ダンプ)
                     self.debug_button = ttk.Button(
                         self.exe_debug_frame,
-                        text="PicManager",
-                        command=owner.super_owner.super_owner.on_dump_picmanager,
+                        text="アーカイブ出力",
+                        command=owner.super_owner.super_owner.on_dump_archiver,
                     )
                     self.debug_button.grid(row=1, column=0, padx=6, pady=6, sticky="w")
                     # ボタン(タスクリストダンプ)
@@ -485,12 +484,12 @@ class Displayer:
             self.super_owner = owner
 
             # 設定ウィンドウ
-            owner.root.title("picmaker - 設定")
-            owner.root.columnconfigure(0, weight=1)
-            owner.root.rowconfigure(0, weight=1)
-            owner.root.protocol("WM_DELETE_WINDOW", owner.destroy_config_window)
+            owner.master.root.title("picmaker - 設定")
+            owner.master.root.columnconfigure(0, weight=1)
+            owner.master.root.rowconfigure(0, weight=1)
+            owner.master.root.protocol("WM_DELETE_WINDOW", owner.destroy_config_window)
             # Notebook（タブ）
-            self.notebook = ttk.Notebook(owner.root)
+            self.notebook = ttk.Notebook(owner.master.root)
             self.notebook.grid(row=0, column=0, sticky="nsew")
             # メインタブ
             self.main_tab = ttk.Frame(self.notebook, padding=12)
@@ -662,7 +661,7 @@ class Displayer:
             """
             self.super_owner = owner
 
-            self.info_window = tkinter.Toplevel(self.super_owner.root)
+            self.info_window = tkinter.Toplevel(self.super_owner.master.root)
             if fix_position:
                 self.info_window.geometry(
                     (
@@ -670,7 +669,9 @@ class Displayer:
                         f"+{owner.config_window_y + owner.config_window_height + 50}"
                     )
                 )
-            self.info_window.title(f"pipmaker - 情報 [{owner.ownername}]")
+            self.info_window.title(
+                f"pipmaker - 情報 [{owner.master.frontend_name} - {owner.master.backend_name}]"
+            )
             self.info_window.protocol("WM_DELETE_WINDOW", self.super_owner.destroy_info_window)
             self.info_window.geometry("500x380")
             self.info_window.rowconfigure(0, weight=1)
@@ -720,12 +721,12 @@ class Displayer:
                 self.pic_label_image = None
                 # ボタン(<)
                 self.prev_button = ttk.Button(
-                    self.cursor_frame, text="<", width=2, command=owner.super_owner.on_prev
+                    self.cursor_frame, text="<", width=2, command=owner.super_owner.master.on_prev
                 )
                 self.prev_button.grid(row=0, column=0, padx=6, pady=6, sticky="nsw")
                 # ボタン(>)
                 self.next_button = ttk.Button(
-                    self.cursor_frame, text=">", width=2, command=owner.super_owner.on_next
+                    self.cursor_frame, text=">", width=2, command=owner.super_owner.master.on_next
                 )
                 self.next_button.grid(row=0, column=2, padx=6, pady=6, sticky="nse")
 
@@ -750,12 +751,14 @@ class Displayer:
 
                 # ボタン(GOOD)
                 self.good_button = ttk.Button(
-                    self.eval_frame, text="GOOD", command=self.super_owner.super_owner.on_good
+                    self.eval_frame,
+                    text="GOOD",
+                    command=self.super_owner.super_owner.master.on_good,
                 )
                 self.good_button.grid(row=0, column=0, padx=6, pady=6, sticky="wes")
                 # ボタン(BAD)
                 self.bad_button = ttk.Button(
-                    self.eval_frame, text="BAD", command=self.super_owner.super_owner.on_bad
+                    self.eval_frame, text="BAD", command=self.super_owner.super_owner.master.on_bad
                 )
                 self.bad_button.grid(row=0, column=1, padx=6, pady=6, sticky="wes")
 
@@ -769,7 +772,7 @@ class Displayer:
             """
             self.super_owner = owner
 
-            self.pic_window = tkinter.Toplevel(self.super_owner.root)
+            self.pic_window = tkinter.Toplevel(self.super_owner.master.root)
             if fix_position:
                 self.pic_window.geometry(
                     (
@@ -786,34 +789,14 @@ class Displayer:
             self.cursor_frame = self.CursorFrame(self)
             self.eval_frame = self.EvalFrame(self)
 
-    def __init__(
-        self,
-        root: tkinter.Tk,
-        picmanager: PicManager,
-        taskmanager: TaskManager,
-        on_append: Callable[[], None],
-        on_debug: Callable[[], None],
-        ownername: str,
-    ):
+    def __init__(self, master: MasterIF):
         """
         コンストラクタ
 
         Args:
-            picmanager (PicManager): PicManager インスタンス
-            taskmanager (PicManager): TaskManager インスタンス
-            on_edgepoint (Callable[[], None]): 端点処理コールバック
-            on_append (Callable[[], None]): タスク登録処理コールバック
-            on_debug (Callable[[], None]): デバッグ処理コールバック
-            ownername (str): 所有者の名前
+            master (MasterIF): Master インターフェース
         """
-        self.ownername = ownername
-
-        self.root = root
-
-        self.picmanager: PicManager = picmanager
-        self.taskmanager: TaskManager = taskmanager
-        self.on_append: Callable[[], None] = on_append
-        self.on_debug: Callable[[], None] = on_debug
+        self.master = master
 
         self.config_window = self.ConfigWindow(self)
         self.info_window: Displayer.InfoWindow = None
@@ -822,18 +805,6 @@ class Displayer:
         self.switch_output_button_state(False)
 
         self.noimage_img = ImageTk.PhotoImage(self.create_no_image_placeholder())
-
-    def finalize(self) -> None:
-        """
-        終了処理\n
-        Tkinter メインループ内でタスクスレッドの join とウィンドウの destroy を実施する
-        """
-
-        def worker():
-            self.taskmanager.join()
-            self.destroy_config_window()
-
-        self.root.after(0, worker())
 
     def put_textbox(
         self, frame: Frame, name: str, row: int, col: int, width: int, default: str, sticky: str
@@ -891,10 +862,10 @@ class Displayer:
         Returns:
             bool: True: 開かれている, False: 開かれていない or TclError 例外発生
         """
-        if self.root is None:
+        if self.master.root is None:
             return False
         try:
-            return bool(self.root.winfo_exists())
+            return bool(self.master.root.winfo_exists())
         except TclError:
             return False
 
@@ -905,7 +876,7 @@ class Displayer:
         self.destroy_pic_window()
         self.destroy_info_window()
         if self.is_config_window_open():
-            self.root.destroy()
+            self.master.root.destroy()
 
     def construct_info_window(self) -> None:
         """
@@ -947,28 +918,28 @@ class Displayer:
         更新は呼び出した瞬間の TaskManager をもとに行う
         """
         self.info_window.taskinfo_tab_obj.infobar_frame.len_tasks_strvar.set(
-            f"{self.taskmanager.len_tasks()}"
+            f"{self.master.crnt_tasks}"
         )
-        crnt_task: TaskBlueprint = self.taskmanager.crnt_task
+        crnt_task: TaskBlueprint = self.master.crnt_task
         if crnt_task is None:
             self.info_window.taskinfo_tab_obj.infobar_frame.task_progress["value"] = 0
             self.info_window.taskinfo_tab_obj.infobar_frame.progress_strvar.set("0%")
         else:
-            task_progress = self.taskmanager.post_progress()
             self.info_window.taskinfo_tab_obj.infobar_frame.task_progress["value"] = (
-                task_progress.progress if task_progress is not None else 0
+                self.master.crnt_progress
             )
-            task_progress_val = task_progress.progress * 100 if task_progress is not None else 0
+            task_progress_val = self.master.crnt_progress * 100
             self.info_window.taskinfo_tab_obj.infobar_frame.progress_strvar.set(
                 f"{task_progress_val:.0f}%"
             )
+            return
 
     def update_taskinfo_frame(self) -> None:
         """
         プロンプト, タスクメタ情報フレームの更新を行う\n
         更新は呼び出した瞬間の TaskManager をもとに行う
         """
-        crnt_task: TaskBlueprint = self.taskmanager.crnt_task
+        crnt_task: TaskBlueprint = self.master.crnt_task
         if crnt_task is None:
             self.info_window.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
                 "ポジティブプロンプト", Consts.not_available_text
@@ -1043,7 +1014,7 @@ class Displayer:
             )
 
     def update_picinfo_tab(self, reset: bool = False) -> None:
-        crnt_picstats: PicStats = self.picmanager.crnt_picstats
+        crnt_picstats: PicStats = self.master.crnt_picstats
         if not crnt_picstats or reset:
             self.info_window.picinfo_tab_obj.infobox_frame.infobox_tree.set(
                 "場所", Consts.not_available_text
@@ -1284,7 +1255,7 @@ class Displayer:
         表示ボタンハンドラ\n
         表示すべき画像がないときは何もしない
         """
-        self.update_pic_window(self.picmanager.crnt_picstats)
+        self.update_pic_window(self.master.crnt_picstats)
 
     def on_open_info_window(self) -> None:
         """
@@ -1300,53 +1271,17 @@ class Displayer:
 
         self.update_info_window()
 
-    def on_dump_picmanager(self) -> None:
+    def on_dump_archiver(self) -> None:
         """
-        PicManager ダンプボタンハンドラ
+        Archiver ダンプボタンハンドラ
         """
-        dump_json(self.picmanager.todict(), "picstats")
+        dump_json(self.master.crnt_archiver, "archiver")
 
     def on_dump_tasks(self) -> None:
         """
         タスクリストダンプボタンハンドラ
         """
-
-        dump_json(list(self.taskmanager.tasks), "tasks")
-
-    def on_next(self) -> None:
-        """
-        > ボタンハンドラ
-        """
-        self.picmanager.next_picstats()
-        self.update_pic_window(self.picmanager.crnt_picstats)
-
-    def on_prev(self) -> None:
-        """
-        < ボタンハンドラ
-        """
-        self.picmanager.prev_picstats()
-        self.update_pic_window(self.picmanager.crnt_picstats)
-
-    def on_good(self) -> None:
-        """
-        GOOD ボタンハンドラ
-        """
-        return
-
-    def on_bad(self) -> None:
-        """
-        BAD ボタンハンドラ\n
-        表示中の画像を削除する\n
-        削除後に同じディレクトリ内に画像が残っている場合はランダムで表示する\n
-        残っていない場合はディレクトリを削除し, NO IMAGE を表示する
-        """
-        self.picmanager.remove_crnt_picstats()
-        if self.picmanager.crnt_picstats is None:
-            # 削除後に表示すべき画像がない
-            self.put_no_image_placeholder()
-        else:
-            self.picmanager.warp_picstats(self.picmanager.crnt_picstats.dir)
-            self.update_pic_window(self.picmanager.crnt_picstats)
+        dump_json(list(self.master.crnt_tasklist), "tasks")
 
     @property
     def config_window_x(self) -> int:
@@ -1356,8 +1291,8 @@ class Displayer:
         Returns:
             int: 設定ウィンドウ(メインウィンドウ)の x 座標
         """
-        self.root.update_idletasks()
-        return self.root.winfo_x()
+        self.master.root.update_idletasks()
+        return self.master.root.winfo_x()
 
     @property
     def config_window_y(self) -> int:
@@ -1367,8 +1302,8 @@ class Displayer:
         Returns:
             int: 設定ウィンドウ(メインウィンドウ)の y 座標
         """
-        self.root.update_idletasks()
-        return self.root.winfo_y()
+        self.master.root.update_idletasks()
+        return self.master.root.winfo_y()
 
     @property
     def config_window_width(self) -> int:
@@ -1378,8 +1313,8 @@ class Displayer:
         Returns:
             int: 設定ウィンドウ(メインウィンドウ)の幅
         """
-        self.root.update_idletasks()
-        return self.root.winfo_width()
+        self.master.root.update_idletasks()
+        return self.master.root.winfo_width()
 
     @property
     def config_window_height(self) -> int:
@@ -1389,8 +1324,8 @@ class Displayer:
         Returns:
             int: 設定ウィンドウ(メインウィンドウ)の高さ
         """
-        self.root.update_idletasks()
-        return self.root.winfo_height()
+        self.master.root.update_idletasks()
+        return self.master.root.winfo_height()
 
     @property
     def srv_ipaddr(self) -> str:
