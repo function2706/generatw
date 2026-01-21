@@ -9,12 +9,12 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from PIL import Image, PngImagePlugin
 
-app = FastAPI()
+app = FastAPI(title="Mock ComfyUI sdapi/v1")
 
-# メモリ上の疑似データ
 PROMPTS: Dict[str, Any] = {}
 IMAGES: Dict[str, bytes] = {}
 WS_CLIENTS: Dict[str, WebSocket] = {}
+RUNNING_TASKS: Dict[str, asyncio.Task] = {}
 
 
 @app.post("/prompt")
@@ -30,68 +30,93 @@ async def prompt(req: Dict[str, Any]):
         "outputs": {},
     }
 
-    # 非同期で生成処理
-    asyncio.create_task(simulate_generation(prompt_id))
+    task = asyncio.create_task(simulate_generation(prompt_id))
+    RUNNING_TASKS[prompt_id] = task
+
+    task.add_done_callback(lambda t: RUNNING_TASKS.pop(prompt_id, None))
 
     return {"prompt_id": prompt_id}
 
 
+@app.post("/interrupt")
+async def interrupt():
+    if not RUNNING_TASKS:
+        return {"message": "No active tasks to interrupt"}
+
+    for _, task in RUNNING_TASKS.items():
+        if not task.done():
+            task.cancel()
+
+    return {"message": "Interrupted all tasks"}
+
+
 async def simulate_generation(prompt_id: str):
     """ComfyUI の WebSocket イベントを模倣する"""
-    prompt = PROMPTS[prompt_id]["prompt"]
-    client_id = PROMPTS[prompt_id]["client_id"]
-    ws = WS_CLIENTS.get(client_id)
+    try:
+        prompt = PROMPTS[prompt_id]["prompt"]
+        client_id = PROMPTS[prompt_id]["client_id"]
+        ws = WS_CLIENTS.get(client_id)
 
-    # ---- progress イベント ----
-    for step in range(1, 21):
-        await asyncio.sleep(0.05)
+        for step in range(1, 21):
+            await asyncio.sleep(0.1)
+            if ws:
+                await ws.send_json({"type": "progress", "data": {"value": step, "max": 20}})
+
         if ws:
-            await ws.send_json({"type": "progress", "data": {"value": step, "max": 20}})
+            await ws.send_json({"type": "executing", "data": {"node": "5", "prompt_id": prompt_id}})
 
-    # ---- executing ノード通知 ----
-    if ws:
-        await ws.send_json({"type": "executing", "data": {"node": "5", "prompt_id": prompt_id}})
+        await asyncio.sleep(0.3)
 
-    await asyncio.sleep(0.3)
+        batch_size = prompt["4"]["inputs"]["batch_size"]
 
-    # ---- executed（画像生成完了） ----
-    batch_size = prompt["4"]["inputs"]["batch_size"]
+        images = []
 
-    images = []
+        for i in range(batch_size):
+            # 画像生成
+            img = Image.new("RGB", (512, 768), (i * 40 % 255, 0, 0))
 
-    for i in range(batch_size):
-        # ---- 画像生成 ----
-        img = Image.new("RGB", (512, 768), (i * 40 % 255, 0, 0))  # 適当な色変化
+            meta = PngImagePlugin.PngInfo()
+            meta.add_text("prompt", json.dumps(prompt))
 
-        meta = PngImagePlugin.PngInfo()
-        meta.add_text("prompt", json.dumps(prompt))
+            buffer = BytesIO()
+            img.save(buffer, format="PNG", pnginfo=meta)
+            buffer.seek(0)
 
-        buffer = BytesIO()
-        img.save(buffer, format="PNG", pnginfo=meta)
-        buffer.seek(0)
+            filename = f"{uuid.uuid4()}.png"
+            IMAGES[filename] = buffer.getvalue()
 
-        # ---- メモリに保存 ----
-        filename = f"{uuid.uuid4()}.png"
-        IMAGES[filename] = buffer.getvalue()
+            images.append({"filename": filename, "subfolder": "", "type": "output"})
 
-        images.append({"filename": filename, "subfolder": "", "type": "output"})
+        # PreviewImage ノードの出力として複数画像を返す
+        PROMPTS[prompt_id]["outputs"] = {"7": {"images": images}}
 
-    # PreviewImage ノードの出力として複数画像を返す
-    PROMPTS[prompt_id]["outputs"] = {"7": {"images": images}}
+        if ws:
+            await ws.send_json(
+                {
+                    "type": "executed",
+                    "data": {"node": "7", "output": PROMPTS[prompt_id]["outputs"]["7"]},
+                }
+            )
 
-    if ws:
-        await ws.send_json(
-            {
-                "type": "executed",
-                "data": {"node": "7", "output": PROMPTS[prompt_id]["outputs"]["7"]},
-            }
-        )
+        # ---- 全行程終了（node=None） ----
+        if ws:
+            await ws.send_json(
+                {"type": "executing", "data": {"node": None, "prompt_id": prompt_id}}
+            )
 
-    # ---- 全行程終了（node=None） ----
-    if ws:
-        await ws.send_json({"type": "executing", "data": {"node": None, "prompt_id": prompt_id}})
+        PROMPTS[prompt_id]["status"] = "success"
+    except asyncio.CancelledError:
+        # 5. 中断された時の処理
+        print(f"Task {prompt_id} was interrupted.")
+        PROMPTS[prompt_id]["status"] = "interrupted"
 
-    PROMPTS[prompt_id]["status"] = "success"
+        # 必要に応じて中断したことをWSクライアントに通知
+        ws = WS_CLIENTS.get(client_id)
+        if ws:
+            await ws.send_json(
+                {"type": "executing", "data": {"node": None, "prompt_id": prompt_id}}
+            )
+        raise
 
 
 @app.get("/history/{prompt_id}")
