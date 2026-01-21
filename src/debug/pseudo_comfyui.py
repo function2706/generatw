@@ -1,5 +1,7 @@
 import asyncio
+import datetime
 import json
+import random
 import uuid
 from io import BytesIO
 from typing import Any, Dict
@@ -7,7 +9,7 @@ from typing import Any, Dict
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
-from PIL import Image, PngImagePlugin
+from PIL import Image, ImageDraw, ImageFont, PngImagePlugin
 
 app = FastAPI(title="Mock ComfyUI sdapi/v1")
 
@@ -50,6 +52,17 @@ async def interrupt():
     return {"message": "Interrupted all tasks"}
 
 
+def find_nodes(data: dict, class_type: str):
+    """
+    条件に一致する (key, value) をリストで返す
+    """
+    return [
+        (key, value)
+        for key, value in data.items()
+        if isinstance(value, dict) and value.get("class_type") == class_type
+    ]
+
+
 async def simulate_generation(prompt_id: str):
     """ComfyUI の WebSocket イベントを模倣する"""
     try:
@@ -57,23 +70,44 @@ async def simulate_generation(prompt_id: str):
         client_id = PROMPTS[prompt_id]["client_id"]
         ws = WS_CLIENTS.get(client_id)
 
-        for step in range(1, 21):
+        ksampler_id, ksampler = find_nodes(prompt, "KSampler")[0]
+        _, empty_latent_image = find_nodes(prompt, "EmptyLatentImage")[0]
+        preview_image_id, _ = find_nodes(prompt, "PreviewImage")[0]
+
+        seed = ksampler["inputs"]["seed"]
+        steps = ksampler["inputs"]["steps"]
+        for step in range(1, steps + 1):
             await asyncio.sleep(0.1)
             if ws:
                 await ws.send_json({"type": "progress", "data": {"value": step, "max": 20}})
 
         if ws:
-            await ws.send_json({"type": "executing", "data": {"node": "5", "prompt_id": prompt_id}})
+            await ws.send_json(
+                {"type": "executing", "data": {"node": ksampler_id, "prompt_id": prompt_id}}
+            )
 
         await asyncio.sleep(0.3)
 
-        batch_size = prompt["4"]["inputs"]["batch_size"]
-
+        seeds: list[int] = []
+        batch_size = empty_latent_image["inputs"]["batch_size"]
+        width = empty_latent_image["inputs"]["width"]
+        height = empty_latent_image["inputs"]["height"]
+        seeds = [seed + i for i in range(batch_size)]
         images = []
+        for idx, s in enumerate(seeds):
+            rng = random.Random(s)
+            color = (rng.randint(0, 255), rng.randint(0, 255), rng.randint(0, 255))
+            img = Image.new("RGB", (width, height), color=color)
 
-        for i in range(batch_size):
-            # 画像生成
-            img = Image.new("RGB", (512, 768), (i * 40 % 255, 0, 0))
+            try:
+                font = ImageFont.truetype("arial.ttf", 24)
+            except IOError:
+                font = ImageFont.load_default()
+            draw = ImageDraw.Draw(img)
+            text = f"{idx=}, seed={s}, time={datetime.datetime.now().strftime('%H:%M:%S')}"
+            for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                draw.text((10 + dx, 10 + dy), text, fill=(0, 0, 0), font=font)
+            draw.text((10, 10), text, fill=(255, 255, 255), font=font)
 
             meta = PngImagePlugin.PngInfo()
             meta.add_text("prompt", json.dumps(prompt))
@@ -88,13 +122,16 @@ async def simulate_generation(prompt_id: str):
             images.append({"filename": filename, "subfolder": "", "type": "output"})
 
         # PreviewImage ノードの出力として複数画像を返す
-        PROMPTS[prompt_id]["outputs"] = {"7": {"images": images}}
+        PROMPTS[prompt_id]["outputs"] = {preview_image_id: {"images": images}}
 
         if ws:
             await ws.send_json(
                 {
                     "type": "executed",
-                    "data": {"node": "7", "output": PROMPTS[prompt_id]["outputs"]["7"]},
+                    "data": {
+                        "node": preview_image_id,
+                        "output": PROMPTS[prompt_id]["outputs"][preview_image_id],
+                    },
                 }
             )
 
