@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 import datetime
 import json
@@ -12,6 +13,7 @@ from fastapi.responses import StreamingResponse
 from PIL import Image, ImageDraw, ImageFont, PngImagePlugin
 
 app = FastAPI(title="Mock ComfyUI sdapi/v1")
+app.state.cooldown = 0
 
 PROMPTS: Dict[str, Any] = {}
 IMAGES: Dict[str, bytes] = {}
@@ -76,8 +78,9 @@ async def simulate_generation(prompt_id: str):
 
         seed = ksampler["inputs"]["seed"]
         steps = ksampler["inputs"]["steps"]
+        cooldown = float(getattr(app.state, "cooldown", 0)) / steps
         for step in range(1, steps + 1):
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(cooldown)
             if ws:
                 await ws.send_json({"type": "progress", "data": {"value": step, "max": 20}})
 
@@ -197,5 +200,16 @@ async def websocket_endpoint(ws: WebSocket):
 
 
 if __name__ == "__main__":
-    print("Fake ComfyUI server running at http://127.0.0.1:8188")
-    uvicorn.run(app, host="127.0.0.1", port=8188)
+    parser = argparse.ArgumentParser(
+        prog="pseudo_comfyui.py",
+        description="ComfyUI Pseudo Server",
+        epilog="ex: pseudo_comfyui.py -s 127.0.0.1 -p 8188 -c 5",
+    )
+    parser.add_argument("-s", "--server", default="127.0.0.1", help="ComfyUI IP Addr")
+    parser.add_argument("-p", "--port", type=int, default=8188, help="ComfyUI Port")
+    parser.add_argument("-c", "--cooldown", type=int, default=0, help="Cooldown Time")
+    args = parser.parse_args()
+    app.state.cooldown = args.cooldown
+
+    print(f"Starting uvicorn on {args.server}:{args.port}")
+    uvicorn.run(app, host=args.server, port=args.port)
