@@ -670,7 +670,7 @@ class Displayer:
                     )
                 )
             self.info_window.title(
-                f"pipmaker - 情報 [{owner.master.frontend_name} - {owner.master.backend_name}]"
+                f"picmaker - 情報 [{owner.master.frontend_name} - {owner.master.backend_name}]"
             )
             self.info_window.protocol("WM_DELETE_WINDOW", self.super_owner.destroy_info_window)
             self.info_window.geometry("500x380")
@@ -749,18 +749,20 @@ class Displayer:
                 self.eval_frame.columnconfigure(0, weight=1)
                 self.eval_frame.columnconfigure(1, weight=1)
 
-                # ボタン(GOOD)
-                self.good_button = ttk.Button(
+                # ボタン(アップスケール予約)
+                self.upscale_button = ttk.Button(
                     self.eval_frame,
-                    text="GOOD",
-                    command=self.super_owner.super_owner.master.on_good,
+                    text="アップスケール予約",
+                    command=self.super_owner.super_owner.master.on_upscale,
                 )
-                self.good_button.grid(row=0, column=0, padx=6, pady=6, sticky="wes")
-                # ボタン(BAD)
-                self.bad_button = ttk.Button(
-                    self.eval_frame, text="BAD", command=self.super_owner.super_owner.master.on_bad
+                self.upscale_button.grid(row=0, column=0, padx=6, pady=6, sticky="wes")
+                # ボタン(削除)
+                self.remove_button = ttk.Button(
+                    self.eval_frame,
+                    text="削除",
+                    command=self.super_owner.super_owner.master.on_remove,
                 )
-                self.bad_button.grid(row=0, column=1, padx=6, pady=6, sticky="wes")
+                self.remove_button.grid(row=0, column=1, padx=6, pady=6, sticky="wes")
 
         def __init__(self, owner: Displayer, fix_position: bool = False):
             """
@@ -780,7 +782,7 @@ class Displayer:
                         f"+{owner.config_window_y}"
                     )
                 )
-            self.pic_window.title("pipmaker - 画像")
+            self.pic_window.title("picmaker - 画像")
             self.pic_window.protocol("WM_DELETE_WINDOW", self.super_owner.destroy_pic_window)
 
             self.main_frame = ttk.Frame(self.pic_window, padding=5)
@@ -1242,13 +1244,13 @@ class Displayer:
         if toggle:
             self.pic_window.cursor_frame.next_button.configure(state="normal")
             self.pic_window.cursor_frame.prev_button.configure(state="normal")
-            self.pic_window.eval_frame.good_button.configure(state="normal")
-            self.pic_window.eval_frame.bad_button.configure(state="normal")
+            self.pic_window.eval_frame.upscale_button.configure(state="normal")
+            self.pic_window.eval_frame.remove_button.configure(state="normal")
         else:
             self.pic_window.cursor_frame.next_button.configure(state="disabled")
             self.pic_window.cursor_frame.prev_button.configure(state="disabled")
-            self.pic_window.eval_frame.good_button.configure(state="disabled")
-            self.pic_window.eval_frame.bad_button.configure(state="disabled")
+            self.pic_window.eval_frame.upscale_button.configure(state="disabled")
+            self.pic_window.eval_frame.remove_button.configure(state="disabled")
 
     def on_open_pic_window(self) -> None:
         """

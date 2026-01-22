@@ -208,13 +208,13 @@ class Master(MasterIF):
         self.archiver.prev_picstats()
         self.displayer.update_pic_window(self.archiver.crnt_picstats)
 
-    def on_good(self) -> None:
+    def on_upscale(self) -> None:
         """
         GOOD ボタンハンドラ
         """
         return
 
-    def on_bad(self) -> None:
+    def on_remove(self) -> None:
         """
         BAD ボタンハンドラ\n
         表示中の画像を削除する\n
