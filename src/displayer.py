@@ -199,6 +199,9 @@ class InfoTree:
         Args:
             col_idx (int): 調整する列のインデックス
         """
+        if not self.tree.winfo_exists():
+            return
+
         col = self.columns[col_idx]
         max_width = self._font.measure(col)
         for iid in self.tree.get_children():
@@ -219,7 +222,7 @@ class InfoTree:
             idx (int): 書き換える列のインデックス
             val (str): 値(未指定で 1)
         """
-        if key not in self._key_to_iid:
+        if not self.tree.winfo_exists() or key not in self._key_to_iid:
             return
 
         iid = self._key_to_iid[key]
@@ -515,44 +518,44 @@ class Displayer:
         情報ウィンドウ
         """
 
+        class CommonFrame:
+            """
+            タブ共通フレーム
+            """
+
+            def __init__(self, owner: Displayer.InfoWindow, parent_frame: ttk.Frame):
+                """
+                タブ共通フレームコンストラクタ
+                Args:
+                    owner (Displayer.InfoWindow): InfoWindow インスタンス
+                """
+                self.super_owner = owner
+                self.common_frame = ttk.Frame(parent_frame)
+                self.common_frame.grid(row=0, column=0, padx=6, pady=6, sticky="ew")
+                self.common_frame.columnconfigure(0, weight=1)
+                # 残りタスク数
+                ttk.Label(self.common_frame, text="残りタスク数").grid(row=0, column=0, sticky="w")
+                ttk.Label(self.common_frame, textvariable=owner.len_tasks_strvar).grid(
+                    row=0, column=1, sticky="w"
+                )
+                # プログレスバー
+                self.task_progress = ttk.Progressbar(
+                    self.common_frame,
+                    orient="horizontal",
+                    length=300,
+                    mode="determinate",
+                    variable=owner.progress_val,
+                    maximum=1,
+                )
+                self.task_progress.grid(row=0, column=2, padx=6, pady=6, sticky="w")
+                ttk.Label(self.common_frame, textvariable=owner.progress_strvar, width=4).grid(
+                    row=0, column=3, padx=6, pady=6, sticky="w"
+                )
+
         class TaskInfoTab:
             """
             タスク情報タブ
             """
-
-            class InfoBarFrame:
-                """
-                アプリケーション情報フレーム
-                """
-
-                def __init__(self, owner: Displayer.InfoWindow.TaskInfoTab):
-                    """
-                    アプリケーション情報フレームコンストラクタ
-
-                    Args:
-                        owner (Displayer.InfoWindow): InfoWindow インスタンス
-                    """
-                    self.super_owner = owner
-
-                    self.infobar_frame = ttk.Frame(owner.main_frame)
-                    self.infobar_frame.grid(row=0, column=0, padx=6, pady=6, sticky="ew")
-                    self.infobar_frame.columnconfigure(0, weight=1)
-
-                    # 残りタスク数
-                    self.len_tasks_strvar = owner.super_owner.super_owner.put_textlabel(
-                        self.infobar_frame, "残りタスク数", 0, 0, "0", "w"
-                    )
-                    # プログレスバー
-                    self.task_progress = ttk.Progressbar(
-                        self.infobar_frame, orient="horizontal", length=300, mode="determinate"
-                    )
-                    self.task_progress.grid(row=0, column=2, padx=6, pady=6, sticky="w")
-                    self.task_progress["maximum"] = 1
-                    self.task_progress["value"] = 0
-                    self.progress_strvar = tkinter.StringVar(value="0%")
-                    ttk.Label(self.infobar_frame, textvariable=self.progress_strvar, width=4).grid(
-                        row=0, column=3, padx=6, pady=6, sticky="w"
-                    )
 
             class InfoBoxFrame:
                 """
@@ -605,7 +608,7 @@ class Displayer:
                 self.main_frame.rowconfigure(1, weight=1)
                 self.main_frame.columnconfigure(0, weight=1)
 
-                self.infobar_frame = self.InfoBarFrame(self)
+                self.common_frame = owner.CommonFrame(owner, self.main_frame)
                 self.infobox_frame = self.InfoBoxFrame(self)
 
         class PicInfoTab:
@@ -628,7 +631,7 @@ class Displayer:
                     self.super_owner = owner
 
                     self.infobox_frame = ttk.Frame(owner.main_frame)
-                    self.infobox_frame.grid(row=0, column=0, sticky="nsew")
+                    self.infobox_frame.grid(row=1, column=0, sticky="nsew")
                     data = [
                         ("キー", "値"),
                         ("場所", Consts.not_available_text),
@@ -659,6 +662,7 @@ class Displayer:
                 self.main_frame.rowconfigure(1, weight=1)
                 self.main_frame.columnconfigure(0, weight=1)
 
+                self.common_frame = owner.CommonFrame(owner, self.main_frame)
                 self.infobox_frame = self.InfoBoxFrame(self)
 
         def __init__(self, owner: Displayer, fix_position: bool = False):
@@ -686,6 +690,11 @@ class Displayer:
             self.info_window.geometry("500x380")
             self.info_window.rowconfigure(0, weight=1)
             self.info_window.columnconfigure(0, weight=1)
+
+            # タブを跨いで表示する情報
+            self.len_tasks_strvar = tkinter.StringVar(value="0")
+            self.progress_val = tkinter.DoubleVar(value=0)
+            self.progress_strvar = tkinter.StringVar(value="0%")
 
             # Notebook（タブ）
             self.notebook = ttk.Notebook(self.info_window)
@@ -930,21 +939,15 @@ class Displayer:
         アプリケーション情報フレームの更新を行う\n
         更新は呼び出した瞬間の TaskManager をもとに行う
         """
-        self.info_window.taskinfo_tab_obj.infobar_frame.len_tasks_strvar.set(
-            f"{self.master.crnt_tasks}"
-        )
+        self.info_window.len_tasks_strvar.set(f"{self.master.crnt_tasks}")
         crnt_task: TaskBlueprint = self.master.crnt_task
         if crnt_task is None:
-            self.info_window.taskinfo_tab_obj.infobar_frame.task_progress["value"] = 0
-            self.info_window.taskinfo_tab_obj.infobar_frame.progress_strvar.set("0%")
+            self.info_window.progress_val.set(0)
+            self.info_window.progress_strvar.set("0%")
         else:
-            self.info_window.taskinfo_tab_obj.infobar_frame.task_progress["value"] = (
-                self.master.crnt_progress
-            )
+            self.info_window.progress_val.set(self.master.crnt_progress)
             task_progress_val = self.master.crnt_progress * 100
-            self.info_window.taskinfo_tab_obj.infobar_frame.progress_strvar.set(
-                f"{task_progress_val:.0f}%"
-            )
+            self.info_window.progress_strvar.set(f"{task_progress_val:.0f}%")
             return
 
     def update_taskinfo_frame(self) -> None:
