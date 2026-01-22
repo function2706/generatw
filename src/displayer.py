@@ -540,7 +540,7 @@ class Displayer:
                     self.task_progress["maximum"] = 1
                     self.task_progress["value"] = 0
                     self.progress_strvar = tkinter.StringVar(value="0%")
-                    ttk.Label(self.infobar_frame, textvariable=self.progress_strvar).grid(
+                    ttk.Label(self.infobar_frame, textvariable=self.progress_strvar, width=4).grid(
                         row=0, column=3, padx=6, pady=6, sticky="w"
                     )
 

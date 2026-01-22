@@ -114,7 +114,7 @@ def main() -> None:
                 window.entrypoint()
                 if not window.flag_exe_main:
                     return
-                print(f"{window.front},{window.back}")
+
                 master = Master(
                     frontend=FrontEnd.reverse
                     if window.front == "Reverse"

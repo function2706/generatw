@@ -22,6 +22,11 @@ from common.functions import dirname_by_prompts, dump_json
 from common.interfaces import MasterIF
 
 
+@dataclass(frozen=True)
+class Consts:
+    thread_interval_sec = 0.2
+
+
 class HasCommonMembers(Protocol):
     """
     Generic な Stats が 共通メンバを持つことを伝えるためのクラス
@@ -68,7 +73,15 @@ class Generator(ABC, Generic[ProgressResp]):
 
         self.progress: ProgressResp = None
 
-        self.task_thread = threading.Thread(target=self.task_thread_main, args=(), daemon=True)
+        self.worker_thread = threading.Thread(
+            target=self.worker, args=(), daemon=True, name="worker"
+        )
+        self.instructor_thread = threading.Thread(
+            target=self.instructor, args=(), daemon=True, name="instructor"
+        )
+        self.observer_thread = threading.Thread(
+            target=self.observer, args=(), daemon=True, name="observer"
+        )
 
     def whoami(self) -> str:
         """
@@ -83,17 +96,21 @@ class Generator(ABC, Generic[ProgressResp]):
         """
         スレッドを開始する
         """
-        self.task_thread.start()
+        self.instructor_thread.start()
+        self.observer_thread.start()
+        self.worker_thread.start()
 
     def join(self) -> None:
         """
         スレッドの join を行う\n
         すでに死んでいる場合は何もしない
         """
-        if not self.task_thread.is_alive():
+        if not self.worker_thread.is_alive():
             return
 
-        self.task_thread.join()
+        self.worker_thread.join()
+        self.observer_thread.join()
+        self.instructor_thread.join()
 
     def finalize(self) -> None:
         """
@@ -266,21 +283,13 @@ class Generator(ABC, Generic[ProgressResp]):
 
         self.master.refresh_piclist()
 
-    def task_thread_main(self) -> None:
+    def worker(self) -> None:
         """
         タスクを実行する, つまり生成 -> 保存をアトミックに繰り返し実行する\n
         タスクが空, すでに実行中タスクが存在する, あるいは生成が失敗した場合はスキップする
         """
         while not self.event.shutdown.is_set():
-            time.sleep(0.2)
-            if self.event.interrupt.is_set():
-                # 中断要求はキュー上のタスクよりも優先度が高い処理
-                # 同期処理なので中断処理中にここを複数回通ることはない
-                self.request_interrupt()
-
-            # 進捗は必ず確認
-            self.progress = self.request_progress()
-
+            time.sleep(Consts.thread_interval_sec)
             if not self.tasks or self.crnt_task is not None:
                 # 残りタスクが空か実行中タスクがない
                 # ここでは実行中タスクを解除してはいけない
@@ -298,7 +307,33 @@ class Generator(ABC, Generic[ProgressResp]):
                     images, infos = result
                     self.save_images(images, infos)
             except Exception as e:
-                print("Any exception occurred: ", e)
+                print(f"Any exception occurred in {threading.current_thread().name}: ", e)
             finally:
                 self.crnt_task = None
-                self.event.interrupt.clear()
+
+    def instructor(self) -> None:
+        """
+        割り込み確認を行う\n
+        ※サーバとの通信を行うので, 副スレッドにしないと timeout 時のフリーズが生じる
+        """
+        while not self.event.shutdown.is_set():
+            time.sleep(Consts.thread_interval_sec)
+            try:
+                if self.event.interrupt.is_set():
+                    # 中断要求
+                    self.request_interrupt()
+                    self.event.interrupt.clear()
+            except Exception as e:
+                print(f"Any exception occurred in {threading.current_thread().name}: ", e)
+
+    def observer(self) -> None:
+        """
+        サーバ監視, タスクステータス更新処理を行う\n
+        ※サーバとの通信を行うので, 副スレッドにしないと timeout 時のフリーズが生じる
+        """
+        while not self.event.shutdown.is_set():
+            time.sleep(Consts.thread_interval_sec)
+            try:
+                self.progress = self.request_progress() if self.crnt_task is not None else None
+            except Exception as e:
+                print(f"Any exception occurred in {threading.current_thread().name}: ", e)
