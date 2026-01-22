@@ -46,6 +46,7 @@ class Event:
 
     shutdown = threading.Event()  # 終了予定
     interrupt = threading.Event()  # 中断処理実行予定
+    interrupted = threading.Event()  # 中断処理が実行された
 
 
 ProgressResp = TypeVar("ProgressResp", bound=HasCommonMembers)
@@ -164,12 +165,6 @@ class Generator(ABC, Generic[ProgressResp]):
     def reserve_interrupt(self) -> None:
         """
         中断処理を予約する
-        """
-        self.event.interrupt.set()
-
-    def reserve_progress(self) -> None:
-        """
-        進捗要求を予約する
         """
         self.event.interrupt.set()
 
@@ -300,8 +295,13 @@ class Generator(ABC, Generic[ProgressResp]):
 
                 result = self.request_generate()
                 if result is None:
-                    # 生成失敗
-                    print("Failed to post, API response without images.")
+                    if self.event.interrupted.is_set():
+                        # 生成中断
+                        print("Request interrupted.")
+                        self.event.interrupted.clear()
+                    else:
+                        # 生成失敗
+                        print("Request failed, API response without images.")
                     continue
                 else:
                     images, infos = result
@@ -322,6 +322,7 @@ class Generator(ABC, Generic[ProgressResp]):
                 if self.event.interrupt.is_set():
                     # 中断要求
                     self.request_interrupt()
+                    self.event.interrupted.set()
                     self.event.interrupt.clear()
             except Exception as e:
                 print(f"Any exception occurred in {threading.current_thread().name}: ", e)
