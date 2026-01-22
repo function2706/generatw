@@ -4,6 +4,7 @@ GUI 管理クラス
 
 from __future__ import annotations
 
+import threading
 import tkinter
 from dataclasses import dataclass
 from tkinter import Frame, TclError, font, ttk
@@ -26,6 +27,15 @@ class Consts:
     max_output_strlen: int = 75
     # N/A テキスト
     not_available_text: str = "-"
+
+
+@dataclass
+class Event:
+    """
+    イベントフラグ
+    """
+
+    outputting_noimage = threading.Event()  # NO IMAGE 表示中
 
 
 class TipLabel:
@@ -807,6 +817,7 @@ class Displayer:
         self.switch_output_button_state(False)
 
         self.noimage_img = ImageTk.PhotoImage(self.create_no_image_placeholder())
+        self.event = Event()
 
     def put_textbox(
         self, frame: Frame, name: str, row: int, col: int, width: int, default: str, sticky: str
@@ -1147,6 +1158,7 @@ class Displayer:
         self.switch_picwindow_button_state(True)
 
         self.update_picinfo_tab()
+        self.event.outputting_noimage.clear()
 
     def create_no_image_placeholder(self) -> Image:
         """
@@ -1215,6 +1227,7 @@ class Displayer:
         self.switch_picwindow_button_state(False)
 
         self.update_picinfo_tab(reset=True)
+        self.event.outputting_noimage.set()
 
     def switch_output_button_state(self, toggle: bool) -> None:
         """

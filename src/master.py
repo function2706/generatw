@@ -303,6 +303,10 @@ class Master(MasterIF):
         Tkinter メインループにて周期的に呼び出される処理
         """
         try:
+            if self.displayer.event.outputting_noimage.is_set():
+                # NO IMAGE 表示中は記録中ステータスに沿った画像の表示を常に試みる
+                self.refresh_pic_randomly()
+
             is_new_stats = self.parser.refresh_stats()
             if not is_new_stats:
                 return
