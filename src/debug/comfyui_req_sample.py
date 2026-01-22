@@ -22,7 +22,7 @@ def get_workflow(pos, neg):
         "3": {"class_type": "CLIPTextEncode", "inputs": {"text": neg, "clip": ["1", 1]}},
         "4": {
             "class_type": "EmptyLatentImage",
-            "inputs": {"width": 512, "height": 768, "batch_size": 1},
+            "inputs": {"width": 540, "height": 960, "batch_size": 1},
         },
         "5": {
             "class_type": "KSampler",

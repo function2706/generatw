@@ -93,8 +93,8 @@ async def simulate_generation(prompt_id: str):
 
         seeds: list[int] = []
         batch_size = empty_latent_image["inputs"]["batch_size"]
-        width = empty_latent_image["inputs"]["width"]
-        height = empty_latent_image["inputs"]["height"]
+        width = empty_latent_image["inputs"]["width"] & -8
+        height = empty_latent_image["inputs"]["height"] & -8
         seeds = [seed + i for i in range(batch_size)]
         images = []
         for idx, s in enumerate(seeds):

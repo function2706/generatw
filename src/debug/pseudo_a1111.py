@@ -183,8 +183,8 @@ async def txt2img(req: Txt2ImgRequest):
     app.state.job = "txt2img"
 
     MAX_SIDE = 8192
-    width = max(1, min(req.width, MAX_SIDE))
-    height = max(1, min(req.height, MAX_SIDE))
+    width = max(1, min(req.width, MAX_SIDE)) & -8
+    height = max(1, min(req.height, MAX_SIDE)) & -8
     batch_size = max(1, req.batch_size or 1)
     n_iter = max(1, req.n_iter or 1)
 
