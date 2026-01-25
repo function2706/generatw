@@ -130,7 +130,6 @@ class Master(MasterIF):
             allow_edit_clipboard=self.displayer.allow_edit_clipboard,
             print_new_clipboard=self.displayer.print_new_clipboard,
             print_new_stats=self.displayer.print_new_stats,
-            print_images=self.displayer.print_images,
             print_picinfo=self.displayer.print_picinfo,
         )
 

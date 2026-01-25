@@ -4,12 +4,16 @@
 
 from __future__ import annotations
 
+import base64
+import io
 import json
 from dataclasses import asdict, dataclass
 from typing import Any
 
 import requests
+from PIL import Image, ImageFile
 
+from common.classes import PicInfo
 from common.interfaces import MasterIF
 from generator.generator import Generator
 
@@ -100,9 +104,9 @@ class A1111Generator(Generator[TaskProgress | None]):
     def crnt_progress(self) -> float:
         return self.progress.progress if self.progress is not None else 0
 
-    def request_generate(self) -> tuple[Any, Any] | None:
+    def request_generate(self) -> list[tuple[ImageFile.ImageFile, PicInfo]]:
         if self.crnt_task is None:
-            return
+            return []
 
         try:
             response = requests.post(
@@ -112,15 +116,35 @@ class A1111Generator(Generator[TaskProgress | None]):
             )
         except Exception as e:
             print("Any exception occurred on interrupt: ", e)
-            return None
+            return []
 
         response.raise_for_status()
         body: dict = response.json()
-        images = body.get("images", [])
+        images: list[str] = body.get("images", [])
+        infos: dict[str, Any] = json.loads(body.get("info", "{}"))
         if not images:
-            return None
+            return []
 
-        return images, json.loads(body.get("info", "{}"))
+        result: list[tuple[ImageFile.ImageFile, PicInfo]] = []
+        for idx, image in enumerate(images):
+            pic = Image.open(io.BytesIO(base64.b64decode(image.split(",", 1)[-1])))
+            picinfo = PicInfo.make(
+                positive_prompt=infos.get("all_prompts", [])[idx],
+                negative_prompt=infos.get("all_negative_prompts", [])[idx],
+                steps=infos.get("steps", 0),
+                sampler=infos.get("sampler_name", ""),
+                scheduler=dict(infos.get("extra_generation_params", {})).get("Schedule type", ""),
+                cfg_scale=infos.get("cfg_scale", 0),
+                seed=infos.get("all_seeds", [])[idx],
+                width=infos.get("width", 0),
+                height=infos.get("height", 0),
+                model_name=infos.get("sd_model_name", ""),
+                model_hash=infos.get("sd_model_hash", ""),
+                clip_skip=infos.get("clip_skip", 0),
+            )
+            result.append((pic, picinfo))
+
+        return result
 
     def request_upscale(self) -> None:
         return

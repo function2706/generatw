@@ -46,7 +46,6 @@ class CrntGUIConfigs:
     allow_edit_clipboard: bool = False
     print_new_clipboard: bool = False
     print_new_stats: bool = False
-    print_images: bool = False
     print_picinfo: bool = False
 
     @classmethod
@@ -61,7 +60,6 @@ class CrntGUIConfigs:
         allow_edit_clipboard: bool,
         print_new_clipboard: bool,
         print_new_stats: bool,
-        print_images: bool,
         print_picinfo: bool,
     ):
         """
@@ -77,7 +75,6 @@ class CrntGUIConfigs:
             allow_edit_clipboard (bool): デバッグ時にクリップボード更新を認めるか
             print_new_clipboard (bool): クリップボードの更新があった場合にログ出力するか
             print_new_stats (bool): ステータスの更新があった場合にログ出力するか
-            print_images (bool): 応答 image があった場合にログ出力するか
             print_picinfo (bool): 応答 image の PicInfo をログ出力するか
         """
         return cls(
@@ -90,7 +87,6 @@ class CrntGUIConfigs:
             allow_edit_clipboard=allow_edit_clipboard,
             print_new_clipboard=print_new_clipboard,
             print_new_stats=print_new_stats,
-            print_images=print_images,
             print_picinfo=print_picinfo,
         )
 

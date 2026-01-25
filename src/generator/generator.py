@@ -4,8 +4,6 @@
 
 from __future__ import annotations
 
-import base64
-import io
 import threading
 import time
 from abc import ABC, abstractmethod
@@ -15,9 +13,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Generic, Protocol, TypeVar
 
-from PIL import Image
+from PIL import ImageFile
 
-from common.classes import PicStats, SDPngInfo, TaskBlueprint
+from common.classes import PicInfo, TaskBlueprint
 from common.functions import dirname_by_prompts, dump_json
 from common.interfaces import MasterIF
 
@@ -169,13 +167,14 @@ class Generator(ABC, Generic[ProgressResp]):
         self.event.interrupt.set()
 
     @abstractmethod
-    def request_generate(self) -> tuple[Any, Any] | None:
+    def request_generate(self) -> list[tuple[ImageFile.ImageFile, PicInfo]]:
         """
         現在のタスクをもとに生成要求を行う\n
-        現在のタスクが空の場合は何もしない
+        現在のタスクが空の場合は何もしない\n
+        失敗時に空リストを返す
 
         Returns:
-            tuple[Any, Any]: image フィールドと info フィールドのタプル, 失敗時は None
+            list[tuple[ImageFile.ImageFile, PicInfo]]: ImageFile, PicInfo のタプルリスト
         """
         pass
 
@@ -217,64 +216,51 @@ class Generator(ABC, Generic[ProgressResp]):
         """
         pass
 
-    def make_filepath(self, infos: dict, idx: int) -> Path:
+    def make_filepath(self, picinfo: PicInfo) -> Path:
         """
-        info 領域上のデータからファイルパスを生成する\n
-        info 領域上のデータは同時生成した画像群に関する配列構造のため, インデックスの指定も必要\n
+        PicInfoからファイルパスを生成する\n
         ファイル名は"YYYYMMDDhhmmss-<seed>.png"
 
         Args:
-            infos (dict): info 領域上のデータ
-            idx (int): 配列のインデックス
+            picinfo (PicInfo): PicInfo
 
         Returns:
             Path: ファイルパス
         """
-        pos_prompts = infos.get("all_prompts", [])
-        neg_prompts = infos.get("all_negative_prompts", [])
-        seeds = infos.get("all_seeds", [])
+        pos_prompt = picinfo.positive_prompt
+        neg_prompt = picinfo.negative_prompt
+        seed = picinfo.seed
 
-        dirpath = self.master.pics_dir_path / Path(
-            dirname_by_prompts(pos_prompts[idx], neg_prompts[idx])
-        )
+        dirpath = self.master.pics_dir_path / Path(dirname_by_prompts(pos_prompt, neg_prompt))
         now = datetime.now().strftime("%Y%m%d%H%M%S")
-        filename = Path(f"{now}-{seeds[idx]}.png")
+        filename = Path(f"{now}-{seed}.png")
         return dirpath / filename
 
-    def save_images(self, images: Any, infos: Any) -> None:
+    def save_images(self, imglist: list[tuple[ImageFile.ImageFile, PicInfo]]) -> None:
         """
         指定の画像群を保存する\n
         各画像には次回起動時にメタデータの再取得ができるよう, info 領域上のデータが埋め込まれる\n
         保存が正常に完了した場合は画像リストの更新が行われる\n
-        images か infos が None の場合は何もしない
+        imglist が None の場合は何もしない
 
         Args:
-            images (Any): 画像群データ
-            infos (Any): info 領域上のデータ
+            imglist (list[tuple[ImageFile.ImageFile, PicInfo]]): ImageFile, PicInfo のタプルリスト
         """
-        if not images or not infos:
+        if not imglist:
             return
 
-        if self.master.crnt_gui_configs.print_picinfo:
-            dump_json(infos, "infos")
+        for imgtuple in imglist:
+            image = imgtuple[0]
+            picinfo = imgtuple[1]
+            if self.master.crnt_gui_configs.print_picinfo:
+                dump_json(picinfo.todict(), "picinfo")
 
-        for idx, image_data in enumerate(images):
-            try:
-                image_data = str(image_data)
-                b64 = image_data.split(",", 1)[-1]
-                image = Image.open(io.BytesIO(base64.b64decode(b64)))
+            picpath = self.make_filepath(picinfo)
+            if picpath.parent and not picpath.parent.exists():
+                # 親ディレクトリが存在しない場合は作成する
+                picpath.parent.mkdir(parents=True, exist_ok=True)
 
-                pic_path = self.make_filepath(infos, idx)
-                if pic_path.parent and not pic_path.parent.exists():
-                    # 親ディレクトリが存在しない場合は作成する
-                    pic_path.parent.mkdir(parents=True, exist_ok=True)
-
-                image.save(str(pic_path), pnginfo=SDPngInfo(infos, idx))
-
-                if self.master.crnt_gui_configs.print_images:
-                    dump_json(PicStats.make(pic_path).info.todict(), "image")
-            except Exception as e:
-                print(f"[WARN] Failed to save image idx={idx}: {e}")
+            image.save(str(picpath), pnginfo=picinfo.topnginfo())
 
         self.master.refresh_piclist()
 
@@ -293,8 +279,8 @@ class Generator(ABC, Generic[ProgressResp]):
             try:
                 self.crnt_task = self.tasks.popleft()
 
-                result = self.request_generate()
-                if result is None:
+                imglist = self.request_generate()
+                if not imglist:
                     if self.event.interrupted.is_set():
                         # 生成中断
                         print("Request interrupted.")
@@ -304,8 +290,7 @@ class Generator(ABC, Generic[ProgressResp]):
                         print("Request failed, API response without images.")
                     continue
                 else:
-                    images, infos = result
-                    self.save_images(images, infos)
+                    self.save_images(imglist)
             except Exception as e:
                 print(f"Any exception occurred in {threading.current_thread().name}: ", e)
             finally:

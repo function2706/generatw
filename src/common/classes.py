@@ -23,84 +23,79 @@ class PMConsts:
     charaname_substr_debug: str = "DebuggingPM"
 
 
-class SDPngInfo(PngImagePlugin.PngInfo):
-    """
-    Stable Diffusion 特化の PngInfo
-    """
-
-    def __init__(self, infos: dict, idx: int):
-        """
-        コンストラクタ
-        PNG に付与する PNG Info を生成する\n
-        info 領域上のデータは "images" で削ぎ落とした時点でなくなるので, 再度の付与を行う\n
-        info 領域上のデータは同時生成した画像群に関する配列構造のため, インデックスの指定も必要
-
-        Args:
-            infos (dict): info 領域上のデータ
-            idx (int): 配列のインデックス
-        """
-        super().__init__()
-        self.add_text("prompt", infos.get("all_prompts", [])[idx])
-        self.add_text("negative_prompt", infos.get("all_negative_prompts", [])[idx])
-        self.add_text("steps", str(infos.get("steps", 0)))
-        self.add_text("sampler", infos.get("sampler_name", ""))
-        self.add_text(
-            "schedule_type",
-            dict(infos.get("extra_generation_params", {})).get("Schedule type", ""),
-        )
-        self.add_text("cfg_scale", str(infos.get("cfg_scale", 0)))
-        self.add_text("seed", str(infos.get("all_seeds", [])[idx]))
-        self.add_text("width", str(infos.get("width", 0)))
-        self.add_text("height", str(infos.get("height", 0)))
-        self.add_text("sd_model_name", infos.get("sd_model_name", ""))
-        self.add_text("sd_model_hash", infos.get("sd_model_hash", ""))
-        self.add_text("clip_skip", str(infos.get("clip_skip", 0)))
-        self.add_text("parameters", infos.get("infotexts", [])[idx])
-
-
 @dataclass
 class PicInfo:
     """
     画像のメタデータ
     """
 
-    prompt: str | None = None
-    negative_prompt: str | None = None
-    steps: int | None = None
-    sampler: str | None = None
-    schedule_type: str | None = None
-    cfg_scale: float | None = None
-    seed: int | None = None
-    width: int | None = None
-    height: int | None = None
-    sd_model_name: str | None = None
-    sd_model_hash: str | None = None
-    clip_skip: int | None = None
-    parameters: str | None = None
+    positive_prompt: str = ""
+    negative_prompt: str = ""
+    steps: int = 0
+    sampler: str = ""
+    scheduler: str = ""
+    cfg_scale: float = 0.0
+    seed: int = 0
+    width: int = 0
+    height: int = 0
+    model_name: str = ""
+    model_hash: str = ""
+    clip_skip: int = 0
 
     @classmethod
-    def make(cls, image: Image):
+    def make(
+        cls,
+        positive_prompt: str,
+        negative_prompt: str,
+        steps: str,
+        sampler: str,
+        scheduler: str,
+        cfg_scale: str,
+        seed: str,
+        width: str,
+        height: str,
+        model_name: str,
+        model_hash: str,
+        clip_skip: str,
+    ):
+        return cls(
+            positive_prompt=positive_prompt,
+            negative_prompt=negative_prompt,
+            steps=steps,
+            sampler=sampler,
+            scheduler=scheduler,
+            cfg_scale=cfg_scale,
+            seed=seed,
+            width=width,
+            height=height,
+            model_name=model_name,
+            model_hash=model_hash,
+            clip_skip=clip_skip,
+        )
+
+    @classmethod
+    def fromimage(cls, image: Image):
         """
-        コンストラクタ
+        コンストラクタ\n
+        tEXt フィールドからセットする
 
         Args:
             image (Image): Open して得られる Image インスタンス
         """
         info: dict = image.info
         return cls(
-            prompt=info.get("prompt"),
+            positive_prompt=info.get("positive_prompt"),
             negative_prompt=info.get("negative_prompt"),
             steps=cls.to_int(info.get("steps")),
             sampler=info.get("sampler"),
-            schedule_type=info.get("schedule_type"),
+            scheduler=info.get("scheduler"),
             cfg_scale=cls.to_float(info.get("cfg_scale")),
             seed=cls.to_int(info.get("seed")),
             width=cls.to_int(info.get("width")),
             height=cls.to_int(info.get("height")),
-            sd_model_name=info.get("sd_model_name"),
-            sd_model_hash=info.get("sd_model_hash"),
+            model_name=info.get("model_name"),
+            model_hash=info.get("model_hash"),
             clip_skip=cls.to_int(info.get("clip_skip")),
-            parameters=info.get("parameters"),
         )
 
     @staticmethod
@@ -119,6 +114,28 @@ class PicInfo:
             dict[str, Any]: dict インスタンス
         """
         return asdict(self)
+
+    def topnginfo(self) -> PngImagePlugin.PngInfo:
+        """
+        topnginfo PngInfo への変換
+
+        Returns:
+            PngImagePlugin.PngInfo: PngInfo
+        """
+        info = PngImagePlugin.PngInfo()
+        info.add_text("prompt", self.positive_prompt)
+        info.add_text("negative_prompt", self.negative_prompt)
+        info.add_text("steps", str(self.steps))
+        info.add_text("sampler", self.sampler)
+        info.add_text("schedule_type", self.scheduler)
+        info.add_text("cfg_scale", str(self.cfg_scale))
+        info.add_text("seed", str(self.seed))
+        info.add_text("width", str(self.width))
+        info.add_text("height", str(self.height))
+        info.add_text("sd_model_name", self.model_name)
+        info.add_text("sd_model_hash", self.model_hash)
+        info.add_text("clip_skip", str(self.clip_skip))
+        return info
 
 
 @dataclass
@@ -145,7 +162,7 @@ class PicStats:
 
         try:
             with Image.open(path) as image:
-                info = PicInfo.make(image)
+                info = PicInfo.fromimage(image)
         except Exception as e:
             print(f"Error PicStats {path}: {e}")
             info = None

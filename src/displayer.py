@@ -457,20 +457,13 @@ class Displayer:
                         text="ステータス",
                         variable=self.verbose_stats_check,
                     ).grid(row=0, column=1, padx=6, pady=6, sticky="w")
-                    # 応答(image)の表示
-                    self.verbose_image_check = tkinter.BooleanVar()
-                    ttk.Checkbutton(
-                        self.verbose_frame,
-                        text="応答(image)",
-                        variable=self.verbose_image_check,
-                    ).grid(row=1, column=0, padx=6, pady=6, sticky="w")
                     # PicInfoの表示
                     self.verbose_picinfo_check = tkinter.BooleanVar()
                     ttk.Checkbutton(
                         self.verbose_frame,
                         text="PicInfo",
                         variable=self.verbose_picinfo_check,
-                    ).grid(row=1, column=1, padx=6, pady=6, sticky="w")
+                    ).grid(row=1, column=0, padx=6, pady=6, sticky="w")
 
             def __init__(self, owner: Displayer.ConfigWindow):
                 """
@@ -1067,7 +1060,7 @@ class Displayer:
                 "場所", crnt_picstats.path
             )
             self.info_window.picinfo_tab_obj.infobox_frame.infobox_tree.set(
-                "ポジティブプロンプト", crnt_picstats.info.prompt
+                "ポジティブプロンプト", crnt_picstats.info.positive_prompt
             )
             self.info_window.picinfo_tab_obj.infobox_frame.infobox_tree.set(
                 "ネガティブプロンプト", crnt_picstats.info.negative_prompt
@@ -1079,7 +1072,7 @@ class Displayer:
                 "サンプラ", crnt_picstats.info.sampler
             )
             self.info_window.picinfo_tab_obj.infobox_frame.infobox_tree.set(
-                "スケジューラ", crnt_picstats.info.schedule_type
+                "スケジューラ", crnt_picstats.info.scheduler
             )
             self.info_window.picinfo_tab_obj.infobox_frame.infobox_tree.set(
                 "スケール", crnt_picstats.info.cfg_scale
@@ -1434,16 +1427,6 @@ class Displayer:
             bool: True: 表示する, False: 表示しない
         """
         return self.config_window.debug_tab_obj.verbose_frame.verbose_stats_check.get()
-
-    @property
-    def print_images(self) -> bool:
-        """
-        応答 image があった場合にログ出力するか
-
-        Returns:
-            bool: True: 表示する, False: 表示しない
-        """
-        return self.config_window.debug_tab_obj.verbose_frame.verbose_image_check.get()
 
     @property
     def print_picinfo(self) -> bool:
