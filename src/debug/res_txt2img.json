@@ -1,0 +1,120 @@
+{
+    "1": {
+        "inputs": {
+            "ckpt_name": "Illustrious\\waiNSFWIllustrious_v150.safetensors"
+        },
+        "class_type": "CheckpointLoaderSimple",
+        "_meta": {
+            "title": "\u30c1\u30a7\u30c3\u30af\u30dd\u30a4\u30f3\u30c8\u3092\u8aad\u307f\u8fbc\u3080"
+        }
+    },
+    "2": {
+        "inputs": {
+            "stop_at_clip_layer": -2,
+            "clip": [
+                "1",
+                1
+            ]
+        },
+        "class_type": "CLIPSetLastLayer",
+        "_meta": {
+            "title": "CLIP\u306e\u6700\u7d42\u5c64\u3092\u8a2d\u5b9a"
+        }
+    },
+    "3": {
+        "inputs": {
+            "text": "(five toes:1.8),\n(foot focus),from below,pov,\nbarefoot,soles,toes,(sharp toenails),(toe claws),red toenails,\nremilia scarlet,smirk,fang out,slit pupils,\nsitting on chair,crossed legs,\nlatex bra,latex elbow gloves,[latex panties],bare legs,\n1girl,solo,\nmasterpiece,best quality,amazing quality,",
+            "clip": [
+                "2",
+                0
+            ]
+        },
+        "class_type": "CLIPTextEncode",
+        "_meta": {
+            "title": "CLIP\u30c6\u30ad\u30b9\u30c8\u30a8\u30f3\u30b3\u30fc\u30c9\uff08\u30d7\u30ed\u30f3\u30d7\u30c8\uff09"
+        }
+    },
+    "4": {
+        "inputs": {
+            "text": "(six toes:1.8),(extra toes:1.5),fewer toes,missing toes,bad feet,mutated feet,\n(extra feet:1.2),(missing foot),(bad leg),(extra legs:1.2),(missing leg),\nextra digits,fewer digits,missing digits,bad hands,mutated hands,\nextra hands,missing hand,bad arm,extra arms,missing arm,\n(amputee),(bad anatomy),(extra limbs),(missing limb),multiple heads,\nmotion lines,speed lines,3d,((shiny skin)),worst detail,text,logo,cropped,deformed,blurry,\n((footjob)),(sharp fingernails),\nworst quality,low quality,",
+            "clip": [
+                "2",
+                0
+            ]
+        },
+        "class_type": "CLIPTextEncode",
+        "_meta": {
+            "title": "CLIP\u30c6\u30ad\u30b9\u30c8\u30a8\u30f3\u30b3\u30fc\u30c9\uff08\u30d7\u30ed\u30f3\u30d7\u30c8\uff09"
+        }
+    },
+    "6": {
+        "inputs": {
+            "width": 720,
+            "height": 1280,
+            "batch_size": 1
+        },
+        "class_type": "EmptyLatentImage",
+        "_meta": {
+            "title": "\u7a7a\u306e\u6f5c\u5728\u753b\u50cf"
+        }
+    },
+    "7": {
+        "inputs": {
+            "samples": [
+                "57",
+                0
+            ],
+            "vae": [
+                "1",
+                2
+            ]
+        },
+        "class_type": "VAEDecode",
+        "_meta": {
+            "title": "VAE\u30c7\u30b3\u30fc\u30c9"
+        }
+    },
+    "37": {
+        "inputs": {
+            "filename_prefix": "ComfyUI",
+            "images": [
+                "7",
+                0
+            ]
+        },
+        "class_type": "SaveImage",
+        "_meta": {
+            "title": "\u753b\u50cf\u3092\u4fdd\u5b58"
+        }
+    },
+    "57": {
+        "inputs": {
+            "seed": 99580403881303,
+            "steps": 30,
+            "cfg": 7.0,
+            "sampler_name": "dpmpp_2m_sde_gpu",
+            "scheduler": "karras",
+            "denoise": 1.0,
+            "model": [
+                "1",
+                0
+            ],
+            "positive": [
+                "3",
+                0
+            ],
+            "negative": [
+                "4",
+                0
+            ],
+            "latent_image": [
+                "6",
+                0
+            ]
+        },
+        "class_type": "KSampler",
+        "_meta": {
+            "title": "K\u30b5\u30f3\u30d7\u30e9\u30fc"
+        }
+    }
+}
