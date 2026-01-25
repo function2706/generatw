@@ -32,6 +32,7 @@ class Master(MasterIF):
         """
         self.root = tkinter.Tk()
 
+        self.frontend: FrontEnd = frontend
         if frontend == FrontEnd.reverse:
             self.parser = ReverseParser(self)
         elif frontend == FrontEnd.the_world:
@@ -41,6 +42,7 @@ class Master(MasterIF):
 
         self.archiver = Archiver.make(self.parser.pics_dir_path())
 
+        self.backend: BackEnd = backend
         if backend == BackEnd.a1111:
             self.generator = A1111Generator(self)
         elif backend == BackEnd.comfy_ui:
@@ -82,6 +84,16 @@ class Master(MasterIF):
         self.finalize()
 
     @property
+    def frontend_type(self) -> FrontEnd:
+        """
+        フロントエンドタイプ
+
+        Returns:
+            FrontEnd: フロントエンドタイプ
+        """
+        return self.frontend
+
+    @property
     def frontend_name(self) -> str:
         """
         フロントエンド名
@@ -90,6 +102,16 @@ class Master(MasterIF):
             str: フロントエンド名
         """
         return self.parser.whoami()
+
+    @property
+    def backend_type(self) -> BackEnd:
+        """
+        バックエンドタイプ
+
+        Returns:
+            BackEnd: バックエンドタイプ
+        """
+        return self.backend
 
     @property
     def backend_name(self) -> str:

@@ -110,7 +110,7 @@ class A1111Generator(Generator[TaskProgress | None]):
 
         try:
             response = requests.post(
-                f"http://{self.crnt_task.dst_addr}:{self.crnt_task.dst_port}/sdapi/v1/txt2img",
+                f"http://{self.crnt_dst}/sdapi/v1/txt2img",
                 json=self.crnt_task.todict(),
                 timeout=(5, 60),
             )
@@ -155,7 +155,7 @@ class A1111Generator(Generator[TaskProgress | None]):
 
         try:
             requests.post(
-                f"http://{self.crnt_task.dst_addr}:{self.crnt_task.dst_port}/sdapi/v1/interrupt",
+                f"http://{self.crnt_dst}/sdapi/v1/interrupt",
                 timeout=(5, 10),
             )
         except Exception as e:
@@ -167,7 +167,7 @@ class A1111Generator(Generator[TaskProgress | None]):
 
         try:
             response = requests.get(
-                f"http://{self.crnt_task.dst_addr}:{self.crnt_task.dst_port}/sdapi/v1/progress?skip_current_image=true",
+                f"http://{self.crnt_dst}/sdapi/v1/progress?skip_current_image=true",
                 timeout=(5, 10),
             )
         except Exception as e:

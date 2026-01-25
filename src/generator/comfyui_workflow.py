@@ -1,7 +1,7 @@
 import random
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 
 class NodeBody(Protocol):
@@ -47,6 +47,13 @@ class CheckpointLoaderSimple(NodeBody):
     def make(cls, ckpt_name: str):
         return cls(inputs=CheckpointLoaderSimple.Inputs.make(ckpt_name=ckpt_name))
 
+    @classmethod
+    def set(cls, data: dict[str, Any]):
+        if data["class_type"] != "CheckpointLoaderSimple":
+            raise ValueError
+        data_inputs = data["inputs"]
+        return cls(inputs=CheckpointLoaderSimple.Inputs.make(ckpt_name=data_inputs["ckpt_name"]))
+
 
 @dataclass
 class EmptyLatentImage(NodeBody):
@@ -69,6 +76,19 @@ class EmptyLatentImage(NodeBody):
             inputs=EmptyLatentImage.Inputs.make(width=width, height=height, batch_size=batch_size)
         )
 
+    @classmethod
+    def set(cls, data: dict[str, Any]):
+        if data["class_type"] != "EmptyLatentImage":
+            raise ValueError
+        data_inputs = data["inputs"]
+        return cls(
+            inputs=EmptyLatentImage.Inputs.make(
+                width=int(data_inputs["width"]),
+                height=int(data_inputs["height"]),
+                batch_size=int(data_inputs["batch_size"]),
+            )
+        )
+
 
 @dataclass
 class CLIPTextEncode(NodeBody):
@@ -78,8 +98,8 @@ class CLIPTextEncode(NodeBody):
         clip: list[int | str] = field(default_factory=list)
 
         @classmethod
-        def make(cls, text: str, loader: NodeSkeleton):
-            return cls(text=text, clip=[loader.nodeidx, 1])
+        def make(cls, text: str, loader: NodeSkeleton = None):
+            return cls(text=text, clip=[loader.nodeidx, 1] if loader is not None else [])
 
     class_type: str = "CLIPTextEncode"
     inputs: Inputs = None
@@ -90,6 +110,17 @@ class CLIPTextEncode(NodeBody):
             raise TypeError
 
         return cls(inputs=CLIPTextEncode.Inputs.make(text=text, loader=loader))
+
+    @classmethod
+    def set(cls, data: dict[str, Any]):
+        if data["class_type"] != "CLIPTextEncode":
+            raise ValueError
+        data_inputs = data["inputs"]
+        return cls(
+            inputs=CLIPTextEncode.Inputs.make(
+                text=data_inputs["text"],
+            )
+        )
 
 
 class UpScaleMethod(Enum):
@@ -117,14 +148,14 @@ class LatentUpscale(NodeBody):
             width: int,
             height: int,
             crop: str,
-            sampler: NodeSkeleton,
+            sampler: NodeSkeleton = None,
         ):
             return cls(
                 upscale_method=upscale_method,
                 width=width,
                 height=height,
                 crop=crop,
-                samples=[sampler.nodeidx, 0],
+                samples=[sampler.nodeidx, 0] if sampler is not None else [],
             )
 
     class_type: str = "LatentUpscale"
@@ -152,6 +183,20 @@ class LatentUpscale(NodeBody):
             )
         )
 
+    @classmethod
+    def set(cls, data: dict[str, Any]):
+        if data["class_type"] != "LatentUpscale":
+            raise ValueError
+        data_inputs = data["inputs"]
+        return cls(
+            inputs=LatentUpscale.Inputs.make(
+                upscale_method=data_inputs["upscale_method"],
+                width=int(data_inputs["width"]),
+                height=int(data_inputs["height"]),
+                crop=data_inputs["crop"],
+            )
+        )
+
 
 @dataclass
 class LatentUpscaleBy(NodeBody):
@@ -166,12 +211,12 @@ class LatentUpscaleBy(NodeBody):
             cls,
             upscale_method: str,
             scale_by: float,
-            sampler: NodeSkeleton,
+            sampler: NodeSkeleton = None,
         ):
             return cls(
                 upscale_method=upscale_method,
                 scale_by=scale_by,
-                samples=[sampler.nodeidx, 0],
+                samples=[sampler.nodeidx, 0] if sampler is not None else [],
             )
 
     class_type: str = "LatentUpscaleBy"
@@ -180,7 +225,7 @@ class LatentUpscaleBy(NodeBody):
     @classmethod
     def make(
         cls,
-        upscale_method: str,
+        upscale_method: UpScaleMethod,
         scale_by: float,
         sampler: NodeSkeleton,
     ):
@@ -192,6 +237,18 @@ class LatentUpscaleBy(NodeBody):
                 upscale_method=upscale_method.value,
                 scale_by=scale_by,
                 sampler=sampler,
+            )
+        )
+
+    @classmethod
+    def set(cls, data: dict[str, Any]):
+        if data["class_type"] != "LatentUpscaleBy":
+            raise ValueError
+        data_inputs = data["inputs"]
+        return cls(
+            inputs=LatentUpscaleBy.Inputs.make(
+                upscale_method=data_inputs["upscale_method"],
+                scale_by=float(data_inputs["scale_by"]),
             )
         )
 
@@ -243,10 +300,10 @@ class KSampler(NodeBody):
             denoise: float,
             sampler_name: str,
             scheduler: str,
-            loader: NodeSkeleton,
-            latent_image: NodeSkeleton,
-            positive: NodeSkeleton,
-            negative: NodeSkeleton,
+            loader: NodeSkeleton = None,
+            latent_image: NodeSkeleton = None,
+            positive: NodeSkeleton = None,
+            negative: NodeSkeleton = None,
         ):
             return cls(
                 seed=seed,
@@ -255,10 +312,10 @@ class KSampler(NodeBody):
                 denoise=denoise,
                 sampler_name=sampler_name,
                 scheduler=scheduler,
-                model=[loader.nodeidx, 0],
-                latent_image=[latent_image.nodeidx, 0],
-                positive=[positive.nodeidx, 0],
-                negative=[negative.nodeidx, 0],
+                model=[loader.nodeidx, 0] if loader is not None else [],
+                latent_image=[latent_image.nodeidx, 0] if latent_image is not None else [],
+                positive=[positive.nodeidx, 0] if positive is not None else [],
+                negative=[negative.nodeidx, 0] if negative is not None else [],
             )
 
     class_type: str = "KSampler"
@@ -301,6 +358,22 @@ class KSampler(NodeBody):
             )
         )
 
+    @classmethod
+    def set(cls, data: dict[str, Any]):
+        if data["class_type"] != "KSampler":
+            raise ValueError
+        data_inputs = data["inputs"]
+        return cls(
+            inputs=KSampler.Inputs.make(
+                seed=int(data_inputs["seed"]),
+                steps=int(data_inputs["steps"]),
+                cfg=float(data_inputs["cfg"]),
+                denoise=float(data_inputs["denoise"]),
+                sampler_name=data_inputs["sampler_name"],
+                scheduler=data_inputs["scheduler"],
+            )
+        )
+
 
 @dataclass
 class KSamplerAdvanced(NodeBody):
@@ -332,10 +405,10 @@ class KSamplerAdvanced(NodeBody):
             end_at_step: int,
             add_noise: bool,
             return_with_leftover_noise: bool,
-            loader: NodeSkeleton,
-            latent_image: NodeSkeleton,
-            positive: NodeSkeleton,
-            negative: NodeSkeleton,
+            loader: NodeSkeleton = None,
+            latent_image: NodeSkeleton = None,
+            positive: NodeSkeleton = None,
+            negative: NodeSkeleton = None,
         ):
             return cls(
                 seed=seed,
@@ -347,10 +420,10 @@ class KSamplerAdvanced(NodeBody):
                 end_at_step=end_at_step,
                 add_noise=add_noise,
                 return_with_leftover_noise=return_with_leftover_noise,
-                model=[loader.nodeidx, 0],
-                latent_image=[latent_image.nodeidx, 0],
-                positive=[positive.nodeidx, 0],
-                negative=[negative.nodeidx, 0],
+                model=[loader.nodeidx, 0] if loader is not None else [],
+                latent_image=[latent_image.nodeidx, 0] if latent_image is not None else [],
+                positive=[positive.nodeidx, 0] if positive is not None else [],
+                negative=[negative.nodeidx, 0] if negative is not None else [],
             )
 
     class_type: str = "KSamplerAdvanced"
@@ -399,6 +472,27 @@ class KSamplerAdvanced(NodeBody):
             )
         )
 
+    @classmethod
+    def set(cls, data: dict[str, Any]):
+        if data["class_type"] != "KSamplerAdvanced":
+            raise ValueError
+        data_inputs = data["inputs"]
+        return cls(
+            inputs=KSamplerAdvanced.Inputs.make(
+                seed=int(data_inputs["seed"]),
+                steps=int(data_inputs["steps"]),
+                cfg=float(data_inputs["cfg"]),
+                sampler_name=data_inputs["sampler_name"],
+                scheduler=data_inputs["scheduler"],
+                start_at_step=int(data_inputs["start_at_step"]),
+                end_at_step=int(data_inputs["end_at_step"]),
+                add_noise=True if data_inputs["add_noise"] == "true" else False,
+                return_with_leftover_noise=True
+                if data_inputs["return_with_leftover_noise"] == "true"
+                else False,
+            )
+        )
+
 
 @dataclass
 class VAELoader(NodeBody):
@@ -417,6 +511,13 @@ class VAELoader(NodeBody):
     def make(cls, vae_name: str):
         return cls(inputs=VAELoader.Inputs.make(vae_name=vae_name))
 
+    @classmethod
+    def set(cls, data: dict[str, Any]):
+        if data["class_type"] != "VAELoader":
+            raise ValueError
+        data_inputs = data["inputs"]
+        return cls(inputs=VAELoader.Inputs.make(vae_name=data_inputs["vae_name"]))
+
 
 @dataclass
 class VAEDecode(NodeBody):
@@ -426,8 +527,11 @@ class VAEDecode(NodeBody):
         vae: list[int | str] = field(default_factory=list)
 
         @classmethod
-        def make(cls, sampler: NodeSkeleton, vae: NodeSkeleton):
-            return cls(samples=[sampler.nodeidx, 0], vae=[vae.nodeidx, 2])
+        def make(cls, sampler: NodeSkeleton = None, vae: NodeSkeleton = None):
+            return cls(
+                samples=[sampler.nodeidx, 0] if sampler is not None else [],
+                vae=[vae.nodeidx, 2] if vae is not None else [],
+            )
 
     class_type: str = "VAEDecode"
     inputs: Inputs = None
@@ -441,6 +545,12 @@ class VAEDecode(NodeBody):
 
         return cls(inputs=VAEDecode.Inputs.make(sampler=sampler, vae=vae))
 
+    @classmethod
+    def set(cls, data: dict[str, Any]):
+        if data["class_type"] != "VAEDecode":
+            raise ValueError
+        return cls(inputs=VAEDecode.Inputs.make())
+
 
 @dataclass
 class VAEEncode(NodeBody):
@@ -450,8 +560,11 @@ class VAEEncode(NodeBody):
         vae: list[int | str] = field(default_factory=list)
 
         @classmethod
-        def make(cls, image: NodeSkeleton, vae: NodeSkeleton):
-            return cls(pixels=[image.nodeidx, 0], vae=[vae.nodeidx, 0])
+        def make(cls, image: NodeSkeleton = None, vae: NodeSkeleton = None):
+            return cls(
+                pixels=[image.nodeidx, 0] if image is not None else [],
+                vae=[vae.nodeidx, 0] if vae is not None else [],
+            )
 
     class_type: str = "VAEEncode"
     inputs: Inputs = None
@@ -464,6 +577,12 @@ class VAEEncode(NodeBody):
             raise TypeError
 
         return cls(inputs=VAEEncode.Inputs.make(image=image, vae=vae))
+
+    @classmethod
+    def set(cls, data: dict[str, Any]):
+        if data["class_type"] != "VAEEncode":
+            raise ValueError
+        return cls(inputs=VAEEncode.Inputs.make())
 
 
 @dataclass
@@ -483,6 +602,13 @@ class LoadImage(NodeBody):
     def make(cls, image_name: str):
         return cls(inputs=LoadImage.Inputs.make(image_name=image_name))
 
+    @classmethod
+    def set(cls, data: dict[str, Any]):
+        if data["class_type"] != "LoadImage":
+            raise ValueError
+        data_inputs = data["inputs"]
+        return cls(inputs=LoadImage.Inputs.make(image_name=data_inputs["image"]))
+
 
 @dataclass
 class SaveImage(NodeBody):
@@ -491,8 +617,8 @@ class SaveImage(NodeBody):
         images: list[int | str] = field(default_factory=list)
 
         @classmethod
-        def make(cls, vaedec: NodeSkeleton):
-            return cls(images=[vaedec.nodeidx, 0])
+        def make(cls, vaedec: NodeSkeleton = None):
+            return cls(images=[vaedec.nodeidx, 0] if vaedec is not None else [])
 
     class_type: str = "SaveImage"
     inputs: Inputs = None
@@ -504,6 +630,12 @@ class SaveImage(NodeBody):
 
         return cls(inputs=SaveImage.Inputs.make(vaedec=vaedec))
 
+    @classmethod
+    def set(cls, data: dict[str, Any]):
+        if data["class_type"] != "SaveImage":
+            raise ValueError
+        return cls(inputs=SaveImage.Inputs.make())
+
 
 @dataclass
 class PreviewImage(NodeBody):
@@ -512,8 +644,8 @@ class PreviewImage(NodeBody):
         images: list[int | str] = field(default_factory=list)
 
         @classmethod
-        def make(cls, vaedec: NodeSkeleton):
-            return cls(images=[vaedec.nodeidx, 0])
+        def make(cls, vaedec: NodeSkeleton = None):
+            return cls(images=[vaedec.nodeidx, 0] if vaedec is not None else [])
 
     class_type: str = "PreviewImage"
     inputs: Inputs = None
@@ -524,6 +656,12 @@ class PreviewImage(NodeBody):
             raise TypeError
 
         return cls(inputs=PreviewImage.Inputs.make(vaedec=vaedec))
+
+    @classmethod
+    def set(cls, data: dict[str, Any]):
+        if data["class_type"] != "PreviewImage":
+            raise ValueError
+        return cls(inputs=PreviewImage.Inputs.make())
 
 
 class WorkFlow:
@@ -575,6 +713,48 @@ class WorkFlow:
             d.update(node.todict())
         return d
 
+    @classmethod
+    def fromdict(cls, data: dict[str, dict[str, Any]]):
+        """
+        dict から生成
+
+        Args:
+            data (dict[str, dict[str, Any]]): dict
+        """
+        obj = cls()
+
+        for idx, node_skeleton in data.items():
+            class_type: str = node_skeleton.get("class_type")
+            if class_type == "CheckpointLoaderSimple":
+                obj.add(NodeSkeleton(int(idx), CheckpointLoaderSimple.set(node_skeleton)))
+            elif class_type == "EmptyLatentImage":
+                obj.add(NodeSkeleton(int(idx), EmptyLatentImage.set(node_skeleton)))
+            elif class_type == "CLIPTextEncode":
+                obj.add(NodeSkeleton(int(idx), CLIPTextEncode.set(node_skeleton)))
+            elif class_type == "LatentUpscale":
+                obj.add(NodeSkeleton(int(idx), LatentUpscale.set(node_skeleton)))
+            elif class_type == "LatentUpscaleBy":
+                obj.add(NodeSkeleton(int(idx), LatentUpscaleBy.set(node_skeleton)))
+            elif class_type == "KSampler":
+                obj.add(NodeSkeleton(int(idx), KSampler.set(node_skeleton)))
+            elif class_type == "KSamplerAdvanced":
+                obj.add(NodeSkeleton(int(idx), KSamplerAdvanced.set(node_skeleton)))
+            elif class_type == "VAELoader":
+                obj.add(NodeSkeleton(int(idx), VAELoader.set(node_skeleton)))
+            elif class_type == "VAEDecode":
+                obj.add(NodeSkeleton(int(idx), VAEDecode.set(node_skeleton)))
+            elif class_type == "VAEEncode":
+                obj.add(NodeSkeleton(int(idx), VAEEncode.set(node_skeleton)))
+            elif class_type == "LoadImage":
+                obj.add(NodeSkeleton(int(idx), LoadImage.set(node_skeleton)))
+            elif class_type == "SaveImage":
+                obj.add(NodeSkeleton(int(idx), SaveImage.set(node_skeleton)))
+            elif class_type == "PreviewImage":
+                obj.add(NodeSkeleton(int(idx), PreviewImage.set(node_skeleton)))
+            else:
+                print(f"Invalid class_type: {class_type}")
+        return obj
+
 
 class Txt2ImgWorkFlow(WorkFlow):
     """
@@ -583,19 +763,32 @@ class Txt2ImgWorkFlow(WorkFlow):
 
     def __init__(
         self,
-        ckpt_name: str,
-        width: int,
-        height: int,
-        batch_size: int,
-        pos_prompt: str,
-        neg_prompt: str,
-        seed: int,
-        steps: int,
+        ckpt_name: str = None,
+        width: int = None,
+        height: int = None,
+        batch_size: int = None,
+        pos_prompt: str = None,
+        neg_prompt: str = None,
+        seed: int = None,
+        steps: int = None,
     ):
         """
         コンストラクタ
         """
         super().__init__()
+
+        if (
+            ckpt_name is None
+            or width is None
+            or height is None
+            or batch_size is None
+            or pos_prompt is None
+            or neg_prompt is None
+            or seed is None
+            or steps is None
+        ):
+            return
+
         self.add(NodeSkeleton(1, CheckpointLoaderSimple.make(ckpt_name=ckpt_name)))
         self.add(
             NodeSkeleton(
@@ -623,3 +816,47 @@ class Txt2ImgWorkFlow(WorkFlow):
         )
         self.add(NodeSkeleton(6, VAEDecode.make(sampler=self.node_of(5), vae=self.node_of(1))))
         self.add(NodeSkeleton(7, PreviewImage.make(vaedec=self.node_of(6))))
+
+    @property
+    def positive_prompt(self) -> str:
+        return cast(CLIPTextEncode.Inputs, self.node_of(3).body.inputs).text
+
+    @property
+    def negative_prompt(self) -> str:
+        return cast(CLIPTextEncode.Inputs, self.node_of(4).body.inputs).text
+
+    @property
+    def steps(self) -> int:
+        return cast(KSampler.Inputs, self.node_of(5).body.inputs).steps
+
+    @property
+    def sampler(self) -> str:
+        return cast(KSampler.Inputs, self.node_of(5).body.inputs).sampler_name
+
+    @property
+    def scheduler(self) -> str:
+        return cast(KSampler.Inputs, self.node_of(5).body.inputs).scheduler
+
+    @property
+    def cfg_scale(self) -> float:
+        return cast(KSampler.Inputs, self.node_of(5).body.inputs).cfg
+
+    @property
+    def seed(self) -> int:
+        return cast(KSampler.Inputs, self.node_of(5).body.inputs).seed
+
+    @property
+    def width(self) -> int:
+        return cast(EmptyLatentImage.Inputs, self.node_of(2).body.inputs).width
+
+    @property
+    def height(self) -> int:
+        return cast(EmptyLatentImage.Inputs, self.node_of(2).body.inputs).height
+
+    @property
+    def model_name(self) -> str:
+        return cast(CheckpointLoaderSimple.Inputs, self.node_of(1).body.inputs).ckpt_name
+
+    @property
+    def clip_skip(self) -> int:
+        return 0

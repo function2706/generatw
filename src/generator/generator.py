@@ -30,7 +30,7 @@ class HasCommonMembers(Protocol):
     Generic な Stats が 共通メンバを持つことを伝えるためのクラス
     """
 
-    # var: int <- ここで共通メンバ変数の存在を通告することもできる
+    progress: float
 
     def refresh(self) -> None: ...
     def todict(self) -> dict[str, Any]: ...
@@ -206,7 +206,6 @@ class Generator(ABC, Generic[ProgressResp]):
         pass
 
     @property
-    @abstractmethod
     def crnt_progress(self) -> float:
         """
         現在のタスクの進捗度
@@ -214,15 +213,26 @@ class Generator(ABC, Generic[ProgressResp]):
         Returns:
             float: 現在のタスクの進捗度
         """
-        pass
+        return self.progress.progress if self.progress is not None else 0
 
-    def make_filepath(self, picinfo: PicInfo) -> Path:
+    @property
+    def crnt_dst(self) -> str:
+        """
+        現在のタスクの宛先
+
+        Returns:
+            str: 現在のタスクの宛先
+        """
+        return self.crnt_task.dst_addr + ":" + self.crnt_task.dst_port
+
+    def make_filepath(self, picinfo: PicInfo, idx: int) -> Path:
         """
         PicInfoからファイルパスを生成する\n
         ファイル名は"YYYYMMDDhhmmss-<seed>.png"
 
         Args:
             picinfo (PicInfo): PicInfo
+            idx (int): 同バッチ内インデックス(同ファイル名による上書き防止のため)
 
         Returns:
             Path: ファイルパス
@@ -233,7 +243,7 @@ class Generator(ABC, Generic[ProgressResp]):
 
         dirpath = self.master.pics_dir_path / Path(dirname_by_prompts(pos_prompt, neg_prompt))
         now = datetime.now().strftime("%Y%m%d%H%M%S")
-        filename = Path(f"{now}-{seed}.png")
+        filename = Path(f"{now}-{seed}-{idx}.png")
         return dirpath / filename
 
     def save_images(self, imglist: list[tuple[ImageFile.ImageFile, PicInfo]]) -> None:
@@ -249,13 +259,13 @@ class Generator(ABC, Generic[ProgressResp]):
         if not imglist:
             return
 
-        for imgtuple in imglist:
+        for idx, imgtuple in enumerate(imglist):
             image = imgtuple[0]
             picinfo = imgtuple[1]
             if self.master.crnt_gui_configs.print_picinfo:
                 dump_json(picinfo.todict(), "picinfo")
 
-            picpath = self.make_filepath(picinfo)
+            picpath = self.make_filepath(picinfo, idx)
             if picpath.parent and not picpath.parent.exists():
                 # 親ディレクトリが存在しない場合は作成する
                 picpath.parent.mkdir(parents=True, exist_ok=True)

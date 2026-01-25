@@ -14,7 +14,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageTk
 
 from common.classes import PicStats, TaskBlueprint
 from common.functions import dump_json
-from common.interfaces import MasterIF
+from common.interfaces import BackEnd, MasterIF
 
 
 @dataclass(frozen=True)
@@ -357,8 +357,21 @@ class Displayer:
                         self.sd_exterior_config_frame, "IPアドレス", 0, 0, 16, "127.0.0.1", "w"
                     )
                     # テキストボックス(ポート)
+                    type = owner.super_owner.super_owner.master.backend_type
                     self.port_entry = owner.super_owner.super_owner.put_textbox(
-                        self.sd_exterior_config_frame, "ポート", 0, 2, 6, str(7860), "w"
+                        self.sd_exterior_config_frame,
+                        "ポート",
+                        0,
+                        2,
+                        6,
+                        str(
+                            7860
+                            if type == BackEnd.a1111
+                            else 8188
+                            if type == BackEnd.comfy_ui
+                            else 0
+                        ),
+                        "w",
                     )
 
             def __init__(self, owner: Displayer.ConfigWindow):

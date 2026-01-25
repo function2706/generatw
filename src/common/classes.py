@@ -123,17 +123,17 @@ class PicInfo:
             PngImagePlugin.PngInfo: PngInfo
         """
         info = PngImagePlugin.PngInfo()
-        info.add_text("prompt", self.positive_prompt)
+        info.add_text("positive_prompt", self.positive_prompt)
         info.add_text("negative_prompt", self.negative_prompt)
         info.add_text("steps", str(self.steps))
         info.add_text("sampler", self.sampler)
-        info.add_text("schedule_type", self.scheduler)
+        info.add_text("scheduler", self.scheduler)
         info.add_text("cfg_scale", str(self.cfg_scale))
         info.add_text("seed", str(self.seed))
         info.add_text("width", str(self.width))
         info.add_text("height", str(self.height))
-        info.add_text("sd_model_name", self.model_name)
-        info.add_text("sd_model_hash", self.model_hash)
+        info.add_text("model_name", self.model_name)
+        info.add_text("model_hash", self.model_hash)
         info.add_text("clip_skip", str(self.clip_skip))
         return info
 
