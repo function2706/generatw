@@ -15,3 +15,7 @@
 ・モデル名を情報に表示
 ・ClipSkipノードをワークフローに追加：CLIPSetLastLayer？
 ・workflowの[""]を.get("")に、set()のclass_typeチェックをcls.class_typeに
+・NO IMAGEの状態で画像ができた際の再表示抽選
+　→mainループで更新を検知しようと思うと, 再表示が毎回かかって閉じたりアンフォーカスできなくなる
+　→updateはラベルの更新だけ、pic_labelインスタンスはPicWindow自体が持つようにする
+　→描画と更新をより分離

@@ -29,15 +29,6 @@ class Consts:
     not_available_text: str = "-"
 
 
-@dataclass
-class Event:
-    """
-    イベントフラグ
-    """
-
-    outputting_noimage = threading.Event()  # NO IMAGE 表示中
-
-
 class TipLabel:
     """
     Label とそれに付随する Tip を構築するクラス\n
@@ -723,6 +714,14 @@ class Displayer:
         画像ウィンドウ
         """
 
+        @dataclass
+        class Event:
+            """
+            イベントフラグ
+            """
+
+            outputting_noimage = threading.Event()  # NO IMAGE 表示中
+
         class CursorFrame:
             """
             画像表示フレーム
@@ -789,7 +788,7 @@ class Displayer:
                 )
                 self.remove_button.grid(row=0, column=1, padx=6, pady=6, sticky="wes")
 
-        def __init__(self, owner: Displayer, fix_position: bool = False):
+        def __init__(self, owner: Displayer):
             """
             画像ウィンドウコンストラクタ
 
@@ -799,22 +798,161 @@ class Displayer:
             """
             self.super_owner = owner
 
+            self.pic_window = None
+            self.cursor_frame = None
+            self.eval_frame = None
+            self.event = Displayer.PicWindow.Event()
+            self.noimage_img: ImageTk.PhotoImage = None
+
+        def construct(self, fix_position=False) -> None:
+            """
+            画像ウィンドウを構築する\n
+            すでに開いている場合は何もしない
+            """
+            if self.existed() and self.pic_window:
+                return
+
             self.pic_window = tkinter.Toplevel(self.super_owner.master.root)
             if fix_position:
                 self.pic_window.geometry(
                     (
-                        f"-{owner.config_window_x + owner.config_window_width + 50}"
-                        f"+{owner.config_window_y}"
+                        f"-{
+                            self.super_owner.config_window_x
+                            + self.super_owner.config_window_width
+                            + 50
+                        }"
+                        f"+{self.super_owner.config_window_y}"
                     )
                 )
             self.pic_window.title("picmaker - 画像")
-            self.pic_window.protocol("WM_DELETE_WINDOW", self.super_owner.destroy_pic_window)
+            self.pic_window.protocol("WM_DELETE_WINDOW", self.destroy)
 
             self.main_frame = ttk.Frame(self.pic_window, padding=5)
             self.main_frame.grid(row=0, column=0, sticky="nsew")
 
             self.cursor_frame = self.CursorFrame(self)
             self.eval_frame = self.EvalFrame(self)
+
+        def destroy(self) -> None:
+            """
+            画像ウィンドウのクローズ時のハンドラ
+            """
+            if self.existed():
+                self.pic_window.destroy()
+            self.pic_window = None
+
+        def existed(self) -> bool:
+            """
+            画像ウィンドウが開かれているか
+
+            Returns:
+                bool: True: 開かれている, False: 開かれていない or TclError 例外発生
+            """
+            if self.pic_window is None:
+                return False
+            try:
+                return bool(self.pic_window.winfo_exists())
+            except TclError:
+                return False
+
+        def update(self, picstats: PicStats = None) -> None:
+            """
+            画像ウィンドウを指定の PicStats で更新する\n
+            picstats が None の場合は NO IMAGE で更新する
+
+            Args:
+                picstats (PicStats): 更新予定の PicStats
+            """
+            if not self.existed():
+                return
+
+            if picstats is not None:
+                image = Image.open(picstats.path)
+                tk_img = ImageTk.PhotoImage(image)
+                self.cursor_frame.pic_label.configure(image=tk_img)
+                self.cursor_frame.pic_label_image = tk_img
+                self.event.outputting_noimage.clear()
+                self.switch_button_state(True)
+            else:
+                self.set_no_image()
+                self.cursor_frame.pic_label.configure(image=self.noimage_img)
+                self.cursor_frame.pic_label_image = self.noimage_img
+                self.event.outputting_noimage.set()
+                self.switch_button_state(False)
+
+        def set_no_image(self) -> None:
+            """
+            表示すべき画像がない場合の画像を作成し, インスタンス変数にセットする\n
+            すでに同サイズの作成済みのイメージが存在する場合は新たに生成しない\n
+            グレースケールのチェックパターンに"NO IMAGE"\n
+            幅と高さは自動的に 8 の倍数に切り下げられる(Stable Diffusion の仕様に準拠)
+            """
+            width = self.super_owner.sd_width & -8
+            height = self.super_owner.sd_height & -8
+            if self.noimage_img is not None and (
+                self.noimage_img.width() == width or self.noimage_img.height() == height
+            ):
+                return
+
+            light = "#e0e0e0"
+            dark = "#c0c0c0"
+            text_color = "#444444"
+            img = Image.new("RGB", (width, height), light)
+            draw = ImageDraw.Draw(img)
+
+            cell = max(8, min(width, height) // 20)
+            for y in range(0, height, cell):
+                for x in range(0, width, cell):
+                    if (x // cell + y // cell) % 2 == 0:
+                        draw.rectangle((x, y, x + cell, y + cell), fill=light)
+                    else:
+                        draw.rectangle((x, y, x + cell, y + cell), fill=dark)
+
+            text = "NO IMAGE"
+            fallback_font = ImageFont.load_default()
+            font = fallback_font
+            max_font_size = int(height * 0.15)
+            font_size = max_font_size
+            while font_size > 5:
+                try:
+                    font = ImageFont.truetype("arial.ttf", font_size)
+                except Exception:
+                    font = fallback_font
+                bbox = draw.textbbox((0, 0), text, font=font)
+                text_w = bbox[2] - bbox[0]
+                if text_w <= width * 0.8:
+                    break
+                font_size -= 2
+
+            bbox = draw.textbbox((0, 0), text, font=font)
+            text_w = bbox[2] - bbox[0]
+            text_h = bbox[3] - bbox[1]
+            text_x = (width - text_w) // 2
+            text_y = (height - text_h) // 2
+            draw.text((text_x, text_y), text, fill=text_color, font=font)
+
+            self.noimage_img = ImageTk.PhotoImage(img)
+
+        def switch_button_state(self, toggle: bool) -> None:
+            """
+            画像ウィンドウ上のボタンの有効/無効(グレーアウト)を切り替える
+
+            Args:
+                toggle (bool): True で有効, False で無効
+            """
+            if not self.existed():
+                return
+
+            if toggle:
+                self.cursor_frame.next_button.configure(state="normal")
+                self.cursor_frame.prev_button.configure(state="normal")
+                self.eval_frame.upscale_button.configure(state="normal")
+                self.eval_frame.remove_button.configure(state="normal")
+            else:
+                self.cursor_frame.next_button.configure(state="disabled")
+                self.cursor_frame.prev_button.configure(state="disabled")
+                self.eval_frame.upscale_button.configure(state="disabled")
+                self.eval_frame.remove_button.configure(state="disabled")
 
     def __init__(self, master: MasterIF):
         """
@@ -828,11 +966,8 @@ class Displayer:
         self.config_window = self.ConfigWindow(self)
         self.info_window: Displayer.InfoWindow = None
         self.construct_info_window()
-        self.pic_window: Displayer.PicWindow = None
+        self.pic_window = self.PicWindow(self)
         self.switch_output_button_state(False)
-
-        self.noimage_img = ImageTk.PhotoImage(self.create_no_image_placeholder())
-        self.event = Event()
 
     def put_textbox(
         self, frame: Frame, name: str, row: int, col: int, width: int, default: str, sticky: str
@@ -901,7 +1036,7 @@ class Displayer:
         """
         設定ウィンドウのクローズ時のハンドラ
         """
-        self.destroy_pic_window()
+        self.pic_window.destroy()
         self.destroy_info_window()
         if self.is_config_window_open():
             self.master.root.destroy()
@@ -925,7 +1060,7 @@ class Displayer:
         Returns:
             bool: True: 開かれている, False: 開かれていない or TclError 例外発生
         """
-        if self.info_window is None:
+        if self.info_window is None or self.info_window.info_window is None:
             return False
         try:
             return bool(self.info_window.info_window.winfo_exists())
@@ -938,7 +1073,7 @@ class Displayer:
         """
         if self.is_info_window_open():
             self.info_window.info_window.destroy()
-        self.info_window = None
+        self.info_window.info_window = None
 
     def update_appinfo_frame(self) -> None:
         """
@@ -1112,131 +1247,22 @@ class Displayer:
         self.update_appinfo_frame()
         self.update_taskinfo_frame()
 
-    def construct_pic_window(self) -> None:
-        """
-        画像ウィンドウを構築する\n
-        すでに開いている場合は最前面に表示のみ行う
-        """
-        if self.is_pic_window_open() and self.pic_window:
-            self.pic_window.pic_window.deiconify()
-            self.pic_window.pic_window.lift()
-            return
-
-        self.pic_window = self.PicWindow(self, fix_position=True)
-
-    def is_pic_window_open(self) -> bool:
-        """
-        画像ウィンドウが開かれているか
-
-        Returns:
-            bool: True: 開かれている, False: 開かれていない or TclError 例外発生
-        """
-        if self.pic_window is None:
-            return False
-        try:
-            return bool(self.pic_window.pic_window.winfo_exists())
-        except TclError:
-            return False
-
-    def destroy_pic_window(self) -> None:
-        """
-        画像ウィンドウのクローズ時のハンドラ
-        """
-        if self.is_pic_window_open():
-            self.pic_window.pic_window.destroy()
-        self.pic_window = None
-
-    def update_pic_window(self, picstats: PicStats) -> None:
+    def update_pic_window(self, picstats: PicStats = None) -> None:
         """
         画像ウィンドウを指定の PicStats で更新する\n
-        picstats が None の場合は何もしない
+        picstats が None の場合は NO IMAGE で更新する\n
+        設定ウィンドウと情報ウィンドウの更新も行う
 
         Args:
             picstats (PicStats): 更新予定の PicStats
         """
-        if not picstats:
-            return
-
-        image = Image.open(picstats.path)
-        tk_img = ImageTk.PhotoImage(image)
-        self.construct_pic_window()
-        self.pic_window.cursor_frame.pic_label.configure(image=tk_img)
-        self.pic_window.cursor_frame.pic_label_image = tk_img
-
-        self.switch_output_button_state(True)
-        self.switch_picwindow_button_state(True)
-
-        self.update_picinfo_tab()
-        self.event.outputting_noimage.clear()
-
-    def create_no_image_placeholder(self) -> Image:
-        """
-        表示すべき画像がない場合の画像を作成する\n
-        グレースケールのチェックパターンに"NO IMAGE"\n
-        幅と高さは自動的に 8 の倍数に切り下げられる(Stable Diffusion の仕様に準拠)
-
-        Returns:
-            Image: 画像オブジェクト
-        """
-        light = "#e0e0e0"
-        dark = "#c0c0c0"
-        text_color = "#444444"
-        width = self.sd_width & -8
-        height = self.sd_height & -8
-        img = Image.new("RGB", (width, height), light)
-        draw = ImageDraw.Draw(img)
-
-        cell = max(8, min(width, height) // 20)
-        for y in range(0, height, cell):
-            for x in range(0, width, cell):
-                if (x // cell + y // cell) % 2 == 0:
-                    draw.rectangle((x, y, x + cell, y + cell), fill=light)
-                else:
-                    draw.rectangle((x, y, x + cell, y + cell), fill=dark)
-
-        text = "NO IMAGE"
-        fallback_font = ImageFont.load_default()
-        font = fallback_font
-        max_font_size = int(height * 0.15)
-        font_size = max_font_size
-        while font_size > 5:
-            try:
-                font = ImageFont.truetype("arial.ttf", font_size)
-            except Exception:
-                font = fallback_font
-            bbox = draw.textbbox((0, 0), text, font=font)
-            text_w = bbox[2] - bbox[0]
-            if text_w <= width * 0.8:
-                break
-            font_size -= 2
-
-        bbox = draw.textbbox((0, 0), text, font=font)
-        text_w = bbox[2] - bbox[0]
-        text_h = bbox[3] - bbox[1]
-        text_x = (width - text_w) // 2
-        text_y = (height - text_h) // 2
-        draw.text((text_x, text_y), text, fill=text_color, font=font)
-
-        return img
-
-    def put_no_image_placeholder(self) -> None:
-        """
-        表示すべき画像がない場合の画像を画像ラベルに表示する\n
-        幅と高さは設定に依存, 生成済みの画像と設定値のサイズが異なる場合は再生成
-        """
-        width = self.sd_width & -8
-        height = self.sd_height & -8
-        if self.noimage_img.width() != width or self.noimage_img.height() != height:
-            self.noimage_img = ImageTk.PhotoImage(self.create_no_image_placeholder())
-
-        self.construct_pic_window()
-        self.pic_window.cursor_frame.pic_label.configure(image=self.noimage_img)
-        self.pic_window.cursor_frame.pic_label_image = self.noimage_img
-        self.switch_output_button_state(False)
-        self.switch_picwindow_button_state(False)
-
-        self.update_picinfo_tab(reset=True)
-        self.event.outputting_noimage.set()
+        self.pic_window.update(picstats)
+        if picstats is not None:
+            self.switch_output_button_state(True)
+            self.update_picinfo_tab()
+        else:
+            self.switch_output_button_state(False)
+            self.update_picinfo_tab(reset=True)
 
     def switch_output_button_state(self, toggle: bool) -> None:
         """
@@ -1252,27 +1278,6 @@ class Displayer:
             self.config_window.main_tab_obj.button_frame.output_button.configure(state="normal")
         else:
             self.config_window.main_tab_obj.button_frame.output_button.configure(state="disabled")
-
-    def switch_picwindow_button_state(self, toggle: bool) -> None:
-        """
-        画像ウィンドウ上のボタンの有効/無効(グレーアウト)を切り替える
-
-        Args:
-            toggle (bool): True で有効, False で無効
-        """
-        if not self.is_pic_window_open():
-            return
-
-        if toggle:
-            self.pic_window.cursor_frame.next_button.configure(state="normal")
-            self.pic_window.cursor_frame.prev_button.configure(state="normal")
-            self.pic_window.eval_frame.upscale_button.configure(state="normal")
-            self.pic_window.eval_frame.remove_button.configure(state="normal")
-        else:
-            self.pic_window.cursor_frame.next_button.configure(state="disabled")
-            self.pic_window.cursor_frame.prev_button.configure(state="disabled")
-            self.pic_window.eval_frame.upscale_button.configure(state="disabled")
-            self.pic_window.eval_frame.remove_button.configure(state="disabled")
 
     def on_open_pic_window(self) -> None:
         """

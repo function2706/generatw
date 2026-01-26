@@ -245,7 +245,7 @@ class Master(MasterIF):
         self.archiver.remove_crnt_picstats()
         if self.archiver.crnt_picstats is None:
             # 削除後に表示すべき画像がない
-            self.displayer.put_no_image_placeholder()
+            self.displayer.update_pic_window()
         else:
             self.archiver.warp_picstats(self.archiver.crnt_picstats.dir)
             self.displayer.update_pic_window(self.archiver.crnt_picstats)
@@ -303,9 +303,10 @@ class Master(MasterIF):
         存在しない場合は NO IMAGE を表示する
         """
         piclist = self.archiver.get_picstats_list(self.parser.get_crnt_picstats_dir())
+        self.displayer.pic_window.construct()
         if not piclist:
             # 記録中ステータスに紐づくディレクトリ内に画像がない
-            self.displayer.put_no_image_placeholder()
+            self.displayer.update_pic_window()
             return
 
         self.archiver.warp_picstats(self.parser.get_crnt_picstats_dir())
@@ -324,7 +325,7 @@ class Master(MasterIF):
         Tkinter メインループにて周期的に呼び出される処理
         """
         try:
-            if self.displayer.event.outputting_noimage.is_set():
+            if self.displayer.pic_window.event.outputting_noimage.is_set():
                 # NO IMAGE 表示中は記録中ステータスに沿った画像の表示を常に試みる
                 self.refresh_pic_randomly()
 
@@ -333,7 +334,7 @@ class Master(MasterIF):
                 return
             elif not self.parser.is_stats_enough_for_prompt():
                 # 記録中ステータスが生成に不十分 i.e. ステータスに紐づくディレクトリがない
-                self.displayer.put_no_image_placeholder()
+                self.displayer.update_pic_window()
                 return
 
             self.run_oneshot()
