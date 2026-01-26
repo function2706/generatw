@@ -13,7 +13,7 @@ from typing import Any
 from archiver import Archiver
 from common.classes import PicStats, TaskBlueprint
 from common.interfaces import BackEnd, CrntGUIConfigs, FrontEnd, MasterIF
-from displayer import Displayer
+from displayer.displayer import Displayer
 from generator.a1111_generator import A1111Generator
 from generator.comfyui_generator import ComfyUIGenerator
 
@@ -69,7 +69,7 @@ class Master(MasterIF):
 
         def worker():
             self.generator.join()
-            self.displayer.destroy_config_window()
+            self.displayer.destroy()
 
         self.root.after(100, worker())
 
@@ -339,5 +339,5 @@ class Master(MasterIF):
 
             self.run_oneshot()
         finally:
-            self.displayer.update_info_window()
+            self.displayer.info_window.update()
             self.root.after(300, self.run_main)
