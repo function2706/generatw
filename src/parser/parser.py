@@ -146,7 +146,7 @@ class Parser(ABC, Generic[Stats]):
             Stats: 新たなステータス
         """
         if PMConsts.charaname_substr_debug in self.crnt_clipboard:
-            return self.make_dummy_stats()
+            return self.make_dummy_stats(name=self.crnt_clipboard)
 
         new_stats = copy.deepcopy(self.crnt_stats)
         new_stats.refresh(self.crnt_clipboard)
