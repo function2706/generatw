@@ -12,7 +12,7 @@ from tkinter import TclError, ttk
 from PIL import Image, ImageDraw, ImageFont, ImageTk
 
 from common.classes import PicStats
-from displayer.displayer import Displayer
+from common.interfaces import DisplayerIF
 
 
 @dataclass
@@ -91,7 +91,7 @@ class PicWindow:
     画像ウィンドウ
     """
 
-    def __init__(self, owner: Displayer):
+    def __init__(self, owner: DisplayerIF):
         """
         画像ウィンドウコンストラクタ
         Args:

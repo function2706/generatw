@@ -9,7 +9,7 @@ from tkinter import Frame, TclError, ttk
 
 from common.classes import PicStats
 from common.functions import dump_json
-from common.interfaces import BackEnd, MasterIF
+from common.interfaces import BackEnd, DisplayerIF, MasterIF
 from displayer.info_window import InfoWindow
 from displayer.pic_window import PicWindow
 
@@ -343,7 +343,7 @@ class MainWindow:
         self.debug_tab_obj = DebugTab(self)
 
 
-class Displayer:
+class Displayer(DisplayerIF):
     """
     GUI 管理クラス
     """
@@ -359,7 +359,7 @@ class Displayer:
 
         self.main_window = MainWindow(self)
         self.info_window = InfoWindow(self)
-        self.info_window.construct()
+        self.info_window.construct(fix_position=True)
         self.pic_window = PicWindow(self)
         self.switch_output_button_state(False)
 

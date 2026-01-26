@@ -10,7 +10,7 @@ from tkinter import TclError, font, ttk
 from typing import Any
 
 from common.classes import PicStats, TaskBlueprint
-from displayer.displayer import Displayer
+from common.interfaces import DisplayerIF
 
 
 @dataclass(frozen=True)
@@ -379,12 +379,12 @@ class InfoWindow:
     情報ウィンドウ
     """
 
-    def __init__(self, owner: Displayer):
+    def __init__(self, owner: DisplayerIF):
         """
         情報ウィンドウコンストラクタ
 
         Args:
-            owner (Displayer): Display インスタンス
+            owner (DisplayerIF): Display インスタンス
             fix_position (bool, optional): 表示位置を固定するか
         """
         self.super_owner = owner
