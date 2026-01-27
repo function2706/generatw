@@ -11,7 +11,4 @@
 ・タスク情報のTreeView化
 　→タスクの種類も記載
 　→タスクごとに記載する情報はどうする？すべて書いておく？
-・ComfyUI対応(generator)
 ・モデル名を情報に表示
-・ClipSkipノードをワークフローに追加：CLIPSetLastLayer？
-・workflowの[""]を.get("")に、set()のclass_typeチェックをcls.class_typeに

@@ -286,25 +286,21 @@ class Generator(ABC, Generic[ProgressResp]):
                 # ここでは実行中タスクを解除してはいけない
                 continue
 
-            try:
-                self.crnt_task = self.tasks.popleft()
+            self.crnt_task = self.tasks.popleft()
 
-                imglist = self.request_generate()
-                if not imglist:
-                    if self.event.interrupted.is_set():
-                        # 生成中断
-                        print("Request interrupted.")
-                        self.event.interrupted.clear()
-                    else:
-                        # 生成失敗
-                        print("Request failed, API response without images.")
-                    continue
+            imglist = self.request_generate()
+            if not imglist:
+                if self.event.interrupted.is_set():
+                    # 生成中断
+                    print("Request interrupted.")
+                    self.event.interrupted.clear()
                 else:
-                    self.save_images(imglist)
-            except Exception as e:
-                print(f"Any exception occurred in {threading.current_thread().name}: ", e)
-            finally:
-                self.crnt_task = None
+                    # 生成失敗
+                    print("Request failed, API response without images.")
+                continue
+            else:
+                self.save_images(imglist)
+            self.crnt_task = None
 
     def instructor(self) -> None:
         """

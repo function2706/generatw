@@ -48,11 +48,13 @@ class CheckpointLoaderSimple(NodeBody):
         return cls(inputs=CheckpointLoaderSimple.Inputs.make(ckpt_name=ckpt_name))
 
     @classmethod
-    def set(cls, data: dict[str, Any]):
-        if data["class_type"] != "CheckpointLoaderSimple":
+    def set(cls, data: dict[str, dict[str, Any]]):
+        if data.get("class_type") != cls.class_type:
             raise ValueError
-        data_inputs = data["inputs"]
-        return cls(inputs=CheckpointLoaderSimple.Inputs.make(ckpt_name=data_inputs["ckpt_name"]))
+        data_inputs = data.get("inputs")
+        return cls(
+            inputs=CheckpointLoaderSimple.Inputs.make(ckpt_name=data_inputs.get("ckpt_name"))
+        )
 
 
 @dataclass
@@ -77,15 +79,55 @@ class EmptyLatentImage(NodeBody):
         )
 
     @classmethod
-    def set(cls, data: dict[str, Any]):
-        if data["class_type"] != "EmptyLatentImage":
+    def set(cls, data: dict[str, dict[str, Any]]):
+        if data.get("class_type") != cls.class_type:
             raise ValueError
-        data_inputs = data["inputs"]
+        data_inputs = data.get("inputs")
         return cls(
             inputs=EmptyLatentImage.Inputs.make(
-                width=int(data_inputs["width"]),
-                height=int(data_inputs["height"]),
-                batch_size=int(data_inputs["batch_size"]),
+                width=int(data_inputs.get("width")),
+                height=int(data_inputs.get("height")),
+                batch_size=int(data_inputs.get("batch_size")),
+            )
+        )
+
+
+@dataclass
+class CLIPSetLastLayer(NodeBody):
+    @dataclass
+    class Inputs:
+        stop_at_clip_layer: int = ""
+        clip: list[int | str] = field(default_factory=list)
+
+        @classmethod
+        def make(cls, stop_at_clip_layer: str, loader: NodeSkeleton = None):
+            return cls(
+                stop_at_clip_layer=stop_at_clip_layer,
+                clip=[loader.nodeidx, 1] if loader is not None else [],
+            )
+
+    class_type: str = "CLIPSetLastLayer"
+    inputs: Inputs = None
+
+    @classmethod
+    def make(cls, stop_at_clip_layer: int, loader: NodeSkeleton):
+        if not isinstance(loader.body, CheckpointLoaderSimple):
+            raise TypeError
+
+        return cls(
+            inputs=CLIPSetLastLayer.Inputs.make(
+                stop_at_clip_layer=stop_at_clip_layer, loader=loader
+            )
+        )
+
+    @classmethod
+    def set(cls, data: dict[str, dict[str, Any]]):
+        if data.get("class_type") != cls.class_type:
+            raise ValueError
+        data_inputs = data.get("inputs")
+        return cls(
+            inputs=CLIPSetLastLayer.Inputs.make(
+                stop_at_clip_layer=int(data_inputs.get("stop_at_clip_layer"))
             )
         )
 
@@ -112,23 +154,19 @@ class CLIPTextEncode(NodeBody):
         return cls(inputs=CLIPTextEncode.Inputs.make(text=text, loader=loader))
 
     @classmethod
-    def set(cls, data: dict[str, Any]):
-        if data["class_type"] != "CLIPTextEncode":
+    def set(cls, data: dict[str, dict[str, Any]]):
+        if data.get("class_type") != cls.class_type:
             raise ValueError
-        data_inputs = data["inputs"]
-        return cls(
-            inputs=CLIPTextEncode.Inputs.make(
-                text=data_inputs["text"],
-            )
-        )
+        data_inputs = data.get("inputs")
+        return cls(inputs=CLIPTextEncode.Inputs.make(text=data_inputs.get("text")))
 
 
 class UpScaleMethod(Enum):
     nearest_exact = "nearest-exact"
-    nearest = "nearest"
     bilinear = "bilinear"
     area = "area"
     bicubic = "bicubic"
+    bislerp = "bislerp"
 
 
 @dataclass
@@ -184,16 +222,16 @@ class LatentUpscale(NodeBody):
         )
 
     @classmethod
-    def set(cls, data: dict[str, Any]):
-        if data["class_type"] != "LatentUpscale":
+    def set(cls, data: dict[str, dict[str, Any]]):
+        if data.get("class_type") != cls.class_type:
             raise ValueError
-        data_inputs = data["inputs"]
+        data_inputs = data.get("inputs")
         return cls(
             inputs=LatentUpscale.Inputs.make(
-                upscale_method=data_inputs["upscale_method"],
-                width=int(data_inputs["width"]),
-                height=int(data_inputs["height"]),
-                crop=data_inputs["crop"],
+                upscale_method=data_inputs.get("upscale_method"),
+                width=int(data_inputs.get("width")),
+                height=int(data_inputs.get("height")),
+                crop=data_inputs.get("crop"),
             )
         )
 
@@ -241,39 +279,75 @@ class LatentUpscaleBy(NodeBody):
         )
 
     @classmethod
-    def set(cls, data: dict[str, Any]):
-        if data["class_type"] != "LatentUpscaleBy":
+    def set(cls, data: dict[str, dict[str, Any]]):
+        if data.get("class_type") != cls.class_type:
             raise ValueError
-        data_inputs = data["inputs"]
+        data_inputs = data.get("inputs")
         return cls(
             inputs=LatentUpscaleBy.Inputs.make(
-                upscale_method=data_inputs["upscale_method"],
-                scale_by=float(data_inputs["scale_by"]),
+                upscale_method=data_inputs.get("upscale_method"),
+                scale_by=float(data_inputs.get("scale_by")),
             )
         )
 
 
 class SamplerName(Enum):
     euler = "euler"
+    euler_cfg_pp = "euler_cfg_pp"
     euler_ancestral = "euler_ancestral"
+    euler_ancestral_cfg_pp = "euler_ancestral_cfg_pp"
     heun = "heun"
-    lms = "lms"
-    ddim = "ddim"
+    heunpp2 = "heunpp2"
+    exp_heun_2_x0 = "exp_heun_2_x0"
+    exp_heun_2_x0_sde = "exp_heun_2_x0_sde"
     dpm_2 = "dpm_2"
     dpm_2_ancestral = "dpm_2_ancestral"
+    lms = "lms"
     dpm_fast = "dpm_fast"
     dpm_adaptive = "dpm_adaptive"
     dpmpp_2s_ancestral = "dpmpp_2s_ancestral"
+    dpmpp_2s_ancestral_cfg_pp = "dpmpp_2s_ancestral_cfg_pp"
+    dpmpp_sde = "dpmpp_sde"
+    dpmpp_sde_gpu = "dpmpp_sde_gpu"
     dpmpp_2m = "dpmpp_2m"
+    dpmpp_2m_cfg_pp = "dpmpp_2m_cfg_pp"
     dpmpp_2m_sde = "dpmpp_2m_sde"
+    dpmpp_2m_sde_gpu = "dpmpp_2m_sde_gpu"
+    dpmpp_2m_sde_heun = "dpmpp_2m_sde_heun"
+    dpmpp_2m_sde_heun_gpu = "dpmpp_2m_sde_heun_gpu"
     dpmpp_3m_sde = "dpmpp_3m_sde"
+    dpmpp_3m_sde_gpu = "dpmpp_3m_sde_gpu"
+    ddpm = "ddpm"
+    lcm = "lcm"
+    ipndm = "ipndm"
+    ipndm_v = "ipndm_v"
+    deis = "deis"
+    res_multistep = "res_multistep"
+    res_multistep_cfg_pp = "res_multistep_cfg_pp"
+    res_multistep_ancestral = "res_multistep_ancestral"
+    res_multistep_ancestral_cfg_pp = "res_multistep_ancestral_cfg_pp"
+    gradient_estimation = "gradient_estimation"
+    gradient_estimation_cfg_pp = "gradient_estimation_cfg_pp"
+    er_sde = "er_sde"
+    seeds_2 = "seeds_2"
+    seeds_3 = "seeds_3"
+    sa_solver = "sa_solver"
+    sa_solver_pece = "sa_solver_pece"
+    ddim = "ddim"
+    uni_pc = "uni_pc"
+    uni_pc_bh2 = "uni_pc_bh2"
 
 
 class SchedulerName(Enum):
-    normal = "normal"
-    karras = "karras"
     simple = "simple"
+    sgm_uniform = "sgm_uniform"
+    karras = "karras"
     exponential = "exponential"
+    ddim_uniform = "ddim_uniform"
+    beta = "beta"
+    normal = "normal"
+    linear_quadratic = "linear_quadratic"
+    kl_optimal = "kl_optimal"
 
 
 @dataclass
@@ -359,18 +433,18 @@ class KSampler(NodeBody):
         )
 
     @classmethod
-    def set(cls, data: dict[str, Any]):
-        if data["class_type"] != "KSampler":
+    def set(cls, data: dict[str, dict[str, Any]]):
+        if data.get("class_type") != cls.class_type:
             raise ValueError
-        data_inputs = data["inputs"]
+        data_inputs = data.get("inputs")
         return cls(
             inputs=KSampler.Inputs.make(
-                seed=int(data_inputs["seed"]),
-                steps=int(data_inputs["steps"]),
-                cfg=float(data_inputs["cfg"]),
-                denoise=float(data_inputs["denoise"]),
-                sampler_name=data_inputs["sampler_name"],
-                scheduler=data_inputs["scheduler"],
+                seed=int(data_inputs.get("seed")),
+                steps=int(data_inputs.get("steps")),
+                cfg=float(data_inputs.get("cfg")),
+                denoise=float(data_inputs.get("denoise")),
+                sampler_name=data_inputs.get("sampler_name"),
+                scheduler=data_inputs.get("scheduler"),
             )
         )
 
@@ -473,22 +547,22 @@ class KSamplerAdvanced(NodeBody):
         )
 
     @classmethod
-    def set(cls, data: dict[str, Any]):
-        if data["class_type"] != "KSamplerAdvanced":
+    def set(cls, data: dict[str, dict[str, Any]]):
+        if data.get("class_type") != cls.class_type:
             raise ValueError
-        data_inputs = data["inputs"]
+        data_inputs = data.get("inputs")
         return cls(
             inputs=KSamplerAdvanced.Inputs.make(
-                seed=int(data_inputs["seed"]),
-                steps=int(data_inputs["steps"]),
-                cfg=float(data_inputs["cfg"]),
-                sampler_name=data_inputs["sampler_name"],
-                scheduler=data_inputs["scheduler"],
-                start_at_step=int(data_inputs["start_at_step"]),
-                end_at_step=int(data_inputs["end_at_step"]),
-                add_noise=True if data_inputs["add_noise"] == "true" else False,
+                seed=int(data_inputs.get("seed")),
+                steps=int(data_inputs.get("steps")),
+                cfg=float(data_inputs.get("cfg")),
+                sampler_name=data_inputs.get("sampler_name"),
+                scheduler=data_inputs.get("scheduler"),
+                start_at_step=int(data_inputs.get("start_at_step")),
+                end_at_step=int(data_inputs.get("end_at_step")),
+                add_noise=True if data_inputs.get("add_noise") == "true" else False,
                 return_with_leftover_noise=True
-                if data_inputs["return_with_leftover_noise"] == "true"
+                if data_inputs.get("return_with_leftover_noise") == "true"
                 else False,
             )
         )
@@ -512,11 +586,11 @@ class VAELoader(NodeBody):
         return cls(inputs=VAELoader.Inputs.make(vae_name=vae_name))
 
     @classmethod
-    def set(cls, data: dict[str, Any]):
-        if data["class_type"] != "VAELoader":
+    def set(cls, data: dict[str, dict[str, Any]]):
+        if data.get("class_type") != cls.class_type:
             raise ValueError
-        data_inputs = data["inputs"]
-        return cls(inputs=VAELoader.Inputs.make(vae_name=data_inputs["vae_name"]))
+        data_inputs = data.get("inputs")
+        return cls(inputs=VAELoader.Inputs.make(vae_name=data_inputs.get("vae_name")))
 
 
 @dataclass
@@ -546,8 +620,8 @@ class VAEDecode(NodeBody):
         return cls(inputs=VAEDecode.Inputs.make(sampler=sampler, vae=vae))
 
     @classmethod
-    def set(cls, data: dict[str, Any]):
-        if data["class_type"] != "VAEDecode":
+    def set(cls, data: dict[str, dict[str, Any]]):
+        if data.get("class_type") != cls.class_type:
             raise ValueError
         return cls(inputs=VAEDecode.Inputs.make())
 
@@ -579,8 +653,8 @@ class VAEEncode(NodeBody):
         return cls(inputs=VAEEncode.Inputs.make(image=image, vae=vae))
 
     @classmethod
-    def set(cls, data: dict[str, Any]):
-        if data["class_type"] != "VAEEncode":
+    def set(cls, data: dict[str, dict[str, Any]]):
+        if data.get("class_type") != cls.class_type:
             raise ValueError
         return cls(inputs=VAEEncode.Inputs.make())
 
@@ -603,11 +677,11 @@ class LoadImage(NodeBody):
         return cls(inputs=LoadImage.Inputs.make(image_name=image_name))
 
     @classmethod
-    def set(cls, data: dict[str, Any]):
-        if data["class_type"] != "LoadImage":
+    def set(cls, data: dict[str, dict[str, Any]]):
+        if data.get("class_type") != cls.class_type:
             raise ValueError
-        data_inputs = data["inputs"]
-        return cls(inputs=LoadImage.Inputs.make(image_name=data_inputs["image"]))
+        data_inputs = data.get("inputs")
+        return cls(inputs=LoadImage.Inputs.make(image_name=data_inputs.get("image")))
 
 
 @dataclass
@@ -631,8 +705,8 @@ class SaveImage(NodeBody):
         return cls(inputs=SaveImage.Inputs.make(vaedec=vaedec))
 
     @classmethod
-    def set(cls, data: dict[str, Any]):
-        if data["class_type"] != "SaveImage":
+    def set(cls, data: dict[str, dict[str, Any]]):
+        if data.get("class_type") != cls.class_type:
             raise ValueError
         return cls(inputs=SaveImage.Inputs.make())
 
@@ -658,8 +732,8 @@ class PreviewImage(NodeBody):
         return cls(inputs=PreviewImage.Inputs.make(vaedec=vaedec))
 
     @classmethod
-    def set(cls, data: dict[str, Any]):
-        if data["class_type"] != "PreviewImage":
+    def set(cls, data: dict[str, dict[str, Any]]):
+        if data.get("class_type") != cls.class_type:
             raise ValueError
         return cls(inputs=PreviewImage.Inputs.make())
 
@@ -729,6 +803,8 @@ class WorkFlow:
                 obj.add(NodeSkeleton(int(idx), CheckpointLoaderSimple.set(node_skeleton)))
             elif class_type == "EmptyLatentImage":
                 obj.add(NodeSkeleton(int(idx), EmptyLatentImage.set(node_skeleton)))
+            elif class_type == "CLIPSetLastLayer":
+                obj.add(NodeSkeleton(int(idx), CLIPSetLastLayer.set(node_skeleton)))
             elif class_type == "CLIPTextEncode":
                 obj.add(NodeSkeleton(int(idx), CLIPTextEncode.set(node_skeleton)))
             elif class_type == "LatentUpscale":
@@ -777,6 +853,15 @@ class Txt2ImgWorkFlow(WorkFlow):
         """
         super().__init__()
 
+        self.ckpt_loader_idx = 1
+        self.empty_latent_idx = 2
+        self.clip_layer_setter_idx = 3
+        self.positive_clip_idx = 4
+        self.negatice_clip_idx = 5
+        self.sampler_idx = 6
+        self.vae_decoder_idx = 7
+        self.previewer_idx = 8
+
         if (
             ckpt_name is None
             or width is None
@@ -789,74 +874,110 @@ class Txt2ImgWorkFlow(WorkFlow):
         ):
             return
 
-        self.add(NodeSkeleton(1, CheckpointLoaderSimple.make(ckpt_name=ckpt_name)))
+        self.add(
+            NodeSkeleton(self.ckpt_loader_idx, CheckpointLoaderSimple.make(ckpt_name=ckpt_name))
+        )
         self.add(
             NodeSkeleton(
-                2, EmptyLatentImage.make(width=width, height=height, batch_size=batch_size)
+                self.empty_latent_idx,
+                EmptyLatentImage.make(width=width, height=height, batch_size=batch_size),
             )
         )
-        self.add(NodeSkeleton(3, CLIPTextEncode.make(text=pos_prompt, loader=self.node_of(1))))
-        self.add(NodeSkeleton(4, CLIPTextEncode.make(text=neg_prompt, loader=self.node_of(1))))
         self.add(
             NodeSkeleton(
-                5,
+                self.clip_layer_setter_idx,
+                CLIPSetLastLayer.make(
+                    stop_at_clip_layer=-2, loader=self.node_of(self.ckpt_loader_idx)
+                ),
+            )
+        )
+        self.add(
+            NodeSkeleton(
+                self.positive_clip_idx,
+                CLIPTextEncode.make(text=pos_prompt, loader=self.node_of(self.ckpt_loader_idx)),
+            )
+        )
+        self.add(
+            NodeSkeleton(
+                self.negatice_clip_idx,
+                CLIPTextEncode.make(text=neg_prompt, loader=self.node_of(self.ckpt_loader_idx)),
+            )
+        )
+        self.add(
+            NodeSkeleton(
+                self.sampler_idx,
                 KSampler.make(
                     seed=seed,
                     steps=steps,
                     cfg=7.0,
                     denoise=1.0,
-                    sampler_name=SamplerName.dpmpp_2s_ancestral,
+                    sampler_name=SamplerName.dpmpp_2m,
                     scheduler=SchedulerName.karras,
-                    loader=self.node_of(1),
-                    latent_image=self.node_of(2),
-                    positive=self.node_of(3),
-                    negative=self.node_of(4),
+                    loader=self.node_of(self.ckpt_loader_idx),
+                    latent_image=self.node_of(self.empty_latent_idx),
+                    positive=self.node_of(self.positive_clip_idx),
+                    negative=self.node_of(self.negatice_clip_idx),
                 ),
             ),
         )
-        self.add(NodeSkeleton(6, VAEDecode.make(sampler=self.node_of(5), vae=self.node_of(1))))
-        self.add(NodeSkeleton(7, PreviewImage.make(vaedec=self.node_of(6))))
+        self.add(
+            NodeSkeleton(
+                self.vae_decoder_idx,
+                VAEDecode.make(
+                    sampler=self.node_of(self.sampler_idx), vae=self.node_of(self.ckpt_loader_idx)
+                ),
+            )
+        )
+        self.add(
+            NodeSkeleton(
+                self.previewer_idx, PreviewImage.make(vaedec=self.node_of(self.vae_decoder_idx))
+            )
+        )
 
     @property
     def positive_prompt(self) -> str:
-        return cast(CLIPTextEncode.Inputs, self.node_of(3).body.inputs).text
+        return cast(CLIPTextEncode.Inputs, self.node_of(self.positive_clip_idx).body.inputs).text
 
     @property
     def negative_prompt(self) -> str:
-        return cast(CLIPTextEncode.Inputs, self.node_of(4).body.inputs).text
+        return cast(CLIPTextEncode.Inputs, self.node_of(self.negatice_clip_idx).body.inputs).text
 
     @property
     def steps(self) -> int:
-        return cast(KSampler.Inputs, self.node_of(5).body.inputs).steps
+        return cast(KSampler.Inputs, self.node_of(self.sampler_idx).body.inputs).steps
 
     @property
     def sampler(self) -> str:
-        return cast(KSampler.Inputs, self.node_of(5).body.inputs).sampler_name
+        return cast(KSampler.Inputs, self.node_of(self.sampler_idx).body.inputs).sampler_name
 
     @property
     def scheduler(self) -> str:
-        return cast(KSampler.Inputs, self.node_of(5).body.inputs).scheduler
+        return cast(KSampler.Inputs, self.node_of(self.sampler_idx).body.inputs).scheduler
 
     @property
     def cfg_scale(self) -> float:
-        return cast(KSampler.Inputs, self.node_of(5).body.inputs).cfg
+        return cast(KSampler.Inputs, self.node_of(self.sampler_idx).body.inputs).cfg
 
     @property
     def seed(self) -> int:
-        return cast(KSampler.Inputs, self.node_of(5).body.inputs).seed
+        return cast(KSampler.Inputs, self.node_of(self.sampler_idx).body.inputs).seed
 
     @property
     def width(self) -> int:
-        return cast(EmptyLatentImage.Inputs, self.node_of(2).body.inputs).width
+        return cast(EmptyLatentImage.Inputs, self.node_of(self.empty_latent_idx).body.inputs).width
 
     @property
     def height(self) -> int:
-        return cast(EmptyLatentImage.Inputs, self.node_of(2).body.inputs).height
+        return cast(EmptyLatentImage.Inputs, self.node_of(self.empty_latent_idx).body.inputs).height
 
     @property
     def model_name(self) -> str:
-        return cast(CheckpointLoaderSimple.Inputs, self.node_of(1).body.inputs).ckpt_name
+        return cast(
+            CheckpointLoaderSimple.Inputs, self.node_of(self.ckpt_loader_idx).body.inputs
+        ).ckpt_name
 
     @property
     def clip_skip(self) -> int:
-        return 0
+        return -cast(
+            CLIPSetLastLayer.Inputs, self.node_of(self.clip_layer_setter_idx).body.inputs
+        ).stop_at_clip_layer
