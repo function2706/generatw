@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import io
 import json
+import threading
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -112,6 +113,8 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
         super().__init__(master)
 
         self.progress: ComfyUITaskProgress = None
+        self.is_interrupting = threading.Event()  # 中断処理実行中
+        self.interrupt_cond = threading.Condition()
 
     def listen_websocket(self, ws: websocket.WebSocket) -> TaskReport | None:
         """
@@ -123,6 +126,9 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
         Returns:
             TaskReport | None: タスクレポート
         """
+        if self.is_interrupting.is_set():
+            return None
+
         out = ws.recv()
         if not isinstance(out, str):
             return None
@@ -207,19 +213,39 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
 
         ws = websocket.WebSocket()
         ws.connect(f"ws://{self.crnt_dst}/ws?clientId={client_id}")
-        while True:
-            report = self.listen_websocket(ws)
-            if report is not None:
-                break
-        ws.close()
+        try:
+            while True:
+                report = self.listen_websocket(ws)
+                if self.is_interrupting.is_set():
+                    with self.interrupt_cond:
+                        self.is_interrupting.clear()
+                        self.interrupt_cond.notify_all()
+                    return []
+                elif report is not None:
+                    break
+        finally:
+            ws.close()
 
-        return self.make_pictuple(report)
+        return self.make_pictuple(report) if report is not None else []
 
     def request_upscale(self) -> None:
         return
 
     def request_interrupt(self) -> None:
-        return
+        if self.crnt_task is None:
+            return
+
+        try:
+            requests.post(
+                f"http://{self.crnt_dst}/interrupt",
+                timeout=(5, 10),
+            )
+        except Exception as e:
+            print("Any exception occurred on interrupt: ", e)
+
+        self.is_interrupting.set()
+        with self.interrupt_cond:
+            self.interrupt_cond.wait_for(lambda: not self.is_interrupting.is_set())
 
     def request_progress(self) -> ComfyUITaskProgress | None:
         return self.progress

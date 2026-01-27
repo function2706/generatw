@@ -43,7 +43,6 @@ class Event:
 
     shutdown = threading.Event()  # 終了予定
     interrupt = threading.Event()  # 中断処理実行予定
-    interrupted = threading.Event()  # 中断処理が実行された
 
 
 TaskProgress = TypeVar("TaskProgress", bound=HasCommonMembers)
@@ -285,21 +284,20 @@ class Generator(ABC, Generic[TaskProgress]):
                 # ここでは実行中タスクを解除してはいけない
                 continue
 
-            self.crnt_task = self.tasks.popleft()
+            try:
+                self.crnt_task = self.tasks.popleft()
 
-            imglist = self.request_generate()
-            if not imglist:
-                if self.event.interrupted.is_set():
-                    # 生成中断
-                    print("Request interrupted.")
-                    self.event.interrupted.clear()
-                else:
+                imglist = self.request_generate()
+                if not imglist:
                     # 生成失敗
-                    print("Request failed, API response without images.")
-                continue
-            else:
-                self.save_images(imglist)
-            self.crnt_task = None
+                    print("Request failed or interrupted, API response without images.")
+                    continue
+                else:
+                    self.save_images(imglist)
+            except Exception as e:
+                print(f"Any exception occurred in {threading.current_thread().name}: ", e)
+            finally:
+                self.crnt_task = None
 
     def instructor(self) -> None:
         """
@@ -312,7 +310,6 @@ class Generator(ABC, Generic[TaskProgress]):
                 if self.event.interrupt.is_set():
                     # 中断要求
                     self.request_interrupt()
-                    self.event.interrupted.set()
                     self.event.interrupt.clear()
             except Exception as e:
                 print(f"Any exception occurred in {threading.current_thread().name}: ", e)
