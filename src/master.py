@@ -297,13 +297,15 @@ class Master(MasterIF):
             d_port=self.displayer.srv_port,
         )
 
-    def refresh_pic_randomly(self) -> None:
+    def refresh_pic_randomly(self, construct_window=False) -> None:
         """
         現在の PicStats 表示可能な画像が存在する場合にランダムで表示する\n
         存在しない場合は NO IMAGE を表示する
         """
+        if construct_window:
+            self.displayer.pic_window.construct(fix_position=True)
+
         piclist = self.archiver.get_picstats_list(self.parser.get_crnt_picstats_dir())
-        self.displayer.pic_window.construct()
         if not piclist:
             # 記録中ステータスに紐づくディレクトリ内に画像がない
             self.displayer.update_pic_window()
@@ -317,7 +319,7 @@ class Master(MasterIF):
         タスク予約とすでに存在する画像の表示を1度だけ行う
         """
         self.reserve_task()
-        self.refresh_pic_randomly()
+        self.refresh_pic_randomly(construct_window=True)
 
     def run_main(self) -> None:
         """

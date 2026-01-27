@@ -423,6 +423,7 @@ class Displayer(DisplayerIF):
         表示ボタンハンドラ\n
         表示すべき画像がないときは何もしない
         """
+        self.pic_window.construct(fix_position=True)
         self.update_pic_window(self.master.crnt_picstats)
 
     def on_open_info_window(self) -> None:
@@ -431,11 +432,11 @@ class Displayer(DisplayerIF):
         すでに開いている場合は最前面に表示のみ行う\n
         情報の更新も直後に行う
         """
-        if self.info_window is not None and self.pic_window.existed():
+        if self.info_window is not None and self.info_window.existed():
             self.info_window.info_window.deiconify()
             self.info_window.info_window.lift()
         else:
-            self.info_window.construct()
+            self.info_window.construct(fix_position=True)
 
         self.info_window.update()
 
