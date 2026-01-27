@@ -32,7 +32,6 @@ class HasCommonMembers(Protocol):
 
     progress: float
 
-    def refresh(self) -> None: ...
     def todict(self) -> dict[str, Any]: ...
 
 
@@ -47,10 +46,10 @@ class Event:
     interrupted = threading.Event()  # 中断処理が実行された
 
 
-ProgressResp = TypeVar("ProgressResp", bound=HasCommonMembers)
+TaskProgress = TypeVar("TaskProgress", bound=HasCommonMembers)
 
 
-class Generator(ABC, Generic[ProgressResp]):
+class Generator(ABC, Generic[TaskProgress]):
     """
     ファイル生成クラス\n
     タスク設計図をもとにサーバへ非同期にポストし, ファイル保存をする
@@ -70,7 +69,7 @@ class Generator(ABC, Generic[ProgressResp]):
         self.tasks: deque[TaskBlueprint] = deque()
         self.crnt_task: TaskBlueprint = None
 
-        self.progress: ProgressResp = None
+        self.progress: TaskProgress = None
 
         self.worker_thread = threading.Thread(
             target=self.worker, args=(), daemon=True, name="worker"
@@ -198,7 +197,7 @@ class Generator(ABC, Generic[ProgressResp]):
         pass
 
     @abstractmethod
-    def request_progress(self) -> ProgressResp:
+    def request_progress(self) -> TaskProgress:
         """
         現在のタスクの進捗報告要求を行う\n
         現在のタスクが空の場合は何もしない

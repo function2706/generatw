@@ -28,7 +28,11 @@ class WSMessageType(Enum):
 
 
 @dataclass
-class TaskProgress:
+class TaskReport:
+    """
+    タスクレポート
+    """
+
     @dataclass
     class FileInfo:
         filename: str = ""
@@ -61,12 +65,38 @@ class TaskProgress:
         elif msg_type == "executed":
             obj.type = WSMessageType.executed
             images = message["data"]["output"].get("images", [])
-            obj.fileinfos = [TaskProgress.FileInfo.make(img) for img in images]
+            obj.fileinfos = [TaskReport.FileInfo.make(img) for img in images]
 
         return obj
 
 
-class ComfyUIGenerator(Generator[None]):
+@dataclass
+class ComfyUITaskProgress:
+    """
+    ワークフロー進捗
+    """
+
+    progress: float = 0.0
+    excuting_node_idx: int = 0
+
+    @classmethod
+    def make(cls, progress: float = -1, excuting_node_idx: int = -1):
+        """
+        コンストラクタ
+
+        Args:
+            report (TaskReport): TaskReport インスタンス
+        """
+
+        return cls(
+            progress=progress if progress >= 0 else cls.progress,
+            excuting_node_idx=excuting_node_idx
+            if excuting_node_idx >= 0
+            else cls.excuting_node_idx,
+        )
+
+
+class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
     """
     ファイル生成クラス (ComfyUI 版)\n
     タスク設計図をもとにサーバへ非同期にポストし, ファイル保存をする
@@ -81,48 +111,45 @@ class ComfyUIGenerator(Generator[None]):
         """
         super().__init__(master)
 
-        self.crnt_progress_ratio: float = 0.0
+        self.progress: ComfyUITaskProgress = None
 
-    def request_generate(self) -> list[tuple[ImageFile.ImageFile, PicInfo]]:
-        if self.crnt_task is None:
-            return []
+    def listen_websocket(self, ws: websocket.WebSocket) -> TaskReport | None:
+        """
+        WebSocket でリッスンし, タスクレポートを取得する
 
-        client_id = str(uuid.uuid4())
-        ws = websocket.WebSocket()
-        ws.connect(f"ws://{self.crnt_dst}/ws?clientId={client_id}")
-        task = self.crnt_task
-        workflow = Txt2ImgWorkFlow(
-            ckpt_name="Illustrious\\waiNSFWIllustrious_v150.safetensors",
-            width=task.width,
-            height=task.height,
-            batch_size=task.batch_size,
-            pos_prompt=task.prompt,
-            neg_prompt=task.negative_prompt,
-            seed=task.seed,
-            steps=task.steps,
-        )
-        res = requests.post(
-            f"http://{self.crnt_dst}/prompt",
-            json={"prompt": workflow.todict(), "client_id": client_id},
-        )
-        res.raise_for_status()
+        Args:
+            ws (websocket.WebSocket): WebSocket
 
-        while True:
-            out = ws.recv()
-            if not isinstance(out, str):
-                continue
+        Returns:
+            TaskReport | None: タスクレポート
+        """
+        out = ws.recv()
+        if not isinstance(out, str):
+            return None
 
-            message = json.loads(out)
-            report = TaskProgress.make(message)
-            if report.type == WSMessageType.executing:
-                print(f"node:{report.executing_node}")
-            elif report.type == WSMessageType.progress:
-                print(f"sampling_progress:{report.sampling_progress}")
-            elif report.type == WSMessageType.executed:
-                print("executed")
-                break
-        ws.close()
+        message = json.loads(out)
+        report = TaskReport.make(message)
+        if report.type == WSMessageType.executing:
+            self.progress = ComfyUITaskProgress.make(excuting_node_idx=report.executing_node)
+        elif report.type == WSMessageType.progress:
+            self.progress = ComfyUITaskProgress.make(progress=report.sampling_progress)
+        elif report.type == WSMessageType.executed:
+            self.progress = ComfyUITaskProgress.make()
+            return report
 
+        return None
+
+    def make_pictuple(self, report: TaskReport) -> list[tuple[ImageFile.ImageFile, PicInfo]]:
+        """
+        ImageFile と PicInfo のタプルリストをタスクレポートから得る\n
+        失敗時は空リストを返す
+
+        Args:
+            report (TaskReport): タスクレポート
+
+        Returns:
+            list[tuple[ImageFile.ImageFile, PicInfo]]: ImageFile と PicInfo のタプルリスト
+        """
         result: list[tuple[ImageFile.ImageFile, PicInfo]] = []
         for info in report.fileinfos:
             img_res = requests.get(
@@ -156,11 +183,43 @@ class ComfyUIGenerator(Generator[None]):
 
         return result
 
+    def request_generate(self) -> list[tuple[ImageFile.ImageFile, PicInfo]]:
+        if self.crnt_task is None:
+            return []
+
+        client_id = str(uuid.uuid4())
+        task = self.crnt_task
+        workflow = Txt2ImgWorkFlow(
+            ckpt_name="Illustrious\\waiNSFWIllustrious_v150.safetensors",
+            width=task.width,
+            height=task.height,
+            batch_size=task.batch_size,
+            pos_prompt=task.prompt,
+            neg_prompt=task.negative_prompt,
+            seed=task.seed,
+            steps=task.steps,
+        )
+        res = requests.post(
+            f"http://{self.crnt_dst}/prompt",
+            json={"prompt": workflow.todict(), "client_id": client_id},
+        )
+        res.raise_for_status()
+
+        ws = websocket.WebSocket()
+        ws.connect(f"ws://{self.crnt_dst}/ws?clientId={client_id}")
+        while True:
+            report = self.listen_websocket(ws)
+            if report is not None:
+                break
+        ws.close()
+
+        return self.make_pictuple(report)
+
     def request_upscale(self) -> None:
         return
 
     def request_interrupt(self) -> None:
         return
 
-    def request_progress(self) -> None:
-        return None
+    def request_progress(self) -> ComfyUITaskProgress | None:
+        return self.progress

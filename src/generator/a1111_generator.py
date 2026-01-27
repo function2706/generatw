@@ -7,7 +7,7 @@ from __future__ import annotations
 import base64
 import io
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import Any
 
 import requests
@@ -19,13 +19,13 @@ from generator.generator import Generator
 
 
 @dataclass
-class TaskProgress:
+class A1111TaskProgress:
     """
     Progress エンドポイントの応答
     """
 
-    progress: float = 0
-    eta_relative: float = 0
+    progress: float = 0.0
+    eta_relative: float = 0.0
     skipped: bool = False
     interrupted: bool = False
     job: str = ""
@@ -75,17 +75,8 @@ class TaskProgress:
             sampling_steps=cls.to_int(info.get("sampling_steps", 0)),
         )
 
-    def todict(self) -> dict[str, Any]:
-        """
-        dict への変換
 
-        Returns:
-            dict[str, Any]: dict インスタンス
-        """
-        return asdict(self)
-
-
-class A1111Generator(Generator[TaskProgress | None]):
+class A1111Generator(Generator[A1111TaskProgress | None]):
     """
     ファイル生成クラス (A1111 版)\n
     タスク設計図をもとにサーバへ非同期にポストし, ファイル保存をする
@@ -161,9 +152,9 @@ class A1111Generator(Generator[TaskProgress | None]):
         except Exception as e:
             print("Any exception occurred on interrupt: ", e)
 
-    def request_progress(self) -> TaskProgress | None:
+    def request_progress(self) -> A1111TaskProgress | None:
         if self.crnt_task is None:
-            return
+            return None
 
         try:
             response = requests.get(
@@ -175,4 +166,4 @@ class A1111Generator(Generator[TaskProgress | None]):
             return None
 
         response.raise_for_status()
-        return TaskProgress.make(response.json())
+        return A1111TaskProgress.make(response.json())
