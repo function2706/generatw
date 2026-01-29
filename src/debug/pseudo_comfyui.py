@@ -44,13 +44,10 @@ async def prompt(req: Dict[str, Any]):
 
 @app.post("/interrupt")
 async def interrupt():
-    cancelled = 0
-    for _, tasks in list(RUNNING_TASKS.items()):
-        for _, task in list(tasks.items()):
-            if not task.done():
-                task.cancel()
-                cancelled += 1
-    return {"message": f"Interrupted {cancelled} task(s)"}
+    for tasks in RUNNING_TASKS.values():
+        for task in tasks.values():
+            task.cancel()
+    return {"message": "ok"}
 
 
 def find_nodes(data: dict, class_type: str):
@@ -189,18 +186,6 @@ async def simulate_generation(prompt_id: str):
     except asyncio.CancelledError:
         PROMPTS[prompt_id]["status"] = "interrupted"
         client_id = PROMPTS[prompt_id]["client_id"]
-
-        ws = WS_CLIENTS.get(client_id)
-        if ws:
-            try:
-                await ws.send_json(
-                    {"type": "executing", "data": {"node": 0, "prompt_id": prompt_id}}
-                )
-                # ★ close は「interrupt 完了通知」としてのみ使う
-                await ws.close(code=1000, reason="interrupted")
-            except Exception:
-                pass
-
         raise
 
     except Exception as e:

@@ -110,14 +110,13 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
         """
         super().__init__(master)
 
+        self.client_id = str(uuid.uuid4())
+
         self.progress: ComfyUITaskProgress = None
-        self.is_interrupting = threading.Event()  # 中断処理実行中
-        self.interrupt_cond = threading.Condition()
+        self.is_interrupting_listen = threading.Event()  # WS listen 中断要求があった
 
     def finalize(self) -> None:
-        with self.interrupt_cond:
-            self.is_interrupting.clear()
-            self.interrupt_cond.notify_all()
+        self.is_interrupting_listen.clear()
         super().finalize()
 
     def listen_websocket(self, ws: websocket.WebSocket) -> TaskReport | None:
@@ -130,9 +129,7 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
         Returns:
             TaskReport | None: タスクレポート
         """
-        if self.is_interrupting.is_set():
-            return None
-
+        ws.settimeout(0.5)
         out = ws.recv()
         if not isinstance(out, str) or len(out) == 0:
             return None
@@ -163,8 +160,7 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
         result: list[tuple[ImageFile.ImageFile, PicInfo]] = []
         for info in report.fileinfos:
             img_res = requests.get(
-                f"http://{self.crnt_dst}/view?filename={info.filename}&\
-                subfolder={info.subfolder}&type={info.type}"
+                f"http://{self.crnt_dst}/view?filename={info.filename}&subfolder={info.subfolder}&type={info.type}"
             )
             if img_res.status_code != 200:
                 return []
@@ -194,10 +190,10 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
         return result
 
     def request_generate(self) -> list[tuple[ImageFile.ImageFile, PicInfo]]:
+        self.is_interrupting_listen.clear()
         if self.crnt_task is None:
             return []
 
-        client_id = str(uuid.uuid4())
         task = self.crnt_task
         workflow = Txt2ImgWorkFlow(
             ckpt_name="Illustrious\\waiNSFWIllustrious_v150.safetensors",
@@ -211,22 +207,24 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
         )
         res = requests.post(
             f"http://{self.crnt_dst}/prompt",
-            json={"prompt": workflow.todict(), "client_id": client_id},
+            json={"prompt": workflow.todict(), "client_id": self.client_id},
         )
         res.raise_for_status()
 
+        report = None
         ws = websocket.WebSocket()
-        ws.connect(f"ws://{self.crnt_dst}/ws?clientId={client_id}")
+        ws.connect(f"ws://{self.crnt_dst}/ws?clientId={self.client_id}")
         try:
             while True:
-                report = self.listen_websocket(ws)
-                if self.is_interrupting.is_set():
-                    with self.interrupt_cond:
-                        self.is_interrupting.clear()
-                        self.interrupt_cond.notify_all()
-                    return []
-                elif report is not None:
-                    break
+                try:
+                    if self.is_interrupting_listen.is_set():
+                        return []
+
+                    report = self.listen_websocket(ws)
+                    if report is not None:
+                        break
+                except websocket.WebSocketTimeoutException:
+                    continue
         except Exception as e:
             print("Any exception occurred in connecting with WS: ", e)
         finally:
@@ -249,9 +247,7 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
         except Exception as e:
             print("Any exception occurred on interrupt: ", e)
 
-        self.is_interrupting.set()
-        with self.interrupt_cond:
-            self.interrupt_cond.wait_for(lambda: not self.is_interrupting.is_set())
+        self.is_interrupting_listen.set()
 
     def request_progress(self) -> ComfyUITaskProgress | None:
         return self.progress
