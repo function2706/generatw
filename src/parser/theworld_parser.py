@@ -513,15 +513,12 @@ class TheWorldParser(Parser[TWStats]):
             return "TW debug"
 
         neg_prompt = (
-            "motion lines,speed lines,3d,((shiny skin)),bad quality,"
-            "worst quality,worst detail,text,logo,cropped,deformed,blurry,((cropped face)),"
-            "((amputee)),((bad anatomy)),multiple heads,extra faces,"
-            "(extra limbs),(missing limb),(missing limbs),"
-            "bad arm,(multiple arms),(extra arms),(missing arm),bad leg,"
-            "(multiple legs),(extra legs),(missing leg),"
-            "((bad hands)),multiple hands,extra hands,missing hand,"
-            "(extra digits:1.5),(fewer digits:1.5),(missing digits:1.5),"
-            "((bad feet)),((multiple feet)),((extra feet)),missing foot,"
-            "(extra toes:2),(fewer toes:2),(missing toes:2)"
+            "(amputee),(bad anatomy),(extra limbs),(missing limb),multiple heads,"
+            "worst quality,low quality,motion lines,speed lines,3d,((shiny skin)),worst detail,"
+            "text,logo,cropped,deformed,blurry,"
+            "extra digits,fewer digits,missing digits,bad hands,mutated hands,"
+            "six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,"
+            "extra feet,missing foot,bad leg,extra legs,missing leg,"
+            "extra hands,missing hand,bad arm,extra arms,missing arm,"
         )
         return neg_prompt
