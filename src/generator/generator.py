@@ -8,6 +8,7 @@ import threading
 import time
 from abc import ABC, abstractmethod
 from collections import deque
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -223,6 +224,17 @@ class Generator(ABC, Generic[TaskProgress]):
         """
         return self.crnt_task.dst_addr + ":" + self.crnt_task.dst_port
 
+    @property
+    def crnt_task_copy(self) -> TaskBlueprint | None:
+        """
+        現在のタスクのコピーを渡す\n
+        現在のタスクは外部からの書き換えを認めない
+
+        Returns:
+            TaskBlueprint: タスクのコピー
+        """
+        return deepcopy(self.crnt_task)
+
     def make_filepath(self, picinfo: PicInfo, idx: int) -> Path:
         """
         PicInfoからファイルパスを生成する\n
@@ -296,6 +308,7 @@ class Generator(ABC, Generic[TaskProgress]):
                     self.save_images(imglist)
             except Exception as e:
                 print(f"Any exception occurred in {threading.current_thread().name}: ", e)
+                raise
             finally:
                 self.crnt_task = None
 
@@ -313,6 +326,7 @@ class Generator(ABC, Generic[TaskProgress]):
                     self.event.interrupt.clear()
             except Exception as e:
                 print(f"Any exception occurred in {threading.current_thread().name}: ", e)
+                raise
 
     def observer(self) -> None:
         """
@@ -325,3 +339,4 @@ class Generator(ABC, Generic[TaskProgress]):
                 self.progress = self.request_progress() if self.crnt_task is not None else None
             except Exception as e:
                 print(f"Any exception occurred in {threading.current_thread().name}: ", e)
+                raise

@@ -86,14 +86,12 @@ class ComfyUITaskProgress:
         コンストラクタ
 
         Args:
-            report (TaskReport): TaskReport インスタンス
+            progress (float): 進捗率
+            excuting_node_idx (int): 実行中のノードインデックス
         """
-
         return cls(
-            progress=progress if progress >= 0 else cls.progress,
-            excuting_node_idx=excuting_node_idx
-            if excuting_node_idx >= 0
-            else cls.excuting_node_idx,
+            progress=progress if progress >= 0 else 0.0,
+            excuting_node_idx=excuting_node_idx if excuting_node_idx >= 0 else 0,
         )
 
 
@@ -116,6 +114,12 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
         self.is_interrupting = threading.Event()  # 中断処理実行中
         self.interrupt_cond = threading.Condition()
 
+    def finalize(self) -> None:
+        with self.interrupt_cond:
+            self.is_interrupting.clear()
+            self.interrupt_cond.notify_all()
+        super().finalize()
+
     def listen_websocket(self, ws: websocket.WebSocket) -> TaskReport | None:
         """
         WebSocket でリッスンし, タスクレポートを取得する
@@ -130,7 +134,7 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
             return None
 
         out = ws.recv()
-        if not isinstance(out, str):
+        if not isinstance(out, str) or len(out) == 0:
             return None
 
         message = json.loads(out)
@@ -223,6 +227,8 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
                     return []
                 elif report is not None:
                     break
+        except Exception as e:
+            print("Any exception occurred in connecting with WS: ", e)
         finally:
             ws.close()
 

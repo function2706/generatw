@@ -183,7 +183,7 @@ class Master(MasterIF):
         Returns:
             TaskBlueprint: 現在のタスク
         """
-        return self.generator.crnt_task
+        return self.generator.crnt_task_copy
 
     @property
     def crnt_tasks(self) -> int:

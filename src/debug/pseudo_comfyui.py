@@ -35,7 +35,7 @@ async def prompt(req: Dict[str, Any]):
     }
 
     task = asyncio.create_task(simulate_generation(prompt_id))
-    RUNNING_TASKS[prompt_id] = task
+    RUNNING_TASKS.setdefault(client_id, {})[prompt_id] = task
 
     task.add_done_callback(lambda t: RUNNING_TASKS.pop(prompt_id, None))
 
@@ -44,14 +44,13 @@ async def prompt(req: Dict[str, Any]):
 
 @app.post("/interrupt")
 async def interrupt():
-    if not RUNNING_TASKS:
-        return {"message": "No active tasks to interrupt"}
-
-    for _, task in RUNNING_TASKS.items():
-        if not task.done():
-            task.cancel()
-
-    return {"message": "Interrupted all tasks"}
+    cancelled = 0
+    for _, tasks in list(RUNNING_TASKS.items()):
+        for _, task in list(tasks.items()):
+            if not task.done():
+                task.cancel()
+                cancelled += 1
+    return {"message": f"Interrupted {cancelled} task(s)"}
 
 
 def find_nodes(data: dict, class_type: str):
@@ -70,27 +69,61 @@ async def simulate_generation(prompt_id: str):
     try:
         prompt = PROMPTS[prompt_id]["prompt"]
         client_id = PROMPTS[prompt_id]["client_id"]
-        ws = WS_CLIENTS.get(client_id)
 
-        ksampler_id, ksampler = find_nodes(prompt, "KSampler")[0]
-        _, empty_latent_image = find_nodes(prompt, "EmptyLatentImage")[0]
-        preview_image_id, _ = find_nodes(prompt, "PreviewImage")[0]
+        def get_ws():
+            return WS_CLIENTS.get(client_id)
+
+        # WebSocket接続を待機（最大5秒）
+        ws = None
+        for _ in range(50):  # 5秒間待機（0.1秒 × 50回）
+            ws = WS_CLIENTS.get(client_id)
+            if ws is not None:
+                break
+            await asyncio.sleep(0.1)
+
+        if ws is None:
+            print("[WARNING] WebSocket not found after 5s, continuing without WS notifications")
+
+        ksampler_nodes = find_nodes(prompt, "KSampler")
+        empty_latent_nodes = find_nodes(prompt, "EmptyLatentImage")
+        preview_nodes = find_nodes(prompt, "PreviewImage")
+
+        if not ksampler_nodes or not empty_latent_nodes or not preview_nodes:
+            print("[ERROR] Missing required nodes in workflow")
+            return
+
+        ksampler_id, ksampler = ksampler_nodes[0]
+        _, empty_latent_image = empty_latent_nodes[0]
+        preview_image_id, _ = preview_nodes[0]
 
         seed = ksampler["inputs"]["seed"]
         steps = ksampler["inputs"]["steps"]
         cooldown = float(getattr(app.state, "cooldown", 0)) / steps
+
+        # プログレスバーの送信
         for step in range(1, steps + 1):
             await asyncio.sleep(cooldown)
+            ws = get_ws()
             if ws:
-                await ws.send_json({"type": "progress", "data": {"value": step, "max": 20}})
+                try:
+                    await ws.send_json({"type": "progress", "data": {"value": step, "max": steps}})
+                except Exception as e:
+                    print(f"[WARNING] Failed to send progress (client disconnected): {e}")
+                    ws = None
 
+        ws = get_ws()
         if ws:
-            await ws.send_json(
-                {"type": "executing", "data": {"node": ksampler_id, "prompt_id": prompt_id}}
-            )
+            try:
+                await ws.send_json(
+                    {"type": "executing", "data": {"node": ksampler_id, "prompt_id": prompt_id}}
+                )
+            except Exception as e:
+                print(f"[WARNING] Failed to send executing message: {e}")
+                ws = None
 
         await asyncio.sleep(0.3)
 
+        # 画像生成
         seeds: list[int] = []
         batch_size = empty_latent_image["inputs"]["batch_size"]
         width = empty_latent_image["inputs"]["width"] & -8
@@ -127,36 +160,55 @@ async def simulate_generation(prompt_id: str):
         # PreviewImage ノードの出力として複数画像を返す
         PROMPTS[prompt_id]["outputs"] = {preview_image_id: {"images": images}}
 
+        ws = get_ws()
         if ws:
-            await ws.send_json(
-                {
-                    "type": "executed",
-                    "data": {
-                        "node": preview_image_id,
-                        "output": PROMPTS[prompt_id]["outputs"][preview_image_id],
-                    },
-                }
-            )
+            try:
+                await ws.send_json(
+                    {
+                        "type": "executed",
+                        "data": {
+                            "node": preview_image_id,
+                            "output": PROMPTS[prompt_id]["outputs"][preview_image_id],
+                        },
+                    }
+                )
+            except Exception as e:
+                print(f"[WARNING] Failed to send executed message: {e}")
+                ws = None
 
-        # ---- 全行程終了（node=None） ----
+        # 全行程終了（node=-1 で完了を示す。Noneはクライアント側で int() エラーになるため）
         if ws:
-            await ws.send_json(
-                {"type": "executing", "data": {"node": None, "prompt_id": prompt_id}}
-            )
+            try:
+                await ws.send_json(
+                    {"type": "executing", "data": {"node": -1, "prompt_id": prompt_id}}
+                )
+            except Exception as e:
+                print(f"[WARNING] Failed to send completion message: {e}")
 
         PROMPTS[prompt_id]["status"] = "success"
     except asyncio.CancelledError:
-        # 5. 中断された時の処理
-        print(f"Task {prompt_id} was interrupted.")
         PROMPTS[prompt_id]["status"] = "interrupted"
+        client_id = PROMPTS[prompt_id]["client_id"]
 
-        # 必要に応じて中断したことをWSクライアントに通知
         ws = WS_CLIENTS.get(client_id)
         if ws:
-            await ws.send_json(
-                {"type": "executing", "data": {"node": None, "prompt_id": prompt_id}}
-            )
+            try:
+                await ws.send_json(
+                    {"type": "executing", "data": {"node": 0, "prompt_id": prompt_id}}
+                )
+                # ★ close は「interrupt 完了通知」としてのみ使う
+                await ws.close(code=1000, reason="interrupted")
+            except Exception:
+                pass
+
         raise
+
+    except Exception as e:
+        print(f"[ERROR] Unexpected error in simulate_generation: {e}")
+        import traceback
+
+        traceback.print_exc()
+        PROMPTS[prompt_id]["status"] = "error"
 
 
 @app.get("/history/{prompt_id}")
@@ -193,8 +245,15 @@ async def websocket_endpoint(ws: WebSocket):
 
     try:
         while True:
-            await ws.receive_text()
+            try:
+                await asyncio.wait_for(ws.receive_text(), timeout=1.0)
+            except asyncio.TimeoutError:
+                continue
     except WebSocketDisconnect:
+        print(f"[DEBUG] WebSocket disconnected: {client_id}")
+    except Exception as e:
+        print(f"[ERROR] WebSocket error for client {client_id}: {e}")
+    finally:
         if client_id in WS_CLIENTS:
             del WS_CLIENTS[client_id]
 
