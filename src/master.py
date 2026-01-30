@@ -11,8 +11,8 @@ from pathlib import Path
 from typing import Any
 
 from archiver import Archiver
-from common.classes import PicStats, TaskBlueprint
-from common.interfaces import BackEnd, CrntGUIConfigs, FrontEnd, MasterIF
+from common.classes import GUIConfigs, PicStats, TaskBlueprint
+from common.interfaces import BackEnd, FrontEnd, MasterIF
 from displayer.displayer import Displayer
 from generator.a1111_generator import A1111Generator
 from generator.comfyui_generator import ComfyUIGenerator
@@ -135,25 +135,14 @@ class Master(MasterIF):
         return self.parser.pics_dir_path()
 
     @property
-    def crnt_gui_configs(self) -> CrntGUIConfigs:
+    def crnt_gui_configs(self) -> GUIConfigs:
         """
         現在の GUI 上の設定値
 
         Returns:
             CrntGUIConfigs: 現在の GUI 上の設定値
         """
-        return CrntGUIConfigs.make(
-            srv_ipaddr=self.displayer.srv_ipaddr,
-            srv_port=self.displayer.srv_port,
-            sd_steps=self.displayer.sd_steps,
-            sd_batch_size=self.displayer.sd_batch_size,
-            sd_width=self.displayer.sd_width,
-            sd_height=self.displayer.sd_height,
-            allow_edit_clipboard=self.displayer.allow_edit_clipboard,
-            print_new_clipboard=self.displayer.print_new_clipboard,
-            print_new_stats=self.displayer.print_new_stats,
-            print_picinfo=self.displayer.print_picinfo,
-        )
+        return self.displayer.crnt_config
 
     @property
     def crnt_picstats(self) -> PicStats:
@@ -289,12 +278,12 @@ class Master(MasterIF):
         self.generator.reserve(
             pos=self.parser.make_pos_prompt(),
             neg=self.parser.make_neg_prompt(),
-            stps=self.displayer.sd_steps,
-            b_size=self.displayer.sd_batch_size,
-            w=self.displayer.sd_width,
-            h=self.displayer.sd_height,
-            d_addr=self.displayer.srv_ipaddr,
-            d_port=self.displayer.srv_port,
+            stps=self.displayer.crnt_config.sd_steps,
+            b_size=self.displayer.crnt_config.sd_batch_size,
+            w=self.displayer.crnt_config.sd_width,
+            h=self.displayer.crnt_config.sd_height,
+            d_addr=self.displayer.crnt_config.srv_ipaddr,
+            d_port=self.displayer.crnt_config.srv_port,
         )
 
     def refresh_pic_randomly(self, construct_window=False) -> None:

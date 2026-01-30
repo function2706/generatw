@@ -7,7 +7,7 @@ from __future__ import annotations
 import tkinter
 from tkinter import Frame, TclError, ttk
 
-from common.classes import PicStats
+from common.classes import GUIConfigs, PicStats
 from common.functions import dump_json
 from common.interfaces import BackEnd, DisplayerIF, MasterIF
 from displayer.info_window import InfoWindow
@@ -15,7 +15,14 @@ from displayer.pic_window import PicWindow
 
 
 def put_textbox(
-    frame: Frame, name: str, row: int, col: int, width: int, default: str, sticky: str
+    frame: Frame,
+    name: str,
+    row: int,
+    col: int,
+    width: int,
+    default: str,
+    sticky: str,
+    on_change=None,
 ) -> ttk.Entry:
     """
     テキストボックスの作成([name] [entry])\n
@@ -29,6 +36,7 @@ def put_textbox(
         width (int): 長さ
         default (str): デフォルト値
         sticky (str): 張り付き方
+        on_change: FocusOut 発火時の処理
 
     Returns:
         ttk.Entry: オブジェクトインスタンス
@@ -37,6 +45,8 @@ def put_textbox(
     entry = ttk.Entry(frame, width=width)
     entry.grid(row=row, column=(col + 1), padx=2, pady=6, sticky=sticky)
     entry.insert(0, default)
+    entry.bind("<Return>", lambda e: e.widget.master.focus_set())
+    entry.bind("<FocusOut>", lambda e: on_change() if on_change else None)
     return entry
 
 
@@ -142,19 +152,47 @@ class MainTab:
 
             # テキストボックス(幅)
             self.width_entry = put_textbox(
-                self.sd_interior_config_frame, "幅", 1, 0, 5, str(540), "w"
+                frame=self.sd_interior_config_frame,
+                name="幅",
+                row=1,
+                col=0,
+                width=5,
+                default=str(540),
+                sticky="w",
+                on_change=owner.super_owner.super_owner.update_configs,
             )
             # テキストボックス(高さ)
             self.height_entry = put_textbox(
-                self.sd_interior_config_frame, "高さ", 1, 2, 5, str(960), "w"
+                frame=self.sd_interior_config_frame,
+                name="高さ",
+                row=1,
+                col=2,
+                width=5,
+                default=str(960),
+                sticky="w",
+                on_change=owner.super_owner.super_owner.update_configs,
             )
             # テキストボックス(ステップ数)
             self.steps_entry = put_textbox(
-                self.sd_interior_config_frame, "Steps", 2, 0, 4, str(30), "w"
+                frame=self.sd_interior_config_frame,
+                name="Steps",
+                row=2,
+                col=0,
+                width=4,
+                default=str(30),
+                sticky="w",
+                on_change=owner.super_owner.super_owner.update_configs,
             )
             # テキストボックス(生成数)
             self.batch_size_entry = put_textbox(
-                self.sd_interior_config_frame, "生成数", 2, 2, 4, str(2), "w"
+                frame=self.sd_interior_config_frame,
+                name="生成数",
+                row=2,
+                col=2,
+                width=4,
+                default=str(2),
+                sticky="w",
+                on_change=owner.super_owner.super_owner.update_configs,
             )
 
     class SDExteriorConfigFrame:
@@ -176,18 +214,28 @@ class MainTab:
 
             # テキストボックス(IPアドレス)
             self.ipaddr_entry = put_textbox(
-                self.sd_exterior_config_frame, "IPアドレス", 0, 0, 16, "127.0.0.1", "w"
+                frame=self.sd_exterior_config_frame,
+                name="IPアドレス",
+                row=0,
+                col=0,
+                width=16,
+                default="127.0.0.1",
+                sticky="w",
+                on_change=owner.super_owner.super_owner.update_configs,
             )
             # テキストボックス(ポート)
             type = owner.super_owner.super_owner.master.backend_type
             self.port_entry = put_textbox(
-                self.sd_exterior_config_frame,
-                "ポート",
-                0,
-                2,
-                6,
-                str(7860 if type == BackEnd.a1111 else 8188 if type == BackEnd.comfy_ui else 0),
-                "w",
+                frame=self.sd_exterior_config_frame,
+                name="ポート",
+                row=0,
+                col=2,
+                width=6,
+                default=str(
+                    7860 if type == BackEnd.a1111 else 8188 if type == BackEnd.comfy_ui else 0
+                ),
+                sticky="w",
+                on_change=owner.super_owner.super_owner.update_configs,
             )
 
     def __init__(self, owner: MainWindow):
@@ -241,6 +289,7 @@ class DebugTab:
                 self.exe_debug_frame,
                 text="クリップボードの更新",
                 variable=self.allow_edit_clipboard_check,
+                command=self.super_owner.super_owner.super_owner.update_configs,
             ).grid(row=0, column=1, padx=6, pady=6, sticky="w")
             # ボタン(アーカイブ出力 ダンプ)
             self.debug_button = ttk.Button(
@@ -279,6 +328,7 @@ class DebugTab:
                 self.verbose_frame,
                 text="クリップボード",
                 variable=self.verbose_clipboard_check,
+                command=self.super_owner.super_owner.super_owner.update_configs,
             ).grid(row=0, column=0, padx=6, pady=6, sticky="w")
             # ステータスの表示
             self.verbose_stats_check = tkinter.BooleanVar()
@@ -286,6 +336,7 @@ class DebugTab:
                 self.verbose_frame,
                 text="ステータス",
                 variable=self.verbose_stats_check,
+                command=self.super_owner.super_owner.super_owner.update_configs,
             ).grid(row=0, column=1, padx=6, pady=6, sticky="w")
             # PicInfoの表示
             self.verbose_picinfo_check = tkinter.BooleanVar()
@@ -293,6 +344,7 @@ class DebugTab:
                 self.verbose_frame,
                 text="PicInfo",
                 variable=self.verbose_picinfo_check,
+                command=self.super_owner.super_owner.super_owner.update_configs,
             ).grid(row=1, column=0, padx=6, pady=6, sticky="w")
 
     def __init__(self, owner: MainWindow):
@@ -362,6 +414,18 @@ class Displayer(DisplayerIF):
         self.info_window.construct(fix_position=True)
         self.pic_window = PicWindow(self)
         self.switch_output_button_state(False)
+
+        self.crnt_config: GUIConfigs = None
+        self.update_configs()
+
+        def clear_selection(event):
+            widget = event.widget
+            if isinstance(widget, ttk.Entry):
+                return
+            master.root.focus_set()
+
+        # ウィジェット外のクリック時に常に FocusOut するよう変更
+        master.root.bind_all("<Button-1>", clear_selection, add="+")
 
     def exists(self) -> bool:
         """
@@ -452,6 +516,35 @@ class Displayer(DisplayerIF):
         """
         dump_json(list(self.master.crnt_tasklist), "tasks")
 
+    def update_configs(self) -> None:
+        """
+        GUI の設定値を更新する
+        """
+        self.crnt_config = GUIConfigs.make(
+            srv_ipaddr=self.main_window.main_tab_obj.sd_exterior_config_frame.ipaddr_entry.get(),
+            srv_port=self.main_window.main_tab_obj.sd_exterior_config_frame.port_entry.get(),
+            sd_steps=int(self.main_window.main_tab_obj.sd_interior_config_frame.steps_entry.get()),
+            sd_batch_size=int(
+                self.main_window.main_tab_obj.sd_interior_config_frame.batch_size_entry.get()
+            ),
+            sd_width=int(self.main_window.main_tab_obj.sd_interior_config_frame.width_entry.get()),
+            sd_height=int(
+                self.main_window.main_tab_obj.sd_interior_config_frame.height_entry.get()
+            ),
+            allow_edit_clipboard=bool(
+                self.main_window.debug_tab_obj.exe_debug_frame.allow_edit_clipboard_check.get()
+            ),
+            print_new_clipboard=bool(
+                self.main_window.debug_tab_obj.verbose_frame.verbose_clipboard_check.get()
+            ),
+            print_new_stats=bool(
+                self.main_window.debug_tab_obj.verbose_frame.verbose_stats_check.get()
+            ),
+            print_picinfo=bool(
+                self.main_window.debug_tab_obj.verbose_frame.verbose_picinfo_check.get()
+            ),
+        )
+
     @property
     def config_window_x(self) -> int:
         """
@@ -495,103 +588,3 @@ class Displayer(DisplayerIF):
         """
         self.master.root.update_idletasks()
         return self.master.root.winfo_height()
-
-    @property
-    def srv_ipaddr(self) -> str:
-        """
-        ポスト先 IP アドレス
-
-        Returns:
-            str: ポスト先 IP アドレス
-        """
-        return self.main_window.main_tab_obj.sd_exterior_config_frame.ipaddr_entry.get()
-
-    @property
-    def srv_port(self) -> str:
-        """
-        ポスト先ポート
-
-        Returns:
-            str: ポスト先ポート
-        """
-        return self.main_window.main_tab_obj.sd_exterior_config_frame.port_entry.get()
-
-    @property
-    def sd_steps(self) -> int:
-        """
-        ステップ数
-
-        Returns:
-            int: ステップ数
-        """
-        return int(self.main_window.main_tab_obj.sd_interior_config_frame.steps_entry.get())
-
-    @property
-    def sd_batch_size(self) -> int:
-        """
-        バッチサイズ
-
-        Returns:
-            int: バッチサイズ
-        """
-        return int(self.main_window.main_tab_obj.sd_interior_config_frame.batch_size_entry.get())
-
-    @property
-    def sd_width(self) -> int:
-        """
-        幅
-
-        Returns:
-            int: 幅
-        """
-        return int(self.main_window.main_tab_obj.sd_interior_config_frame.width_entry.get())
-
-    @property
-    def sd_height(self) -> int:
-        """
-        高さ
-
-        Returns:
-            int: 高さ
-        """
-        return int(self.main_window.main_tab_obj.sd_interior_config_frame.height_entry.get())
-
-    @property
-    def allow_edit_clipboard(self) -> bool:
-        """
-        デバッグ時にクリップボード更新を認めるか
-
-        Returns:
-            bool: True: 認める, False: 認めない
-        """
-        return self.main_window.debug_tab_obj.exe_debug_frame.allow_edit_clipboard_check.get()
-
-    @property
-    def print_new_clipboard(self) -> bool:
-        """
-        クリップボードの更新があった場合にログ出力するか
-
-        Returns:
-            bool: True: 表示する, False: 表示しない
-        """
-        return self.main_window.debug_tab_obj.verbose_frame.verbose_clipboard_check.get()
-
-    @property
-    def print_new_stats(self) -> bool:
-        """
-        ステータスの更新があった場合にログ出力するか
-
-        Returns:
-            bool: True: 表示する, False: 表示しない
-        """
-        return self.main_window.debug_tab_obj.verbose_frame.verbose_stats_check.get()
-
-    @property
-    def print_picinfo(self) -> bool:
-        """
-        応答 image の PicInfo をログ出力するか
-
-        Returns:
-            bool: True: 表示する, False: 表示しない
-        """
-        return self.main_window.debug_tab_obj.verbose_frame.verbose_picinfo_check.get()
