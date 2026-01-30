@@ -9,7 +9,9 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import Any, Protocol
 
-from common.classes import GUIConfigs, PicStats, TaskBlueprint
+from archiver.dataclasses import PicStats
+from displayer.dataclasses import GUIConfigs
+from generator.dataclasses import TaskBlueprint
 
 
 class FrontEnd(Enum):

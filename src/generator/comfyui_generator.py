@@ -15,7 +15,7 @@ import requests
 import websocket
 from PIL import Image, ImageFile
 
-from common.classes import PicInfo
+from archiver.dataclasses import PicInfo
 from common.interfaces import MasterIF
 from generator.comfyui_workflow import Txt2ImgWorkFlow
 from generator.generator import Generator

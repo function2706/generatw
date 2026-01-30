@@ -13,7 +13,7 @@ from typing import Any
 import requests
 from PIL import Image, ImageFile
 
-from common.classes import PicInfo
+from archiver.dataclasses import PicInfo
 from common.interfaces import MasterIF
 from generator.generator import Generator
 

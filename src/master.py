@@ -10,12 +10,13 @@ from parser.theworld_parser import TheWorldParser
 from pathlib import Path
 from typing import Any
 
-from archiver import Archiver
-from common.classes import GUIConfigs, PicStats, TaskBlueprint
+from archiver.archiver import Archiver
+from archiver.dataclasses import PicStats
 from common.interfaces import BackEnd, FrontEnd, MasterIF
-from displayer.displayer import Displayer
+from displayer.displayer import Displayer, GUIConfigs
 from generator.a1111_generator import A1111Generator
 from generator.comfyui_generator import ComfyUIGenerator
+from generator.dataclasses import TaskBlueprint
 
 
 class Master(MasterIF):

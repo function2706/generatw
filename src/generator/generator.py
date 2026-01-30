@@ -17,9 +17,10 @@ from typing import Any, Generic, Protocol, TypeVar
 
 from PIL import ImageFile
 
-from common.classes import PicInfo, TaskBlueprint
+from archiver.dataclasses import PicInfo
 from common.functions import dirname_by_prompts, dump_json
 from common.interfaces import MasterIF
+from generator.dataclasses import TaskBlueprint
 
 
 @dataclass(frozen=True)

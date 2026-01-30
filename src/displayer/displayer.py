@@ -7,9 +7,10 @@ from __future__ import annotations
 import tkinter
 from tkinter import Frame, TclError, ttk
 
-from common.classes import GUIConfigs, PicStats
+from archiver.dataclasses import PicStats
 from common.functions import dump_json
 from common.interfaces import BackEnd, DisplayerIF, MasterIF
+from displayer.dataclasses import GUIConfigs
 from displayer.info_window import InfoWindow
 from displayer.pic_window import PicWindow
 

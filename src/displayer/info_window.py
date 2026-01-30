@@ -9,8 +9,9 @@ from dataclasses import dataclass
 from tkinter import TclError, font, ttk
 from typing import Any
 
-from common.classes import PicStats, TaskBlueprint
+from archiver.dataclasses import PicStats
 from common.interfaces import DisplayerIF
+from generator.dataclasses import TaskBlueprint
 
 
 @dataclass(frozen=True)

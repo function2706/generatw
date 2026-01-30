@@ -11,7 +11,7 @@ from tkinter import TclError, ttk
 
 from PIL import Image, ImageDraw, ImageFont, ImageTk
 
-from common.classes import PicStats
+from archiver.dataclasses import PicStats
 from common.interfaces import DisplayerIF
 
 

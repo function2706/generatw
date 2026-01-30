@@ -8,11 +8,10 @@ import random
 import re
 from dataclasses import asdict, dataclass, field
 from enum import Enum, auto
-from parser.parser import Parser
+from parser.parser import Consts, Parser
 from types import MappingProxyType
 from typing import Any, Mapping
 
-from common.classes import PMConsts
 from common.functions import search_regex
 from common.interfaces import MasterIF
 
@@ -273,14 +272,14 @@ class ReverseParser(Parser[ReverseStats]):
                 "隠岐奈": r"matara okina",
                 "女苑": r"yorigami jo'on,tsurime",
                 "紫苑": r"yorigami shion",
-                PMConsts.charaname_substr_debug + "1": "human girl",
-                PMConsts.charaname_substr_debug + "2": "dog girl",
-                PMConsts.charaname_substr_debug + "3": "cat girl",
-                PMConsts.charaname_substr_debug + "4": "rabbit girl",
-                PMConsts.charaname_substr_debug + "5": "mouse girl",
-                PMConsts.charaname_substr_debug + "6": "sheep girl",
-                PMConsts.charaname_substr_debug + "7": "fox girl",
-                PMConsts.charaname_substr_debug + "8": "elf girl",
+                Consts.charaname_substr_debug + "1": "human girl",
+                Consts.charaname_substr_debug + "2": "dog girl",
+                Consts.charaname_substr_debug + "3": "cat girl",
+                Consts.charaname_substr_debug + "4": "rabbit girl",
+                Consts.charaname_substr_debug + "5": "mouse girl",
+                Consts.charaname_substr_debug + "6": "sheep girl",
+                Consts.charaname_substr_debug + "7": "fox girl",
+                Consts.charaname_substr_debug + "8": "elf girl",
             }
         )
 
@@ -290,9 +289,7 @@ class ReverseParser(Parser[ReverseStats]):
     def make_dummy_stats(self, name: str = None) -> ReverseStats:
         dummy_stats = ReverseStats()
         dummy_stats.character.name = (
-            name
-            if name is not None
-            else PMConsts.charaname_substr_debug + str(random.randint(1, 8))
+            name if name is not None else Consts.charaname_substr_debug + str(random.randint(1, 8))
         )
         dummy_stats.character.state = State.normal
         dummy_stats.character.equips = ["シャツ", "パンツ"]
@@ -311,7 +308,7 @@ class ReverseParser(Parser[ReverseStats]):
         return pos_prompt
 
     def make_neg_prompt(self) -> str:
-        if PMConsts.charaname_substr_debug in self.crnt_stats.character.name:
+        if Consts.charaname_substr_debug in self.crnt_stats.character.name:
             # デバッグステータス
             return "R debug"
 

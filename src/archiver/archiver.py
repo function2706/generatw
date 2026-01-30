@@ -10,7 +10,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from common.classes import PicStats
+from archiver.dataclasses import PicStats
 
 
 @dataclass

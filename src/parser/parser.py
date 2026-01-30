@@ -7,14 +7,26 @@ from __future__ import annotations
 import copy
 import random
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Generic, Mapping, Protocol, TypeVar
 
 import pyperclip
 
-from common.classes import PMConsts
 from common.functions import dirname_by_prompts, dump_json
 from common.interfaces import MasterIF
+
+
+@dataclass(frozen=True)
+class Consts:
+    """
+    このクラス関連の定数
+    """
+
+    # 画像保存先ディレクトリ
+    pichome_dir: str = "pics"
+    # デバッグ用キャラクター名の部分文字列
+    charaname_substr_debug: str = "DebuggingPM"
 
 
 class HasCommonMembers(Protocol):
@@ -77,7 +89,7 @@ class Parser(ABC, Generic[Stats]):
         Returns:
             Path: ディレクトリパス
         """
-        return Path(PMConsts.pichome_dir) / Path(self.whoami())
+        return Path(Consts.pichome_dir) / Path(self.whoami())
 
     @abstractmethod
     def make_dummy_stats(self, name: str = None) -> Stats:
@@ -102,7 +114,7 @@ class Parser(ABC, Generic[Stats]):
             bool: メイン処理の反映が必要なら True, そうでない場合は False
         """
         if self.master.crnt_gui_configs.allow_edit_clipboard:
-            pyperclip.copy(PMConsts.charaname_substr_debug + str(random.randint(1, 8)))
+            pyperclip.copy(Consts.charaname_substr_debug + str(random.randint(1, 8)))
             return False
 
         new_stats = self.make_dummy_stats()
@@ -145,7 +157,7 @@ class Parser(ABC, Generic[Stats]):
         Returns:
             Stats: 新たなステータス
         """
-        if PMConsts.charaname_substr_debug in self.crnt_clipboard:
+        if Consts.charaname_substr_debug in self.crnt_clipboard:
             return self.make_dummy_stats(name=self.crnt_clipboard)
 
         new_stats = copy.deepcopy(self.crnt_stats)

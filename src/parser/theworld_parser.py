@@ -7,11 +7,10 @@ from __future__ import annotations
 import random
 from dataclasses import asdict, dataclass, field
 from enum import Enum, auto
-from parser.parser import Parser
+from parser.parser import Consts, Parser
 from types import MappingProxyType
 from typing import Any, Mapping
 
-from common.classes import PMConsts
 from common.functions import search_regex
 from common.interfaces import MasterIF
 
@@ -453,14 +452,14 @@ class TheWorldParser(Parser[TWStats]):
                     r"miyadeguchi mizuchi,blue hair,blue eyes,ponytail,"
                     r"crossed bangs,hair between eyes"
                 ),
-                PMConsts.charaname_substr_debug + "1": r"human girl",
-                PMConsts.charaname_substr_debug + "2": r"dog girl",
-                PMConsts.charaname_substr_debug + "3": r"cat girl",
-                PMConsts.charaname_substr_debug + "4": r"rabbit girl",
-                PMConsts.charaname_substr_debug + "5": r"mouse girl",
-                PMConsts.charaname_substr_debug + "6": r"sheep girl",
-                PMConsts.charaname_substr_debug + "7": r"fox girl",
-                PMConsts.charaname_substr_debug + "8": r"elf girl",
+                Consts.charaname_substr_debug + "1": r"human girl",
+                Consts.charaname_substr_debug + "2": r"dog girl",
+                Consts.charaname_substr_debug + "3": r"cat girl",
+                Consts.charaname_substr_debug + "4": r"rabbit girl",
+                Consts.charaname_substr_debug + "5": r"mouse girl",
+                Consts.charaname_substr_debug + "6": r"sheep girl",
+                Consts.charaname_substr_debug + "7": r"fox girl",
+                Consts.charaname_substr_debug + "8": r"elf girl",
             }
         )
 
@@ -470,9 +469,7 @@ class TheWorldParser(Parser[TWStats]):
     def make_dummy_stats(self, name: str = None) -> TWStats:
         dummy_stats = TWStats()
         dummy_stats.character.name = (
-            name
-            if name is not None
-            else PMConsts.charaname_substr_debug + str(random.randint(1, 8))
+            name if name is not None else Consts.charaname_substr_debug + str(random.randint(1, 8))
         )
         dummy_stats.character.vibe = Vibe.normal
         dummy_stats.character.affection = 100
@@ -508,7 +505,7 @@ class TheWorldParser(Parser[TWStats]):
         return pos_prompt
 
     def make_neg_prompt(self) -> str:
-        if PMConsts.charaname_substr_debug in self.crnt_stats.character.name:
+        if Consts.charaname_substr_debug in self.crnt_stats.character.name:
             # デバッグステータス
             return "TW debug"
 
