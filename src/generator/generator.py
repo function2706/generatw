@@ -9,9 +9,10 @@ import time
 from abc import ABC, abstractmethod
 from collections import deque
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+from threading import Lock
 from typing import Any, Generic, Protocol, TypeVar
 
 from PIL import ImageFile
@@ -42,8 +43,8 @@ class Event:
     イベントフラグ
     """
 
-    shutdown = threading.Event()  # 終了予定
-    interrupt = threading.Event()  # 中断処理実行予定
+    shutdown: threading.Event = field(default_factory=threading.Event)  # 終了予定
+    interrupt: threading.Event = field(default_factory=threading.Event)  # 中断処理実行予定
 
 
 TaskProgress = TypeVar("TaskProgress", bound=HasCommonMembers)
@@ -67,9 +68,12 @@ class Generator(ABC, Generic[TaskProgress]):
         self.event = Event()
 
         self.tasks: deque[TaskBlueprint] = deque()
+        self.tasks_lock = Lock()
         self.crnt_task: TaskBlueprint = None
+        self.crnt_task_lock = Lock()
 
         self.progress: TaskProgress = None
+        self.progress_lock = Lock()
 
         self.worker_thread = threading.Thread(
             target=self.worker, args=(), daemon=True, name="worker"
@@ -117,7 +121,7 @@ class Generator(ABC, Generic[TaskProgress]):
         リクエスト中かどうかは(post_interrupt() が)現在タスクの有無で判断
         """
         self.event.shutdown.set()
-        self.tasks.clear()
+        self.clear()
         self.request_interrupt()
 
     def reserve(
@@ -138,16 +142,18 @@ class Generator(ABC, Generic[TaskProgress]):
             d_port (str): 宛先ポート
         """
         new_task = TaskBlueprint.make(pos, neg, stps, b_size, w, h, d_addr, d_port)
-        if (new_task in self.tasks) or (new_task == self.crnt_task):
-            return
-
-        self.tasks.append(new_task)
+        with self.tasks_lock:
+            with self.crnt_task_lock:
+                if (new_task in self.tasks) or (new_task == self.crnt_task):
+                    return
+                self.tasks.append(new_task)
 
     def clear(self) -> None:
         """
         タスクリストを空にする
         """
-        self.tasks.clear()
+        with self.tasks_lock:
+            self.tasks.clear()
 
     def len_tasks(self) -> int:
         """
@@ -156,8 +162,40 @@ class Generator(ABC, Generic[TaskProgress]):
         Returns:
             int: 合計数
         """
-        nexts = len(self.tasks)
-        return nexts if self.crnt_task is None else nexts + 1
+        with self.tasks_lock:
+            with self.crnt_task_lock:
+                nexts = len(self.tasks)
+                return nexts if self.crnt_task is None else nexts + 1
+
+    def is_crnt_task_none(self) -> bool:
+        """
+        現在のタスクが存在するか
+
+        Returns:
+            bool: True: 存在する(実行中), False: 存在しない
+        """
+        with self.crnt_task_lock:
+            return self.crnt_task is None
+
+    def crnt_taskdict(self) -> dict[str, Any]:
+        """
+        現在のタスクの dict を取得する
+
+        Returns:
+            dict[str, Any]: 現在のタスクの dict
+        """
+        with self.crnt_task_lock:
+            return self.crnt_task.todict() if self.crnt_task is not None else {}
+
+    def crnt_tasklist(self) -> list[dict[str, Any]]:
+        """
+        現在のタスクリストを取得する
+
+        Returns:
+            list[dict[str, Any]]: 現在のタスクリスト
+        """
+        with self.tasks_lock:
+            return [task.todict() for task in self.tasks]
 
     def reserve_interrupt(self) -> None:
         """
@@ -212,7 +250,8 @@ class Generator(ABC, Generic[TaskProgress]):
         Returns:
             float: 現在のタスクの進捗度
         """
-        return self.progress.progress if self.progress is not None else 0
+        with self.progress_lock:
+            return self.progress.progress if self.progress is not None else 0
 
     @property
     def crnt_dst(self) -> str:
@@ -222,7 +261,12 @@ class Generator(ABC, Generic[TaskProgress]):
         Returns:
             str: 現在のタスクの宛先
         """
-        return self.crnt_task.dst_addr + ":" + self.crnt_task.dst_port
+        with self.crnt_task_lock:
+            return (
+                self.crnt_task.dst_addr + ":" + self.crnt_task.dst_port
+                if self.crnt_task is not None
+                else ""
+            )
 
     @property
     def crnt_task_copy(self) -> TaskBlueprint | None:
@@ -233,7 +277,8 @@ class Generator(ABC, Generic[TaskProgress]):
         Returns:
             TaskBlueprint: タスクのコピー
         """
-        return deepcopy(self.crnt_task)
+        with self.crnt_task_lock:
+            return deepcopy(self.crnt_task)
 
     def make_filepath(self, picinfo: PicInfo, idx: int) -> Path:
         """
@@ -291,26 +336,26 @@ class Generator(ABC, Generic[TaskProgress]):
         """
         while not self.event.shutdown.is_set():
             time.sleep(Consts.thread_interval_sec)
-            if not self.tasks or self.crnt_task is not None:
-                # 残りタスクが空か実行中タスクがない
-                # ここでは実行中タスクを解除してはいけない
-                continue
+            with self.tasks_lock:
+                with self.crnt_task_lock:
+                    if not self.tasks or self.crnt_task is not None:
+                        # 残りタスクが空か実行中タスクがない
+                        # ここでは実行中タスクを解除してはいけない
+                        continue
+
+                    self.crnt_task = self.tasks.popleft()
 
             try:
-                self.crnt_task = self.tasks.popleft()
-
                 imglist = self.request_generate()
                 if not imglist:
-                    # 生成失敗
-                    print("Request failed or interrupted, API response without images.")
                     continue
                 else:
                     self.save_images(imglist)
             except Exception as e:
                 print(f"Any exception occurred in {threading.current_thread().name}: ", e)
-                raise
             finally:
-                self.crnt_task = None
+                with self.crnt_task_lock:
+                    self.crnt_task = None
 
     def instructor(self) -> None:
         """
@@ -326,7 +371,6 @@ class Generator(ABC, Generic[TaskProgress]):
                     self.event.interrupt.clear()
             except Exception as e:
                 print(f"Any exception occurred in {threading.current_thread().name}: ", e)
-                raise
 
     def observer(self) -> None:
         """
@@ -336,7 +380,14 @@ class Generator(ABC, Generic[TaskProgress]):
         while not self.event.shutdown.is_set():
             time.sleep(Consts.thread_interval_sec)
             try:
-                self.progress = self.request_progress() if self.crnt_task is not None else None
+                with self.crnt_task_lock:
+                    if self.crnt_task is None:
+                        with self.progress_lock:
+                            self.progress = None
+                            continue
+
+                response = self.request_progress()
+                with self.progress_lock:
+                    self.progress = response
             except Exception as e:
                 print(f"Any exception occurred in {threading.current_thread().name}: ", e)
-                raise

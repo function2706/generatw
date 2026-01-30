@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
 import re
 from collections import deque
@@ -12,7 +13,13 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from common.classes import TaskBlueprint
+
+def xxxDEBUGxxx() -> None:
+    """
+    行を表示
+    """
+    frame = inspect.currentframe().f_back
+    print(f"Through {frame.f_lineno}@{frame.f_code.co_name}")
 
 
 def json_default(obj: Any) -> str:
@@ -34,8 +41,6 @@ def json_default(obj: Any) -> str:
         return str(obj)
     if isinstance(obj, deque):
         return list(obj)
-    if isinstance(obj, TaskBlueprint):
-        return obj.todict()
     raise TypeError(f"{obj.__class__.__name__} is not JSON serializable")
 
 

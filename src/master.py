@@ -167,7 +167,7 @@ class Master(MasterIF):
     @property
     def crnt_task(self) -> TaskBlueprint:
         """
-        現在のタスク
+        現在のタスク(Generator スレッドについて安全)
 
         Returns:
             TaskBlueprint: 現在のタスク
@@ -185,14 +185,14 @@ class Master(MasterIF):
         return self.generator.len_tasks()
 
     @property
-    def crnt_tasklist(self) -> list[TaskBlueprint]:
+    def crnt_tasklist(self) -> list[dict[str, Any]]:
         """
         現在のタスクリスト
 
         Returns:
-            list[TaskBlueprint]: 現在のタスクリスト
+            list[dict[str, Any]]: 現在のタスクリスト
         """
-        return list(self.generator.tasks)
+        return self.generator.crnt_tasklist()
 
     @property
     def crnt_progress(self) -> float:

@@ -76,6 +76,7 @@ class MasterIF(Protocol):
 
 class DisplayerIF(Protocol):
     master: MasterIF
+    crnt_config: GUIConfigs
 
     @property
     def config_window_x(self) -> int: ...

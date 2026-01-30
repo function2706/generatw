@@ -112,7 +112,6 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
 
         self.client_id = str(uuid.uuid4())
 
-        self.progress: ComfyUITaskProgress = None
         self.is_interrupting_listen = threading.Event()  # WS listen 中断要求があった
 
     def finalize(self) -> None:
@@ -136,13 +135,14 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
 
         message = json.loads(out)
         report = TaskReport.make(message)
-        if report.type == WSMessageType.executing:
-            self.progress = ComfyUITaskProgress.make(excuting_node_idx=report.executing_node)
-        elif report.type == WSMessageType.progress:
-            self.progress = ComfyUITaskProgress.make(progress=report.sampling_progress)
-        elif report.type == WSMessageType.executed:
-            self.progress = ComfyUITaskProgress.make()
-            return report
+        with self.progress_lock:
+            if report.type == WSMessageType.executing:
+                self.progress = ComfyUITaskProgress.make(excuting_node_idx=report.executing_node)
+            elif report.type == WSMessageType.progress:
+                self.progress = ComfyUITaskProgress.make(progress=report.sampling_progress)
+            elif report.type == WSMessageType.executed:
+                self.progress = ComfyUITaskProgress.make()
+                return report
 
         return None
 
@@ -191,10 +191,11 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
 
     def request_generate(self) -> list[tuple[ImageFile.ImageFile, PicInfo]]:
         self.is_interrupting_listen.clear()
-        if self.crnt_task is None:
+        if self.is_crnt_task_none():
             return []
 
-        task = self.crnt_task
+        with self.crnt_task_lock:
+            task = self.crnt_task
         workflow = Txt2ImgWorkFlow(
             ckpt_name="Illustrious\\waiNSFWIllustrious_v150.safetensors",
             width=task.width,
@@ -205,15 +206,21 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
             seed=task.seed,
             steps=task.steps,
         )
-        res = requests.post(
-            f"http://{self.crnt_dst}/prompt",
-            json={"prompt": workflow.todict(), "client_id": self.client_id},
-        )
-        res.raise_for_status()
+
+        dst = self.crnt_dst
+        try:
+            requests.post(
+                f"http://{dst}/prompt",
+                json={"prompt": workflow.todict(), "client_id": self.client_id},
+            )
+        except requests.exceptions.RequestException:
+            print(f"Failed request to {dst}.")
+        except Exception as e:
+            print("Any exception occurred on interrupting: ", e)
 
         report = None
         ws = websocket.WebSocket()
-        ws.connect(f"ws://{self.crnt_dst}/ws?clientId={self.client_id}")
+        ws.connect(f"ws://{dst}/ws?clientId={self.client_id}")
         try:
             while True:
                 try:
@@ -236,18 +243,19 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
         return
 
     def request_interrupt(self) -> None:
-        if self.crnt_task is None:
+        if self.is_crnt_task_none():
             return
 
         try:
-            requests.post(
-                f"http://{self.crnt_dst}/interrupt",
-                timeout=(5, 10),
-            )
+            dst = self.crnt_dst
+            requests.post(f"http://{dst}/interrupt", timeout=(5, 10))
+        except requests.exceptions.RequestException:
+            return
         except Exception as e:
             print("Any exception occurred on interrupt: ", e)
 
         self.is_interrupting_listen.set()
 
     def request_progress(self) -> ComfyUITaskProgress | None:
-        return self.progress
+        with self.progress_lock:
+            return self.progress

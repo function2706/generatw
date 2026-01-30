@@ -91,25 +91,25 @@ class A1111Generator(Generator[A1111TaskProgress | None]):
         """
         super().__init__(master)
 
-    @property
-    def crnt_progress(self) -> float:
-        return self.progress.progress if self.progress is not None else 0
-
     def request_generate(self) -> list[tuple[ImageFile.ImageFile, PicInfo]]:
-        if self.crnt_task is None:
+        if self.is_crnt_task_none():
             return []
 
         try:
+            dst = self.crnt_dst
+            payload = self.crnt_taskdict()
             response = requests.post(
-                f"http://{self.crnt_dst}/sdapi/v1/txt2img",
-                json=self.crnt_task.todict(),
-                timeout=(5, 60),
+                f"http://{dst}/sdapi/v1/txt2img", json=payload, timeout=(5, 60)
             )
+            response.raise_for_status()
+        except requests.exceptions.RequestException:
+            print(f"Failed request to {dst}.")
+            return []
         except Exception as e:
-            print("Any exception occurred on interrupt: ", e)
+            print("Any exception occurred on generating: ", e)
             return []
 
-        response.raise_for_status()
+        # response.raise_for_status()
         body: dict = response.json()
         images: list[str] = body.get("images", [])
         infos: dict[str, Any] = json.loads(body.get("info", "{}"))
@@ -141,29 +141,31 @@ class A1111Generator(Generator[A1111TaskProgress | None]):
         return
 
     def request_interrupt(self) -> None:
-        if self.crnt_task is None:
+        if self.is_crnt_task_none():
             return
 
         try:
-            requests.post(
-                f"http://{self.crnt_dst}/sdapi/v1/interrupt",
-                timeout=(5, 10),
-            )
+            dst = self.crnt_dst
+            requests.post(f"http://{dst}/sdapi/v1/interrupt", timeout=(5, 10))
+        except requests.exceptions.RequestException:
+            return
         except Exception as e:
-            print("Any exception occurred on interrupt: ", e)
+            print("Any exception occurred on interrupting: ", e)
 
     def request_progress(self) -> A1111TaskProgress | None:
-        if self.crnt_task is None:
+        if self.is_crnt_task_none():
             return None
 
         try:
+            dst = self.crnt_dst
             response = requests.get(
-                f"http://{self.crnt_dst}/sdapi/v1/progress?skip_current_image=true",
-                timeout=(5, 10),
+                f"http://{dst}/sdapi/v1/progress?skip_current_image=true", timeout=(5, 10)
             )
+            response.raise_for_status()
+        except requests.exceptions.RequestException:
+            return None
         except Exception as e:
-            print("Any exception occurred on interrupt: ", e)
+            print("Any exception occurred on requesting: ", e)
             return None
 
-        response.raise_for_status()
         return A1111TaskProgress.make(response.json())
