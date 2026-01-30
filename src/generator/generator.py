@@ -328,8 +328,6 @@ class Generator(ABC, Generic[TaskProgress]):
 
             image.save(str(picpath), pnginfo=picinfo.topnginfo())
 
-        self.master.refresh_piclist()
-
     def worker(self) -> None:
         """
         タスクを実行する, つまり生成 -> 保存をアトミックに繰り返し実行する\n

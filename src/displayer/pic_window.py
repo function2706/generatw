@@ -229,13 +229,26 @@ class PicWindow:
         """
         if not self.existed():
             return
+
+        next_button = self.cursor_frame.next_button
+        prev_button = self.cursor_frame.prev_button
+        upscale_button = self.eval_frame.upscale_button
+        remove_button = self.eval_frame.remove_button
         if toggle:
-            self.cursor_frame.next_button.configure(state="normal")
-            self.cursor_frame.prev_button.configure(state="normal")
-            self.eval_frame.upscale_button.configure(state="normal")
-            self.eval_frame.remove_button.configure(state="normal")
+            if str(next_button.cget("state")) == "disabled":
+                next_button.configure(state="normal")
+            if str(prev_button.cget("state")) == "disabled":
+                prev_button.configure(state="normal")
+            if str(upscale_button.cget("state")) == "disabled":
+                upscale_button.configure(state="normal")
+            if str(remove_button.cget("state")) == "disabled":
+                remove_button.configure(state="normal")
         else:
-            self.cursor_frame.next_button.configure(state="disabled")
-            self.cursor_frame.prev_button.configure(state="disabled")
-            self.eval_frame.upscale_button.configure(state="disabled")
-            self.eval_frame.remove_button.configure(state="disabled")
+            if str(next_button.cget("state")) == "normal":
+                next_button.configure(state="disabled")
+            if str(prev_button.cget("state")) == "normal":
+                prev_button.configure(state="disabled")
+            if str(upscale_button.cget("state")) == "normal":
+                upscale_button.configure(state="disabled")
+            if str(remove_button.cget("state")) == "normal":
+                remove_button.configure(state="disabled")

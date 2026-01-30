@@ -41,7 +41,7 @@ class Master(MasterIF):
         else:
             raise ValueError
 
-        self.archiver = Archiver.make(self.parser.pics_dir_path())
+        self.archiver = Archiver(self.parser.pics_dir_path())
 
         self.backend: BackEnd = backend
         if backend == BackEnd.a1111:
@@ -156,14 +156,14 @@ class Master(MasterIF):
         return self.archiver.crnt_picstats
 
     @property
-    def crnt_archiver(self) -> dict[str, Any]:
+    def crnt_archive(self) -> dict[str, Any]:
         """
         現在の Archiver
 
         Returns:
             dict[str, Any]: 現在の Archiver
         """
-        return self.archiver.todict()
+        return self.archiver.archive.todict()
 
     @property
     def crnt_task(self) -> TaskBlueprint:
@@ -210,14 +210,12 @@ class Master(MasterIF):
         > ボタンハンドラ
         """
         self.archiver.next_picstats()
-        self.displayer.update_pic_window(self.archiver.crnt_picstats)
 
     def on_prev(self) -> None:
         """
         < ボタンハンドラ
         """
         self.archiver.prev_picstats()
-        self.displayer.update_pic_window(self.archiver.crnt_picstats)
 
     def on_upscale(self) -> None:
         """
@@ -233,12 +231,6 @@ class Master(MasterIF):
         残っていない場合はディレクトリを削除し, NO IMAGE を表示する
         """
         self.archiver.remove_crnt_picstats()
-        if self.archiver.crnt_picstats is None:
-            # 削除後に表示すべき画像がない
-            self.displayer.update_pic_window()
-        else:
-            self.archiver.warp_picstats(self.archiver.crnt_picstats.dir)
-            self.displayer.update_pic_window(self.archiver.crnt_picstats)
 
     def on_debug(self) -> None:
         """
@@ -254,12 +246,6 @@ class Master(MasterIF):
         中断処理要求時
         """
         self.generator.reserve_interrupt()
-
-    def refresh_piclist(self) -> None:
-        """
-        監視対象ディレクトリ内の画像ファイルを PicStats の形で再帰的にリスト化する
-        """
-        self.archiver.refresh_piclist()
 
     def clear_tasks(self) -> None:
         """
@@ -295,14 +281,12 @@ class Master(MasterIF):
         if construct_window:
             self.displayer.pic_window.construct(fix_position=True)
 
-        piclist = self.archiver.get_picstats_list(self.parser.get_crnt_picstats_dir())
-        if not piclist:
+        if self.archiver.count_files_in(self.parser.get_crnt_picstats_dir()) == 0:
             # 記録中ステータスに紐づくディレクトリ内に画像がない
-            self.displayer.update_pic_window()
+            self.archiver.drop_picstats()
             return
 
         self.archiver.warp_picstats(self.parser.get_crnt_picstats_dir())
-        self.displayer.update_pic_window(self.archiver.crnt_picstats)
 
     def run_oneshot(self) -> None:
         """
@@ -326,10 +310,12 @@ class Master(MasterIF):
                 return
             elif not self.parser.is_stats_enough_for_prompt():
                 # 記録中ステータスが生成に不十分 i.e. ステータスに紐づくディレクトリがない
-                self.displayer.update_pic_window()
+                self.archiver.drop_picstats()
                 return
 
             self.run_oneshot()
         finally:
+            self.archiver.process_reports()
+            self.displayer.update_pic_window(self.archiver.crnt_picstats)
             self.displayer.info_window.update()
-            self.root.after(300, self.run_main)
+            self.root.after(100, self.run_main)

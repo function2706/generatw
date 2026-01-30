@@ -478,10 +478,13 @@ class Displayer(DisplayerIF):
         if not self.exists():
             return
 
+        output_button = self.main_window.main_tab_obj.button_frame.output_button
         if toggle:
-            self.main_window.main_tab_obj.button_frame.output_button.configure(state="normal")
+            if str(output_button.cget("state")) == "disabled":
+                output_button.configure(state="normal")
         else:
-            self.main_window.main_tab_obj.button_frame.output_button.configure(state="disabled")
+            if str(output_button.cget("state")) == "normal":
+                output_button.configure(state="disabled")
 
     def on_open_pic_window(self) -> None:
         """
@@ -509,7 +512,7 @@ class Displayer(DisplayerIF):
         """
         Archiver ダンプボタンハンドラ
         """
-        dump_json(self.master.crnt_archiver, "archiver")
+        dump_json(self.master.crnt_archive, "archiver")
 
     def on_dump_tasks(self) -> None:
         """

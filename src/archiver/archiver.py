@@ -1,72 +1,115 @@
 """
-画像管理クラス, 及びこれが包含するサブクラス群
+画像管理クラス
 """
 
 from __future__ import annotations
 
 import os
 import random
-from dataclasses import asdict, dataclass, field
+from collections import deque
+from enum import Enum, auto
 from pathlib import Path
-from typing import Any
 
-from archiver.dataclasses import PicStats
+from watchdog.events import PatternMatchingEventHandler
+from watchdog.observers import Observer
+
+from archiver.dataclasses import PicArchive, PicStats
 
 
-@dataclass
+class EventType(Enum):
+    created = auto()
+    deleted = auto()
+    moved = auto()
+
+
+class PicEventHandler(PatternMatchingEventHandler):
+    """
+    画像ファイルの WatchDog\n
+    PNG のみ監視対象
+    """
+
+    def __init__(self, reports: deque[tuple[EventType, Path]]):
+        """
+        コンストラクタ
+        """
+        super().__init__(patterns=["*.png", "*.PNG"], ignore_directories=True, case_sensitive=False)
+        self.reports = reports
+
+    def on_created(self, event):
+        """
+        ファイル作成時のイベントハンドラ
+
+        Args:
+            event (_type_): イベント
+        """
+        self.reports.append((EventType.created, Path(event.src_path)))
+
+    def on_deleted(self, event):
+        """
+        ファイル削除時のイベントハンドラ
+
+        Args:
+            event (_type_): イベント
+        """
+        self.reports.append((EventType.deleted, Path(event.src_path)))
+
+    def on_moved(self, event):
+        """
+        ファイル移動/変更時のイベントハンドラ\n
+        内容変更には非対応
+
+        Args:
+            event (_type_): イベント
+        """
+        print(f"Event: {event.event_type}, Path: {event.src_path} -> {event.dest_path}")
+
+
 class Archiver:
     """
-    画像監視クラス
+    画像管理クラス
     """
 
-    rootdir: Path | None = None
-    piclist: list[dict[str, list[PicStats]]] = field(default_factory=list)
-    crnt_picstats: PicStats | None = None
-
-    @classmethod
-    def make(cls, rootdir: Path):
+    def __init__(self, rootdir: Path):
         """
-        コンストラクタ\n
-        piclist は ディレクトリ名とそのディレクトリに属するファイル名群を各成分とするリスト\n
-        注目中の画像を PicStats の形で記憶する(専ら表示中と同義)
+        コンストラクタ
 
         Args:
             rootdir (Path): 監視対象ディレクトリ
         """
-        self = cls(rootdir=rootdir)
-        self.refresh_piclist()
-        return self
+        self.rootdir = rootdir
+        rootdir.mkdir(parents=True, exist_ok=True)
+        self.archive = PicArchive.make(rootdir)
+        self.crnt_picstats: PicStats = None
 
-    def refresh_piclist(self) -> None:
-        """
-        監視対象ディレクトリ内の画像ファイルを PicStats の形で再帰的にリスト化する
-        """
-        self.piclist = []
-        for dirpath, _, filenames in os.walk(self.rootdir):
-            picstats: list[PicStats] = []
-            for filename in filenames:
-                if filename.lower().endswith(".png"):
-                    path = Path(dirpath) / filename
-                    picstats.append(PicStats.make(path))
-            if picstats:
-                dirname = Path(dirpath).name
-                self.piclist.append({dirname: picstats})
+        # pics 監視モジュール
+        self.reports: deque[tuple[EventType, Path]] = deque()
+        self.observer = Observer()
+        self.observer.schedule(PicEventHandler(self.reports), path=str(rootdir), recursive=True)
+        self.observer.start()
 
-    def get_picstats_list(self, dirname: str) -> list[PicStats]:
+    def finalize(self):
         """
-        監視対象ディレクトリ内で指定のディレクトリ名に紐づく PicStats リストを取得する\n
-        存在しない場合は空リストを返す
+        終了処理
+        """
+        self.observer.stop()
+
+    def count_files_in(self, dirname: str) -> int:
+        """
+        指定のディレクトリ下のファイル数を取得する
 
         Args:
-            dirname (str): ディレクトリ名
+            dirname (str): ディレクトリ
 
         Returns:
-            list[PicStats]: PicStats リスト
+            int: ファイル数
         """
-        for d in self.piclist:
-            if dirname in d:
-                return d[dirname]
-        return []
+        return len(self.archive.get_picstats_list(dirname))
+
+    def drop_picstats(self) -> None:
+        """
+        注目中 PicStats を解除する
+        """
+        self.crnt_picstats = None
 
     def next_picstats(self) -> None:
         """
@@ -77,7 +120,7 @@ class Archiver:
         if self.crnt_picstats is None:
             return
 
-        picstats_list = self.get_picstats_list(self.crnt_picstats.dir)
+        picstats_list = self.archive.get_picstats_list(self.crnt_picstats.dir)
         if not picstats_list:
             return
 
@@ -93,7 +136,7 @@ class Archiver:
         if self.crnt_picstats is None:
             return
 
-        picstats_list = self.get_picstats_list(self.crnt_picstats.dir)
+        picstats_list = self.archive.get_picstats_list(self.crnt_picstats.dir)
         if not picstats_list:
             return
 
@@ -105,7 +148,7 @@ class Archiver:
         PicStats リストにおいて, そのディレクトリ内のランダムな PicStats に移動する\n
         リストが空の場合は何もしない
         """
-        picstats_list = self.get_picstats_list(dir)
+        picstats_list = self.archive.get_picstats_list(dir)
         if not picstats_list:
             return
 
@@ -113,27 +156,38 @@ class Archiver:
 
     def remove_crnt_picstats(self) -> None:
         """
-        注目中 PicStats にあたる画像を削除し, リストも更新する(該当 PicStats が削除される)\n
-        最後の 1 枚であった場合はディレクトリも削除し, 注目を解除する\n
-        ※ディレクトリのみが存在するという状況が仕様上あってはならないので, これらの処理を分けない\n
-        注目中 PicStats が None の場合はなにもしない
+        注目中 PicStats にあたる画像を削除する\n
+        (リストの更新は process_reports に一任)
         """
         if self.crnt_picstats is None:
             return
 
         os.remove(self.crnt_picstats.path)
-        self.refresh_piclist()
-        if not self.get_picstats_list(self.crnt_picstats.dir):
-            os.rmdir(self.rootdir / Path(self.crnt_picstats.dir))
-            self.crnt_picstats = None
 
-        self.refresh_piclist()
-
-    def todict(self) -> dict[str, Any]:
+    def process_reports(self) -> None:
         """
-        dict への変換
-
-        Returns:
-            dict[str, Any]: dict インスタンス
+        WatchDog からの報告を順に処理する\n
+        イベントごとの処理の詳細はコメントの通り\n
+        本関数は tkinter のメインループで呼び出すこと
         """
-        return asdict(self)
+        if not self.reports:
+            return
+
+        while self.reports:
+            eventtype, path = self.reports.popleft()
+            if eventtype == EventType.created:
+                # 追加: リストにも追加
+                self.archive.add(path)
+            elif eventtype == EventType.deleted:
+                # 削除: リストからも削除, さらにまだ注目中なら他へ移す
+                # もしディレクトリが空ならこれも削除し, まだ注目中なら注目を解除する
+                self.archive.remove(path)
+                if self.count_files_in(path.parent.name) > 0:
+                    if self.crnt_picstats.path == path:
+                        self.warp_picstats(self.crnt_picstats.dir)
+                else:
+                    os.rmdir(path.parent)
+                    if self.crnt_picstats.path == path:
+                        self.crnt_picstats = None
+            elif eventtype == EventType.moved:
+                print("T.B.D.")
