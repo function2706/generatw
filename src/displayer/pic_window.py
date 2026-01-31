@@ -160,7 +160,7 @@ class PicWindow:
         """
         if not self.existed():
             return
-        if picstats is not None:
+        if picstats is not None and picstats.path.exists():
             image = Image.open(picstats.path)
             tk_img = ImageTk.PhotoImage(image)
             self.cursor_frame.pic_label.configure(image=tk_img)
