@@ -38,6 +38,7 @@ class MasterIF(Protocol):
     """
 
     root: tkinter.Tk
+    after_id: str
 
     @property
     def frontend_type(self) -> FrontEnd: ...

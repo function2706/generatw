@@ -32,6 +32,7 @@ class Master(MasterIF):
             stats (Stats): ステータスインスタンス
         """
         self.root = tkinter.Tk()
+        self.after_id: str = ""
 
         self.frontend: FrontEnd = frontend
         if frontend == FrontEnd.reverse:
@@ -58,7 +59,7 @@ class Master(MasterIF):
         """
         メインループの開始
         """
-        self.root.after(100, self.run_main)
+        self.after_id = self.root.after(100, self.run_main)
         self.root.mainloop()
 
     def finalize(self) -> None:
@@ -66,13 +67,18 @@ class Master(MasterIF):
         終了処理
         """
 
+        if self.after_id:
+            self.root.after_cancel(self.after_id)
+            self.after_id = ""
+
         self.generator.finalize()
 
         def worker():
             self.generator.join()
             self.displayer.destroy()
+            self.archiver.finalize()
 
-        self.root.after(100, worker())
+        self.root.after(100, worker)
 
     def sigint_handler(self, sig, frame) -> None:
         """
@@ -301,6 +307,9 @@ class Master(MasterIF):
         Tkinter メインループにて周期的に呼び出される処理
         """
         try:
+            if not self.root.winfo_exists():
+                return
+
             if self.displayer.pic_window.event.outputting_noimage.is_set():
                 # NO IMAGE 表示中は記録中ステータスに沿った画像の表示を常に試みる
                 self.refresh_pic_randomly()
@@ -314,8 +323,10 @@ class Master(MasterIF):
                 return
 
             self.run_oneshot()
+        except tkinter.TclError:
+            return
         finally:
             self.archiver.process_reports()
             self.displayer.update_pic_window(self.archiver.crnt_picstats)
             self.displayer.info_window.update()
-            self.root.after(100, self.run_main)
+            self.after_id = self.root.after(100, self.run_main)

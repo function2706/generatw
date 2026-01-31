@@ -190,16 +190,19 @@ class InfoTree:
         if not self.tree.winfo_exists():
             return
 
-        col = self.columns[col_idx]
-        max_width = self._font.measure(col)
-        for iid in self.tree.get_children():
-            text = str(self.tree.item(iid, "values")[col_idx])
-            w = self._font.measure(text)
-            if w > max_width:
-                max_width = w
+        try:
+            col = self.columns[col_idx]
+            max_width = self._font.measure(col)
+            for iid in self.tree.get_children():
+                text = str(self.tree.item(iid, "values")[col_idx])
+                w = self._font.measure(text)
+                if w > max_width:
+                    max_width = w
 
-        max_width += 20
-        self.tree.column(col, width=max_width)
+            max_width += 20
+            self.tree.column(col, width=max_width)
+        except tkinter.TclError:
+            return
 
     def set(self, key: str, val: Any, idx: int = 1) -> None:
         """
@@ -605,7 +608,7 @@ class InfoWindow:
         ウィンドウが開いていない場合は何もしない\n
         更新は呼び出した瞬間の TaskManager をもとに行う
         """
-        if not self.info_window:
+        if not self.existed():
             return
 
         self.update_appinfo_frame()
