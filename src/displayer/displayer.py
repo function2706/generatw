@@ -8,8 +8,8 @@ import tkinter
 from tkinter import Frame, TclError, ttk
 
 from archiver.dataclasses import PicStats
-from common.functions import dump_json
-from common.interfaces import BackEnd, DisplayerIF, MasterIF
+from common.functions import BackEnd, dump_json
+from common.interfaces import DisplayerIF, MasterIF
 from displayer.dataclasses import GUIConfigs
 from displayer.info_window import InfoWindow
 from displayer.pic_window import PicWindow

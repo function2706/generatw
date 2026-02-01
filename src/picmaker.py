@@ -7,7 +7,7 @@ import signal
 import tkinter
 from tkinter import ttk
 
-from common.interfaces import BackEnd, FrontEnd
+from common.functions import BackEnd, FrontEnd
 from master import Master
 
 

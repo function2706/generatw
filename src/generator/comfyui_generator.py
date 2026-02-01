@@ -198,13 +198,16 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
             task = self.crnt_task
         workflow = Txt2ImgWorkFlow(
             ckpt_name="Illustrious\\waiNSFWIllustrious_v150.safetensors",
-            width=task.width,
-            height=task.height,
-            batch_size=task.batch_size,
             pos_prompt=task.prompt,
             neg_prompt=task.negative_prompt,
             seed=task.seed,
             steps=task.steps,
+            batch_size=task.batch_size,
+            sampler_name=task.sampler_name,
+            scheduler=task.scheduler,
+            cfg_scale=task.cfg_scale,
+            width=task.width,
+            height=task.height,
         )
 
         dst = self.crnt_dst

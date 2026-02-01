@@ -11,7 +11,7 @@ from typing import Any
 
 from archiver.dataclasses import PicStats
 from common.interfaces import DisplayerIF
-from generator.dataclasses import TaskBlueprint
+from generator.dataclasses import TaskBlueprint, TaskBlueprintTxt2Img
 
 
 @dataclass(frozen=True)
@@ -529,7 +529,7 @@ class InfoWindow:
             self.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
                 "宛先ポート", Consts.not_available_text
             )
-        else:
+        elif isinstance(crnt_task, TaskBlueprintTxt2Img):
             self.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
                 "ポジティブプロンプト", crnt_task.prompt
             )

@@ -7,7 +7,6 @@ from __future__ import annotations
 import threading
 import time
 from abc import ABC, abstractmethod
-from collections import deque
 from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -20,7 +19,13 @@ from PIL import ImageFile
 from archiver.dataclasses import PicInfo
 from common.functions import dirname_by_prompts, dump_json
 from common.interfaces import MasterIF
-from generator.dataclasses import TaskBlueprint
+from common.multideque import multideque
+from generator.dataclasses import (
+    SamplerName,
+    SchedulerName,
+    TaskBlueprintImg2Img,
+    TaskBlueprintTxt2Img,
+)
 
 
 @dataclass(frozen=True)
@@ -68,9 +73,11 @@ class Generator(ABC, Generic[TaskProgress]):
 
         self.event = Event()
 
-        self.tasks: deque[TaskBlueprint] = deque()
+        self.tasks: multideque[TaskBlueprintTxt2Img, TaskBlueprintImg2Img] = multideque(
+            TaskBlueprintTxt2Img, TaskBlueprintImg2Img
+        )
         self.tasks_lock = Lock()
-        self.crnt_task: TaskBlueprint = None
+        self.crnt_task: TaskBlueprintTxt2Img | TaskBlueprintImg2Img = None
         self.crnt_task_lock = Lock()
 
         self.progress: TaskProgress = None
@@ -125,8 +132,20 @@ class Generator(ABC, Generic[TaskProgress]):
         self.clear()
         self.request_interrupt()
 
-    def reserve(
-        self, pos: str, neg: str, stps: int, b_size: int, w: int, h: int, d_addr: str, d_port: str
+    def reserve_txt2img(
+        self,
+        pos: str,
+        neg: str,
+        seed: int,
+        stps: int,
+        b_size: int,
+        smplr: SamplerName,
+        schdlr: SchedulerName,
+        cfg: float,
+        w: int,
+        h: int,
+        d_addr: str,
+        d_port: str,
     ):
         """
         新しいタスクを生成し, タスクリストに予約する\n
@@ -142,12 +161,26 @@ class Generator(ABC, Generic[TaskProgress]):
             d_addr (str): 宛先アドレス
             d_port (str): 宛先ポート
         """
-        new_task = TaskBlueprint.make(pos, neg, stps, b_size, w, h, d_addr, d_port)
+        new_task: TaskBlueprintTxt2Img = TaskBlueprintTxt2Img.make(
+            b_end=self.master.backend_type,
+            pos=pos,
+            neg=neg,
+            seed=seed,
+            stps=stps,
+            b_size=b_size,
+            smplr=smplr,
+            schdlr=schdlr,
+            cfg=cfg,
+            w=w,
+            h=h,
+            d_addr=d_addr,
+            d_port=d_port,
+        )
         with self.tasks_lock:
             with self.crnt_task_lock:
                 if (new_task in self.tasks) or (new_task == self.crnt_task):
                     return
-                self.tasks.append(new_task)
+                self.tasks.push(new_task)
 
     def clear(self) -> None:
         """
@@ -217,13 +250,13 @@ class Generator(ABC, Generic[TaskProgress]):
         pass
 
     @abstractmethod
-    def request_upscale(self) -> None:
+    def request_upscale(self) -> list[tuple[ImageFile.ImageFile, PicInfo]]:
         """
         現在のタスクをもとにアップスケール要求を行う\n
         現在のタスクが空の場合は何もしない
 
         Returns:
-            tuple[Any, Any]: image フィールドと info フィールドのタプル, 失敗時は None
+            list[tuple[ImageFile.ImageFile, PicInfo]]: ImageFile, PicInfo のタプルリスト
         """
         pass
 
@@ -270,7 +303,7 @@ class Generator(ABC, Generic[TaskProgress]):
             )
 
     @property
-    def crnt_task_copy(self) -> TaskBlueprint | None:
+    def crnt_task_copy(self) -> TaskBlueprintTxt2Img | TaskBlueprintImg2Img | None:
         """
         現在のタスクのコピーを渡す\n
         現在のタスクは外部からの書き換えを認めない
@@ -342,15 +375,19 @@ class Generator(ABC, Generic[TaskProgress]):
                         # ここでは実行中タスクを解除してはいけない
                         continue
 
-                    self.crnt_task = self.tasks.popleft()
+                    self.crnt_task = self.tasks.pop()
 
             try:
-                imglist = self.request_generate()
+                if isinstance(self.crnt_task, TaskBlueprintTxt2Img):
+                    imglist = self.request_generate()
+                elif isinstance(self.crnt_task, TaskBlueprintImg2Img):
+                    imglist = self.request_upscale()
                 if not imglist:
                     continue
                 else:
                     self.save_images(imglist)
             except Exception as e:
+                raise
                 print(f"Any exception occurred in {threading.current_thread().name}: ", e)
             finally:
                 with self.crnt_task_lock:

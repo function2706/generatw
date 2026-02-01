@@ -5,31 +5,13 @@
 from __future__ import annotations
 
 import tkinter
-from enum import Enum, auto
 from pathlib import Path
 from typing import Any, Protocol
 
 from archiver.dataclasses import PicStats
+from common.functions import BackEnd, FrontEnd
 from displayer.dataclasses import GUIConfigs
 from generator.dataclasses import TaskBlueprint
-
-
-class FrontEnd(Enum):
-    """
-    フロントエンド識別子
-    """
-
-    reverse = auto()
-    the_world = auto()
-
-
-class BackEnd(Enum):
-    """
-    バックエンド識別子
-    """
-
-    a1111 = auto()
-    comfy_ui = auto()
 
 
 class MasterIF(Protocol):

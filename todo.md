@@ -1,6 +1,5 @@
 ・img2imgタスクの実装
 ・Good→アップスケール候補にキューイングに変更
-　→TaskBlueprintをtxt2imgとimg2imgに派生させる
 　→優先度は常にtxt2img, キューは一つだがimg2imgは常にtxt2imgのあとにスタックされる
 　→txt2imgタスク、img2imgタスクのみリセットのボタン、全てリセットのボタン
 ・Bad→削除ボタンに変更、押下の瞬間にこれに関するタスクを削除

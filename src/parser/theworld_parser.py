@@ -7,12 +7,12 @@ from __future__ import annotations
 import random
 from dataclasses import asdict, dataclass, field
 from enum import Enum, auto
-from parser.parser import Consts, Parser
 from types import MappingProxyType
 from typing import Any, Mapping
 
 from common.functions import search_regex
 from common.interfaces import MasterIF
+from parser.parser import Consts, Parser
 
 
 class Season(Enum):

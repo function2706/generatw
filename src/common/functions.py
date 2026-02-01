@@ -9,9 +9,27 @@ import inspect
 import json
 import re
 from collections import deque
-from enum import Enum
+from enum import Enum, auto
 from pathlib import Path
 from typing import Any
+
+
+class FrontEnd(Enum):
+    """
+    フロントエンド識別子
+    """
+
+    reverse = auto()
+    the_world = auto()
+
+
+class BackEnd(Enum):
+    """
+    バックエンド識別子
+    """
+
+    a1111 = auto()
+    comfy_ui = auto()
 
 
 def xxxDEBUGxxx() -> None:

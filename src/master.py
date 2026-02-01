@@ -5,18 +5,19 @@
 from __future__ import annotations
 
 import tkinter
-from parser.reverse_parser import ReverseParser
-from parser.theworld_parser import TheWorldParser
 from pathlib import Path
 from typing import Any
 
 from archiver.archiver import Archiver
 from archiver.dataclasses import PicStats
-from common.interfaces import BackEnd, FrontEnd, MasterIF
+from common.functions import BackEnd, FrontEnd
+from common.interfaces import MasterIF
 from displayer.displayer import Displayer, GUIConfigs
 from generator.a1111_generator import A1111Generator
 from generator.comfyui_generator import ComfyUIGenerator
-from generator.dataclasses import TaskBlueprint
+from generator.dataclasses import SamplerName, SchedulerName, TaskBlueprint
+from parser.reverse_parser import ReverseParser
+from parser.theworld_parser import TheWorldParser
 
 
 class Master(MasterIF):
@@ -268,11 +269,15 @@ class Master(MasterIF):
         if not self.parser.is_stats_enough_for_prompt():
             return
 
-        self.generator.reserve(
+        self.generator.reserve_txt2img(
             pos=self.parser.make_pos_prompt(),
             neg=self.parser.make_neg_prompt(),
+            seed=-1,
             stps=self.displayer.crnt_config.sd_steps,
             b_size=self.displayer.crnt_config.sd_batch_size,
+            smplr=SamplerName.dpmpp_2m,
+            schdlr=SchedulerName.karras,
+            cfg=7.0,
             w=self.displayer.crnt_config.sd_width,
             h=self.displayer.crnt_config.sd_height,
             d_addr=self.displayer.crnt_config.srv_ipaddr,

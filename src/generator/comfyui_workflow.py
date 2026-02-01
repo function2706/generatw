@@ -3,6 +3,8 @@ from dataclasses import asdict, dataclass, field
 from enum import Enum
 from typing import Any, Protocol, cast
 
+from generator.dataclasses import SamplerName, SchedulerName
+
 
 class NodeBody(Protocol):
     class_type: str
@@ -291,65 +293,6 @@ class LatentUpscaleBy(NodeBody):
         )
 
 
-class SamplerName(Enum):
-    euler = "euler"
-    euler_cfg_pp = "euler_cfg_pp"
-    euler_ancestral = "euler_ancestral"
-    euler_ancestral_cfg_pp = "euler_ancestral_cfg_pp"
-    heun = "heun"
-    heunpp2 = "heunpp2"
-    exp_heun_2_x0 = "exp_heun_2_x0"
-    exp_heun_2_x0_sde = "exp_heun_2_x0_sde"
-    dpm_2 = "dpm_2"
-    dpm_2_ancestral = "dpm_2_ancestral"
-    lms = "lms"
-    dpm_fast = "dpm_fast"
-    dpm_adaptive = "dpm_adaptive"
-    dpmpp_2s_ancestral = "dpmpp_2s_ancestral"
-    dpmpp_2s_ancestral_cfg_pp = "dpmpp_2s_ancestral_cfg_pp"
-    dpmpp_sde = "dpmpp_sde"
-    dpmpp_sde_gpu = "dpmpp_sde_gpu"
-    dpmpp_2m = "dpmpp_2m"
-    dpmpp_2m_cfg_pp = "dpmpp_2m_cfg_pp"
-    dpmpp_2m_sde = "dpmpp_2m_sde"
-    dpmpp_2m_sde_gpu = "dpmpp_2m_sde_gpu"
-    dpmpp_2m_sde_heun = "dpmpp_2m_sde_heun"
-    dpmpp_2m_sde_heun_gpu = "dpmpp_2m_sde_heun_gpu"
-    dpmpp_3m_sde = "dpmpp_3m_sde"
-    dpmpp_3m_sde_gpu = "dpmpp_3m_sde_gpu"
-    ddpm = "ddpm"
-    lcm = "lcm"
-    ipndm = "ipndm"
-    ipndm_v = "ipndm_v"
-    deis = "deis"
-    res_multistep = "res_multistep"
-    res_multistep_cfg_pp = "res_multistep_cfg_pp"
-    res_multistep_ancestral = "res_multistep_ancestral"
-    res_multistep_ancestral_cfg_pp = "res_multistep_ancestral_cfg_pp"
-    gradient_estimation = "gradient_estimation"
-    gradient_estimation_cfg_pp = "gradient_estimation_cfg_pp"
-    er_sde = "er_sde"
-    seeds_2 = "seeds_2"
-    seeds_3 = "seeds_3"
-    sa_solver = "sa_solver"
-    sa_solver_pece = "sa_solver_pece"
-    ddim = "ddim"
-    uni_pc = "uni_pc"
-    uni_pc_bh2 = "uni_pc_bh2"
-
-
-class SchedulerName(Enum):
-    simple = "simple"
-    sgm_uniform = "sgm_uniform"
-    karras = "karras"
-    exponential = "exponential"
-    ddim_uniform = "ddim_uniform"
-    beta = "beta"
-    normal = "normal"
-    linear_quadratic = "linear_quadratic"
-    kl_optimal = "kl_optimal"
-
-
 @dataclass
 class KSampler(NodeBody):
     @dataclass
@@ -402,8 +345,8 @@ class KSampler(NodeBody):
         steps: int,
         cfg: float,
         denoise: float,
-        sampler_name: SamplerName,
-        scheduler: SchedulerName,
+        sampler_name: str,
+        scheduler: str,
         loader: NodeSkeleton,
         latent_image: NodeSkeleton,
         positive: NodeSkeleton,
@@ -423,8 +366,8 @@ class KSampler(NodeBody):
                 steps=steps,
                 cfg=cfg,
                 denoise=denoise,
-                sampler_name=sampler_name.value,
-                scheduler=scheduler.value,
+                sampler_name=sampler_name,
+                scheduler=scheduler,
                 loader=loader,
                 latent_image=latent_image,
                 positive=positive,
@@ -840,13 +783,16 @@ class Txt2ImgWorkFlow(WorkFlow):
     def __init__(
         self,
         ckpt_name: str = None,
-        width: int = None,
-        height: int = None,
-        batch_size: int = None,
         pos_prompt: str = None,
         neg_prompt: str = None,
         seed: int = None,
         steps: int = None,
+        batch_size: int = None,
+        sampler_name: str = None,
+        scheduler: str = None,
+        cfg_scale: float = None,
+        width: int = None,
+        height: int = None,
     ):
         """
         コンストラクタ
@@ -909,10 +855,10 @@ class Txt2ImgWorkFlow(WorkFlow):
                 KSampler.make(
                     seed=seed,
                     steps=steps,
-                    cfg=7.0,
+                    cfg=cfg_scale,
                     denoise=1.0,
-                    sampler_name=SamplerName.dpmpp_2m,
-                    scheduler=SchedulerName.karras,
+                    sampler_name=sampler_name,
+                    scheduler=scheduler,
                     loader=self.node_of(self.ckpt_loader_idx),
                     latent_image=self.node_of(self.empty_latent_idx),
                     positive=self.node_of(self.positive_clip_idx),
