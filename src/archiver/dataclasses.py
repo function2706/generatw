@@ -31,6 +31,7 @@ class PicInfo:
     model_name: str = ""
     model_hash: str = ""
     clip_skip: int = 0
+    ancestor: str = ""
 
     @classmethod
     def fromimage(cls, image: Image):
@@ -55,6 +56,7 @@ class PicInfo:
             model_name=info.get("model_name"),
             model_hash=info.get("model_hash"),
             clip_skip=cls.to_int(info.get("clip_skip")),
+            ancestor=info.get("ancestor"),
         )
 
     @staticmethod
@@ -94,6 +96,7 @@ class PicInfo:
         info.add_text("model_name", self.model_name)
         info.add_text("model_hash", self.model_hash)
         info.add_text("clip_skip", str(self.clip_skip))
+        info.add_text("ancestor", self.ancestor)
         return info
 
 

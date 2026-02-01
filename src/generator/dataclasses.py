@@ -4,11 +4,9 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from enum import Enum, auto
 from typing import Any
-
-from archiver.dataclasses import PicStats
 
 
 class SamplerName(Enum):
@@ -78,12 +76,29 @@ class SchedulerName(Enum):
     align_your_steps = auto()
 
 
+class ResizeMode(Enum):
+    just_resize = 0
+    crop_n_resize = 1
+    resize_n_fill = 2
+    just_resize_latent = 3
+
+
+class UpScalerName(Enum):
+    nearest_exact = auto()
+    bilinear = auto()
+    area = auto()
+    bicubic = auto()
+    bislerp = auto()
+
+
 @dataclass
 class TaskBlueprint:
     """
     タスクの設計図
     """
 
+    prompt: str = ""
+    negative_prompt: str = ""
     seed: int = 0
     steps: int = 0
     batch_size: int = 0
@@ -110,18 +125,21 @@ class TaskBlueprintTxt2Img(TaskBlueprint):
     txt2img タスクの設計図
     """
 
-    prompt: str = ""
-    negative_prompt: str = ""
-
     width: int = 0
     height: int = 0
 
 
 @dataclass
 class TaskBlueprintImg2Img(TaskBlueprint):
-    target: PicStats = None
-
-    scaleby: int = 0
+    path: str = None
     denoising_strength: float = 0.0
 
+    # for A1111
+    init_images: list[str] = field(default_factory=list)
     resize_mode: int = 0
+    width: int = 0
+    height: int = 0
+
+    # for ComfyUI
+    upscaler_name: str = ""
+    scaleby: float = 0.0

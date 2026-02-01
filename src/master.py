@@ -15,7 +15,7 @@ from common.interfaces import MasterIF
 from displayer.displayer import Displayer, GUIConfigs
 from generator.a1111_generator import A1111Generator
 from generator.comfyui_generator import ComfyUIGenerator
-from generator.dataclasses import SamplerName, SchedulerName, TaskBlueprint
+from generator.dataclasses import SamplerName, SchedulerName, TaskBlueprint, UpScalerName
 from parser.reverse_parser import ReverseParser
 from parser.theworld_parser import TheWorldParser
 
@@ -226,16 +226,27 @@ class Master(MasterIF):
 
     def on_upscale(self) -> None:
         """
-        GOOD ボタンハンドラ
+        アップスケール予約ボタンハンドラ
         """
-        return
+        self.generator.reserve_img2img(
+            picstats=self.crnt_picstats,
+            stps=self.displayer.crnt_config.sd_steps,
+            smplr=SamplerName.dpmpp_2m_sde_gpu
+            if self.backend == BackEnd.comfy_ui
+            else SamplerName.dpmpp_2m_sde,
+            schdlr=SchedulerName.karras,
+            cfg=7.0,
+            scaleby=1.2,
+            denoise=0.65,
+            d_addr=self.displayer.crnt_config.srv_ipaddr,
+            d_port=self.displayer.crnt_config.srv_port,
+            resize_mode=3 if self.backend_type == BackEnd.a1111 else None,
+            upsclr=UpScalerName.nearest_exact if self.backend_type == BackEnd.comfy_ui else None,
+        )
 
     def on_remove(self) -> None:
         """
-        BAD ボタンハンドラ\n
-        表示中の画像を削除する\n
-        削除後に同じディレクトリ内に画像が残っている場合はランダムで表示する\n
-        残っていない場合はディレクトリを削除し, NO IMAGE を表示する
+        削除ボタンハンドラ
         """
         self.archiver.remove_crnt_picstats()
 

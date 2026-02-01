@@ -172,6 +172,14 @@ class multideque(Generic[*Ts]):
         """
         return sum(len(q) for q in self._queues.values())
 
+    def __iter__(self):
+        """
+        イテレータ
+        """
+        for t in self._types:
+            for item in self._queues[t]:
+                yield item
+
     def __repr__(self) -> str:
         """
         再現可能な文字列化

@@ -15,6 +15,7 @@ from PIL import Image, ImageFile
 
 from archiver.dataclasses import PicInfo
 from common.interfaces import MasterIF
+from generator.dataclasses import TaskBlueprintImg2Img, TaskBlueprintTxt2Img
 from generator.generator import Generator
 
 
@@ -96,14 +97,15 @@ class A1111Generator(Generator[A1111TaskProgress | None]):
             return []
 
         try:
-            dst = self.crnt_dst
-            payload = self.crnt_taskdict()
+            task: TaskBlueprintTxt2Img = self.crnt_task_copy
             response = requests.post(
-                f"http://{dst}/sdapi/v1/txt2img", json=payload, timeout=(5, 60)
+                f"http://{task.dst_addr}:{task.dst_port}/sdapi/v1/txt2img",
+                json=task.todict(),
+                timeout=(5, 60),
             )
             response.raise_for_status()
         except requests.exceptions.RequestException:
-            print(f"Failed request to {dst}.")
+            print(f"Failed request to {task.dst_addr}:{task.dst_port}.")
             return []
         except Exception as e:
             print("Any exception occurred on generating: ", e)
@@ -137,16 +139,67 @@ class A1111Generator(Generator[A1111TaskProgress | None]):
 
         return result
 
-    def request_upscale(self) -> None:
-        return
+    def request_upscale(self) -> list[tuple[ImageFile.ImageFile, PicInfo]]:
+        if self.is_crnt_task_none():
+            return []
+
+        try:
+            task: TaskBlueprintImg2Img = self.crnt_task_copy
+            with open(task.path, "rb") as pic:
+                b64 = base64.b64encode(pic.read()).decode("utf-8")
+            task.init_images = [f"data:image/png;base64,{b64}"]
+
+            response = requests.post(
+                f"http://{task.dst_addr}:{task.dst_port}/sdapi/v1/img2img",
+                json=task.todict(),
+                timeout=(5, 60),
+            )
+            response.raise_for_status()
+        except requests.exceptions.RequestException:
+            print(f"Failed request to {task.dst_addr}:{task.dst_port}.")
+            return []
+        except Exception as e:
+            print("Any exception occurred on upscaling: ", e)
+            return []
+
+        # response.raise_for_status()
+        body: dict = response.json()
+        images: list[str] = body.get("images", [])
+        infos: dict[str, Any] = json.loads(body.get("info", "{}"))
+        if not images:
+            return []
+
+        result: list[tuple[ImageFile.ImageFile, PicInfo]] = []
+        for idx, image in enumerate(images):
+            pic = Image.open(io.BytesIO(base64.b64decode(image.split(",", 1)[-1])))
+            picinfo = PicInfo(
+                positive_prompt=infos.get("all_prompts", [])[idx],
+                negative_prompt=infos.get("all_negative_prompts", [])[idx],
+                steps=infos.get("steps", 0),
+                sampler=infos.get("sampler_name", ""),
+                scheduler=dict(infos.get("extra_generation_params", {})).get("Schedule type", ""),
+                cfg_scale=infos.get("cfg_scale", 0),
+                seed=infos.get("all_seeds", [])[idx],
+                width=infos.get("width", 0),
+                height=infos.get("height", 0),
+                model_name=infos.get("sd_model_name", ""),
+                model_hash=infos.get("sd_model_hash", ""),
+                clip_skip=infos.get("clip_skip", 0),
+                ancestor=task.path,
+            )
+            result.append((pic, picinfo))
+
+        return result
 
     def request_interrupt(self) -> None:
         if self.is_crnt_task_none():
             return
 
         try:
-            dst = self.crnt_dst
-            requests.post(f"http://{dst}/sdapi/v1/interrupt", timeout=(5, 10))
+            task: TaskBlueprintImg2Img = self.crnt_task_copy
+            requests.post(
+                f"http://{task.dst_addr}:{task.dst_port}/sdapi/v1/interrupt", timeout=(5, 10)
+            )
         except requests.exceptions.RequestException:
             return
         except Exception as e:
@@ -157,9 +210,10 @@ class A1111Generator(Generator[A1111TaskProgress | None]):
             return None
 
         try:
-            dst = self.crnt_dst
+            task: TaskBlueprintImg2Img = self.crnt_task_copy
             response = requests.get(
-                f"http://{dst}/sdapi/v1/progress?skip_current_image=true", timeout=(5, 10)
+                f"http://{task.dst_addr}:{task.dst_port}/sdapi/v1/progress?skip_current_image=true",
+                timeout=(5, 10),
             )
             response.raise_for_status()
         except requests.exceptions.RequestException:

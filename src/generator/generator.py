@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import os
 import threading
 import time
 from abc import ABC, abstractmethod
@@ -16,15 +17,17 @@ from typing import Any, Generic, Iterable, Mapping, Protocol, TypeVar
 
 from PIL import ImageFile
 
-from archiver.dataclasses import PicInfo
+from archiver.dataclasses import PicInfo, PicStats
 from common.functions import BackEnd, dirname_by_prompts, dump_json
 from common.interfaces import MasterIF
 from common.multideque import multideque
 from generator.dataclasses import (
+    ResizeMode,
     SamplerName,
     SchedulerName,
     TaskBlueprintImg2Img,
     TaskBlueprintTxt2Img,
+    UpScalerName,
 )
 
 
@@ -166,6 +169,19 @@ class SchedulerParser(Parser[SchedulerName]):
         )
 
 
+class UpscalerParser(Parser[UpScalerName]):
+    def __init__(self):
+        super().__init__(
+            [
+                NamesOnBackend(UpScalerName.nearest_exact, None, "nearest-exact"),
+                NamesOnBackend(UpScalerName.bilinear, None, "bilinear"),
+                NamesOnBackend(UpScalerName.area, None, "area"),
+                NamesOnBackend(UpScalerName.bicubic, None, "bicubic"),
+                NamesOnBackend(UpScalerName.bislerp, None, "bislerp"),
+            ]
+        )
+
+
 class HasCommonMembers(Protocol):
     """
     Generic な Stats が 共通メンバを持つことを伝えるためのクラス
@@ -281,7 +297,7 @@ class Generator(ABC, Generic[TaskProgress]):
         d_port: str,
     ):
         """
-        新しいタスクを生成し, タスクリストに予約する\n
+        新しい txt2img タスクを生成し, タスクリストに予約する\n
         すでにリストに存在する, あるいは作業中のタスクの場合は何もしない
 
         Args:
@@ -290,7 +306,7 @@ class Generator(ABC, Generic[TaskProgress]):
             seed (int): シード値
             stps (int): ステップ数
             b_size (int): バッチサイズ
-            smplr (SamplerName): サンプラー
+            smplr (SamplerName): サンプラ
             schdlr (SchedulerName): スケジューラ
             cfg (float): コンフィグスケール
             w (int): 幅
@@ -309,6 +325,66 @@ class Generator(ABC, Generic[TaskProgress]):
             cfg_scale=cfg,
             width=w,
             height=h,
+            dst_addr=d_addr,
+            dst_port=d_port,
+        )
+        with self.tasks_lock:
+            with self.crnt_task_lock:
+                if (new_task in self.tasks) or (new_task == self.crnt_task):
+                    return
+                self.tasks.push(new_task)
+
+    def reserve_img2img(
+        self,
+        picstats: PicStats,
+        stps: int,
+        smplr: SamplerName,
+        schdlr: SchedulerName,
+        cfg: float,
+        scaleby: float,
+        denoise: float,
+        d_addr: str,
+        d_port: str,
+        resize_mode: ResizeMode = None,
+        upsclr: UpScalerName = None,
+    ):
+        """
+        新しい img2img タスクを生成し, タスクリストに予約する\n
+        すでにリストに存在する, あるいは作業中のタスクの場合は何もしない
+
+        Args:
+            picstats (PicStats): 拡大する PicStats
+            stps (int): ステップ数
+            smplr (SamplerName): サンプラ
+            schdlr (SchedulerName): スケジューラ
+            cfg (float): コンフィグスケール
+            scaleby (float): 拡大率
+            denoise (float): ノイズ付加タイミング
+            d_addr (str): 宛先アドレス
+            d_port (str): 宛先ポート
+            resize_mode (ResizeMode, optional): 拡大モード(for A1111), Defaults to None.
+            upsclr (UpScalerName, optional): アップスケーラ(for ComfyUI), Defaults to None.
+        """
+
+        backend = self.master.backend_type
+        new_task: TaskBlueprintImg2Img = TaskBlueprintImg2Img(
+            path=str(picstats.path),
+            prompt=picstats.info.positive_prompt,
+            negative_prompt=picstats.info.negative_prompt,
+            seed=picstats.info.seed,
+            steps=stps,
+            batch_size=1,
+            sampler_name=SamplerParser().getname(type=smplr, backend=backend),
+            scheduler=SchedulerParser().getname(type=schdlr, backend=backend),
+            upscaler_name=UpscalerParser().getname(type=upsclr, backend=backend)
+            if upsclr is not None
+            else "",
+            cfg_scale=cfg,
+            denoising_strength=denoise,
+            resize_mode=resize_mode if resize_mode is not None else 0,
+            width=int(picstats.info.width * scaleby),
+            height=int(picstats.info.height * scaleby),
+            scaleby=scaleby,
             dst_addr=d_addr,
             dst_port=d_port,
         )
@@ -485,8 +561,7 @@ class Generator(ABC, Generic[TaskProgress]):
             return
 
         for idx, imgtuple in enumerate(imglist):
-            image = imgtuple[0]
-            picinfo = imgtuple[1]
+            image, picinfo = imgtuple
             if self.master.crnt_gui_configs.print_picinfo:
                 dump_json(picinfo.todict(), "picinfo")
 
@@ -496,6 +571,10 @@ class Generator(ABC, Generic[TaskProgress]):
                 picpath.parent.mkdir(parents=True, exist_ok=True)
 
             image.save(str(picpath), pnginfo=picinfo.topnginfo())
+
+            if picinfo.ancestor:
+                # 拡大元画像がある場合は削除する
+                os.remove(picinfo.ancestor)
 
     def worker(self) -> None:
         """
@@ -523,7 +602,6 @@ class Generator(ABC, Generic[TaskProgress]):
                 else:
                     self.save_images(imglist)
             except Exception as e:
-                raise
                 print(f"Any exception occurred in {threading.current_thread().name}: ", e)
             finally:
                 with self.crnt_task_lock:

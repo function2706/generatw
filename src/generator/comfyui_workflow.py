@@ -1,9 +1,6 @@
 import random
 from dataclasses import asdict, dataclass, field
-from enum import Enum
 from typing import Any, Protocol, cast
-
-from generator.dataclasses import SamplerName, SchedulerName
 
 
 class NodeBody(Protocol):
@@ -153,14 +150,6 @@ class CLIPTextEncode(NodeBody):
         return cls(inputs=CLIPTextEncode.Inputs.make(text=data_inputs.get("text")))
 
 
-class UpScaleMethod(Enum):
-    nearest_exact = "nearest-exact"
-    bilinear = "bilinear"
-    area = "area"
-    bicubic = "bicubic"
-    bislerp = "bislerp"
-
-
 @dataclass
 class LatentUpscale(NodeBody):
     @dataclass
@@ -194,7 +183,7 @@ class LatentUpscale(NodeBody):
     @classmethod
     def make(
         cls,
-        upscale_method: UpScaleMethod,
+        upscale_method: str,
         width: int,
         height: int,
         crop: bool,
@@ -255,7 +244,7 @@ class LatentUpscaleBy(NodeBody):
     @classmethod
     def make(
         cls,
-        upscale_method: UpScaleMethod,
+        upscale_method: str,
         scale_by: float,
         sampler: NodeSkeleton,
     ):
@@ -406,8 +395,8 @@ class KSamplerAdvanced(NodeBody):
             seed: int,
             steps: int,
             cfg: float,
-            sampler_name: SamplerName,
-            scheduler: SchedulerName,
+            sampler_name: str,
+            scheduler: str,
             start_at_step: int,
             end_at_step: int,
             add_noise: bool,
