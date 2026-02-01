@@ -170,7 +170,7 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
             pic.save(buf, format="PNG")
 
             workflow_resp = Txt2ImgWorkFlow.fromdict(json.loads(pic.info.get("prompt")))
-            picinfo = PicInfo.make(
+            picinfo = PicInfo(
                 positive_prompt=workflow_resp.positive_prompt,
                 negative_prompt=workflow_resp.negative_prompt,
                 steps=workflow_resp.steps,

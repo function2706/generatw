@@ -524,7 +524,7 @@ class Displayer(DisplayerIF):
         """
         GUI の設定値を更新する
         """
-        self.crnt_config = GUIConfigs.make(
+        self.crnt_config = GUIConfigs(
             srv_ipaddr=self.main_window.main_tab_obj.sd_exterior_config_frame.ipaddr_entry.get(),
             srv_port=self.main_window.main_tab_obj.sd_exterior_config_frame.port_entry.get(),
             sd_steps=int(self.main_window.main_tab_obj.sd_interior_config_frame.steps_entry.get()),

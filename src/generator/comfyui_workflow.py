@@ -38,25 +38,19 @@ class CheckpointLoaderSimple(NodeBody):
     class Inputs:
         ckpt_name: str = ""
 
-        @classmethod
-        def make(cls, ckpt_name: str):
-            return cls(ckpt_name=ckpt_name)
-
     class_type: str = "CheckpointLoaderSimple"
     inputs: Inputs = None
 
     @classmethod
     def make(cls, ckpt_name: str):
-        return cls(inputs=CheckpointLoaderSimple.Inputs.make(ckpt_name=ckpt_name))
+        return cls(inputs=CheckpointLoaderSimple.Inputs(ckpt_name=ckpt_name))
 
     @classmethod
     def set(cls, data: dict[str, dict[str, Any]]):
         if data.get("class_type") != cls.class_type:
             raise ValueError
         data_inputs = data.get("inputs")
-        return cls(
-            inputs=CheckpointLoaderSimple.Inputs.make(ckpt_name=data_inputs.get("ckpt_name"))
-        )
+        return cls(inputs=CheckpointLoaderSimple.Inputs(ckpt_name=data_inputs.get("ckpt_name")))
 
 
 @dataclass
@@ -67,17 +61,13 @@ class EmptyLatentImage(NodeBody):
         height: int = 0
         batch_size: int = 0
 
-        @classmethod
-        def make(cls, width: int, height: int, batch_size: int):
-            return cls(width=width, height=height, batch_size=batch_size)
-
     class_type: str = "EmptyLatentImage"
     inputs: Inputs = None
 
     @classmethod
     def make(cls, width: int, height: int, batch_size: int):
         return cls(
-            inputs=EmptyLatentImage.Inputs.make(width=width, height=height, batch_size=batch_size)
+            inputs=EmptyLatentImage.Inputs(width=width, height=height, batch_size=batch_size)
         )
 
     @classmethod
@@ -86,7 +76,7 @@ class EmptyLatentImage(NodeBody):
             raise ValueError
         data_inputs = data.get("inputs")
         return cls(
-            inputs=EmptyLatentImage.Inputs.make(
+            inputs=EmptyLatentImage.Inputs(
                 width=int(data_inputs.get("width")),
                 height=int(data_inputs.get("height")),
                 batch_size=int(data_inputs.get("batch_size")),
@@ -517,23 +507,19 @@ class VAELoader(NodeBody):
     class Inputs:
         vae_name: str = ""
 
-        @classmethod
-        def make(cls, vae_name: str):
-            return cls(vae_name=vae_name)
-
     class_type: str = "VAELoader"
     inputs: Inputs = None
 
     @classmethod
     def make(cls, vae_name: str):
-        return cls(inputs=VAELoader.Inputs.make(vae_name=vae_name))
+        return cls(inputs=VAELoader.Inputs(vae_name=vae_name))
 
     @classmethod
     def set(cls, data: dict[str, dict[str, Any]]):
         if data.get("class_type") != cls.class_type:
             raise ValueError
         data_inputs = data.get("inputs")
-        return cls(inputs=VAELoader.Inputs.make(vae_name=data_inputs.get("vae_name")))
+        return cls(inputs=VAELoader.Inputs(vae_name=data_inputs.get("vae_name")))
 
 
 @dataclass
@@ -608,23 +594,19 @@ class LoadImage(NodeBody):
     class Inputs:
         image: str = ""
 
-        @classmethod
-        def make(cls, image_name: str):
-            return cls(image=image_name)
-
     class_type: str = "LoadImage"
     inputs: Inputs = None
 
     @classmethod
     def make(cls, image_name: str):
-        return cls(inputs=LoadImage.Inputs.make(image_name=image_name))
+        return cls(inputs=LoadImage.Inputs(image_name=image_name))
 
     @classmethod
     def set(cls, data: dict[str, dict[str, Any]]):
         if data.get("class_type") != cls.class_type:
             raise ValueError
         data_inputs = data.get("inputs")
-        return cls(inputs=LoadImage.Inputs.make(image_name=data_inputs.get("image")))
+        return cls(inputs=LoadImage.Inputs(image_name=data_inputs.get("image")))
 
 
 @dataclass

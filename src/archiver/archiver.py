@@ -78,7 +78,7 @@ class Archiver:
         """
         self.rootdir = rootdir
         rootdir.mkdir(parents=True, exist_ok=True)
-        self.archive = PicArchive.make(rootdir)
+        self.archive = PicArchive(rootdir)
         self.crnt_picstats: PicStats = None
 
         # pics 監視モジュール

@@ -33,37 +33,6 @@ class PicInfo:
     clip_skip: int = 0
 
     @classmethod
-    def make(
-        cls,
-        positive_prompt: str,
-        negative_prompt: str,
-        steps: str,
-        sampler: str,
-        scheduler: str,
-        cfg_scale: str,
-        seed: str,
-        width: str,
-        height: str,
-        model_name: str,
-        model_hash: str,
-        clip_skip: str,
-    ):
-        return cls(
-            positive_prompt=positive_prompt,
-            negative_prompt=negative_prompt,
-            steps=steps,
-            sampler=sampler,
-            scheduler=scheduler,
-            cfg_scale=cfg_scale,
-            seed=seed,
-            width=width,
-            height=height,
-            model_name=model_name,
-            model_hash=model_hash,
-            clip_skip=clip_skip,
-        )
-
-    @classmethod
     def fromimage(cls, image: Image):
         """
         コンストラクタ\n
@@ -190,19 +159,11 @@ class PicArchive:
     rootdir: Path | None = None
     piclist: list[dict[str, list[PicStats]]] = field(default_factory=list)
 
-    @classmethod
-    def make(cls, rootdir: Path):
+    def __post_init__(self):
         """
-        コンストラクタ\n
-        piclist は ディレクトリ名とそのディレクトリに属するファイル名群を各成分とするリスト\n
-        注目中の画像を PicStats の形で記憶する(専ら表示中と同義)
-
-        Args:
-            rootdir (Path): 監視対象ディレクトリ
+        コンストラクタ後に監視対象ディレクトリのリストを作成する
         """
-        self = cls(rootdir=rootdir)
         self.refresh_piclist()
-        return self
 
     def refresh_piclist(self) -> None:
         """

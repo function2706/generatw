@@ -119,7 +119,7 @@ class A1111Generator(Generator[A1111TaskProgress | None]):
         result: list[tuple[ImageFile.ImageFile, PicInfo]] = []
         for idx, image in enumerate(images):
             pic = Image.open(io.BytesIO(base64.b64decode(image.split(",", 1)[-1])))
-            picinfo = PicInfo.make(
+            picinfo = PicInfo(
                 positive_prompt=infos.get("all_prompts", [])[idx],
                 negative_prompt=infos.get("all_negative_prompts", [])[idx],
                 steps=infos.get("steps", 0),
