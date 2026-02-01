@@ -491,7 +491,12 @@ class Displayer(DisplayerIF):
         表示ボタンハンドラ\n
         表示すべき画像がないときは何もしない
         """
-        self.pic_window.construct(fix_position=True)
+        if self.pic_window is not None and self.pic_window.existed():
+            self.pic_window.pic_window.deiconify()
+            self.pic_window.pic_window.lift()
+        else:
+            self.pic_window.construct(fix_position=True)
+
         self.update_pic_window(self.master.crnt_picstats)
 
     def on_open_info_window(self) -> None:
