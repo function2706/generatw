@@ -105,6 +105,8 @@ class TaskBlueprint:
     sampler_name: str = ""
     scheduler: str = ""
     cfg_scale: float = 0.0
+    width: int = 0
+    height: int = 0
 
     dst_addr: str = ""
     dst_port: str = ""
@@ -125,8 +127,7 @@ class TaskBlueprintTxt2Img(TaskBlueprint):
     txt2img タスクの設計図
     """
 
-    width: int = 0
-    height: int = 0
+    pass
 
 
 @dataclass
@@ -137,9 +138,6 @@ class TaskBlueprintImg2Img(TaskBlueprint):
     # for A1111
     init_images: list[str] = field(default_factory=list)
     resize_mode: int = 0
-    width: int = 0
-    height: int = 0
 
     # for ComfyUI
     upscaler_name: str = ""
-    scaleby: float = 0.0

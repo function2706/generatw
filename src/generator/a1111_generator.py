@@ -15,7 +15,7 @@ from PIL import Image, ImageFile
 
 from archiver.dataclasses import PicInfo
 from common.interfaces import MasterIF
-from generator.dataclasses import TaskBlueprintImg2Img, TaskBlueprintTxt2Img
+from generator.dataclasses import TaskBlueprint, TaskBlueprintImg2Img, TaskBlueprintTxt2Img
 from generator.generator import Generator
 
 
@@ -196,7 +196,7 @@ class A1111Generator(Generator[A1111TaskProgress | None]):
             return
 
         try:
-            task: TaskBlueprintImg2Img = self.crnt_task_copy
+            task: TaskBlueprint = self.crnt_task_copy
             requests.post(
                 f"http://{task.dst_addr}:{task.dst_port}/sdapi/v1/interrupt", timeout=(5, 10)
             )
@@ -210,7 +210,7 @@ class A1111Generator(Generator[A1111TaskProgress | None]):
             return None
 
         try:
-            task: TaskBlueprintImg2Img = self.crnt_task_copy
+            task: TaskBlueprint = self.crnt_task_copy
             response = requests.get(
                 f"http://{task.dst_addr}:{task.dst_port}/sdapi/v1/progress?skip_current_image=true",
                 timeout=(5, 10),

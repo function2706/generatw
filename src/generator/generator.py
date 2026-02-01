@@ -384,7 +384,6 @@ class Generator(ABC, Generic[TaskProgress]):
             resize_mode=resize_mode if resize_mode is not None else 0,
             width=int(picstats.info.width * scaleby),
             height=int(picstats.info.height * scaleby),
-            scaleby=scaleby,
             dst_addr=d_addr,
             dst_port=d_port,
         )
@@ -422,16 +421,6 @@ class Generator(ABC, Generic[TaskProgress]):
         """
         with self.crnt_task_lock:
             return self.crnt_task is None
-
-    def crnt_taskdict(self) -> dict[str, Any]:
-        """
-        現在のタスクの dict を取得する
-
-        Returns:
-            dict[str, Any]: 現在のタスクの dict
-        """
-        with self.crnt_task_lock:
-            return self.crnt_task.todict() if self.crnt_task is not None else {}
 
     def crnt_tasklist(self) -> list[dict[str, Any]]:
         """
@@ -498,21 +487,6 @@ class Generator(ABC, Generic[TaskProgress]):
         """
         with self.progress_lock:
             return self.progress.progress if self.progress is not None else 0
-
-    @property
-    def crnt_dst(self) -> str:
-        """
-        現在のタスクの宛先
-
-        Returns:
-            str: 現在のタスクの宛先
-        """
-        with self.crnt_task_lock:
-            return (
-                self.crnt_task.dst_addr + ":" + self.crnt_task.dst_port
-                if self.crnt_task is not None
-                else ""
-            )
 
     @property
     def crnt_task_copy(self) -> TaskBlueprintTxt2Img | TaskBlueprintImg2Img | None:

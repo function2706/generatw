@@ -1,5 +1,6 @@
 import random
 from dataclasses import asdict, dataclass, field
+from pathlib import Path
 from typing import Any, Protocol, cast
 
 
@@ -167,14 +168,14 @@ class LatentUpscale(NodeBody):
             width: int,
             height: int,
             crop: str,
-            sampler: NodeSkeleton = None,
+            samples: NodeSkeleton = None,
         ):
             return cls(
                 upscale_method=upscale_method,
                 width=width,
                 height=height,
                 crop=crop,
-                samples=[sampler.nodeidx, 0] if sampler is not None else [],
+                samples=[samples.nodeidx, 0] if samples is not None else [],
             )
 
     class_type: str = "LatentUpscale"
@@ -187,18 +188,18 @@ class LatentUpscale(NodeBody):
         width: int,
         height: int,
         crop: bool,
-        sampler: NodeSkeleton,
+        samples: NodeSkeleton,
     ):
-        if not isinstance(sampler.body, KSampler | KSamplerAdvanced):
+        if not isinstance(samples.body, KSampler | KSamplerAdvanced | VAEEncode):
             raise TypeError
 
         return cls(
             inputs=LatentUpscale.Inputs.make(
-                upscale_method=upscale_method.value,
+                upscale_method=upscale_method,
                 width=width,
                 height=height,
                 crop="disabled" if not crop else "enabled",
-                sampler=sampler,
+                samples=samples,
             )
         )
 
@@ -230,12 +231,12 @@ class LatentUpscaleBy(NodeBody):
             cls,
             upscale_method: str,
             scale_by: float,
-            sampler: NodeSkeleton = None,
+            samples: NodeSkeleton = None,
         ):
             return cls(
                 upscale_method=upscale_method,
                 scale_by=scale_by,
-                samples=[sampler.nodeidx, 0] if sampler is not None else [],
+                samples=[samples.nodeidx, 0] if samples is not None else [],
             )
 
     class_type: str = "LatentUpscaleBy"
@@ -246,16 +247,16 @@ class LatentUpscaleBy(NodeBody):
         cls,
         upscale_method: str,
         scale_by: float,
-        sampler: NodeSkeleton,
+        samples: NodeSkeleton,
     ):
-        if not isinstance(sampler.body, KSampler | KSamplerAdvanced):
+        if not isinstance(samples.body, KSampler | KSamplerAdvanced | VAEEncode):
             raise TypeError
 
         return cls(
             inputs=LatentUpscaleBy.Inputs.make(
-                upscale_method=upscale_method.value,
+                upscale_method=upscale_method,
                 scale_by=scale_by,
-                sampler=sampler,
+                samples=samples,
             )
         )
 
@@ -555,7 +556,7 @@ class VAEEncode(NodeBody):
         def make(cls, image: NodeSkeleton = None, vae: NodeSkeleton = None):
             return cls(
                 pixels=[image.nodeidx, 0] if image is not None else [],
-                vae=[vae.nodeidx, 0] if vae is not None else [],
+                vae=[vae.nodeidx, 2] if vae is not None else [],
             )
 
     class_type: str = "VAEEncode"
@@ -563,7 +564,7 @@ class VAEEncode(NodeBody):
 
     @classmethod
     def make(cls, image: NodeSkeleton, vae: NodeSkeleton):
-        if not isinstance(image.body, LoadImage) or not isinstance(
+        if not isinstance(image.body, LoadImage | UnlimitLoadImage) or not isinstance(
             vae.body, CheckpointLoaderSimple | VAELoader
         ):
             raise TypeError
@@ -587,15 +588,36 @@ class LoadImage(NodeBody):
     inputs: Inputs = None
 
     @classmethod
-    def make(cls, image_name: str):
-        return cls(inputs=LoadImage.Inputs(image_name=image_name))
+    def make(cls, image: str):
+        return cls(inputs=LoadImage.Inputs(image=image))
 
     @classmethod
     def set(cls, data: dict[str, dict[str, Any]]):
         if data.get("class_type") != cls.class_type:
             raise ValueError
         data_inputs = data.get("inputs")
-        return cls(inputs=LoadImage.Inputs(image_name=data_inputs.get("image")))
+        return cls(inputs=LoadImage.Inputs(image=data_inputs.get("image")))
+
+
+@dataclass
+class UnlimitLoadImage(NodeBody):
+    @dataclass
+    class Inputs:
+        path: str = ""
+
+    class_type: str = "UnlimitLoadImage"
+    inputs: Inputs = None
+
+    @classmethod
+    def make(cls, path: str):
+        return cls(inputs=UnlimitLoadImage.Inputs(path=path))
+
+    @classmethod
+    def set(cls, data: dict[str, dict[str, Any]]):
+        if data.get("class_type") != cls.class_type:
+            raise ValueError
+        data_inputs = data.get("inputs")
+        return cls(inputs=UnlimitLoadImage.Inputs(path=data_inputs.get("path")))
 
 
 @dataclass
@@ -737,6 +759,8 @@ class WorkFlow:
                 obj.add(NodeSkeleton(int(idx), VAEEncode.set(node_skeleton)))
             elif class_type == "LoadImage":
                 obj.add(NodeSkeleton(int(idx), LoadImage.set(node_skeleton)))
+            elif class_type == "UnlimitLoadImage":
+                obj.add(NodeSkeleton(int(idx), UnlimitLoadImage.set(node_skeleton)))
             elif class_type == "SaveImage":
                 obj.add(NodeSkeleton(int(idx), SaveImage.set(node_skeleton)))
             elif class_type == "PreviewImage":
@@ -781,13 +805,16 @@ class Txt2ImgWorkFlow(WorkFlow):
 
         if (
             ckpt_name is None
-            or width is None
-            or height is None
-            or batch_size is None
             or pos_prompt is None
             or neg_prompt is None
             or seed is None
             or steps is None
+            or batch_size is None
+            or sampler_name is None
+            or scheduler is None
+            or cfg_scale is None
+            or width is None
+            or height is None
         ):
             return
 
@@ -886,6 +913,201 @@ class Txt2ImgWorkFlow(WorkFlow):
     @property
     def height(self) -> int:
         return cast(EmptyLatentImage.Inputs, self.node_of(self.empty_latent_idx).body.inputs).height
+
+    @property
+    def model_name(self) -> str:
+        return cast(
+            CheckpointLoaderSimple.Inputs, self.node_of(self.ckpt_loader_idx).body.inputs
+        ).ckpt_name
+
+    @property
+    def clip_skip(self) -> int:
+        return -cast(
+            CLIPSetLastLayer.Inputs, self.node_of(self.clip_layer_setter_idx).body.inputs
+        ).stop_at_clip_layer
+
+
+class Img2ImgWorkFlow(WorkFlow):
+    """
+    img2img に相当するワークフロー
+    """
+
+    def __init__(
+        self,
+        ckpt_name: str = None,
+        path: str = None,
+        pos_prompt: str = None,
+        neg_prompt: str = None,
+        seed: int = None,
+        steps: int = None,
+        batch_size: int = None,
+        sampler_name: str = None,
+        scheduler: str = None,
+        upscaler: str = None,
+        cfg_scale: float = None,
+        denoise: float = None,
+        width: int = None,
+        height: int = None,
+    ):
+        """
+        コンストラクタ
+        """
+        super().__init__()
+
+        self.ckpt_loader_idx = 1
+        self.image_loader_idx = 2
+        self.vae_encoder_idx = 3
+        self.clip_layer_setter_idx = 4
+        self.positive_clip_idx = 5
+        self.negative_clip_idx = 6
+        self.latent_upscaler_idx = 7
+        self.sampler_idx = 8
+        self.vae_decoder_idx = 9
+        self.previewer_idx = 10
+
+        if (
+            ckpt_name is None
+            or path is None
+            or pos_prompt is None
+            or neg_prompt is None
+            or seed is None
+            or steps is None
+            or batch_size is None
+            or sampler_name is None
+            or scheduler is None
+            or upscaler is None
+            or cfg_scale is None
+            or denoise is None
+            or width is None
+            or height is None
+        ):
+            return
+
+        self.add(
+            NodeSkeleton(self.ckpt_loader_idx, CheckpointLoaderSimple.make(ckpt_name=ckpt_name))
+        )
+        self.add(
+            NodeSkeleton(
+                self.image_loader_idx, UnlimitLoadImage.make(path=str(Path(path).resolve()))
+            )
+        )
+        self.add(
+            NodeSkeleton(
+                self.vae_encoder_idx,
+                VAEEncode.make(
+                    image=self.node_of(self.image_loader_idx),
+                    vae=self.node_of(self.ckpt_loader_idx),
+                ),
+            )
+        )
+        self.add(
+            NodeSkeleton(
+                self.clip_layer_setter_idx,
+                CLIPSetLastLayer.make(
+                    stop_at_clip_layer=-2, loader=self.node_of(self.ckpt_loader_idx)
+                ),
+            )
+        )
+        self.add(
+            NodeSkeleton(
+                self.positive_clip_idx,
+                CLIPTextEncode.make(text=pos_prompt, loader=self.node_of(self.ckpt_loader_idx)),
+            )
+        )
+        self.add(
+            NodeSkeleton(
+                self.negative_clip_idx,
+                CLIPTextEncode.make(text=neg_prompt, loader=self.node_of(self.ckpt_loader_idx)),
+            )
+        )
+        self.add(
+            NodeSkeleton(
+                self.latent_upscaler_idx,
+                LatentUpscale.make(
+                    upscale_method=upscaler,
+                    width=width,
+                    height=height,
+                    crop=False,
+                    samples=self.node_of(self.vae_encoder_idx),
+                ),
+            )
+        )
+        self.add(
+            NodeSkeleton(
+                self.sampler_idx,
+                KSampler.make(
+                    seed=seed,
+                    steps=steps,
+                    cfg=cfg_scale,
+                    denoise=denoise,
+                    sampler_name=sampler_name,
+                    scheduler=scheduler,
+                    loader=self.node_of(self.ckpt_loader_idx),
+                    latent_image=self.node_of(self.latent_upscaler_idx),
+                    positive=self.node_of(self.positive_clip_idx),
+                    negative=self.node_of(self.negative_clip_idx),
+                ),
+            ),
+        )
+        self.add(
+            NodeSkeleton(
+                self.vae_decoder_idx,
+                VAEDecode.make(
+                    sampler=self.node_of(self.sampler_idx), vae=self.node_of(self.ckpt_loader_idx)
+                ),
+            )
+        )
+        self.add(
+            NodeSkeleton(
+                self.previewer_idx, PreviewImage.make(vaedec=self.node_of(self.vae_decoder_idx))
+            )
+        )
+
+    @property
+    def ancestor(self) -> str:
+        return cast(UnlimitLoadImage.Inputs, self.node_of(self.image_loader_idx).body.inputs).path
+
+    @property
+    def positive_prompt(self) -> str:
+        return cast(CLIPTextEncode.Inputs, self.node_of(self.positive_clip_idx).body.inputs).text
+
+    @property
+    def negative_prompt(self) -> str:
+        return cast(CLIPTextEncode.Inputs, self.node_of(self.negative_clip_idx).body.inputs).text
+
+    @property
+    def steps(self) -> int:
+        return cast(KSampler.Inputs, self.node_of(self.sampler_idx).body.inputs).steps
+
+    @property
+    def sampler(self) -> str:
+        return cast(KSampler.Inputs, self.node_of(self.sampler_idx).body.inputs).sampler_name
+
+    @property
+    def scheduler(self) -> str:
+        return cast(KSampler.Inputs, self.node_of(self.sampler_idx).body.inputs).scheduler
+
+    @property
+    def cfg_scale(self) -> float:
+        return cast(KSampler.Inputs, self.node_of(self.sampler_idx).body.inputs).cfg
+
+    @property
+    def seed(self) -> int:
+        return cast(KSampler.Inputs, self.node_of(self.sampler_idx).body.inputs).seed
+
+    @property
+    def upscaler(self) -> str:
+        return cast(
+            LatentUpscale.Inputs, self.node_of(self.latent_upscaler_idx).body.inputs
+        ).upscale_method
+
+    @property
+    def width(self) -> int:
+        return cast(LatentUpscale.Inputs, self.node_of(self.latent_upscaler_idx).body.inputs).width
+
+    @property
+    def height(self) -> int:
+        return cast(LatentUpscale.Inputs, self.node_of(self.latent_upscaler_idx).body.inputs).height
 
     @property
     def model_name(self) -> str:

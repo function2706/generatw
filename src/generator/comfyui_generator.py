@@ -17,7 +17,8 @@ from PIL import Image, ImageFile
 
 from archiver.dataclasses import PicInfo
 from common.interfaces import MasterIF
-from generator.comfyui_workflow import Txt2ImgWorkFlow
+from generator.comfyui_workflow import Img2ImgWorkFlow, Txt2ImgWorkFlow
+from generator.dataclasses import TaskBlueprint, TaskBlueprintImg2Img, TaskBlueprintTxt2Img
 from generator.generator import Generator
 
 
@@ -146,7 +147,9 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
 
         return None
 
-    def make_pictuple(self, report: TaskReport) -> list[tuple[ImageFile.ImageFile, PicInfo]]:
+    def make_pictuple(
+        self, report: TaskReport, is_upscale: bool
+    ) -> list[tuple[ImageFile.ImageFile, PicInfo]]:
         """
         ImageFile と PicInfo のタプルリストをタスクレポートから得る\n
         失敗時は空リストを返す
@@ -158,9 +161,10 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
             list[tuple[ImageFile.ImageFile, PicInfo]]: ImageFile と PicInfo のタプルリスト
         """
         result: list[tuple[ImageFile.ImageFile, PicInfo]] = []
+        task: TaskBlueprint = self.crnt_task_copy
         for info in report.fileinfos:
             img_res = requests.get(
-                f"http://{self.crnt_dst}/view?filename={info.filename}&subfolder={info.subfolder}&type={info.type}"
+                f"http://{task.dst_addr}:{task.dst_port}/view?filename={info.filename}&subfolder={info.subfolder}&type={info.type}"
             )
             if img_res.status_code != 200:
                 return []
@@ -169,21 +173,39 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
             buf = io.BytesIO()
             pic.save(buf, format="PNG")
 
-            workflow_resp = Txt2ImgWorkFlow.fromdict(json.loads(pic.info.get("prompt")))
-            picinfo = PicInfo(
-                positive_prompt=workflow_resp.positive_prompt,
-                negative_prompt=workflow_resp.negative_prompt,
-                steps=workflow_resp.steps,
-                sampler=workflow_resp.sampler,
-                scheduler=workflow_resp.scheduler,
-                cfg_scale=workflow_resp.cfg_scale,
-                seed=workflow_resp.seed,
-                width=workflow_resp.width,
-                height=workflow_resp.height,
-                model_name=workflow_resp.model_name,
-                model_hash="",
-                clip_skip=workflow_resp.clip_skip,
-            )
+            if is_upscale:
+                workflow_resp = Img2ImgWorkFlow.fromdict(json.loads(pic.info.get("prompt")))
+                picinfo = PicInfo(
+                    positive_prompt=workflow_resp.positive_prompt,
+                    negative_prompt=workflow_resp.negative_prompt,
+                    steps=workflow_resp.steps,
+                    sampler=workflow_resp.sampler,
+                    scheduler=workflow_resp.scheduler,
+                    cfg_scale=workflow_resp.cfg_scale,
+                    seed=workflow_resp.seed,
+                    width=workflow_resp.width,
+                    height=workflow_resp.height,
+                    model_name=workflow_resp.model_name,
+                    model_hash="",
+                    clip_skip=workflow_resp.clip_skip,
+                    ancestor=workflow_resp.ancestor,
+                )
+            else:
+                workflow_resp = Txt2ImgWorkFlow.fromdict(json.loads(pic.info.get("prompt")))
+                picinfo = PicInfo(
+                    positive_prompt=workflow_resp.positive_prompt,
+                    negative_prompt=workflow_resp.negative_prompt,
+                    steps=workflow_resp.steps,
+                    sampler=workflow_resp.sampler,
+                    scheduler=workflow_resp.scheduler,
+                    cfg_scale=workflow_resp.cfg_scale,
+                    seed=workflow_resp.seed,
+                    width=workflow_resp.width,
+                    height=workflow_resp.height,
+                    model_name=workflow_resp.model_name,
+                    model_hash="",
+                    clip_skip=workflow_resp.clip_skip,
+                )
 
             result.append((Image.open(buf), picinfo))
 
@@ -194,8 +216,7 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
         if self.is_crnt_task_none():
             return []
 
-        with self.crnt_task_lock:
-            task = self.crnt_task
+        task: TaskBlueprintTxt2Img = self.crnt_task_copy
         workflow = Txt2ImgWorkFlow(
             ckpt_name="Illustrious\\waiNSFWIllustrious_v150.safetensors",
             pos_prompt=task.prompt,
@@ -210,20 +231,19 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
             height=task.height,
         )
 
-        dst = self.crnt_dst
         try:
             requests.post(
-                f"http://{dst}/prompt",
+                f"http://{task.dst_addr}:{task.dst_port}/prompt",
                 json={"prompt": workflow.todict(), "client_id": self.client_id},
             )
         except requests.exceptions.RequestException:
-            print(f"Failed request to {dst}.")
+            print(f"Failed request to {task.dst_addr}:{task.dst_port}.")
         except Exception as e:
             print("Any exception occurred on interrupting: ", e)
 
         report = None
         ws = websocket.WebSocket()
-        ws.connect(f"ws://{dst}/ws?clientId={self.client_id}")
+        ws.connect(f"ws://{task.dst_addr}:{task.dst_port}/ws?clientId={self.client_id}")
         try:
             while True:
                 try:
@@ -240,18 +260,69 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
         finally:
             ws.close()
 
-        return self.make_pictuple(report) if report is not None else []
+        return self.make_pictuple(report, False) if report is not None else []
 
     def request_upscale(self) -> None:
-        return
+        self.is_interrupting_listen.clear()
+        if self.is_crnt_task_none():
+            return []
+
+        task: TaskBlueprintImg2Img = self.crnt_task_copy
+        workflow = Img2ImgWorkFlow(
+            ckpt_name="Illustrious\\waiNSFWIllustrious_v150.safetensors",
+            path=task.path,
+            pos_prompt=task.prompt,
+            neg_prompt=task.negative_prompt,
+            seed=task.seed,
+            steps=task.steps,
+            batch_size=task.batch_size,
+            sampler_name=task.sampler_name,
+            scheduler=task.scheduler,
+            upscaler=task.upscaler_name,
+            cfg_scale=task.cfg_scale,
+            denoise=task.denoising_strength,
+            width=task.width,
+            height=task.height,
+        )
+
+        try:
+            requests.post(
+                f"http://{task.dst_addr}:{task.dst_port}/prompt",
+                json={"prompt": workflow.todict(), "client_id": self.client_id},
+            )
+        except requests.exceptions.RequestException:
+            print(f"Failed request to {task.dst_addr}:{task.dst_port}.")
+        except Exception as e:
+            print("Any exception occurred on interrupting: ", e)
+
+        report = None
+        ws = websocket.WebSocket()
+        ws.connect(f"ws://{task.dst_addr}:{task.dst_port}/ws?clientId={self.client_id}")
+        try:
+            while True:
+                try:
+                    if self.is_interrupting_listen.is_set():
+                        return []
+
+                    report = self.listen_websocket(ws)
+                    if report is not None:
+                        break
+                except websocket.WebSocketTimeoutException:
+                    continue
+        except Exception as e:
+            print("Any exception occurred in connecting with WS: ", e)
+        finally:
+            ws.close()
+
+        return self.make_pictuple(report, True) if report is not None else []
 
     def request_interrupt(self) -> None:
         if self.is_crnt_task_none():
             return
 
         try:
-            dst = self.crnt_dst
-            requests.post(f"http://{dst}/interrupt", timeout=(5, 10))
+            task: TaskBlueprint = self.crnt_task_copy
+            requests.post(f"http://{task.dst_addr}:{task.dst_port}/interrupt", timeout=(5, 10))
         except requests.exceptions.RequestException:
             return
         except Exception as e:
