@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from archiver.archiver import Archiver
-from archiver.dataclasses import PicStats
+from archiver.dataclasses import NoImageStats, PicStats
 from common.functions import BackEnd, FrontEnd
 from common.interfaces import MasterIF
 from displayer.displayer import Displayer, GUIConfigs
@@ -153,14 +153,14 @@ class Master(MasterIF):
         return self.displayer.crnt_config
 
     @property
-    def crnt_picstats(self) -> PicStats:
+    def crnt_picstats(self) -> PicStats | NoImageStats:
         """
         現在の PicStats
 
         Returns:
             PicStats: 現在の PicStats
         """
-        return self.archiver.crnt_picstats
+        return self.archiver.crnt_picstats_copy
 
     @property
     def crnt_archive(self) -> dict[str, Any]:
@@ -212,22 +212,25 @@ class Master(MasterIF):
         """
         return self.generator.crnt_progress
 
-    def on_next(self) -> None:
+    def on_forward(self) -> None:
         """
         > ボタンハンドラ
         """
-        self.archiver.next_picstats()
+        self.archiver.forward_picstats()
 
-    def on_prev(self) -> None:
+    def on_backward(self) -> None:
         """
         < ボタンハンドラ
         """
-        self.archiver.prev_picstats()
+        self.archiver.backward_picstats()
 
     def on_upscale(self) -> None:
         """
         アップスケール予約ボタンハンドラ
         """
+        if self.crnt_picstats is NoImageStats:
+            return
+
         self.generator.reserve_img2img(
             picstats=self.crnt_picstats,
             stps=self.displayer.crnt_config.sd_steps,
@@ -303,12 +306,12 @@ class Master(MasterIF):
         if construct_window:
             self.displayer.pic_window.construct(fix_position=True)
 
-        if self.archiver.count_files_in(self.parser.get_crnt_picstats_dir()) == 0:
+        if self.archiver.count_files_in(self.parser.get_crnt_stats_dir()) == 0:
             # 記録中ステータスに紐づくディレクトリ内に画像がない
             self.archiver.drop_picstats()
             return
 
-        self.archiver.warp_picstats(self.parser.get_crnt_picstats_dir())
+        self.archiver.warp_picstats(self.parser.get_crnt_stats_dir())
 
     def run_oneshot(self) -> None:
         """
@@ -343,6 +346,8 @@ class Master(MasterIF):
             return
         finally:
             self.archiver.process_reports()
-            self.displayer.update_pic_window(self.archiver.crnt_picstats)
+            new_picstats = self.archiver.inherit_picstats()
+            if new_picstats:
+                self.displayer.update_pic_window(new_picstats)
             self.displayer.info_window.update()
             self.after_id = self.root.after(100, self.run_main)

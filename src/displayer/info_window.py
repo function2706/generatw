@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from tkinter import TclError, font, ttk
 from typing import Any
 
-from archiver.dataclasses import PicStats
+from archiver.dataclasses import NoImageStats, PicStats
 from common.interfaces import DisplayerIF
 from generator.dataclasses import TaskBlueprint, TaskBlueprintTxt2Img
 
@@ -551,9 +551,8 @@ class InfoWindow:
             self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("宛先アドレス", crnt_task.dst_addr)
             self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("宛先ポート", crnt_task.dst_port)
 
-    def update_picinfo_tab(self, reset: bool = False) -> None:
-        crnt_picstats: PicStats = self.super_owner.master.crnt_picstats
-        if not crnt_picstats or reset:
+    def update_picinfo_tab(self, picstats: PicStats | NoImageStats) -> None:
+        if picstats is NoImageStats:
             self.picinfo_tab_obj.infobox_frame.infobox_tree.set("場所", Consts.not_available_text)
             self.picinfo_tab_obj.infobox_frame.infobox_tree.set(
                 "ポジティブプロンプト", Consts.not_available_text
@@ -579,28 +578,22 @@ class InfoWindow:
             self.picinfo_tab_obj.infobox_frame.infobox_tree.set("幅", Consts.not_available_text)
             self.picinfo_tab_obj.infobox_frame.infobox_tree.set("高さ", Consts.not_available_text)
         else:
-            self.picinfo_tab_obj.infobox_frame.infobox_tree.set("場所", crnt_picstats.path)
+            self.picinfo_tab_obj.infobox_frame.infobox_tree.set("場所", picstats.path)
             self.picinfo_tab_obj.infobox_frame.infobox_tree.set(
-                "ポジティブプロンプト", crnt_picstats.info.positive_prompt
+                "ポジティブプロンプト", picstats.info.positive_prompt
             )
             self.picinfo_tab_obj.infobox_frame.infobox_tree.set(
-                "ネガティブプロンプト", crnt_picstats.info.negative_prompt
+                "ネガティブプロンプト", picstats.info.negative_prompt
             )
+            self.picinfo_tab_obj.infobox_frame.infobox_tree.set("ステップ数", picstats.info.steps)
+            self.picinfo_tab_obj.infobox_frame.infobox_tree.set("サンプラ", picstats.info.sampler)
             self.picinfo_tab_obj.infobox_frame.infobox_tree.set(
-                "ステップ数", crnt_picstats.info.steps
+                "スケジューラ", picstats.info.scheduler
             )
-            self.picinfo_tab_obj.infobox_frame.infobox_tree.set(
-                "サンプラ", crnt_picstats.info.sampler
-            )
-            self.picinfo_tab_obj.infobox_frame.infobox_tree.set(
-                "スケジューラ", crnt_picstats.info.scheduler
-            )
-            self.picinfo_tab_obj.infobox_frame.infobox_tree.set(
-                "スケール", crnt_picstats.info.cfg_scale
-            )
-            self.picinfo_tab_obj.infobox_frame.infobox_tree.set("シード値", crnt_picstats.info.seed)
-            self.picinfo_tab_obj.infobox_frame.infobox_tree.set("幅", crnt_picstats.info.width)
-            self.picinfo_tab_obj.infobox_frame.infobox_tree.set("高さ", crnt_picstats.info.height)
+            self.picinfo_tab_obj.infobox_frame.infobox_tree.set("スケール", picstats.info.cfg_scale)
+            self.picinfo_tab_obj.infobox_frame.infobox_tree.set("シード値", picstats.info.seed)
+            self.picinfo_tab_obj.infobox_frame.infobox_tree.set("幅", picstats.info.width)
+            self.picinfo_tab_obj.infobox_frame.infobox_tree.set("高さ", picstats.info.height)
 
     def update(self, fix_position=False) -> None:
         """

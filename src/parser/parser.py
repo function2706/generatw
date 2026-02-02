@@ -215,7 +215,7 @@ class Parser(ABC, Generic[Stats]):
         """
         pass
 
-    def get_crnt_picstats_dir(self) -> str:
+    def get_crnt_stats_dir(self) -> str:
         """
         記録中ステータスに適合するディレクトリ名を返す
 

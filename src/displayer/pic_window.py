@@ -11,7 +11,7 @@ from tkinter import TclError, ttk
 
 from PIL import Image, ImageDraw, ImageFont, ImageTk
 
-from archiver.dataclasses import PicStats
+from archiver.dataclasses import NoImageStats, PicStats
 from common.interfaces import DisplayerIF
 
 
@@ -43,15 +43,15 @@ class CursorFrame:
         self.pic_label.grid(row=0, column=1, padx=6, pady=6, sticky="nswe")
         self.pic_label_image = None
         # ボタン(<)
-        self.prev_button = ttk.Button(
-            self.cursor_frame, text="<", width=2, command=owner.super_owner.master.on_prev
+        self.backward_button = ttk.Button(
+            self.cursor_frame, text="<", width=2, command=owner.super_owner.master.on_backward
         )
-        self.prev_button.grid(row=0, column=0, padx=6, pady=6, sticky="nsw")
+        self.backward_button.grid(row=0, column=0, padx=6, pady=6, sticky="nsw")
         # ボタン(>)
-        self.next_button = ttk.Button(
-            self.cursor_frame, text=">", width=2, command=owner.super_owner.master.on_next
+        self.forward_button = ttk.Button(
+            self.cursor_frame, text=">", width=2, command=owner.super_owner.master.on_forward
         )
-        self.next_button.grid(row=0, column=2, padx=6, pady=6, sticky="nse")
+        self.forward_button.grid(row=0, column=2, padx=6, pady=6, sticky="nse")
 
 
 class EvalFrame:
@@ -160,7 +160,7 @@ class PicWindow:
         """
         if not self.existed():
             return
-        if picstats is not None and picstats.path.exists():
+        if picstats is not NoImageStats and picstats.path.exists():
             image = Image.open(picstats.path)
             tk_img = ImageTk.PhotoImage(image)
             self.cursor_frame.pic_label.configure(image=tk_img)
@@ -230,24 +230,24 @@ class PicWindow:
         if not self.existed():
             return
 
-        next_button = self.cursor_frame.next_button
-        prev_button = self.cursor_frame.prev_button
+        forward_button = self.cursor_frame.forward_button
+        backward_button = self.cursor_frame.backward_button
         upscale_button = self.eval_frame.upscale_button
         remove_button = self.eval_frame.remove_button
         if toggle:
-            if str(next_button.cget("state")) == "disabled":
-                next_button.configure(state="normal")
-            if str(prev_button.cget("state")) == "disabled":
-                prev_button.configure(state="normal")
+            if str(forward_button.cget("state")) == "disabled":
+                forward_button.configure(state="normal")
+            if str(backward_button.cget("state")) == "disabled":
+                backward_button.configure(state="normal")
             if str(upscale_button.cget("state")) == "disabled":
                 upscale_button.configure(state="normal")
             if str(remove_button.cget("state")) == "disabled":
                 remove_button.configure(state="normal")
         else:
-            if str(next_button.cget("state")) == "normal":
-                next_button.configure(state="disabled")
-            if str(prev_button.cget("state")) == "normal":
-                prev_button.configure(state="disabled")
+            if str(forward_button.cget("state")) == "normal":
+                forward_button.configure(state="disabled")
+            if str(backward_button.cget("state")) == "normal":
+                backward_button.configure(state="disabled")
             if str(upscale_button.cget("state")) == "normal":
                 upscale_button.configure(state="disabled")
             if str(remove_button.cget("state")) == "normal":

@@ -7,13 +7,14 @@ from __future__ import annotations
 import os
 import random
 from collections import deque
+from copy import deepcopy
 from enum import Enum, auto
 from pathlib import Path
 
 from watchdog.events import PatternMatchingEventHandler
 from watchdog.observers import Observer
 
-from archiver.dataclasses import PicArchive, PicStats
+from archiver.dataclasses import NoImageStats, PicArchive, PicStats
 
 
 class EventType(Enum):
@@ -79,7 +80,8 @@ class Archiver:
         self.rootdir = rootdir
         rootdir.mkdir(parents=True, exist_ok=True)
         self.archive = PicArchive(rootdir)
-        self.crnt_picstats: PicStats = None
+        self.crnt_picstats: PicStats | NoImageStats = None
+        self.next_picstats: PicStats | NoImageStats = None
 
         # pics 監視モジュール
         self.reports: deque[tuple[EventType, Path]] = deque()
@@ -109,15 +111,15 @@ class Archiver:
         """
         注目中 PicStats を解除する
         """
-        self.crnt_picstats = None
+        self.next_picstats = NoImageStats
 
-    def next_picstats(self) -> None:
+    def forward_picstats(self) -> None:
         """
         PicStats リストにおいて, 注目中 PicStats の次のものに移動する\n
         末尾を注目中である場合は移動しない\n
         注目していない場合, リストが空の場合は何もしない
         """
-        if self.crnt_picstats is None:
+        if self.crnt_picstats is None or self.crnt_picstats is NoImageStats:
             return
 
         picstats_list = self.archive.get_picstats_list(self.crnt_picstats.dir)
@@ -125,15 +127,15 @@ class Archiver:
             return
 
         idx = picstats_list.index(self.crnt_picstats)
-        self.crnt_picstats = picstats_list[min(idx + 1, len(picstats_list) - 1)]
+        self.next_picstats = picstats_list[min(idx + 1, len(picstats_list) - 1)]
 
-    def prev_picstats(self) -> None:
+    def backward_picstats(self) -> None:
         """
         PicStats リストにおいて, 注目中 PicStats の前のものに移動する\n
         末尾を注目中である場合は移動しない\n
         注目していない場合, リストが空の場合は何もしない
         """
-        if self.crnt_picstats is None:
+        if self.crnt_picstats is None or self.crnt_picstats is NoImageStats:
             return
 
         picstats_list = self.archive.get_picstats_list(self.crnt_picstats.dir)
@@ -141,7 +143,7 @@ class Archiver:
             return
 
         idx = picstats_list.index(self.crnt_picstats)
-        self.crnt_picstats = picstats_list[max(idx - 1, 0)]
+        self.next_picstats = picstats_list[max(idx - 1, 0)]
 
     def warp_picstats(self, dir: str) -> None:
         """
@@ -152,17 +154,31 @@ class Archiver:
         if not picstats_list:
             return
 
-        self.crnt_picstats = random.choice(picstats_list)
+        self.next_picstats = random.choice(picstats_list)
 
     def remove_crnt_picstats(self) -> None:
         """
         注目中 PicStats にあたる画像を削除する\n
         (リストの更新は process_reports に一任)
         """
-        if self.crnt_picstats is None:
+        if self.crnt_picstats is None or self.crnt_picstats is NoImageStats:
             return
 
         os.remove(self.crnt_picstats.path)
+
+    def inherit_picstats(self) -> PicStats:
+        """
+        移動予定先 PicStats への移動を実施する\n
+        移動が予約されていない, あるいは同じものが予約されている場合はなにもしない\n
+        それ以外は現在のものと入れ替え予約を解消し, 新しいもののコピーを返す\n
+        本関数は tkinter のメインループで, next の予約を行う全関数よりもあとに呼び出すこと
+        """
+        if self.next_picstats is None or self.next_picstats == self.crnt_picstats:
+            return None
+
+        self.crnt_picstats = self.next_picstats
+        self.next_picstats = None
+        return self.crnt_picstats_copy
 
     def process_reports(self) -> None:
         """
@@ -170,11 +186,13 @@ class Archiver:
         イベントごとの処理の詳細はコメントの通り\n
         本関数は tkinter のメインループで呼び出すこと
         """
-        if not self.reports:
-            return
+        while True:
+            try:
+                eventtype, path = self.reports.popleft()
+            except IndexError:
+                # これ以上キュー内にイベントがない
+                break
 
-        while self.reports:
-            eventtype, path = self.reports.popleft()
             if eventtype == EventType.created:
                 # 追加: リストにも追加
                 self.archive.add(path)
@@ -188,6 +206,16 @@ class Archiver:
                 else:
                     os.rmdir(path.parent)
                     if self.crnt_picstats.path == path:
-                        self.crnt_picstats = None
+                        self.next_picstats = NoImageStats
             elif eventtype == EventType.moved:
                 print("T.B.D.")
+
+    @property
+    def crnt_picstats_copy(self) -> PicStats | NoImageStats:
+        """
+        注目中 PicStats のコピーを渡す
+
+        Returns:
+            PicStats | NoImageStats: 注目中 PicStats のコピー
+        """
+        return deepcopy(self.crnt_picstats)

@@ -7,7 +7,7 @@ from __future__ import annotations
 import tkinter
 from tkinter import Frame, TclError, ttk
 
-from archiver.dataclasses import PicStats
+from archiver.dataclasses import NoImageStats, PicStats
 from common.functions import BackEnd, dump_json
 from common.interfaces import DisplayerIF, MasterIF
 from displayer.dataclasses import GUIConfigs
@@ -461,12 +461,12 @@ class Displayer(DisplayerIF):
             picstats (PicStats): 更新予定の PicStats
         """
         self.pic_window.update(picstats)
-        if picstats is not None:
+        if picstats is not NoImageStats:
             self.switch_output_button_state(True)
-            self.info_window.update_picinfo_tab()
         else:
             self.switch_output_button_state(False)
-            self.info_window.update_picinfo_tab(reset=True)
+
+        self.info_window.update_picinfo_tab(picstats)
 
     def switch_output_button_state(self, toggle: bool) -> None:
         """

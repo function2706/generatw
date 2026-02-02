@@ -106,7 +106,7 @@ class PicStats:
     画像情報 (パス, ディレクトリ名, ファイル名, メタデータ)
     """
 
-    path: Path
+    path: Path | None
     dir: str | None = None
     name: str | None = None
     info: PicInfo | None = None
@@ -150,6 +150,14 @@ class PicStats:
             dict[str, Any]: dict インスタンス
         """
         return asdict(self)
+
+
+class NoImageStats:
+    """
+    PicStats が存在しないことを明示する専用オブジェクト
+    """
+
+    pass
 
 
 @dataclass
