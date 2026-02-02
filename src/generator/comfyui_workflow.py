@@ -798,7 +798,7 @@ class Txt2ImgWorkFlow(WorkFlow):
         self.empty_latent_idx = 2
         self.clip_layer_setter_idx = 3
         self.positive_clip_idx = 4
-        self.negatice_clip_idx = 5
+        self.negative_clip_idx = 5
         self.sampler_idx = 6
         self.vae_decoder_idx = 7
         self.previewer_idx = 8
@@ -843,7 +843,7 @@ class Txt2ImgWorkFlow(WorkFlow):
         )
         self.add(
             NodeSkeleton(
-                self.negatice_clip_idx,
+                self.negative_clip_idx,
                 CLIPTextEncode.make(text=neg_prompt, loader=self.node_of(self.ckpt_loader_idx)),
             )
         )
@@ -860,7 +860,7 @@ class Txt2ImgWorkFlow(WorkFlow):
                     loader=self.node_of(self.ckpt_loader_idx),
                     latent_image=self.node_of(self.empty_latent_idx),
                     positive=self.node_of(self.positive_clip_idx),
-                    negative=self.node_of(self.negatice_clip_idx),
+                    negative=self.node_of(self.negative_clip_idx),
                 ),
             ),
         )
@@ -884,7 +884,7 @@ class Txt2ImgWorkFlow(WorkFlow):
 
     @property
     def negative_prompt(self) -> str:
-        return cast(CLIPTextEncode.Inputs, self.node_of(self.negatice_clip_idx).body.inputs).text
+        return cast(CLIPTextEncode.Inputs, self.node_of(self.negative_clip_idx).body.inputs).text
 
     @property
     def steps(self) -> int:
