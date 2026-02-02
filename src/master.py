@@ -9,8 +9,8 @@ from pathlib import Path
 from typing import Any
 
 from archiver.archiver import Archiver
-from archiver.dataclasses import NoImageStats, PicStats
-from common.functions import BackEnd, FrontEnd
+from archiver.dataclasses import ArchiverEvent, IsNewPicStats, NoImageStats, PicStats
+from common.functions import BackEnd, BottleMail, FrontEnd
 from common.interfaces import MasterIF
 from displayer.displayer import Displayer, GUIConfigs
 from generator.a1111_generator import A1111Generator
@@ -43,7 +43,8 @@ class Master(MasterIF):
         else:
             raise ValueError
 
-        self.archiver = Archiver(self.parser.pics_dir_path())
+        self.from_archiver: BottleMail[ArchiverEvent] = BottleMail()
+        self.archiver = Archiver(self.parser.pics_dir_path(), self.from_archiver)
 
         self.backend: BackEnd = backend
         if backend == BackEnd.a1111:
@@ -90,6 +91,22 @@ class Master(MasterIF):
             frame (_type_): Tkinter フレーム
         """
         self.finalize()
+
+    def operate_from_archiver(self) -> None:
+        """
+        Archiver から発行されたイベントに即して作業を実施する\n
+        本関数は一度の呼び出しで, その時点までに登録されている全イベントをこなす\n
+        本関数は tkinter のメインループで呼び出すこと
+        """
+        while True:
+            try:
+                event = self.from_archiver.pickup()
+            except IndexError:
+                break
+
+            if isinstance(event, IsNewPicStats):
+                self.archiver.crnt_picstats = event.next_picstats
+                self.displayer.update_pic_window(event.next_picstats)
 
     @property
     def frontend_type(self) -> FrontEnd:
@@ -346,8 +363,6 @@ class Master(MasterIF):
             return
         finally:
             self.archiver.process_reports()
-            new_picstats = self.archiver.inherit_picstats()
-            if new_picstats:
-                self.displayer.update_pic_window(new_picstats)
+            self.operate_from_archiver()
             self.displayer.info_window.update()
             self.after_id = self.root.after(100, self.run_main)

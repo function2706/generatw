@@ -9,9 +9,10 @@ import inspect
 import json
 import re
 from collections import deque
+from copy import deepcopy
 from enum import Enum, auto
 from pathlib import Path
-from typing import Any
+from typing import Any, Generic, TypeVar
 
 
 class FrontEnd(Enum):
@@ -108,3 +109,20 @@ def dirname_by_prompts(pos_prompt: str, neg_prompt: str) -> str:
     """
     dirpath_raw: str = pos_prompt + neg_prompt
     return hashlib.md5(dirpath_raw.encode()).hexdigest()
+
+
+Message = TypeVar("Message")
+
+
+class BottleMail(Generic[Message]):
+    def __init__(self):
+        self._q: deque[Message] = deque()
+
+    def enclose(self, msg: Message) -> None:
+        self._q.append(deepcopy(msg))
+
+    def pickup(self) -> Message:
+        return self._q.popleft()
+
+    def __len__(self) -> int:
+        return len(self._q)

@@ -256,3 +256,13 @@ class PicArchive:
             dict[str, Any]: dict インスタンス
         """
         return asdict(self)
+
+
+@dataclass
+class ArchiverEvent:
+    next_picstats: PicStats | NoImageStats
+
+
+@dataclass
+class IsNewPicStats(ArchiverEvent):
+    pass
