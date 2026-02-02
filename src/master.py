@@ -9,13 +9,22 @@ from pathlib import Path
 from typing import Any
 
 from archiver.archiver import Archiver
-from archiver.dataclasses import ArchiverEvent, IsNewPicStats, NoImageStats, PicStats
+from archiver.dataclasses import ArchiverEvent, IsNewPicStats, NoImageStats
 from common.functions import BackEnd, BottleMail, FrontEnd
 from common.interfaces import MasterIF
 from displayer.displayer import Displayer, GUIConfigs
 from generator.a1111_generator import A1111Generator
 from generator.comfyui_generator import ComfyUIGenerator
-from generator.dataclasses import SamplerName, SchedulerName, TaskBlueprint, UpScalerName
+from generator.dataclasses import (
+    GeneratorEvent,
+    IncreasedTasks,
+    IsNewProgress,
+    IsNewTask,
+    SamplerName,
+    SchedulerName,
+    TaskComplete,
+    UpScalerName,
+)
 from parser.reverse_parser import ReverseParser
 from parser.theworld_parser import TheWorldParser
 
@@ -47,10 +56,11 @@ class Master(MasterIF):
         self.archiver = Archiver(self.parser.pics_dir_path(), self.from_archiver)
 
         self.backend: BackEnd = backend
+        self.from_generator: BottleMail[GeneratorEvent] = BottleMail()
         if backend == BackEnd.a1111:
-            self.generator = A1111Generator(self)
+            self.generator = A1111Generator(self, self.from_generator)
         elif backend == BackEnd.comfy_ui:
-            self.generator = ComfyUIGenerator(self)
+            self.generator = ComfyUIGenerator(self, self.from_generator)
         else:
             raise ValueError
 
@@ -98,6 +108,7 @@ class Master(MasterIF):
         本関数は一度の呼び出しで, その時点までに登録されている全イベントをこなす\n
         本関数は tkinter のメインループで呼び出すこと
         """
+        self.archiver.process_reports()
         while True:
             try:
                 event = self.from_archiver.pickup()
@@ -105,8 +116,28 @@ class Master(MasterIF):
                 break
 
             if isinstance(event, IsNewPicStats):
-                self.archiver.crnt_picstats = event.next_picstats
                 self.displayer.update_pic_window(event.next_picstats)
+
+    def operate_from_generator(self) -> None:
+        """
+        Generator から発行されたイベントに即して作業を実施する\n
+        本関数は一度の呼び出しで, その時点までに登録されている全イベントをこなす\n
+        本関数は tkinter のメインループで呼び出すこと
+        """
+        while True:
+            try:
+                event = self.from_generator.pickup()
+            except IndexError:
+                break
+
+            if isinstance(event, IsNewTask):
+                self.displayer.info_window.update_taskinfo_frame(task=event.new_task)
+            if isinstance(event, IsNewProgress):
+                self.displayer.info_window.update_taskinfo_frame(progress=event.progress)
+            if isinstance(event, IncreasedTasks):
+                self.displayer.info_window.update_taskinfo_frame(tasks=event.tasks)
+            if isinstance(event, TaskComplete):
+                self.displayer.info_window.update_taskinfo_frame(done=True)
 
     @property
     def frontend_type(self) -> FrontEnd:
@@ -170,16 +201,6 @@ class Master(MasterIF):
         return self.displayer.crnt_config
 
     @property
-    def crnt_picstats(self) -> PicStats | NoImageStats:
-        """
-        現在の PicStats
-
-        Returns:
-            PicStats: 現在の PicStats
-        """
-        return self.archiver.crnt_picstats_copy
-
-    @property
     def crnt_archive(self) -> dict[str, Any]:
         """
         現在の Archiver
@@ -190,26 +211,6 @@ class Master(MasterIF):
         return self.archiver.archive.todict()
 
     @property
-    def crnt_task(self) -> TaskBlueprint:
-        """
-        現在のタスク(Generator スレッドについて安全)
-
-        Returns:
-            TaskBlueprint: 現在のタスク
-        """
-        return self.generator.crnt_task_copy
-
-    @property
-    def crnt_tasks(self) -> int:
-        """
-        現在のタスク数
-
-        Returns:
-            int: 現在のタスク数
-        """
-        return self.generator.len_tasks()
-
-    @property
     def crnt_tasklist(self) -> list[dict[str, Any]]:
         """
         現在のタスクリスト
@@ -218,16 +219,6 @@ class Master(MasterIF):
             list[dict[str, Any]]: 現在のタスクリスト
         """
         return self.generator.crnt_tasklist()
-
-    @property
-    def crnt_progress(self) -> float:
-        """
-        現在のタスクの進捗度
-
-        Returns:
-            float: 現在のタスクの進捗度
-        """
-        return self.generator.crnt_progress
 
     def on_forward(self) -> None:
         """
@@ -245,11 +236,11 @@ class Master(MasterIF):
         """
         アップスケール予約ボタンハンドラ
         """
-        if self.crnt_picstats is NoImageStats:
+        if self.archiver.crnt_picstats_copy is NoImageStats:
             return
 
         self.generator.reserve_img2img(
-            picstats=self.crnt_picstats,
+            picstats=self.archiver.crnt_picstats_copy,
             stps=self.displayer.crnt_config.sd_steps,
             smplr=SamplerName.dpmpp_2m_sde_gpu
             if self.backend == BackEnd.comfy_ui
@@ -362,7 +353,6 @@ class Master(MasterIF):
         except tkinter.TclError:
             return
         finally:
-            self.archiver.process_reports()
             self.operate_from_archiver()
-            self.displayer.info_window.update()
+            self.operate_from_generator()
             self.after_id = self.root.after(100, self.run_main)

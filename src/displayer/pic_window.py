@@ -7,11 +7,11 @@ from __future__ import annotations
 import threading
 import tkinter
 from dataclasses import dataclass
+from pathlib import Path
 from tkinter import TclError, ttk
 
 from PIL import Image, ImageDraw, ImageFont, ImageTk
 
-from archiver.dataclasses import NoImageStats, PicStats
 from common.interfaces import DisplayerIF
 
 
@@ -151,17 +151,17 @@ class PicWindow:
         except TclError:
             return False
 
-    def update(self, picstats: PicStats = None) -> None:
+    def update(self, path: Path = None) -> None:
         """
-        画像ウィンドウを指定の PicStats で更新する\n
-        picstats が None の場合は NO IMAGE で更新する
+        画像ウィンドウを指定のパスの画像で更新する\n
+        path が None の場合は NO IMAGE で更新する
         Args:
-            picstats (PicStats): 更新予定の PicStats
+            path (PicStats): 更新予定の PicStats
         """
         if not self.existed():
             return
-        if picstats is not NoImageStats and picstats.path.exists():
-            image = Image.open(picstats.path)
+        if path is not None and path.exists():
+            image = Image.open(path)
             tk_img = ImageTk.PhotoImage(image)
             self.cursor_frame.pic_label.configure(image=tk_img)
             self.cursor_frame.pic_label_image = tk_img

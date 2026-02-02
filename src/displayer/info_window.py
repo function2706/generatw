@@ -432,9 +432,12 @@ class InfoWindow:
         self.info_window.columnconfigure(0, weight=1)
 
         # タブを跨いで表示する情報
-        self.len_tasks_strvar = tkinter.StringVar(value="0")
-        self.progress_val = tkinter.DoubleVar(value=0)
-        self.progress_strvar = tkinter.StringVar(value="0%")
+        if self.len_tasks_strvar is None:
+            self.len_tasks_strvar = tkinter.StringVar(value="0")
+        if self.progress_val is None:
+            self.progress_val = tkinter.DoubleVar(value=0)
+        if self.progress_strvar is None:
+            self.progress_strvar = tkinter.StringVar(value="0%")
 
         # Notebook（タブ）
         self.notebook = ttk.Notebook(self.info_window)
@@ -474,29 +477,35 @@ class InfoWindow:
         except TclError:
             return False
 
-    def update_appinfo_frame(self) -> None:
+    def update_taskinfo_frame(
+        self,
+        task: TaskBlueprint = None,
+        progress: float = None,
+        tasks: int = None,
+        done: bool = False,
+    ) -> None:
         """
-        アプリケーション情報フレームの更新を行う\n
-        更新は呼び出した瞬間の TaskManager をもとに行う
+        進捗, プロンプト, タスクメタ情報フレームの更新を行う
         """
-        self.len_tasks_strvar.set(f"{self.super_owner.master.crnt_tasks}")
-        crnt_task: TaskBlueprint = self.super_owner.master.crnt_task
-        if crnt_task is None:
-            self.progress_val.set(0)
-            self.progress_strvar.set("0%")
-        else:
-            self.progress_val.set(self.super_owner.master.crnt_progress)
-            task_progress_val = self.super_owner.master.crnt_progress * 100
-            self.progress_strvar.set(f"{task_progress_val:.0f}%")
-            return
+        # 進捗
+        if done:
+            self.len_tasks_strvar.set(f"{int(self.len_tasks_strvar.get()) - 1}")
+        elif tasks is not None:
+            self.len_tasks_strvar.set(f"{tasks}")
 
-    def update_taskinfo_frame(self) -> None:
-        """
-        プロンプト, タスクメタ情報フレームの更新を行う\n
-        更新は呼び出した瞬間の TaskManager をもとに行う
-        """
-        crnt_task: TaskBlueprint = self.super_owner.master.crnt_task
-        if crnt_task is None:
+        if done:
+            self.progress_val.set(0.0)
+            self.progress_strvar.set("0%")
+        elif progress is not None:
+            self.progress_val.set(progress)
+            if progress == 0:
+                self.progress_strvar.set("0%")
+            else:
+                self.progress_strvar.set(f"{progress * 100:.0f}%")
+
+        # タスクステータス
+        if done:
+            self.super_owner.last_task = None
             self.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
                 "ポジティブプロンプト", Consts.not_available_text
             )
@@ -529,27 +538,24 @@ class InfoWindow:
             self.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
                 "宛先ポート", Consts.not_available_text
             )
-        elif isinstance(crnt_task, TaskBlueprintTxt2Img):
+        elif isinstance(task, TaskBlueprintTxt2Img):
+            self.super_owner.last_task = task
             self.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
-                "ポジティブプロンプト", crnt_task.prompt
+                "ポジティブプロンプト", task.prompt
             )
             self.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
-                "ネガティブプロンプト", crnt_task.negative_prompt
+                "ネガティブプロンプト", task.negative_prompt
             )
-            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("ステップ数", crnt_task.steps)
-            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
-                "バッチサイズ", crnt_task.batch_size
-            )
-            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("サンプラ", crnt_task.sampler_name)
-            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
-                "スケジューラ", crnt_task.scheduler
-            )
-            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("スケール", crnt_task.cfg_scale)
-            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("シード値", crnt_task.seed)
-            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("幅", crnt_task.width)
-            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("高さ", crnt_task.height)
-            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("宛先アドレス", crnt_task.dst_addr)
-            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("宛先ポート", crnt_task.dst_port)
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("ステップ数", task.steps)
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("バッチサイズ", task.batch_size)
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("サンプラ", task.sampler_name)
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("スケジューラ", task.scheduler)
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("スケール", task.cfg_scale)
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("シード値", task.seed)
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("幅", task.width)
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("高さ", task.height)
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("宛先アドレス", task.dst_addr)
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("宛先ポート", task.dst_port)
 
     def update_picinfo_tab(self, picstats: PicStats | NoImageStats) -> None:
         if picstats is NoImageStats:
@@ -594,15 +600,3 @@ class InfoWindow:
             self.picinfo_tab_obj.infobox_frame.infobox_tree.set("シード値", picstats.info.seed)
             self.picinfo_tab_obj.infobox_frame.infobox_tree.set("幅", picstats.info.width)
             self.picinfo_tab_obj.infobox_frame.infobox_tree.set("高さ", picstats.info.height)
-
-    def update(self, fix_position=False) -> None:
-        """
-        情報ウィンドウの更新を行う\n
-        ウィンドウが開いていない場合は何もしない\n
-        更新は呼び出した瞬間の TaskManager をもとに行う
-        """
-        if not self.existed():
-            return
-
-        self.update_appinfo_frame()
-        self.update_taskinfo_frame()

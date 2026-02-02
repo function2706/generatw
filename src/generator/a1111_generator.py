@@ -14,8 +14,14 @@ import requests
 from PIL import Image, ImageFile
 
 from archiver.dataclasses import PicInfo
+from common.functions import BottleMail
 from common.interfaces import MasterIF
-from generator.dataclasses import TaskBlueprint, TaskBlueprintImg2Img, TaskBlueprintTxt2Img
+from generator.dataclasses import (
+    GeneratorEvent,
+    TaskBlueprint,
+    TaskBlueprintImg2Img,
+    TaskBlueprintTxt2Img,
+)
 from generator.generator import Generator
 
 
@@ -83,14 +89,14 @@ class A1111Generator(Generator[A1111TaskProgress | None]):
     タスク設計図をもとにサーバへ非同期にポストし, ファイル保存をする
     """
 
-    def __init__(self, master: MasterIF):
+    def __init__(self, master: MasterIF, to_master: BottleMail[GeneratorEvent]):
         """
         コンストラクタ
 
         Args:
             master (MasterIF): Master インターフェース
         """
-        super().__init__(master)
+        super().__init__(master, to_master)
 
     def request_generate(self) -> list[tuple[ImageFile.ImageFile, PicInfo]]:
         if self.is_crnt_task_none():

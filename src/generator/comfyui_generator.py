@@ -10,15 +10,22 @@ import threading
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum, auto
+from threading import Lock
 
 import requests
 import websocket
 from PIL import Image, ImageFile
 
 from archiver.dataclasses import PicInfo
+from common.functions import BottleMail
 from common.interfaces import MasterIF
 from generator.comfyui_workflow import Img2ImgWorkFlow, Txt2ImgWorkFlow
-from generator.dataclasses import TaskBlueprint, TaskBlueprintImg2Img, TaskBlueprintTxt2Img
+from generator.dataclasses import (
+    GeneratorEvent,
+    TaskBlueprint,
+    TaskBlueprintImg2Img,
+    TaskBlueprintTxt2Img,
+)
 from generator.generator import Generator
 
 
@@ -81,20 +88,6 @@ class ComfyUITaskProgress:
     progress: float = 0.0
     excuting_node_idx: int = 0
 
-    @classmethod
-    def make(cls, progress: float = -1, excuting_node_idx: int = -1):
-        """
-        コンストラクタ
-
-        Args:
-            progress (float): 進捗率
-            excuting_node_idx (int): 実行中のノードインデックス
-        """
-        return cls(
-            progress=progress if progress >= 0 else 0.0,
-            excuting_node_idx=excuting_node_idx if excuting_node_idx >= 0 else 0,
-        )
-
 
 class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
     """
@@ -102,16 +95,19 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
     タスク設計図をもとにサーバへ非同期にポストし, ファイル保存をする
     """
 
-    def __init__(self, master: MasterIF):
+    def __init__(self, master: MasterIF, to_master: BottleMail[GeneratorEvent]):
         """
         コンストラクタ
 
         Args:
             master (MasterIF): Master インターフェース
         """
-        super().__init__(master)
+        super().__init__(master, to_master)
 
         self.client_id = str(uuid.uuid4())
+
+        self.progress: ComfyUITaskProgress = None
+        self.progress_lock = Lock()
 
         self.is_interrupting_listen = threading.Event()  # WS listen 中断要求があった
 
@@ -138,11 +134,11 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
         report = TaskReport.make(message)
         with self.progress_lock:
             if report.type == WSMessageType.executing:
-                self.progress = ComfyUITaskProgress.make(excuting_node_idx=report.executing_node)
+                self.progress = ComfyUITaskProgress(excuting_node_idx=report.executing_node)
             elif report.type == WSMessageType.progress:
-                self.progress = ComfyUITaskProgress.make(progress=report.sampling_progress)
+                self.progress = ComfyUITaskProgress(progress=report.sampling_progress)
             elif report.type == WSMessageType.executed:
-                self.progress = ComfyUITaskProgress.make()
+                self.progress = ComfyUITaskProgress()
                 return report
 
         return None

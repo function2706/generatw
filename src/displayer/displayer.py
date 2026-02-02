@@ -13,6 +13,7 @@ from common.interfaces import DisplayerIF, MasterIF
 from displayer.dataclasses import GUIConfigs
 from displayer.info_window import InfoWindow
 from displayer.pic_window import PicWindow
+from generator.dataclasses import TaskBlueprint
 
 
 def put_textbox(
@@ -419,6 +420,9 @@ class Displayer(DisplayerIF):
         self.crnt_config: GUIConfigs = None
         self.update_configs()
 
+        self.last_picstats: PicStats | NoImageStats = None
+        self.last_task: TaskBlueprint = None
+
         def clear_selection(event):
             widget = event.widget
             if isinstance(widget, ttk.Entry):
@@ -460,10 +464,12 @@ class Displayer(DisplayerIF):
         Args:
             picstats (PicStats): 更新予定の PicStats
         """
-        self.pic_window.update(picstats)
+        self.last_picstats = picstats
         if picstats is not NoImageStats:
+            self.pic_window.update(picstats.path)
             self.switch_output_button_state(True)
         else:
+            self.pic_window.update()
             self.switch_output_button_state(False)
 
         self.info_window.update_picinfo_tab(picstats)
@@ -497,7 +503,7 @@ class Displayer(DisplayerIF):
         else:
             self.pic_window.construct(fix_position=True)
 
-        self.update_pic_window(self.master.crnt_picstats)
+        self.update_pic_window(self.last_picstats)
 
     def on_open_info_window(self) -> None:
         """
@@ -511,7 +517,8 @@ class Displayer(DisplayerIF):
         else:
             self.info_window.construct(fix_position=True)
 
-        self.info_window.update()
+        self.info_window.update_taskinfo_frame(task=self.last_task)
+        self.info_window.update_picinfo_tab(self.last_picstats)
 
     def on_dump_archiver(self) -> None:
         """

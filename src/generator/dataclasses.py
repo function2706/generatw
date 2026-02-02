@@ -141,3 +141,28 @@ class TaskBlueprintImg2Img(TaskBlueprint):
 
     # for ComfyUI
     upscaler_name: str = ""
+
+
+@dataclass
+class GeneratorEvent:
+    pass
+
+
+@dataclass
+class IsNewTask(GeneratorEvent):
+    new_task: TaskBlueprint
+
+
+@dataclass
+class TaskComplete(GeneratorEvent):
+    pass
+
+
+@dataclass
+class IsNewProgress(GeneratorEvent):
+    progress: float = 0.0
+
+
+@dataclass
+class IncreasedTasks(GeneratorEvent):
+    tasks: int = 0
