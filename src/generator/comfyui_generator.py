@@ -240,6 +240,7 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
             while True:
                 try:
                     if self.is_interrupting_listen.is_set():
+                        self.progress = ComfyUITaskProgress(progress=0)
                         return []
 
                     report = self.listen_websocket(ws)
