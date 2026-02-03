@@ -181,8 +181,8 @@ class PicWindow:
         グレースケールのチェックパターンに"NO IMAGE"\n
         幅と高さは自動的に 8 の倍数に切り下げられる(Stable Diffusion の仕様に準拠)
         """
-        width = self.super_owner.crnt_config.sd_width & -8
-        height = self.super_owner.crnt_config.sd_height & -8
+        width = self.super_owner.crnt_configs.sd_width & -8
+        height = self.super_owner.crnt_configs.sd_height & -8
         if self.noimage_img is not None and (
             self.noimage_img.width() == width or self.noimage_img.height() == height
         ):

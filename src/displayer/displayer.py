@@ -14,6 +14,7 @@ from displayer.dataclasses import (
     DisplayerEvent,
     GUIConfigs,
     OnBackward,
+    OnChangeConfig,
     OnDebug,
     OnDelete,
     OnDumpArchiver,
@@ -172,7 +173,7 @@ class MainTab:
                 row=1,
                 col=0,
                 width=5,
-                default=str(540),
+                default=str(100),
                 sticky="w",
                 on_change=owner.super_owner.super_owner.update_configs,
             )
@@ -183,7 +184,7 @@ class MainTab:
                 row=1,
                 col=2,
                 width=5,
-                default=str(960),
+                default=str(100),
                 sticky="w",
                 on_change=owner.super_owner.super_owner.update_configs,
             )
@@ -353,7 +354,7 @@ class DebugTab:
                 variable=self.verbose_stats_check,
                 command=self.super_owner.super_owner.super_owner.update_configs,
             ).grid(row=0, column=1, padx=6, pady=6, sticky="w")
-            # PicInfoの表示
+            # PicInfo の表示
             self.verbose_picinfo_check = tkinter.BooleanVar()
             ttk.Checkbutton(
                 self.verbose_frame,
@@ -361,6 +362,14 @@ class DebugTab:
                 variable=self.verbose_picinfo_check,
                 command=self.super_owner.super_owner.super_owner.update_configs,
             ).grid(row=1, column=0, padx=6, pady=6, sticky="w")
+            # イベントの表示
+            self.verbose_event_check = tkinter.BooleanVar()
+            ttk.Checkbutton(
+                self.verbose_frame,
+                text="イベント",
+                variable=self.verbose_event_check,
+                command=self.super_owner.super_owner.super_owner.update_configs,
+            ).grid(row=1, column=1, padx=6, pady=6, sticky="w")
 
     def __init__(self, owner: MainWindow):
         """
@@ -431,7 +440,6 @@ class Displayer(DisplayerIF):
         self.pic_window = PicWindow(self)
         self.switch_output_button_state(False)
 
-        self.crnt_config: GUIConfigs = None
         self.update_configs()
 
         self.last_picstats: PicStats | NoImageStats = None
@@ -596,9 +604,19 @@ class Displayer(DisplayerIF):
 
     def update_configs(self) -> None:
         """
-        GUI の設定値を更新する
+        GUI 上の設定値を Master に通知する
         """
-        self.crnt_config = GUIConfigs(
+        self.to_master.enclose(OnChangeConfig(new_config=self.crnt_configs))
+
+    @property
+    def crnt_configs(self) -> GUIConfigs:
+        """
+        GUI 上の設定値
+
+        Returns:
+            GUIConfigs: GUI 上の設定値
+        """
+        return GUIConfigs(
             srv_ipaddr=self.main_window.main_tab_obj.sd_exterior_config_frame.ipaddr_entry.get(),
             srv_port=self.main_window.main_tab_obj.sd_exterior_config_frame.port_entry.get(),
             sd_steps=int(self.main_window.main_tab_obj.sd_interior_config_frame.steps_entry.get()),
@@ -620,6 +638,9 @@ class Displayer(DisplayerIF):
             ),
             print_picinfo=bool(
                 self.main_window.debug_tab_obj.verbose_frame.verbose_picinfo_check.get()
+            ),
+            print_event=bool(
+                self.main_window.debug_tab_obj.verbose_frame.verbose_event_check.get()
             ),
         )
 

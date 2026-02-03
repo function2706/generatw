@@ -40,10 +40,11 @@ class MasterIF(Protocol):
 
 class DisplayerIF(Protocol):
     master: MasterIF
-    crnt_config: GUIConfigs
     last_picstats: PicStats | NoImageStats
     last_task: TaskBlueprint
 
+    @property
+    def crnt_configs(self) -> GUIConfigs: ...
     @property
     def config_window_x(self) -> int: ...
     @property

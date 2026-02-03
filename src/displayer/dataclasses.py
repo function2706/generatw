@@ -23,6 +23,7 @@ class GUIConfigs:
     print_new_clipboard: bool = False
     print_new_stats: bool = False
     print_picinfo: bool = False
+    print_event: bool = False
 
 
 @dataclass
@@ -78,3 +79,8 @@ class OnUpscale(DisplayerEvent):
 @dataclass
 class OnDelete(DisplayerEvent):
     pass
+
+
+@dataclass
+class OnChangeConfig(DisplayerEvent):
+    new_config: GUIConfigs

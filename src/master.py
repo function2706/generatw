@@ -8,12 +8,13 @@ import tkinter
 from pathlib import Path
 
 from archiver.archiver import Archiver
-from archiver.dataclasses import ArchiverEvent, IsNewPicStats, NoImageStats
+from archiver.dataclasses import ArchiverEvent, IsNewPicStats, NoImageStats, PicStats
 from common.functions import BackEnd, BottleMail, FrontEnd, dump_json
 from common.interfaces import MasterIF
 from displayer.dataclasses import (
     DisplayerEvent,
     OnBackward,
+    OnChangeConfig,
     OnDebug,
     OnDelete,
     OnDumpArchiver,
@@ -31,10 +32,12 @@ from generator.dataclasses import (
     GeneratorEvent,
     IncreasedTasks,
     IsNewProgress,
-    IsNewTask,
     SamplerName,
     SchedulerName,
+    TaskBlueprintImg2Img,
+    TaskBlueprintTxt2Img,
     TaskComplete,
+    TaskStart,
     UpScalerName,
 )
 from parser.reverse_parser import ReverseParser
@@ -56,6 +59,10 @@ class Master(MasterIF):
         self.root = tkinter.Tk()
         self.after_id: str = ""
 
+        self.from_archiver: BottleMail[ArchiverEvent] = BottleMail()
+        self.from_generator: BottleMail[GeneratorEvent] = BottleMail()
+        self.from_displayer: BottleMail[DisplayerEvent] = BottleMail()
+
         self.frontend: FrontEnd = frontend
         if frontend == FrontEnd.reverse:
             self.parser = ReverseParser(self)
@@ -64,11 +71,9 @@ class Master(MasterIF):
         else:
             raise ValueError
 
-        self.from_archiver: BottleMail[ArchiverEvent] = BottleMail()
         self.archiver = Archiver(self.parser.pics_dir_path(), self.from_archiver)
 
         self.backend: BackEnd = backend
-        self.from_generator: BottleMail[GeneratorEvent] = BottleMail()
         if backend == BackEnd.a1111:
             self.generator = A1111Generator(self, self.from_generator)
         elif backend == BackEnd.comfy_ui:
@@ -76,8 +81,8 @@ class Master(MasterIF):
         else:
             raise ValueError
 
-        self.from_displayer: BottleMail[DisplayerEvent] = BottleMail()
         self.displayer = Displayer(self, self.from_displayer)
+        self.crnt_configs: GUIConfigs = self.displayer.crnt_configs
 
         self.generator.start()
 
@@ -129,7 +134,18 @@ class Master(MasterIF):
             except IndexError:
                 break
 
+            if self.crnt_gui_configs.print_event:
+                print(
+                    f"{self.archiver.__class__.__name__:20} > {event.__class__.__name__:15} > ",
+                    end="",
+                )
             if isinstance(event, IsNewPicStats):
+                if self.crnt_gui_configs.print_event:
+                    print("stats=", end="")
+                    if event.next_picstats is NoImageStats:
+                        print("NoImageStats")
+                    elif isinstance(event.next_picstats, PicStats):
+                        print(f"{event.next_picstats.name}")
                 self.displayer.update_pic_window(event.next_picstats)
 
     def operate_from_displayer(self) -> None:
@@ -144,6 +160,8 @@ class Master(MasterIF):
             except IndexError:
                 break
 
+            if self.crnt_gui_configs.print_event:
+                print(f"{self.displayer.__class__.__name__:20} > {event.__class__.__name__:15}")
             if isinstance(event, OnRepeatTask):
                 self.reserve_txt2img_task()
             if isinstance(event, OnInterruptTask):
@@ -166,6 +184,8 @@ class Master(MasterIF):
                 self.reserve_img2img_task()
             if isinstance(event, OnDelete):
                 self.archiver.remove_crnt_picstats()
+            if isinstance(event, OnChangeConfig):
+                self.crnt_configs = event.new_config
 
     def operate_from_generator(self) -> None:
         """
@@ -179,13 +199,30 @@ class Master(MasterIF):
             except IndexError:
                 break
 
-            if isinstance(event, IsNewTask):
+            if self.crnt_gui_configs.print_event:
+                print(
+                    f"{self.generator.__class__.__name__:20} > {event.__class__.__name__:15} > ",
+                    end="",
+                )
+            if isinstance(event, TaskStart):
+                if self.crnt_gui_configs.print_event:
+                    prompt = event.new_task.prompt[:27] + "..."
+                    if isinstance(event.new_task, TaskBlueprintTxt2Img):
+                        print(f"txt2img, prompt={prompt}")
+                    elif isinstance(event.new_task, TaskBlueprintImg2Img):
+                        print(f"img2img, prompt={prompt}")
                 self.displayer.info_window.update_taskinfo_tab(task=event.new_task)
             if isinstance(event, IsNewProgress):
+                if self.crnt_gui_configs.print_event:
+                    print(f"progress={event.progress}")
                 self.displayer.info_window.update_taskinfo_tab(progress=event.progress)
             if isinstance(event, IncreasedTasks):
+                if self.crnt_gui_configs.print_event:
+                    print(f"tasks={event.tasks}")
                 self.displayer.info_window.update_taskinfo_tab(tasks=event.tasks)
             if isinstance(event, TaskComplete):
+                if self.crnt_gui_configs.print_event:
+                    print("OK")
                 self.displayer.info_window.update_taskinfo_tab(done=True)
 
     @property
@@ -247,7 +284,7 @@ class Master(MasterIF):
         Returns:
             CrntGUIConfigs: 現在の GUI 上の設定値
         """
-        return self.displayer.crnt_config
+        return self.crnt_configs
 
     def reserve_img2img_task(self) -> None:
         """
@@ -258,7 +295,7 @@ class Master(MasterIF):
 
         self.generator.reserve_img2img(
             picstats=self.archiver.crnt_picstats_copy,
-            stps=self.displayer.crnt_config.sd_steps,
+            stps=self.crnt_configs.sd_steps,
             smplr=SamplerName.dpmpp_2m_sde_gpu
             if self.backend == BackEnd.comfy_ui
             else SamplerName.dpmpp_2m_sde,
@@ -266,8 +303,8 @@ class Master(MasterIF):
             cfg=7.0,
             scaleby=1.2,
             denoise=0.65,
-            d_addr=self.displayer.crnt_config.srv_ipaddr,
-            d_port=self.displayer.crnt_config.srv_port,
+            d_addr=self.crnt_configs.srv_ipaddr,
+            d_port=self.crnt_configs.srv_port,
             resize_mode=3 if self.backend_type == BackEnd.a1111 else None,
             upsclr=UpScalerName.nearest_exact if self.backend_type == BackEnd.comfy_ui else None,
         )
@@ -285,15 +322,15 @@ class Master(MasterIF):
             pos=self.parser.make_pos_prompt(),
             neg=self.parser.make_neg_prompt(),
             seed=-1,
-            stps=self.displayer.crnt_config.sd_steps,
-            b_size=self.displayer.crnt_config.sd_batch_size,
+            stps=self.crnt_configs.sd_steps,
+            b_size=self.crnt_configs.sd_batch_size,
             smplr=SamplerName.dpmpp_2m,
             schdlr=SchedulerName.karras,
             cfg=7.0,
-            w=self.displayer.crnt_config.sd_width,
-            h=self.displayer.crnt_config.sd_height,
-            d_addr=self.displayer.crnt_config.srv_ipaddr,
-            d_port=self.displayer.crnt_config.srv_port,
+            w=self.crnt_configs.sd_width,
+            h=self.crnt_configs.sd_height,
+            d_addr=self.crnt_configs.srv_ipaddr,
+            d_port=self.crnt_configs.srv_port,
         )
 
     def refresh_pic_randomly(self, construct_window=False) -> None:

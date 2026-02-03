@@ -25,13 +25,13 @@ from generator.dataclasses import (
     GeneratorEvent,
     IncreasedTasks,
     IsNewProgress,
-    IsNewTask,
     ResizeMode,
     SamplerName,
     SchedulerName,
     TaskBlueprintImg2Img,
     TaskBlueprintTxt2Img,
     TaskComplete,
+    TaskStart,
     UpScalerName,
 )
 
@@ -554,7 +554,7 @@ class Generator(ABC, Generic[TaskProgress]):
                         continue
 
                     self.crnt_task = self.tasks.pop()
-                    self.to_master.enclose(IsNewTask(self.crnt_task))
+                    self.to_master.enclose(TaskStart(self.crnt_task))
 
             try:
                 if isinstance(self.crnt_task, TaskBlueprintTxt2Img):

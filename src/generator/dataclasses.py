@@ -149,7 +149,7 @@ class GeneratorEvent:
 
 
 @dataclass
-class IsNewTask(GeneratorEvent):
+class TaskStart(GeneratorEvent):
     new_task: TaskBlueprint
 
 
