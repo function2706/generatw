@@ -159,10 +159,10 @@ class TaskComplete(GeneratorEvent):
 
 
 @dataclass
-class IsNewProgress(GeneratorEvent):
+class NewProgress(GeneratorEvent):
     progress: float = 0.0
 
 
 @dataclass
-class IncreasedTasks(GeneratorEvent):
+class TaskReserve(GeneratorEvent):
     tasks: int = 0

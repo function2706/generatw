@@ -264,5 +264,5 @@ class ArchiverEvent:
 
 
 @dataclass
-class IsNewPicStats(ArchiverEvent):
+class ChangePicStats(ArchiverEvent):
     pass

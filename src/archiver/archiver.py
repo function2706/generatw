@@ -14,7 +14,7 @@ from pathlib import Path
 from watchdog.events import PatternMatchingEventHandler
 from watchdog.observers import Observer
 
-from archiver.dataclasses import ArchiverEvent, IsNewPicStats, NoImageStats, PicArchive, PicStats
+from archiver.dataclasses import ArchiverEvent, ChangePicStats, NoImageStats, PicArchive, PicStats
 from common.functions import BottleMail
 
 
@@ -123,7 +123,7 @@ class Archiver:
         注目中 PicStats を解除する
         """
         self.crnt_picstats = NoImageStats
-        self.to_master.enclose(IsNewPicStats(self.crnt_picstats))
+        self.to_master.enclose(ChangePicStats(self.crnt_picstats))
 
     def forward_picstats(self) -> None:
         """
@@ -140,7 +140,7 @@ class Archiver:
 
         idx = picstats_list.index(self.crnt_picstats)
         self.crnt_picstats = picstats_list[min(idx + 1, len(picstats_list) - 1)]
-        self.to_master.enclose(IsNewPicStats(self.crnt_picstats))
+        self.to_master.enclose(ChangePicStats(self.crnt_picstats))
 
     def backward_picstats(self) -> None:
         """
@@ -157,7 +157,7 @@ class Archiver:
 
         idx = picstats_list.index(self.crnt_picstats)
         self.crnt_picstats = picstats_list[max(idx - 1, 0)]
-        self.to_master.enclose(IsNewPicStats(self.crnt_picstats))
+        self.to_master.enclose(ChangePicStats(self.crnt_picstats))
 
     def warp_picstats(self, dir: str) -> None:
         """
@@ -169,7 +169,7 @@ class Archiver:
             return
 
         self.crnt_picstats = random.choice(picstats_list)
-        self.to_master.enclose(IsNewPicStats(self.crnt_picstats))
+        self.to_master.enclose(ChangePicStats(self.crnt_picstats))
 
     def remove_crnt_picstats(self) -> None:
         """

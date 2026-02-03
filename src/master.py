@@ -8,7 +8,7 @@ import tkinter
 from pathlib import Path
 
 from archiver.archiver import Archiver
-from archiver.dataclasses import ArchiverEvent, IsNewPicStats, NoImageStats, PicStats
+from archiver.dataclasses import ArchiverEvent, ChangePicStats, NoImageStats, PicStats
 from common.functions import BackEnd, BottleMail, FrontEnd, dump_json
 from common.interfaces import MasterIF
 from displayer.dataclasses import (
@@ -30,13 +30,13 @@ from generator.a1111_generator import A1111Generator
 from generator.comfyui_generator import ComfyUIGenerator
 from generator.dataclasses import (
     GeneratorEvent,
-    IncreasedTasks,
-    IsNewProgress,
+    NewProgress,
     SamplerName,
     SchedulerName,
     TaskBlueprintImg2Img,
     TaskBlueprintTxt2Img,
     TaskComplete,
+    TaskReserve,
     TaskStart,
     UpScalerName,
 )
@@ -136,10 +136,10 @@ class Master(MasterIF):
 
             if self.crnt_gui_configs.print_event:
                 print(
-                    f"{self.archiver.__class__.__name__:20} > {event.__class__.__name__:15} > ",
+                    f"{self.archiver.__class__.__name__:20} > {event.__class__.__name__:20} > ",
                     end="",
                 )
-            if isinstance(event, IsNewPicStats):
+            if isinstance(event, ChangePicStats):
                 if self.crnt_gui_configs.print_event:
                     print("stats=", end="")
                     if event.next_picstats is NoImageStats:
@@ -161,7 +161,7 @@ class Master(MasterIF):
                 break
 
             if self.crnt_gui_configs.print_event:
-                print(f"{self.displayer.__class__.__name__:20} > {event.__class__.__name__:15}")
+                print(f"{self.displayer.__class__.__name__:20} > {event.__class__.__name__:20}")
             if isinstance(event, OnRepeatTask):
                 self.reserve_txt2img_task()
             if isinstance(event, OnInterruptTask):
@@ -169,8 +169,7 @@ class Master(MasterIF):
             if isinstance(event, OnFlushTasks):
                 self.generator.clear()
             if isinstance(event, OnDebug):
-                run_oneshot = self.parser.ready_for_debug()
-                if run_oneshot:
+                if self.parser.ready_for_debug():
                     self.run_oneshot()
             if isinstance(event, OnDumpArchiver):
                 dump_json(self.archiver.archive.todict(), "archiver")
@@ -201,7 +200,7 @@ class Master(MasterIF):
 
             if self.crnt_gui_configs.print_event:
                 print(
-                    f"{self.generator.__class__.__name__:20} > {event.__class__.__name__:15} > ",
+                    f"{self.generator.__class__.__name__:20} > {event.__class__.__name__:20} > ",
                     end="",
                 )
             if isinstance(event, TaskStart):
@@ -212,11 +211,11 @@ class Master(MasterIF):
                     elif isinstance(event.new_task, TaskBlueprintImg2Img):
                         print(f"img2img, prompt={prompt}")
                 self.displayer.info_window.update_taskinfo_tab(task=event.new_task)
-            if isinstance(event, IsNewProgress):
+            if isinstance(event, NewProgress):
                 if self.crnt_gui_configs.print_event:
                     print(f"progress={event.progress}")
                 self.displayer.info_window.update_taskinfo_tab(progress=event.progress)
-            if isinstance(event, IncreasedTasks):
+            if isinstance(event, TaskReserve):
                 if self.crnt_gui_configs.print_event:
                     print(f"tasks={event.tasks}")
                 self.displayer.info_window.update_taskinfo_tab(tasks=event.tasks)
@@ -224,6 +223,8 @@ class Master(MasterIF):
                 if self.crnt_gui_configs.print_event:
                     print("OK")
                 self.displayer.info_window.update_taskinfo_tab(done=True)
+                if self.displayer.pic_window.event.outputting_noimage.is_set():
+                    self.refresh_pic_randomly(construct_window=True)
 
     @property
     def frontend_type(self) -> FrontEnd:
@@ -335,7 +336,7 @@ class Master(MasterIF):
 
     def refresh_pic_randomly(self, construct_window=False) -> None:
         """
-        現在の PicStats 表示可能な画像が存在する場合にランダムで表示する\n
+        現在の記録中ステータスにおいて, 表示可能な画像が存在する場合にランダムで表示する\n
         存在しない場合は NO IMAGE を表示する
         """
         if construct_window:
@@ -363,10 +364,6 @@ class Master(MasterIF):
         try:
             if not self.root.winfo_exists():
                 return
-
-            if self.displayer.pic_window.event.outputting_noimage.is_set():
-                # NO IMAGE 表示中は記録中ステータスに沿った画像の表示を常に試みる
-                self.refresh_pic_randomly()
 
             is_new_stats = self.parser.refresh_stats()
             if not is_new_stats:

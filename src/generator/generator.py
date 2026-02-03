@@ -23,14 +23,14 @@ from common.interfaces import MasterIF
 from common.multideque import multideque
 from generator.dataclasses import (
     GeneratorEvent,
-    IncreasedTasks,
-    IsNewProgress,
+    NewProgress,
     ResizeMode,
     SamplerName,
     SchedulerName,
     TaskBlueprintImg2Img,
     TaskBlueprintTxt2Img,
     TaskComplete,
+    TaskReserve,
     TaskStart,
     UpScalerName,
 )
@@ -338,9 +338,7 @@ class Generator(ABC, Generic[TaskProgress]):
                     return
                 self.tasks.push(new_task)
                 nexts = len(self.tasks)
-                self.to_master.enclose(
-                    IncreasedTasks(nexts if self.crnt_task is None else nexts + 1)
-                )
+                self.to_master.enclose(TaskReserve(nexts if self.crnt_task is None else nexts + 1))
 
     def reserve_img2img(
         self,
@@ -401,9 +399,7 @@ class Generator(ABC, Generic[TaskProgress]):
                     return
                 self.tasks.push(new_task)
                 nexts = len(self.tasks)
-                self.to_master.enclose(
-                    IncreasedTasks(nexts if self.crnt_task is None else nexts + 1)
-                )
+                self.to_master.enclose(TaskReserve(nexts if self.crnt_task is None else nexts + 1))
 
     def clear(self) -> None:
         """
@@ -571,7 +567,7 @@ class Generator(ABC, Generic[TaskProgress]):
                 with self.crnt_task_lock:
                     if self.crnt_task is not None:
                         self.to_master.enclose(TaskComplete())
-                        self.to_master.enclose(IsNewProgress(0))
+                        self.to_master.enclose(NewProgress(0))
                     self.crnt_task = None
 
     def instructor(self) -> None:
@@ -599,6 +595,6 @@ class Generator(ABC, Generic[TaskProgress]):
             try:
                 response = self.request_progress()
                 if response is not None:
-                    self.to_master.enclose(IsNewProgress(response.progress))
+                    self.to_master.enclose(NewProgress(response.progress))
             except Exception as e:
                 print(f"Any exception occurred in {threading.current_thread().name}: ", e)
