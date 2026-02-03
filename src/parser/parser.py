@@ -6,14 +6,17 @@ from __future__ import annotations
 
 import copy
 import random
+import threading
+import time
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Generic, Mapping, Protocol, TypeVar
 
 import pyperclip
 
-from common.functions import dirname_by_prompts, dump_json
+from common.functions import BottleMail, dirname_by_prompts, dump_json
+from master.events import NewClipStats, ParserEvent
 from master.interfaces import MasterIF
 
 
@@ -23,10 +26,21 @@ class Consts:
     このクラス関連の定数
     """
 
+    thread_interval_sec = 0.1
+
     # 画像保存先ディレクトリ
     pichome_dir: str = "pics"
     # デバッグ用キャラクター名の部分文字列
     charaname_substr_debug: str = "DebuggingPM"
+
+
+@dataclass
+class Event:
+    """
+    イベントフラグ
+    """
+
+    shutdown: threading.Event = field(default_factory=threading.Event)  # 終了予定
 
 
 class HasCommonMembers(Protocol):
@@ -60,17 +74,48 @@ class Parser(ABC, Generic[Stats]):
         """
         raise NotImplementedError
 
-    def __init__(self, master: MasterIF, stats: Stats):
+    def __init__(self, master: MasterIF, to_master: BottleMail[ParserEvent], stats: Stats):
         """
         コンストラクタ
 
         Args:
             master (MasterIF): Master インターフェース
+            to_master (BottleMail[ParserEvent]): 対 Master IPC
+            stats (Stats): Stats インスタンス
+            ※TypeVar ではないインスタンスを渡さないとメソッドにアクセスできない
+              そしてその型は派生先しか知らないので, そこから渡してもらう
         """
         self.master = master
+        self.to_master = to_master
 
         self.crnt_clipboard = ""
-        self.crnt_stats = stats
+        self.crnt_clipstats: Stats = stats
+
+        self.event = Event()
+        self.parser_thread = threading.Thread(
+            target=self.parser, args=(), daemon=True, name="parser"
+        )
+
+    def start(self) -> None:
+        """
+        スレッドを開始する
+        """
+        self.parser_thread.start()
+
+    def join(self) -> None:
+        """
+        スレッドの join を行う\n
+        すでに死んでいる場合は何もしない
+        """
+        if not self.parser_thread.is_alive():
+            return
+        self.parser_thread.join()
+
+    def finalize(self) -> None:
+        """
+        終了処理
+        """
+        self.event.shutdown.set()
 
     def whoami(self) -> str:
         """
@@ -118,49 +163,43 @@ class Parser(ABC, Generic[Stats]):
             return False
 
         new_stats = self.make_dummy_stats()
-        if new_stats is None or new_stats == self.crnt_stats:
+        if new_stats is None or new_stats == self.crnt_clipstats:
             return False
 
-        self.crnt_stats = new_stats
+        self.crnt_clipstats = new_stats
         if self.master.crnt_gui_configs.print_new_stats:
-            dump_json(self.crnt_stats.todict(), "new_stats(debug)")
+            dump_json(self.crnt_clipstats.todict(), "new_stats(debug)")
 
         return True
 
-    def refresh_clipboard(self) -> bool:
+    def parse_clipboard(self) -> Stats | None:
         """
-        クリップボードを監視し, 記録中文字列と異なる場合に記録する
+        クリップボードを監視し, 記録中文字列と異なる場合に記録した後,\n
+        クリップボード文字列をもとに各ステータスを取得する
 
         Returns:
-            bool: 更新があった場合は True, なかった場合は False
+            Stats: 新たなステータス, 更新がない場合やエラー時に None
         """
         try:
             new_clipboard = pyperclip.paste()
         except Exception as e:
             print("An exception occur for watching clipboard.", e)
-            return False
+            return None
 
         if self.crnt_clipboard == new_clipboard:
-            return False
+            return None
 
         if self.master.crnt_gui_configs.print_new_clipboard:
             print("new_clipboard:")
             print(new_clipboard)
 
         self.crnt_clipboard = new_clipboard
-        return True
 
-    def parse_clipboard(self) -> Stats:
-        """
-        クリップボード文字列をもとに各ステータスを取得する
-
-        Returns:
-            Stats: 新たなステータス
-        """
         if Consts.charaname_substr_debug in self.crnt_clipboard:
+            # クリップボードの編集が許可されている場合のデバッグ経路
             return self.make_dummy_stats(name=self.crnt_clipboard)
 
-        new_stats = copy.deepcopy(self.crnt_stats)
+        new_stats = copy.deepcopy(self.crnt_clipstats)
         new_stats.refresh(self.crnt_clipboard)
         return new_stats
 
@@ -172,17 +211,14 @@ class Parser(ABC, Generic[Stats]):
         Returns:
             bool: True: ステータス更新あり, False: 更新なし
         """
-        has_refreshed = self.refresh_clipboard()
-        if not has_refreshed:
-            return False
 
         new_stats = self.parse_clipboard()
-        if new_stats is None or new_stats == self.crnt_stats:
+        if new_stats is None or new_stats == self.crnt_clipstats:
             return False
 
-        self.crnt_stats = new_stats
+        self.crnt_clipstats = new_stats
         if self.master.crnt_gui_configs.print_new_stats:
-            dump_json(self.crnt_stats.todict(), "new_stats")
+            dump_json(self.crnt_clipstats.todict(), "new_stats")
         return True
 
     @abstractmethod
@@ -223,3 +259,17 @@ class Parser(ABC, Generic[Stats]):
             str: ディレクトリ名
         """
         return dirname_by_prompts(self.make_pos_prompt(), self.make_neg_prompt())
+
+    def parser(self) -> None:
+        """
+        クリップボード監視を行う
+        """
+        while not self.event.shutdown.is_set():
+            time.sleep(Consts.thread_interval_sec)
+            try:
+                if not self.refresh_stats():
+                    continue
+                self.to_master.enclose(NewClipStats(is_enough=self.is_stats_enough_for_prompt()))
+            except Exception as e:
+                raise
+                print(f"Any exception occurred in {threading.current_thread().name}: ", e)

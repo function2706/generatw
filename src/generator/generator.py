@@ -34,7 +34,7 @@ from master.interfaces import MasterIF
 
 @dataclass(frozen=True)
 class Consts:
-    thread_interval_sec = 0.2
+    thread_interval_sec = 0.1
 
 
 NameEnum = TypeVar("NameEnum")
@@ -264,12 +264,12 @@ class Generator(ABC, Generic[TaskProgress]):
         スレッドの join を行う\n
         すでに死んでいる場合は何もしない
         """
-        if not self.worker_thread.is_alive():
-            return
-
-        self.worker_thread.join()
-        self.observer_thread.join()
-        self.instructor_thread.join()
+        if self.worker_thread.is_alive():
+            self.worker_thread.join()
+        if self.observer_thread.is_alive():
+            self.observer_thread.join()
+        if self.instructor_thread.is_alive():
+            self.instructor_thread.join()
 
     def finalize(self) -> None:
         """

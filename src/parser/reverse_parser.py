@@ -11,7 +11,8 @@ from enum import Enum, auto
 from types import MappingProxyType
 from typing import Any, Mapping
 
-from common.functions import search_regex
+from common.functions import BottleMail, search_regex
+from master.events import ParserEvent
 from master.interfaces import MasterIF
 from parser.parser import Consts, Parser
 
@@ -283,8 +284,8 @@ class ReverseParser(Parser[ReverseStats]):
             }
         )
 
-    def __init__(self, master: MasterIF):
-        super().__init__(master, ReverseStats())
+    def __init__(self, master: MasterIF, to_master: BottleMail[ParserEvent]):
+        super().__init__(master, to_master, ReverseStats())
 
     def make_dummy_stats(self, name: str = None) -> ReverseStats:
         dummy_stats = ReverseStats()
@@ -298,17 +299,17 @@ class ReverseParser(Parser[ReverseStats]):
         return dummy_stats
 
     def is_stats_enough_for_prompt(self) -> bool:
-        return self.crnt_stats.character.name != ""
+        return self.crnt_clipstats.character.name != ""
 
     def make_pos_prompt(self) -> str:
-        pos_prompt = self.chara_tbl.get(self.crnt_stats.character.name, "")
+        pos_prompt = self.chara_tbl.get(self.crnt_clipstats.character.name, "")
         if pos_prompt == "":
             return ""
         pos_prompt += ",best quality,masterpiece,absurdres,1girl,solo"
         return pos_prompt
 
     def make_neg_prompt(self) -> str:
-        if Consts.charaname_substr_debug in self.crnt_stats.character.name:
+        if Consts.charaname_substr_debug in self.crnt_clipstats.character.name:
             # デバッグステータス
             return "R debug"
 

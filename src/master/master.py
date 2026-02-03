@@ -22,9 +22,10 @@ from generator.dataclasses import (
 )
 from master.events import (
     ArchiverEvent,
-    ChangePicStats,
     DisplayerEvent,
     GeneratorEvent,
+    NewClipStats,
+    NewPicStats,
     NewProgress,
     OnBackward,
     OnChangeConfig,
@@ -37,6 +38,7 @@ from master.events import (
     OnInterruptTask,
     OnRepeatTask,
     OnUpscale,
+    ParserEvent,
     TaskComplete,
     TaskReserve,
     TaskStart,
@@ -62,14 +64,15 @@ class Master(MasterIF):
         self.after_id: str = ""
 
         self.from_archiver: BottleMail[ArchiverEvent] = BottleMail()
-        self.from_generator: BottleMail[GeneratorEvent] = BottleMail()
         self.from_displayer: BottleMail[DisplayerEvent] = BottleMail()
+        self.from_generator: BottleMail[GeneratorEvent] = BottleMail()
+        self.from_parser: BottleMail[ParserEvent] = BottleMail()
 
         self.frontend: FrontEnd = frontend
         if frontend == FrontEnd.reverse:
-            self.parser = ReverseParser(self)
+            self.parser = ReverseParser(self, self.from_parser)
         elif frontend == FrontEnd.the_world:
-            self.parser = TheWorldParser(self)
+            self.parser = TheWorldParser(self, self.from_parser)
         else:
             raise ValueError
 
@@ -86,6 +89,7 @@ class Master(MasterIF):
         self.displayer = Displayer(self, self.from_displayer)
         self.crnt_configs: GUIConfigs = self.displayer.crnt_configs
 
+        self.parser.start()
         self.generator.start()
 
     def start(self) -> None:
@@ -105,9 +109,11 @@ class Master(MasterIF):
             self.after_id = ""
 
         self.generator.finalize()
+        self.parser.finalize()
 
         def worker():
             self.generator.join()
+            self.parser.join()
             self.displayer.destroy()
             self.archiver.finalize()
 
@@ -141,7 +147,7 @@ class Master(MasterIF):
                     f"{self.archiver.__class__.__name__:20} > {event.__class__.__name__:20} > ",
                     end="",
                 )
-            if isinstance(event, ChangePicStats):
+            if isinstance(event, NewPicStats):
                 if self.crnt_gui_configs.print_event:
                     print("stats=", end="")
                     if event.next_picstats is NoImageStats:
@@ -227,6 +233,31 @@ class Master(MasterIF):
                 self.displayer.info_window.update_taskinfo_tab(done=True)
                 if self.displayer.pic_window.event.outputting_noimage.is_set():
                     self.refresh_pic_randomly(construct_window=True)
+
+    def operate_from_parser(self) -> None:
+        """
+        Parser から発行されたイベントに即して作業を実施する\n
+        本関数は一度の呼び出しで, その時点までに登録されている全イベントをこなす\n
+        本関数は tkinter のメインループで呼び出すこと
+        """
+        while True:
+            try:
+                event = self.from_parser.pickup()
+            except IndexError:
+                break
+
+            if self.crnt_gui_configs.print_event:
+                print(
+                    f"{self.parser.__class__.__name__:20} > {event.__class__.__name__:20} > ",
+                    end="",
+                )
+            if isinstance(event, NewClipStats):
+                if self.crnt_gui_configs.print_event:
+                    print(f"enough={event.is_enough}")
+                    if event.is_enough:
+                        self.run_oneshot()
+                    else:
+                        self.archiver.drop_picstats()
 
     @property
     def frontend_type(self) -> FrontEnd:
@@ -367,19 +398,11 @@ class Master(MasterIF):
             if not self.root.winfo_exists():
                 return
 
-            is_new_stats = self.parser.refresh_stats()
-            if not is_new_stats:
-                return
-            elif not self.parser.is_stats_enough_for_prompt():
-                # 記録中ステータスが生成に不十分 i.e. ステータスに紐づくディレクトリがない
-                self.archiver.drop_picstats()
-                return
-
-            self.run_oneshot()
-        except tkinter.TclError:
-            return
-        finally:
+            self.operate_from_parser()
             self.operate_from_archiver()
             self.operate_from_displayer()
             self.operate_from_generator()
-            self.after_id = self.root.after(10, self.run_main)
+        except tkinter.TclError:
+            return
+        finally:
+            self.after_id = self.root.after(100, self.run_main)

@@ -13,12 +13,12 @@ from generator.dataclasses import TaskBlueprint
 
 @dataclass
 class ArchiverEvent:
-    next_picstats: PicStats | NoImageStats
+    pass
 
 
 @dataclass
-class ChangePicStats(ArchiverEvent):
-    pass
+class NewPicStats(ArchiverEvent):
+    next_picstats: PicStats | NoImageStats
 
 
 @dataclass
@@ -104,3 +104,13 @@ class NewProgress(GeneratorEvent):
 @dataclass
 class TaskReserve(GeneratorEvent):
     tasks: int = 0
+
+
+@dataclass
+class ParserEvent:
+    pass
+
+
+@dataclass
+class NewClipStats(ParserEvent):
+    is_enough: bool
