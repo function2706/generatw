@@ -9,9 +9,12 @@ from tkinter import Frame, TclError, ttk
 
 from archiver.dataclasses import NoImageStats, PicStats
 from common.functions import BackEnd, BottleMail
-from displayer.dataclasses import (
+from displayer.dataclasses import GUIConfigs
+from displayer.info_window import InfoWindow
+from displayer.pic_window import PicWindow
+from generator.dataclasses import TaskBlueprint
+from master.events import (
     DisplayerEvent,
-    GUIConfigs,
     OnBackward,
     OnChangeConfig,
     OnDebug,
@@ -24,9 +27,6 @@ from displayer.dataclasses import (
     OnRepeatTask,
     OnUpscale,
 )
-from displayer.info_window import InfoWindow
-from displayer.pic_window import PicWindow
-from generator.dataclasses import TaskBlueprint
 from master.interfaces import MasterIF
 
 

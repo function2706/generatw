@@ -8,10 +8,24 @@ import tkinter
 from pathlib import Path
 
 from archiver.archiver import Archiver
-from archiver.dataclasses import ArchiverEvent, ChangePicStats, NoImageStats, PicStats
+from archiver.dataclasses import NoImageStats, PicStats
 from common.functions import BackEnd, BottleMail, FrontEnd, dump_json
-from displayer.dataclasses import (
+from displayer.displayer import Displayer, GUIConfigs
+from generator.a1111_generator import A1111Generator
+from generator.comfyui_generator import ComfyUIGenerator
+from generator.dataclasses import (
+    SamplerName,
+    SchedulerName,
+    TaskBlueprintImg2Img,
+    TaskBlueprintTxt2Img,
+    UpScalerName,
+)
+from master.events import (
+    ArchiverEvent,
+    ChangePicStats,
     DisplayerEvent,
+    GeneratorEvent,
+    NewProgress,
     OnBackward,
     OnChangeConfig,
     OnDebug,
@@ -23,21 +37,9 @@ from displayer.dataclasses import (
     OnInterruptTask,
     OnRepeatTask,
     OnUpscale,
-)
-from displayer.displayer import Displayer, GUIConfigs
-from generator.a1111_generator import A1111Generator
-from generator.comfyui_generator import ComfyUIGenerator
-from generator.dataclasses import (
-    GeneratorEvent,
-    NewProgress,
-    SamplerName,
-    SchedulerName,
-    TaskBlueprintImg2Img,
-    TaskBlueprintTxt2Img,
     TaskComplete,
     TaskReserve,
     TaskStart,
-    UpScalerName,
 )
 from master.interfaces import MasterIF
 from parser.reverse_parser import ReverseParser

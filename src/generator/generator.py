@@ -21,18 +21,14 @@ from archiver.dataclasses import PicInfo, PicStats
 from common.functions import BackEnd, BottleMail, dirname_by_prompts, dump_json
 from common.multideque import multideque
 from generator.dataclasses import (
-    GeneratorEvent,
-    NewProgress,
     ResizeMode,
     SamplerName,
     SchedulerName,
     TaskBlueprintImg2Img,
     TaskBlueprintTxt2Img,
-    TaskComplete,
-    TaskReserve,
-    TaskStart,
     UpScalerName,
 )
+from master.events import GeneratorEvent, NewProgress, TaskComplete, TaskReserve, TaskStart
 from master.interfaces import MasterIF
 
 

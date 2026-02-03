@@ -14,8 +14,9 @@ from pathlib import Path
 from watchdog.events import PatternMatchingEventHandler
 from watchdog.observers import Observer
 
-from archiver.dataclasses import ArchiverEvent, ChangePicStats, NoImageStats, PicArchive, PicStats
+from archiver.dataclasses import NoImageStats, PicArchive, PicStats
 from common.functions import BottleMail
+from master.events import ArchiverEvent, ChangePicStats
 
 
 class EventType(Enum):
