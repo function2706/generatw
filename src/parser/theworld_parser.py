@@ -11,7 +11,7 @@ from types import MappingProxyType
 from typing import Any, Mapping
 
 from common.functions import search_regex
-from common.interfaces import MasterIF
+from master.interfaces import MasterIF
 from parser.parser import Consts, Parser
 
 

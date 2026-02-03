@@ -10,7 +10,7 @@ from tkinter import TclError, font, ttk
 from typing import Any
 
 from archiver.dataclasses import NoImageStats, PicStats
-from common.interfaces import DisplayerIF
+from displayer.dataclasses import DisplayerIF
 from generator.dataclasses import TaskBlueprint, TaskBlueprintTxt2Img
 
 

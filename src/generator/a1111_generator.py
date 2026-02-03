@@ -15,7 +15,6 @@ from PIL import Image, ImageFile
 
 from archiver.dataclasses import PicInfo
 from common.functions import BottleMail
-from common.interfaces import MasterIF
 from generator.dataclasses import (
     GeneratorEvent,
     TaskBlueprint,
@@ -23,6 +22,7 @@ from generator.dataclasses import (
     TaskBlueprintTxt2Img,
 )
 from generator.generator import Generator
+from master.interfaces import MasterIF
 
 
 @dataclass

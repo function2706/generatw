@@ -12,7 +12,7 @@ from tkinter import TclError, ttk
 
 from PIL import Image, ImageDraw, ImageFont, ImageTk
 
-from common.interfaces import DisplayerIF
+from displayer.dataclasses import DisplayerIF
 
 
 @dataclass
@@ -95,7 +95,7 @@ class PicWindow:
         """
         画像ウィンドウコンストラクタ
         Args:
-            owner (Displayer): Display インスタンス
+            owner (DisplayerIF): Display インスタンス
             fix_position (bool, optional): 表示位置を固定するか
         """
         self.super_owner = owner

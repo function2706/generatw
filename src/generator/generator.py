@@ -19,7 +19,6 @@ from PIL import ImageFile
 
 from archiver.dataclasses import PicInfo, PicStats
 from common.functions import BackEnd, BottleMail, dirname_by_prompts, dump_json
-from common.interfaces import MasterIF
 from common.multideque import multideque
 from generator.dataclasses import (
     GeneratorEvent,
@@ -34,6 +33,7 @@ from generator.dataclasses import (
     TaskStart,
     UpScalerName,
 )
+from master.interfaces import MasterIF
 
 
 @dataclass(frozen=True)

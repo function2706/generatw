@@ -14,7 +14,7 @@ from typing import Any, Generic, Mapping, Protocol, TypeVar
 import pyperclip
 
 from common.functions import dirname_by_prompts, dump_json
-from common.interfaces import MasterIF
+from master.interfaces import MasterIF
 
 
 @dataclass(frozen=True)

@@ -8,7 +8,7 @@ import tkinter
 from tkinter import ttk
 
 from common.functions import BackEnd, FrontEnd
-from master import Master
+from master.master import Master
 
 
 class ModeWindow:

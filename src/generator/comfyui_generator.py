@@ -18,7 +18,6 @@ from PIL import Image, ImageFile
 
 from archiver.dataclasses import PicInfo
 from common.functions import BottleMail
-from common.interfaces import MasterIF
 from generator.comfyui_workflow import Img2ImgWorkFlow, Txt2ImgWorkFlow
 from generator.dataclasses import (
     GeneratorEvent,
@@ -27,6 +26,7 @@ from generator.dataclasses import (
     TaskBlueprintTxt2Img,
 )
 from generator.generator import Generator
+from master.interfaces import MasterIF
 
 
 class WSMessageType(Enum):

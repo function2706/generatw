@@ -10,7 +10,6 @@ from pathlib import Path
 from archiver.archiver import Archiver
 from archiver.dataclasses import ArchiverEvent, ChangePicStats, NoImageStats, PicStats
 from common.functions import BackEnd, BottleMail, FrontEnd, dump_json
-from common.interfaces import MasterIF
 from displayer.dataclasses import (
     DisplayerEvent,
     OnBackward,
@@ -40,6 +39,7 @@ from generator.dataclasses import (
     TaskStart,
     UpScalerName,
 )
+from master.interfaces import MasterIF
 from parser.reverse_parser import ReverseParser
 from parser.theworld_parser import TheWorldParser
 

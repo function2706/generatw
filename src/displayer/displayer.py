@@ -9,9 +9,9 @@ from tkinter import Frame, TclError, ttk
 
 from archiver.dataclasses import NoImageStats, PicStats
 from common.functions import BackEnd, BottleMail
-from common.interfaces import DisplayerIF, MasterIF
 from displayer.dataclasses import (
     DisplayerEvent,
+    DisplayerIF,
     GUIConfigs,
     OnBackward,
     OnChangeConfig,
@@ -28,6 +28,7 @@ from displayer.dataclasses import (
 from displayer.info_window import InfoWindow
 from displayer.pic_window import PicWindow
 from generator.dataclasses import TaskBlueprint
+from master.interfaces import MasterIF
 
 
 def put_textbox(
