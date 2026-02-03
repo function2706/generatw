@@ -6,12 +6,10 @@ from __future__ import annotations
 
 import tkinter
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol
+from typing import Protocol
 
 from common.functions import BackEnd, FrontEnd
-
-if TYPE_CHECKING:
-    from displayer.dataclasses import GUIConfigs
+from displayer.dataclasses import GUIConfigs
 
 
 class MasterIF(Protocol):

@@ -7,11 +7,13 @@ from __future__ import annotations
 import tkinter
 from dataclasses import dataclass
 from tkinter import TclError, font, ttk
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from archiver.dataclasses import NoImageStats, PicStats
-from displayer.dataclasses import DisplayerIF
 from generator.dataclasses import TaskBlueprint, TaskBlueprintTxt2Img
+
+if TYPE_CHECKING:
+    from displayer.displayer import Displayer
 
 
 @dataclass(frozen=True)
@@ -383,12 +385,12 @@ class InfoWindow:
     情報ウィンドウ
     """
 
-    def __init__(self, owner: DisplayerIF):
+    def __init__(self, owner: Displayer):
         """
         情報ウィンドウコンストラクタ
 
         Args:
-            owner (DisplayerIF): Display インスタンス
+            owner (Displayer): Display インスタンス
             fix_position (bool, optional): 表示位置を固定するか
         """
         self.super_owner = owner

@@ -9,10 +9,12 @@ import tkinter
 from dataclasses import dataclass
 from pathlib import Path
 from tkinter import TclError, ttk
+from typing import TYPE_CHECKING
 
 from PIL import Image, ImageDraw, ImageFont, ImageTk
 
-from displayer.dataclasses import DisplayerIF
+if TYPE_CHECKING:
+    from displayer.displayer import Displayer
 
 
 @dataclass
@@ -91,11 +93,11 @@ class PicWindow:
     画像ウィンドウ
     """
 
-    def __init__(self, owner: DisplayerIF):
+    def __init__(self, owner: Displayer):
         """
         画像ウィンドウコンストラクタ
         Args:
-            owner (DisplayerIF): Display インスタンス
+            owner (Displayer): Display インスタンス
             fix_position (bool, optional): 表示位置を固定するか
         """
         self.super_owner = owner

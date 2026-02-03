@@ -11,7 +11,6 @@ from archiver.dataclasses import NoImageStats, PicStats
 from common.functions import BackEnd, BottleMail
 from displayer.dataclasses import (
     DisplayerEvent,
-    DisplayerIF,
     GUIConfigs,
     OnBackward,
     OnChangeConfig,
@@ -420,7 +419,7 @@ class MainWindow:
         self.debug_tab_obj = DebugTab(self)
 
 
-class Displayer(DisplayerIF):
+class Displayer:
     """
     GUI 管理クラス
     """
