@@ -22,6 +22,7 @@ from generator.dataclasses import (
 )
 from master.events import (
     ArchiverEvent,
+    ChangeTasks,
     DisplayerEvent,
     GeneratorEvent,
     NewClipStats,
@@ -40,7 +41,6 @@ from master.events import (
     OnUpscale,
     ParserEvent,
     TaskComplete,
-    TaskReserve,
     TaskStart,
 )
 from master.interfaces import MasterIF
@@ -223,7 +223,7 @@ class Master(MasterIF):
                 if self.crnt_gui_configs.print_event:
                     print(f"progress={event.progress}")
                 self.displayer.info_window.update_taskinfo_tab(progress=event.progress)
-            if isinstance(event, TaskReserve):
+            if isinstance(event, ChangeTasks):
                 if self.crnt_gui_configs.print_event:
                     print(f"tasks={event.tasks}")
                 self.displayer.info_window.update_taskinfo_tab(tasks=event.tasks)

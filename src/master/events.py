@@ -102,7 +102,7 @@ class NewProgress(GeneratorEvent):
 
 
 @dataclass
-class TaskReserve(GeneratorEvent):
+class ChangeTasks(GeneratorEvent):
     tasks: int = 0
 
 

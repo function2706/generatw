@@ -28,7 +28,7 @@ from generator.dataclasses import (
     TaskBlueprintTxt2Img,
     UpScalerName,
 )
-from master.events import GeneratorEvent, NewProgress, TaskComplete, TaskReserve, TaskStart
+from master.events import ChangeTasks, GeneratorEvent, NewProgress, TaskComplete, TaskStart
 from master.interfaces import MasterIF
 
 
@@ -334,7 +334,7 @@ class Generator(ABC, Generic[TaskProgress]):
                     return
                 self.tasks.push(new_task)
                 nexts = len(self.tasks)
-                self.to_master.enclose(TaskReserve(nexts if self.crnt_task is None else nexts + 1))
+                self.to_master.enclose(ChangeTasks(nexts if self.crnt_task is None else nexts + 1))
 
     def reserve_img2img(
         self,
@@ -395,7 +395,7 @@ class Generator(ABC, Generic[TaskProgress]):
                     return
                 self.tasks.push(new_task)
                 nexts = len(self.tasks)
-                self.to_master.enclose(TaskReserve(nexts if self.crnt_task is None else nexts + 1))
+                self.to_master.enclose(ChangeTasks(nexts if self.crnt_task is None else nexts + 1))
 
     def clear(self) -> None:
         """
@@ -403,6 +403,7 @@ class Generator(ABC, Generic[TaskProgress]):
         """
         with self.tasks_lock:
             self.tasks.clear()
+            self.to_master.enclose(ChangeTasks(0 if self.crnt_task is None else 1))
 
     def is_crnt_task_none(self) -> bool:
         """
