@@ -6,12 +6,24 @@ from __future__ import annotations
 
 import tkinter
 from pathlib import Path
-from typing import Any
 
 from archiver.archiver import Archiver
 from archiver.dataclasses import ArchiverEvent, IsNewPicStats, NoImageStats
-from common.functions import BackEnd, BottleMail, FrontEnd
+from common.functions import BackEnd, BottleMail, FrontEnd, dump_json
 from common.interfaces import MasterIF
+from displayer.dataclasses import (
+    DisplayerEvent,
+    OnBackward,
+    OnDebug,
+    OnDelete,
+    OnDumpArchiver,
+    OnDumpTaskList,
+    OnFlushTasks,
+    OnForward,
+    OnInterruptTask,
+    OnRepeatTask,
+    OnUpscale,
+)
 from displayer.displayer import Displayer, GUIConfigs
 from generator.a1111_generator import A1111Generator
 from generator.comfyui_generator import ComfyUIGenerator
@@ -64,7 +76,9 @@ class Master(MasterIF):
         else:
             raise ValueError
 
-        self.displayer = Displayer(self)
+        self.from_displayer: BottleMail[DisplayerEvent] = BottleMail()
+        self.displayer = Displayer(self, self.from_displayer)
+
         self.generator.start()
 
     def start(self) -> None:
@@ -118,6 +132,41 @@ class Master(MasterIF):
             if isinstance(event, IsNewPicStats):
                 self.displayer.update_pic_window(event.next_picstats)
 
+    def operate_from_displayer(self) -> None:
+        """
+        Displayer から発行されたイベントに即して作業を実施する\n
+        本関数は一度の呼び出しで, その時点までに登録されている全イベントをこなす\n
+        本関数は tkinter のメインループで呼び出すこと
+        """
+        while True:
+            try:
+                event = self.from_displayer.pickup()
+            except IndexError:
+                break
+
+            if isinstance(event, OnRepeatTask):
+                self.reserve_txt2img_task()
+            if isinstance(event, OnInterruptTask):
+                self.generator.reserve_interrupt()
+            if isinstance(event, OnFlushTasks):
+                self.generator.clear()
+            if isinstance(event, OnDebug):
+                run_oneshot = self.parser.ready_for_debug()
+                if run_oneshot:
+                    self.run_oneshot()
+            if isinstance(event, OnDumpArchiver):
+                dump_json(self.archiver.archive.todict(), "archiver")
+            if isinstance(event, OnDumpTaskList):
+                dump_json(self.generator.crnt_tasklist(), "tasks")
+            if isinstance(event, OnBackward):
+                self.archiver.backward_picstats()
+            if isinstance(event, OnForward):
+                self.archiver.forward_picstats()
+            if isinstance(event, OnUpscale):
+                self.reserve_img2img_task()
+            if isinstance(event, OnDelete):
+                self.archiver.remove_crnt_picstats()
+
     def operate_from_generator(self) -> None:
         """
         Generator から発行されたイベントに即して作業を実施する\n
@@ -131,13 +180,13 @@ class Master(MasterIF):
                 break
 
             if isinstance(event, IsNewTask):
-                self.displayer.info_window.update_taskinfo_frame(task=event.new_task)
+                self.displayer.info_window.update_taskinfo_tab(task=event.new_task)
             if isinstance(event, IsNewProgress):
-                self.displayer.info_window.update_taskinfo_frame(progress=event.progress)
+                self.displayer.info_window.update_taskinfo_tab(progress=event.progress)
             if isinstance(event, IncreasedTasks):
-                self.displayer.info_window.update_taskinfo_frame(tasks=event.tasks)
+                self.displayer.info_window.update_taskinfo_tab(tasks=event.tasks)
             if isinstance(event, TaskComplete):
-                self.displayer.info_window.update_taskinfo_frame(done=True)
+                self.displayer.info_window.update_taskinfo_tab(done=True)
 
     @property
     def frontend_type(self) -> FrontEnd:
@@ -200,39 +249,7 @@ class Master(MasterIF):
         """
         return self.displayer.crnt_config
 
-    @property
-    def crnt_archive(self) -> dict[str, Any]:
-        """
-        現在の Archiver
-
-        Returns:
-            dict[str, Any]: 現在の Archiver
-        """
-        return self.archiver.archive.todict()
-
-    @property
-    def crnt_tasklist(self) -> list[dict[str, Any]]:
-        """
-        現在のタスクリスト
-
-        Returns:
-            list[dict[str, Any]]: 現在のタスクリスト
-        """
-        return self.generator.crnt_tasklist()
-
-    def on_forward(self) -> None:
-        """
-        > ボタンハンドラ
-        """
-        self.archiver.forward_picstats()
-
-    def on_backward(self) -> None:
-        """
-        < ボタンハンドラ
-        """
-        self.archiver.backward_picstats()
-
-    def on_upscale(self) -> None:
+    def reserve_img2img_task(self) -> None:
         """
         アップスケール予約ボタンハンドラ
         """
@@ -255,34 +272,7 @@ class Master(MasterIF):
             upsclr=UpScalerName.nearest_exact if self.backend_type == BackEnd.comfy_ui else None,
         )
 
-    def on_remove(self) -> None:
-        """
-        削除ボタンハンドラ
-        """
-        self.archiver.remove_crnt_picstats()
-
-    def on_debug(self) -> None:
-        """
-        デバッグ処理\n
-        ダミーステータスをセットし, 必要に応じてメイン処理を実施
-        """
-        run_oneshot = self.parser.ready_for_debug()
-        if run_oneshot:
-            self.run_oneshot()
-
-    def on_interrupt(self) -> None:
-        """
-        中断処理要求時
-        """
-        self.generator.reserve_interrupt()
-
-    def clear_tasks(self) -> None:
-        """
-        タスクリストを空にする
-        """
-        self.generator.clear()
-
-    def reserve_task(self) -> None:
+    def reserve_txt2img_task(self) -> None:
         """
         新しいタスクを生成し, タスクリストに予約する\n
         ただしプロンプト生成に十分なステータスが記録されていない,\n
@@ -325,7 +315,7 @@ class Master(MasterIF):
         """
         タスク予約とすでに存在する画像の表示を1度だけ行う
         """
-        self.reserve_task()
+        self.reserve_txt2img_task()
         self.refresh_pic_randomly(construct_window=True)
 
     def run_main(self) -> None:
@@ -354,5 +344,6 @@ class Master(MasterIF):
             return
         finally:
             self.operate_from_archiver()
+            self.operate_from_displayer()
             self.operate_from_generator()
-            self.after_id = self.root.after(100, self.run_main)
+            self.after_id = self.root.after(10, self.run_main)

@@ -44,12 +44,12 @@ class CursorFrame:
         self.pic_label_image = None
         # ボタン(<)
         self.backward_button = ttk.Button(
-            self.cursor_frame, text="<", width=2, command=owner.super_owner.master.on_backward
+            self.cursor_frame, text="<", width=2, command=owner.super_owner.on_backward
         )
         self.backward_button.grid(row=0, column=0, padx=6, pady=6, sticky="nsw")
         # ボタン(>)
         self.forward_button = ttk.Button(
-            self.cursor_frame, text=">", width=2, command=owner.super_owner.master.on_forward
+            self.cursor_frame, text=">", width=2, command=owner.super_owner.on_forward
         )
         self.forward_button.grid(row=0, column=2, padx=6, pady=6, sticky="nse")
 
@@ -74,16 +74,16 @@ class EvalFrame:
         self.upscale_button = ttk.Button(
             self.eval_frame,
             text="アップスケール予約",
-            command=self.super_owner.super_owner.master.on_upscale,
+            command=self.super_owner.super_owner.on_upscale,
         )
         self.upscale_button.grid(row=0, column=0, padx=6, pady=6, sticky="wes")
         # ボタン(削除)
-        self.remove_button = ttk.Button(
+        self.delete_button = ttk.Button(
             self.eval_frame,
             text="削除",
-            command=self.super_owner.super_owner.master.on_remove,
+            command=self.super_owner.super_owner.on_delete,
         )
-        self.remove_button.grid(row=0, column=1, padx=6, pady=6, sticky="wes")
+        self.delete_button.grid(row=0, column=1, padx=6, pady=6, sticky="wes")
 
 
 class PicWindow:
@@ -233,7 +233,7 @@ class PicWindow:
         forward_button = self.cursor_frame.forward_button
         backward_button = self.cursor_frame.backward_button
         upscale_button = self.eval_frame.upscale_button
-        remove_button = self.eval_frame.remove_button
+        remove_button = self.eval_frame.delete_button
         if toggle:
             if str(forward_button.cget("state")) == "disabled":
                 forward_button.configure(state="normal")

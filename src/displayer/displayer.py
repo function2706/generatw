@@ -8,9 +8,22 @@ import tkinter
 from tkinter import Frame, TclError, ttk
 
 from archiver.dataclasses import NoImageStats, PicStats
-from common.functions import BackEnd, dump_json
+from common.functions import BackEnd, BottleMail
 from common.interfaces import DisplayerIF, MasterIF
-from displayer.dataclasses import GUIConfigs
+from displayer.dataclasses import (
+    DisplayerEvent,
+    GUIConfigs,
+    OnBackward,
+    OnDebug,
+    OnDelete,
+    OnDumpArchiver,
+    OnDumpTaskList,
+    OnFlushTasks,
+    OnForward,
+    OnInterruptTask,
+    OnRepeatTask,
+    OnUpscale,
+)
 from displayer.info_window import InfoWindow
 from displayer.pic_window import PicWindow
 from generator.dataclasses import TaskBlueprint
@@ -99,25 +112,25 @@ class MainTab:
             self.button_frame = ttk.Frame(owner.main_frame)
             self.button_frame.grid(row=0, column=0, sticky="w")
 
-            # ボタン(タスク登録)
-            self.gen_button = ttk.Button(
+            # ボタン(再実行)
+            self.repeat_button = ttk.Button(
                 self.button_frame,
-                text="タスク登録",
-                command=owner.super_owner.super_owner.master.reserve_task,
+                text="再実行",
+                command=owner.super_owner.super_owner.on_repeat_task,
             )
-            self.gen_button.grid(row=0, column=0, padx=6, pady=6, sticky="w")
+            self.repeat_button.grid(row=0, column=0, padx=6, pady=6, sticky="w")
             # ボタン(中断)
             self.interrupt_button = ttk.Button(
                 self.button_frame,
                 text="中断",
-                command=owner.super_owner.super_owner.master.on_interrupt,
+                command=owner.super_owner.super_owner.on_interrput_task,
             )
             self.interrupt_button.grid(row=0, column=1, padx=6, pady=6, sticky="w")
             # タスククリア
             self.clear_button = ttk.Button(
                 self.button_frame,
                 text="タスククリア",
-                command=owner.super_owner.super_owner.master.clear_tasks,
+                command=owner.super_owner.super_owner.on_flush_tasks,
             )
             self.clear_button.grid(row=0, column=2, padx=6, pady=6, sticky="w")
             # ボタン(画像を表示)
@@ -282,7 +295,7 @@ class DebugTab:
             self.debug_button = ttk.Button(
                 self.exe_debug_frame,
                 text="デバッグ",
-                command=owner.super_owner.super_owner.master.on_debug,
+                command=owner.super_owner.super_owner.on_debug,
             )
             self.debug_button.grid(row=0, column=0, padx=6, pady=6, sticky="w")
             # チェックボックス
@@ -304,7 +317,7 @@ class DebugTab:
             self.debug_button = ttk.Button(
                 self.exe_debug_frame,
                 text="タスクリスト",
-                command=owner.super_owner.super_owner.on_dump_tasks,
+                command=owner.super_owner.super_owner.on_dump_tasklist,
             )
             self.debug_button.grid(row=1, column=1, padx=6, pady=6, sticky="w")
 
@@ -402,7 +415,7 @@ class Displayer(DisplayerIF):
     GUI 管理クラス
     """
 
-    def __init__(self, master: MasterIF):
+    def __init__(self, master: MasterIF, to_master: BottleMail[DisplayerEvent]):
         """
         コンストラクタ
 
@@ -410,6 +423,7 @@ class Displayer(DisplayerIF):
             master (MasterIF): Master インターフェース
         """
         self.master = master
+        self.to_master = to_master
 
         self.main_window = MainWindow(self)
         self.info_window = InfoWindow(self)
@@ -492,6 +506,24 @@ class Displayer(DisplayerIF):
             if str(output_button.cget("state")) == "normal":
                 output_button.configure(state="disabled")
 
+    def on_repeat_task(self) -> None:
+        """
+        再実行ボタンハンドラ
+        """
+        self.to_master.enclose(OnRepeatTask())
+
+    def on_interrput_task(self) -> None:
+        """
+        中断ボタンハンドラ
+        """
+        self.to_master.enclose(OnInterruptTask())
+
+    def on_flush_tasks(self) -> None:
+        """
+        タスククリアボタンハンドラ
+        """
+        self.to_master.enclose(OnFlushTasks())
+
     def on_open_pic_window(self) -> None:
         """
         表示ボタンハンドラ\n
@@ -517,20 +549,50 @@ class Displayer(DisplayerIF):
         else:
             self.info_window.construct(fix_position=True)
 
-        self.info_window.update_taskinfo_frame(task=self.last_task)
+        self.info_window.update_taskinfo_tab(task=self.last_task)
         self.info_window.update_picinfo_tab(self.last_picstats)
+
+    def on_debug(self) -> None:
+        """
+        デバッグボタンハンドラ
+        """
+        self.to_master.enclose(OnDebug())
 
     def on_dump_archiver(self) -> None:
         """
         Archiver ダンプボタンハンドラ
         """
-        dump_json(self.master.crnt_archive, "archiver")
+        self.to_master.enclose(OnDumpArchiver())
 
-    def on_dump_tasks(self) -> None:
+    def on_dump_tasklist(self) -> None:
         """
         タスクリストダンプボタンハンドラ
         """
-        dump_json(list(self.master.crnt_tasklist), "tasks")
+        self.to_master.enclose(OnDumpTaskList())
+
+    def on_backward(self) -> None:
+        """
+        < ボタンハンドラ
+        """
+        self.to_master.enclose(OnBackward())
+
+    def on_forward(self) -> None:
+        """
+        > ボタンハンドラ
+        """
+        self.to_master.enclose(OnForward())
+
+    def on_upscale(self) -> None:
+        """
+        アップスケール予約ボタンハンドラ
+        """
+        self.to_master.enclose(OnUpscale())
+
+    def on_delete(self) -> None:
+        """
+        削除ボタンハンドラ
+        """
+        self.to_master.enclose(OnDelete())
 
     def update_configs(self) -> None:
         """

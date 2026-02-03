@@ -477,7 +477,7 @@ class InfoWindow:
         except TclError:
             return False
 
-    def update_taskinfo_frame(
+    def update_taskinfo_tab(
         self,
         task: TaskBlueprint = None,
         progress: float = None,
@@ -487,12 +487,12 @@ class InfoWindow:
         """
         進捗, プロンプト, タスクメタ情報フレームの更新を行う
         """
-        # 進捗
+        # タスク数
         if done:
             self.len_tasks_strvar.set(f"{int(self.len_tasks_strvar.get()) - 1}")
         elif tasks is not None:
             self.len_tasks_strvar.set(f"{tasks}")
-
+        # プログレスバー
         if done:
             self.progress_val.set(0.0)
             self.progress_strvar.set("0%")
@@ -502,7 +502,6 @@ class InfoWindow:
                 self.progress_strvar.set("0%")
             else:
                 self.progress_strvar.set(f"{progress * 100:.0f}%")
-
         # タスクステータス
         if done:
             self.super_owner.last_task = None
@@ -558,7 +557,7 @@ class InfoWindow:
             self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("宛先ポート", task.dst_port)
 
     def update_picinfo_tab(self, picstats: PicStats | NoImageStats) -> None:
-        if picstats is NoImageStats:
+        if picstats is None or picstats is NoImageStats:
             self.picinfo_tab_obj.infobox_frame.infobox_tree.set("場所", Consts.not_available_text)
             self.picinfo_tab_obj.infobox_frame.infobox_tree.set(
                 "ポジティブプロンプト", Consts.not_available_text
