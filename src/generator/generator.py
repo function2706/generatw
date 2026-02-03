@@ -203,7 +203,6 @@ class Event:
     イベントフラグ
     """
 
-    complete: threading.Event = field(default_factory=threading.Event)  # タスク完了直後
     shutdown: threading.Event = field(default_factory=threading.Event)  # 終了予定
     interrupt: threading.Event = field(default_factory=threading.Event)  # 中断処理実行予定
 
@@ -571,10 +570,8 @@ class Generator(ABC, Generic[TaskProgress]):
             finally:
                 with self.crnt_task_lock:
                     if self.crnt_task is not None:
-                        self.event.complete.set()
                         self.to_master.enclose(TaskComplete())
-                    else:
-                        self.event.complete.clear()
+                        self.to_master.enclose(IsNewProgress(0))
                     self.crnt_task = None
 
     def instructor(self) -> None:
@@ -600,10 +597,6 @@ class Generator(ABC, Generic[TaskProgress]):
         while not self.event.shutdown.is_set():
             time.sleep(Consts.thread_interval_sec)
             try:
-                with self.crnt_task_lock:
-                    if self.crnt_task is None and self.event.complete.is_set():
-                        self.to_master.enclose(IsNewProgress(0))
-
                 response = self.request_progress()
                 if response is not None:
                     self.to_master.enclose(IsNewProgress(response.progress))

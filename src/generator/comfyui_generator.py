@@ -327,5 +327,8 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
         self.is_interrupting_listen.set()
 
     def request_progress(self) -> ComfyUITaskProgress | None:
+        if self.is_crnt_task_none():
+            return None
+
         with self.progress_lock:
             return self.progress
