@@ -8,7 +8,7 @@ import tkinter
 from tkinter import Frame, TclError, ttk
 
 from archiver.dataclasses import NoImageStats, PicStats
-from common.functions import BackEnd, BottleMail
+from common.functions import BottleMail
 from displayer.dataclasses import GUIConfigs
 from displayer.info_window import InfoWindow
 from displayer.pic_window import PicWindow
@@ -154,7 +154,7 @@ class MainTab:
         SD 内部設定フレーム
         """
 
-        def __init__(self, owner: MainTab):
+        def __init__(self, owner: MainTab, init_configs: GUIConfigs):
             """
             SD 内部設定フレームコンストラクタ
 
@@ -173,7 +173,7 @@ class MainTab:
                 row=1,
                 col=0,
                 width=5,
-                default=str(100),
+                default=str(init_configs.sd_width),
                 sticky="w",
                 on_change=owner.super_owner.super_owner.update_configs,
             )
@@ -184,7 +184,7 @@ class MainTab:
                 row=1,
                 col=2,
                 width=5,
-                default=str(100),
+                default=str(init_configs.sd_height),
                 sticky="w",
                 on_change=owner.super_owner.super_owner.update_configs,
             )
@@ -195,7 +195,7 @@ class MainTab:
                 row=2,
                 col=0,
                 width=4,
-                default=str(30),
+                default=str(init_configs.sd_steps),
                 sticky="w",
                 on_change=owner.super_owner.super_owner.update_configs,
             )
@@ -206,7 +206,7 @@ class MainTab:
                 row=2,
                 col=2,
                 width=4,
-                default=str(2),
+                default=str(init_configs.sd_batch_size),
                 sticky="w",
                 on_change=owner.super_owner.super_owner.update_configs,
             )
@@ -216,7 +216,7 @@ class MainTab:
         SD 外部設定フレーム
         """
 
-        def __init__(self, owner: MainTab):
+        def __init__(self, owner: MainTab, init_configs: GUIConfigs):
             """
             SD 外部設定フレームコンストラクタ
 
@@ -235,26 +235,23 @@ class MainTab:
                 row=0,
                 col=0,
                 width=16,
-                default="127.0.0.1",
+                default=init_configs.srv_ipaddr,
                 sticky="w",
                 on_change=owner.super_owner.super_owner.update_configs,
             )
             # テキストボックス(ポート)
-            type = owner.super_owner.super_owner.master.backend_type
             self.port_entry = put_textbox(
                 frame=self.sd_exterior_config_frame,
                 name="ポート",
                 row=0,
                 col=2,
                 width=6,
-                default=str(
-                    7860 if type == BackEnd.a1111 else 8188 if type == BackEnd.comfy_ui else 0
-                ),
+                default=init_configs.srv_port,
                 sticky="w",
                 on_change=owner.super_owner.super_owner.update_configs,
             )
 
-    def __init__(self, owner: MainWindow):
+    def __init__(self, owner: MainWindow, init_configs: GUIConfigs):
         """
         メインタブコンストラクタ
 
@@ -267,8 +264,8 @@ class MainTab:
         self.main_frame.grid(row=0, column=0, sticky="nsew")
 
         self.button_frame = self.ButtonFrame(self)
-        self.sd_interior_config_frame = self.SDInteriorConfigFrame(self)
-        self.sd_exterior_config_frame = self.SDExteriorConfigFrame(self)
+        self.sd_interior_config_frame = self.SDInteriorConfigFrame(self, init_configs)
+        self.sd_exterior_config_frame = self.SDExteriorConfigFrame(self, init_configs)
 
 
 class DebugTab:
@@ -281,7 +278,7 @@ class DebugTab:
         デバッグ実行フレーム
         """
 
-        def __init__(self, owner: DebugTab):
+        def __init__(self, owner: DebugTab, init_configs: GUIConfigs):
             """
             デバッグ実行フレームコンストラクタ
 
@@ -307,6 +304,7 @@ class DebugTab:
                 variable=self.allow_edit_clipboard_check,
                 command=self.super_owner.super_owner.super_owner.update_configs,
             ).grid(row=0, column=1, padx=6, pady=6, sticky="w")
+            self.allow_edit_clipboard_check.set(init_configs.allow_edit_clipboard)
             # ボタン(アーカイブ出力 ダンプ)
             self.debug_button = ttk.Button(
                 self.exe_debug_frame,
@@ -327,7 +325,7 @@ class DebugTab:
         表示設定フレーム
         """
 
-        def __init__(self, owner: DebugTab):
+        def __init__(self, owner: DebugTab, init_configs: GUIConfigs):
             """
             表示設定フレームコンストラクタ
 
@@ -346,6 +344,7 @@ class DebugTab:
                 variable=self.verbose_clipboard_check,
                 command=self.super_owner.super_owner.super_owner.update_configs,
             ).grid(row=0, column=0, padx=6, pady=6, sticky="w")
+            self.verbose_clipboard_check.set(init_configs.print_new_clipboard)
             # ステータスの表示
             self.verbose_stats_check = tkinter.BooleanVar()
             ttk.Checkbutton(
@@ -354,6 +353,7 @@ class DebugTab:
                 variable=self.verbose_stats_check,
                 command=self.super_owner.super_owner.super_owner.update_configs,
             ).grid(row=0, column=1, padx=6, pady=6, sticky="w")
+            self.verbose_stats_check.set(init_configs.print_new_stats)
             # PicInfo の表示
             self.verbose_picinfo_check = tkinter.BooleanVar()
             ttk.Checkbutton(
@@ -362,6 +362,7 @@ class DebugTab:
                 variable=self.verbose_picinfo_check,
                 command=self.super_owner.super_owner.super_owner.update_configs,
             ).grid(row=1, column=0, padx=6, pady=6, sticky="w")
+            self.verbose_picinfo_check.set(init_configs.print_picinfo)
             # イベントの表示
             self.verbose_event_check = tkinter.BooleanVar()
             ttk.Checkbutton(
@@ -370,8 +371,9 @@ class DebugTab:
                 variable=self.verbose_event_check,
                 command=self.super_owner.super_owner.super_owner.update_configs,
             ).grid(row=1, column=1, padx=6, pady=6, sticky="w")
+            self.verbose_event_check.set(init_configs.print_event)
 
-    def __init__(self, owner: MainWindow):
+    def __init__(self, owner: MainWindow, init_configs: GUIConfigs):
         """
         デバッグタブコンストラクタ
 
@@ -383,8 +385,8 @@ class DebugTab:
         self.main_frame = ttk.Frame(owner.debug_tab)
         self.main_frame.grid(row=0, column=0, sticky="nsew")
 
-        self.exe_debug_frame = self.ExeDebugFrame(self)
-        self.verbose_frame = self.VerboseFrame(self)
+        self.exe_debug_frame = self.ExeDebugFrame(self, init_configs)
+        self.verbose_frame = self.VerboseFrame(self, init_configs)
 
 
 class MainWindow:
@@ -392,7 +394,7 @@ class MainWindow:
     メインウィンドウ(設定等)
     """
 
-    def __init__(self, owner: Displayer):
+    def __init__(self, owner: Displayer, init_configs: GUIConfigs):
         """
         設定ウィンドウコンストラクタ
 
@@ -412,11 +414,11 @@ class MainWindow:
         # メインタブ
         self.main_tab = ttk.Frame(self.notebook, padding=12)
         self.notebook.add(self.main_tab, text="メイン")
-        self.main_tab_obj = MainTab(self)
+        self.main_tab_obj = MainTab(self, init_configs)
         # デバッグタブ
         self.debug_tab = ttk.Frame(self.notebook, padding=12)
         self.notebook.add(self.debug_tab, text="デバッグ")
-        self.debug_tab_obj = DebugTab(self)
+        self.debug_tab_obj = DebugTab(self, init_configs)
 
 
 class Displayer:
@@ -424,7 +426,9 @@ class Displayer:
     GUI 管理クラス
     """
 
-    def __init__(self, master: MasterIF, to_master: BottleMail[DisplayerEvent]):
+    def __init__(
+        self, master: MasterIF, to_master: BottleMail[DisplayerEvent], init_configs: GUIConfigs
+    ):
         """
         コンストラクタ
 
@@ -434,7 +438,7 @@ class Displayer:
         self.master = master
         self.to_master = to_master
 
-        self.main_window = MainWindow(self)
+        self.main_window = MainWindow(self, init_configs)
         self.info_window = InfoWindow(self)
         self.info_window.construct(fix_position=True)
         self.pic_window = PicWindow(self)

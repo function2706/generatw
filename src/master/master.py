@@ -5,12 +5,14 @@
 from __future__ import annotations
 
 import tkinter
+from dataclasses import dataclass
 from pathlib import Path
 
 from archiver.archiver import Archiver
 from archiver.dataclasses import NoImageStats, PicStats
 from common.functions import BackEnd, BottleMail, FrontEnd, dump_json
-from displayer.displayer import Displayer, GUIConfigs
+from displayer.dataclasses import GUIConfigs
+from displayer.displayer import Displayer
 from generator.a1111_generator import A1111Generator
 from generator.comfyui_generator import ComfyUIGenerator
 from generator.dataclasses import (
@@ -46,6 +48,11 @@ from master.events import (
 from master.interfaces import MasterIF
 from parser.reverse_parser import ReverseParser
 from parser.theworld_parser import TheWorldParser
+
+
+@dataclass(frozen=True)
+class Consts:
+    config_path: Path = Path("config.json")
 
 
 class Master(MasterIF):
@@ -86,8 +93,30 @@ class Master(MasterIF):
         else:
             raise ValueError
 
-        self.displayer = Displayer(self, self.from_displayer)
-        self.crnt_configs: GUIConfigs = self.displayer.crnt_configs
+        self.crnt_configs: GUIConfigs = (
+            GUIConfigs.fromjson(Consts.config_path)
+            if Consts.config_path.exists()
+            else GUIConfigs(
+                srv_ipaddr="127.0.0.1",
+                srv_port=str(
+                    7860
+                    if self.backend == BackEnd.a1111
+                    else 8188
+                    if self.backend == BackEnd.comfy_ui
+                    else 0
+                ),
+                sd_steps=30,
+                sd_batch_size=2,
+                sd_width=540,
+                sd_height=960,
+                allow_edit_clipboard=False,
+                print_new_clipboard=False,
+                print_new_stats=False,
+                print_picinfo=False,
+                print_event=False,
+            )
+        )
+        self.displayer = Displayer(self, self.from_displayer, self.crnt_configs)
 
         self.parser.start()
         self.generator.start()
@@ -103,6 +132,8 @@ class Master(MasterIF):
         """
         終了処理
         """
+
+        self.crnt_configs.tojson(Consts.config_path)
 
         if self.after_id:
             self.root.after_cancel(self.after_id)

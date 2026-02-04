@@ -4,7 +4,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import json
+from dataclasses import asdict, dataclass
+from pathlib import Path
 
 
 @dataclass
@@ -24,3 +26,12 @@ class GUIConfigs:
     print_new_stats: bool = False
     print_picinfo: bool = False
     print_event: bool = False
+
+    @classmethod
+    def fromjson(cls, path: Path) -> GUIConfigs:
+        with open(path, "r", encoding="utf-8") as f:
+            return cls(**json.load(f))
+
+    def tojson(self, path: Path) -> None:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(asdict(self), f, ensure_ascii=False, indent=2)
