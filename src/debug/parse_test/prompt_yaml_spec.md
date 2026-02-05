@@ -573,7 +573,7 @@ NEG: FOO,BAR,HOGE,FUGA,BAZ,(nope:1.4),nyome,sad,crying,worst quality,low quality
 
 ※ `ranges` では **キー自体が positive プロンプト** として使用される。
 
-## 10.5 プロンプト文字列予約記号（構文レベル）
+### 10.5 プロンプト文字列予約記号（構文レベル）
 
 |記号|意味|
 |----|----|
@@ -581,7 +581,7 @@ NEG: FOO,BAR,HOGE,FUGA,BAZ,(nope:1.4),nyome,sad,crying,worst quality,low quality
 |`(token:weight)`|重み付きトークン表記|
 |`()`|重み指定のための予約構文|
 
-## 10.6 命名上の注意
+### 10.6 命名上の注意
 
 - 上記予約語は **セクション名・フィールド名・値として使用不可**
 - 大文字 / 小文字は **区別される**
@@ -589,7 +589,7 @@ NEG: FOO,BAR,HOGE,FUGA,BAZ,(nope:1.4),nyome,sad,crying,worst quality,low quality
 - 将来の拡張のため、以下の語も **使用非推奨**：
   - `enable`, `disable`, `when`, `unless`, `else`
 
-## 10.7 実装上の扱い（参考）
+### 10.7 実装上の扱い（参考）
 
 - 予約語は **パーサ段階で除外 / 特別処理**
 - 未知のキーはすべてユーザー定義セクションとして扱う
