@@ -3,54 +3,42 @@ from typing import Any, Literal
 
 import yaml
 
-# 定数
 FIELD_TYPE_MAPS = "maps"
 FIELD_TYPE_RANGES = "ranges"
 SIDE_POSITIVE = "positive"
 SIDE_NEGATIVE = "negative"
 
-# 型エイリアス
 PromptMap = dict[str, float]
 PromptResult = dict[Literal["positive", "negative"], PromptMap]
 
-PROMPT_RE = re.compile(
-    r"""
-    \(\s*
-      (?P<token>[^:()]+)
-      (?:\s*:\s*(?P<weight>[0-9.]+))?
-    \s*\)
-    |
-    (?P<bare>[^,()]+)
-    """,
-    re.VERBOSE,
-)
-
-
-def parse_prompts(s: str) -> PromptMap:
-    """
-    "FOO,(nope:1.3)" -> {"FOO": 1.0, "nope": 1.3}
-    """
-    out: PromptMap = {}
-
-    for m in PROMPT_RE.finditer(s):
-        if m.group("bare"):
-            token = m.group("bare").strip()
-            weight = 1.0
-        else:
-            token = m.group("token").strip()
-            weight = float(m.group("weight") or 1.0)
-
-        out[token] = max(out.get(token, 0.0), weight)
-
-    return out
-
 
 def load_yaml(path: str) -> dict:
+    """
+    YAML ファイルを読み込む
+
+    Args:
+        path (str): YAMLファイルのパス
+
+    Returns:
+        dict: パースされたYAMLデータ
+    """
     with open(path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
 def normalize_field(field: dict) -> dict:
+    """
+    フィールド定義を正規化する
+
+    Args:
+        field (dict): YAML から読み込んだフィールド定義
+
+    Raises:
+        ValueError: maps または ranges のいずれも定義されていない場合
+
+    Returns:
+        dict: 正規化されたフィールド定義 (type, table, capturegrp, priority, default を含む)
+    """
     result = {
         "capturegrp": field.get("capturegrp", 0),
         "priority": field.get("priority"),
@@ -72,6 +60,18 @@ def normalize_field(field: dict) -> dict:
 
 
 def normalize_ignition(ignition: dict) -> dict:
+    """
+    発火条件を正規化する
+
+    Args:
+        ignition (dict): YAMLから読み込んだ ignition 定義
+
+    Raises:
+        ValueError: any または all のいずれも定義されていない場合
+
+    Returns:
+        dict: 正規化された発火条件 (mode: "any"|"all", patterns: リスト)
+    """
     if "any" in ignition:
         return {"mode": "any", "patterns": ignition["any"]}
     elif "all" in ignition:
@@ -80,23 +80,40 @@ def normalize_ignition(ignition: dict) -> dict:
         raise ValueError("ignition must contain any or all")
 
 
-def collect_fields_recursive(node: dict, out: dict[str, dict]) -> None:
+def collect_fields(node: dict, out: dict[str, dict]) -> None:
+    """
+    ネストされた YAML 構造から再帰的にフィールド定義を収集する\n
+    pattern キーを持つオブジェクトをフィールドとして認識し,\n
+    それ以外は再帰的に探索する
+
+    Args:
+        node (dict): 探索対象のノード
+        out (dict[str, dict]): 収集結果を格納する辞書 (pattern 文字列がキー)
+    """
     if not isinstance(node, dict):
         return
 
-    # この dict 自体が field 定義だった場合
     if "pattern" in node:
         pattern = node["pattern"]
         field = normalize_field(node)
         out[pattern] = field
         return
 
-    # それ以外は再帰
     for v in node.values():
-        collect_fields_recursive(v, out)
+        collect_fields(v, out)
 
 
 def normalize_rule(rule: dict[str, Any]) -> dict:
+    """
+    ルール定義全体を正規化する
+
+    Args:
+        rule (dict[str, Any]): 正規化されたルール\n
+                               (id, ignition, fields, common_positive, common_negativeを含む)
+
+    Returns:
+        dict: YAML から読み込んだルール定義
+    """
     rule_id = rule["id"]
 
     out: dict[str, Any] = {
@@ -113,12 +130,20 @@ def normalize_rule(rule: dict[str, Any]) -> dict:
     for k, v in rule.items():
         if k in ("id", "ignition", "POSITIVE", "NEGATIVE"):
             continue
-        collect_fields_recursive(v, out["fields"])
+        collect_fields(v, out["fields"])
 
     return out
 
 
 def resolve_priorities(fields: dict[str, dict]) -> None:
+    """
+    フィールドの priority 値を解決し, 重複を自動調整する\n
+    未指定の priority には最大値 +1 を自動割り当てする\n
+    重複した priority は +1 して調整される
+
+    Args:
+        fields (dict[str, dict]): 正規化されたフィールド辞書(破壊的に変更される)
+    """
     used: set[int] = set()
 
     # 指定済み priority
@@ -141,10 +166,20 @@ def resolve_priorities(fields: dict[str, dict]) -> None:
             next_p += 1
 
 
-# -------------------------------------------------------------------------
-
-
 def check_ignition(text: str, ignition: dict) -> bool:
+    """
+    テキストが発火条件を満たすかチェックする
+
+    Args:
+        text (str): 検査対象のテキスト
+        ignition (dict): 正規化された発火条件
+
+    Raises:
+        ValueError: 不明なignitionモードの場合
+
+    Returns:
+        bool: 発火条件を満たす場合 True
+    """
     patterns = ignition["patterns"]
     mode = ignition["mode"]
 
@@ -157,19 +192,78 @@ def check_ignition(text: str, ignition: dict) -> bool:
 
 
 def merge_prompt_map(dst: PromptMap, src: PromptMap) -> None:
-    """src を dst にマージ（weight は最大値を採用）"""
+    """
+    src を dst にマージする (weight は最大値を採用)
+
+    Args:
+        dst (PromptMap): マージ先(破壊的に変更される)
+        src (PromptMap): マージ元
+    """
     for k, v in src.items():
         dst[k] = max(dst.get(k, 0.0), v)
 
 
 def add_to_side(out: PromptResult, side: str, tokens: PromptMap) -> None:
-    """指定した side (positive/negative) に tokens を追加"""
+    """
+    指定した side (positive/negative) に tokens を追加する
+
+    Args:
+        out (PromptResult): 追加先(破壊的に変更される)
+        side (str): "positive" または "negative"
+        tokens (PromptMap): 追加するトークンマップ
+    """
     out.setdefault(side, {})
     merge_prompt_map(out[side], tokens)
 
 
+def parse_prompts(s: str) -> PromptMap:
+    """
+    プロンプト文字列をパースしてトークンマップに変換する
+
+    例:
+        "foo,(bar:1.3)" -> {"foo": 1.0, "bar": 1.3}
+        "blue hair,red eyes" -> {"blue hair": 1.0, "red eyes": 1.0}
+
+    Args:
+        s (str): プロンプト文字列
+
+    Returns:
+        PromptMap: トークンと重みのマップ
+    """
+    out: PromptMap = {}
+    PROMPT_RE = re.compile(
+        r"""
+        \(\s*
+        (?P<token>[^:()]+)
+        (?:\s*:\s*(?P<weight>[0-9.]+))?
+        \s*\)
+        |
+        (?P<bare>[^,()]+)
+        """,
+        re.VERBOSE,
+    )
+
+    for m in PROMPT_RE.finditer(s):
+        if m.group("bare"):
+            token = m.group("bare").strip()
+            weight = 1.0
+        else:
+            token = m.group("token").strip()
+            weight = float(m.group("weight") or 1.0)
+
+        out[token] = max(out.get(token, 0.0), weight)
+
+    return out
+
+
 def handle_entry(out: PromptResult, entry: Any) -> None:
-    """entry (文字列 or 辞書) を処理して out に追加"""
+    """
+    entry (文字列 or 辞書)を処理して out に追加する
+
+    Args:
+        out (PromptResult): 追加先(破壊的に変更される)
+        entry (Any): 文字列 (positive のみ)または辞書 (positive/negative 分離)
+    """
     if isinstance(entry, str):
         add_to_side(out, SIDE_POSITIVE, parse_prompts(entry))
     elif isinstance(entry, dict):
@@ -180,8 +274,18 @@ def handle_entry(out: PromptResult, entry: Any) -> None:
 
 def handle_ranges_match(out: PromptResult, key: str, entry: Any, value: str) -> bool:
     """
-    ranges タイプのマッチ処理。
-    マッチしたら out に追加して True を返す。
+    ranges タイプのマッチ処理を行う\n
+    マッチした場合, キー自体が positive プロンプトとして使用され,\n
+    negative が定義されていればそれも追加される
+
+    Args:
+        out (PromptResult): 追加先(破壊的に変更される)
+        key (str): プロンプトキー (positive として使用される)
+        entry (Any): range 定義 (coordinates と negative を含む辞書, またはリスト)
+        value (str): マッチ対象の値
+
+    Returns:
+        bool: マッチした場合 True
     """
     if isinstance(entry, dict):
         coords = entry.get("conditions", entry.get("conditions", []))
@@ -197,12 +301,18 @@ def handle_ranges_match(out: PromptResult, key: str, entry: Any, value: str) -> 
     return False
 
 
-def process_match_value(
-    value: str,
-    field: dict[str, Any],
-    out: PromptResult,
-) -> None:
-    """マッチした値を field の type に応じて処理"""
+def process_match_value(value: str, field: dict[str, Any], out: PromptResult) -> None:
+    """
+    マッチした値をfieldのtypeに応じて処理する
+
+    Args:
+        value (str): 抽出された値
+        field (dict[str, Any]): フィールド定義
+        out (PromptResult): 追加先(破壊的に変更される)
+
+    Raises:
+        ValueError: 不明な field タイプの場合
+    """
     field_type = field["type"]
     table = field["table"]
     matched = False
@@ -225,17 +335,20 @@ def process_match_value(
         handle_entry(out, field["default"])
 
 
-def eval_field(
-    text: str,
-    pattern: str,
-    field: dict[str, Any],
-) -> PromptResult:
+def eval_field(text: str, pattern: str, field: dict[str, Any]) -> PromptResult:
     """
-    戻り値:
-    {
-      "positive": {token: weight},
-      "negative": {token: weight},
-    }
+    フィールドのパターンマッチングを行い, プロンプトを生成する
+
+    Args:
+        text (str): 検索対象のテキスト
+        pattern (str): 正規表現パターン
+        field (dict[str, Any]): フィールド定義
+
+    Raises:
+        ValueError: 不正な正規表現パターンの場合
+
+    Returns:
+        PromptResult: positive/negative のトークンマップを含む辞書
     """
     try:
         matches = list(re.finditer(pattern, text))
@@ -260,6 +373,16 @@ def eval_field(
 
 
 def make_prompt(text: str, rule: dict[str, Any]) -> tuple[str, str]:
+    """
+    テキストからプロンプトを生成する
+
+    Args:
+        text (str): 入力テキスト
+        rule (dict[str, Any]): 正規化されたルール定義
+
+    Returns:
+        tuple[str, str]: (positive_prompt, negative_prompt) のタプル
+    """
     if not check_ignition(text, rule["ignition"]):
         return "", ""
 
