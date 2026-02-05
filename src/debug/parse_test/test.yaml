@@ -1,0 +1,37 @@
+rule:
+  id: main
+  ignition:
+    any: ["today:"] # any は論理和, all は論理積
+  character: # 項目名は多層的でも構わない
+    name:
+      pattern: "[0-9]{2},\\s(\\w*)" # 必ずバックスラッシュはエスケープ, 可変長後読みは禁止
+      priority: 1 # 小さい数字ほどプロンプトの先頭に追加される, かぶれば上にある方, 未指定の場合は優先度最低
+      capturegrp: 1
+      maps: # maps は <substr>: <prompt>
+        Name1: name1,feature1 # Name1 等に抜き出した文字列を指定
+        Name2: name2,feature2
+    vibe:
+      pattern: "vibe:\\s([^\\)]*)"
+      priority: 2
+      capturegrp: 1 # 未指定時は 0, キャプチャグループのインデックスを指定(0 は全体)
+      maps:
+        Vibe1: vibe1
+        Vibe2: vibe2
+      default: vibe3 # マッチがない場合のプロンプト定義, これがない場合はマッチしなければプロンプト化しない
+  meta:
+    date:
+      pattern: "(1|2)[0-9]{3}/([0-9]{2})" # (a|b) の () もキャプチャであることに注意
+      priority: 3
+      capturegrp: 2
+      ranges: # ranges は <prompt>: [<substr1>,...]
+        spring: ["03", "04", "05", "06"] # 値に一致する場合はすべてキーをプロンプトとする
+        summer: ["07", "08"]
+        autumn: ["09", "10"]
+        winter: ["11", "12", "01", "02"]
+    weather:
+      pattern: "(sunny|rainy)"
+      priority: 4
+      maps:
+        sunny: sunny
+        rainy: rainy
+      default: cloudy
