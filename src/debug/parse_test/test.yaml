@@ -37,7 +37,8 @@ rule:
       default: cloudy
   test:
     foobar:
-      pattern: "(foo|bar|Bar)"
+      pattern: "(foo|bar|Bar|Baz|baz)"
+      priority: 1
       maps:
         foo:
           positive: foo
@@ -48,14 +49,20 @@ rule:
         Bar:
           positive: (bar:1.1) # token が被った場合, weight は最大のものを1つだけ採用
           negative: BAR,(nope:1.2)
+        Baz:
+          negative: BAZ,(nope:1.4)
+        baz:
+          positive: baz
     hogefuga:
       pattern: "([hH]oge|[fF]uga)"
       ranges:
         (hoge:1.3): # token が被った場合, weight は最大のものを1つだけ採用
-          coordinates: ["hoge"]
+          conditions: ["hoge"]
           negative: HOGE,nope
         (hoge:1.2):
-          coordinates: ["Hoge"]
+          conditions: ["Hoge"]
         fuga:
-          coordinates: ["fuga", "Fuga"]
+          conditions: ["fuga", "Fuga"]
           negative: FUGA,(nope:1.3) # token が被った場合, weight は最大のものを1つだけ採用
+  POSITIVE: "common positive" # この値は必ずポジティブプロンプトの末尾に追加される
+  NEGATIVE: "common negative" # この値は必ずネガティブプロンプトの末尾に追加される

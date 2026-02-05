@@ -16,11 +16,11 @@ PromptResult = dict[Literal["positive", "negative"], PromptMap]
 PROMPT_RE = re.compile(
     r"""
     \(\s*
-      (?P<token>[^:()\s]+)
+      (?P<token>[^:()]+)
       (?:\s*:\s*(?P<weight>[0-9.]+))?
     \s*\)
     |
-    (?P<bare>[^,()\s]+)
+    (?P<bare>[^,()]+)
     """,
     re.VERBOSE,
 )
@@ -34,10 +34,10 @@ def parse_prompts(s: str) -> PromptMap:
 
     for m in PROMPT_RE.finditer(s):
         if m.group("bare"):
-            token = m.group("bare")
+            token = m.group("bare").strip()
             weight = 1.0
         else:
-            token = m.group("token")
+            token = m.group("token").strip()
             weight = float(m.group("weight") or 1.0)
 
         out[token] = max(out.get(token, 0.0), weight)
@@ -105,8 +105,13 @@ def normalize_rule(rule: dict[str, Any]) -> dict:
         "fields": {},
     }
 
+    if "POSITIVE" in rule:
+        out["common_positive"] = rule["POSITIVE"]
+    if "NEGATIVE" in rule:
+        out["common_negative"] = rule["NEGATIVE"]
+
     for k, v in rule.items():
-        if k in ("id", "ignition"):
+        if k in ("id", "ignition", "POSITIVE", "NEGATIVE"):
             continue
         collect_fields_recursive(v, out["fields"])
 
@@ -179,7 +184,7 @@ def handle_ranges_match(out: PromptResult, key: str, entry: Any, value: str) -> 
     マッチしたら out に追加して True を返す。
     """
     if isinstance(entry, dict):
-        coords = entry.get("coordinates", entry.get("coordinates", []))
+        coords = entry.get("conditions", entry.get("conditions", []))
         if value in coords:
             add_to_side(out, SIDE_POSITIVE, parse_prompts(key))
             if SIDE_NEGATIVE in entry:
@@ -278,7 +283,23 @@ def make_prompt(text: str, rule: dict[str, Any]) -> tuple[str, str]:
     def fmt(m: PromptMap) -> str:
         return ",".join(f"({k}:{v})" if v != 1.0 else k for k, v in m.items())
 
-    return fmt(positive), fmt(negative)
+    pos_str = fmt(positive)
+    neg_str = fmt(negative)
+
+    if "common_positive" in rule:
+        common_pos_str = fmt(parse_prompts(rule["common_positive"]))
+        if pos_str and common_pos_str:
+            pos_str = f"{pos_str},{common_pos_str}"
+        elif common_pos_str:
+            pos_str = common_pos_str
+    if "common_negative" in rule:
+        common_neg_str = fmt(parse_prompts(rule["common_negative"]))
+        if neg_str and common_neg_str:
+            neg_str = f"{neg_str},{common_neg_str}"
+        elif common_neg_str:
+            neg_str = common_neg_str
+
+    return pos_str, neg_str
 
 
 # -------------------------------------------------------------------------
@@ -287,7 +308,7 @@ if __name__ == "__main__":
     data = load_yaml("src/debug/parse_test/test.yaml")
     rule = normalize_rule(data["rule"])
     resolve_priorities(rule["fields"])
-    text = "today: 2026/02/05, Name2 (vibe: )foobarBarfugahogeHoge"
+    text = "today: 2026/02/05, Name2 (vibe: )foobarBarfugahogeHogeBazbaz"
     pos, neg = make_prompt(text, rule)
     print("POS:", pos)
     print("NEG:", neg)
