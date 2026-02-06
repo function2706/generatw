@@ -19,6 +19,7 @@ class KeyName:
     table = "table"
     positive = "positive"
     negative = "negative"
+    conditions = "conditions"
 
 
 class ValName:
@@ -62,6 +63,8 @@ class PromptRule:
           -> (['con1', 'con2'], [(pos1, 1.0), (pos2, 1.2)], [(neg1, 1.0)])
         {'pos1,(pos2:1.2)': ['con1', 'con2']}
           -> (['con1', 'con2'], [(pos1, 1.0), (pos2, 1.2)], [])
+    default:
+        プロンプトのパース規則は maps と同じ, subtext は空
     """
 
     subtext: list[str] = ""
@@ -69,23 +72,32 @@ class PromptRule:
     negative: list[EasyToken] = field(default_factory=list[EasyToken])
 
     @classmethod
-    def make(cls, rule: dict[str, Any], is_maps: bool = True):
+    def make(cls, key: str, val: str | dict | list, is_maps: bool = True):
         def parse_list(s: str | None) -> list[EasyToken]:
             if not s:
                 return []
             parts = [p.strip() for p in s.split(",") if p.strip()]
             return [EasyToken.make(p) for p in parts]
 
-        key, val = next(iter(rule.items()))
-        if is_maps:
+        if key == KeyName.default:
+            subtext = []
+            if isinstance(val, str):
+                positive = parse_list(val)
+                negative = []
+            elif isinstance(val, dict):
+                positive = parse_list(val.get(KeyName.positive))
+                negative = parse_list(val.get(KeyName.negative))
+            else:
+                raise ValueError
+        elif is_maps:
             subtext = [key]
             if isinstance(val, str):
                 # {'xxx': 'pos1,(pos2:1.2)'} 型
                 positive = parse_list(val)
                 negative = []
             elif isinstance(val, dict):
-                positive = parse_list(val.get("positive"))
-                negative = parse_list(val.get("negative"))
+                positive = parse_list(val.get(KeyName.positive))
+                negative = parse_list(val.get(KeyName.negative))
             else:
                 raise ValueError
         else:
@@ -96,8 +108,8 @@ class PromptRule:
                 negative = []
             elif isinstance(val, dict):
                 # {'pos1,(pos2:1.2)': {'conditions': ['con1', 'con2'], 'negative': 'neg1'}} 型
-                subtext = val.get("conditions", [])
-                negative = parse_list(val.get("negative"))
+                subtext = val.get(KeyName.conditions, [])
+                negative = parse_list(val.get(KeyName.negative))
             else:
                 raise ValueError
 
@@ -114,7 +126,8 @@ class Field:
     capturegrp: int = 0
     priority: int = -1
     is_stable: bool = False
-    rules: list[PromptRule] = None
+    rules: list[PromptRule] = field(default_factory=list)
+    default: PromptRule = field(default_factory=PromptRule)
 
     @classmethod
     def make(cls, field: dict[str, dict]):
@@ -134,17 +147,18 @@ class Field:
         if KeyName.lifetime in field and field.get(KeyName.lifetime) == ValName.stable:
             obj.is_stable = True
 
-        # 工事中：rulesにはappend, キー全体で回して
-        # default はsubtextが空の際のpos,neg
-        if KeyName.default in field:
-            obj
-
         if KeyName.maps in field:
-            obj.rules = PromptRule.make(rule=field.get(KeyName.maps), is_maps=True)
+            for key, val in field.get(KeyName.maps).items():
+                obj.rules.append(PromptRule.make(key=key, val=val, is_maps=True))
         elif KeyName.ranges in field:
-            obj.rules = PromptRule.make(rule=field.get(KeyName.ranges), is_maps=False)
+            for key, val in field.get(KeyName.ranges).items():
+                obj.rules.append(PromptRule.make(key=key, val=val, is_maps=False))
         else:
             raise ValueError
+
+        if KeyName.default in field:
+            val = field.get(KeyName.default)
+            obj.default = PromptRule.make(KeyName.default, val)
 
         return obj
 
@@ -250,12 +264,20 @@ def normalize_rule(rule: dict[str, Any]) -> dict:
 
 
 yaml_dict = load_yaml("src/debug/parse_test/test.yaml")
-rules: list[dict[str, dict]] = []
-for key in yaml_dict:
-    rule = normalize_rule(yaml_dict[key])
-    print(json.dumps(rule, indent=2))
-    rules.append(rule)
+print(json.dumps(yaml_dict, indent=2))
 
-d = {"pos1,(pos2:1.2)": ["con1", "con2"]}
-r = PromptRule.make(d, False)
-print(asdict(r))
+d = {
+    "pattern": "mood:\\s([^\\)]*)\\s",
+    "priority": 1,
+    "capturegrp": 1,
+    "lifetime": "stable",
+    "ranges": {
+        "spring": ["03", "04", "05", "06"],
+        "summer": ["07", "08"],
+        "autumn": ["09", "10"],
+        "winter": {"conditions": ["11", "12", "01", "02"], "negative": "HOT"},
+    },
+    "default": "mood3",
+}
+r = Field.make(d)
+print(json.dumps(asdict(r), indent=2))
