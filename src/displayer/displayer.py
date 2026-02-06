@@ -25,9 +25,10 @@ from master.events import (
     OnForward,
     OnInterruptTask,
     OnRepeatTask,
+    OnSwitchBackend,
     OnUpscale,
 )
-from master.interfaces import MasterIF
+from master.interfaces import BackEnd, MasterIF
 
 
 def put_textbox(
@@ -251,6 +252,35 @@ class MainTab:
                 on_change=owner.super_owner.super_owner.update_configs,
             )
 
+    class SellectFrame:
+        """
+        エンドポイント選択フレーム
+        """
+
+        def __init__(self, owner: MainTab, init_configs: GUIConfigs):
+            self.super_owner = owner
+            self.thread_sellect_frame = ttk.Frame(owner.main_frame)
+            self.thread_sellect_frame.grid(row=3, column=0, sticky="w")
+
+            ttk.Label(self.thread_sellect_frame, text="バックエンド").grid(
+                row=0, column=0, padx=6, pady=6, sticky="w"
+            )
+            self.back_options = [BackEnd.a1111.value, BackEnd.comfy_ui.value]
+            self.backend_var = tkinter.StringVar(value=self.back_options[0])
+            self.backend_var.set(init_configs.backend)
+            self.backend_combo = ttk.Combobox(
+                self.thread_sellect_frame,
+                textvariable=self.backend_var,
+                values=self.back_options,
+                state="readonly",
+                width=10,
+            )
+            self.backend_combo.bind(
+                "<<ComboboxSelected>>",
+                lambda e: self.super_owner.super_owner.super_owner.on_switch_backend(),
+            )
+            self.backend_combo.grid(row=0, column=1, padx=6, pady=6, sticky="w")
+
     def __init__(self, owner: MainWindow, init_configs: GUIConfigs):
         """
         メインタブコンストラクタ
@@ -266,6 +296,7 @@ class MainTab:
         self.button_frame = self.ButtonFrame(self)
         self.sd_interior_config_frame = self.SDInteriorConfigFrame(self, init_configs)
         self.sd_exterior_config_frame = self.SDExteriorConfigFrame(self, init_configs)
+        self.thread_sellect_frame = self.SellectFrame(self, init_configs)
 
 
 class DebugTab:
@@ -420,6 +451,26 @@ class MainWindow:
         self.notebook.add(self.debug_tab, text="デバッグ")
         self.debug_tab_obj = DebugTab(self, init_configs)
 
+        # ウィジェット外のクリック時に常に FocusOut するよう変更
+        def clear_selection(event):
+            widget = event.widget
+            if isinstance(widget, ttk.Entry):
+                return
+            owner.master.root.focus_set()
+
+        self.main_tab.bind("<Button-1>", clear_selection, add="+")
+        self.main_tab_obj.main_frame.bind("<Button-1>", clear_selection, add="+")
+        self.main_tab_obj.button_frame.button_frame.bind("<Button-1>", clear_selection, add="+")
+        self.main_tab_obj.sd_interior_config_frame.sd_interior_config_frame.bind(
+            "<Button-1>", clear_selection, add="+"
+        )
+        self.main_tab_obj.sd_exterior_config_frame.sd_exterior_config_frame.bind(
+            "<Button-1>", clear_selection, add="+"
+        )
+        self.main_tab_obj.thread_sellect_frame.thread_sellect_frame.bind(
+            "<Button-1>", clear_selection, add="+"
+        )
+
 
 class Displayer:
     """
@@ -448,15 +499,6 @@ class Displayer:
 
         self.last_picstats: PicStats | NoImageStats = None
         self.last_task: TaskBlueprint = None
-
-        def clear_selection(event):
-            widget = event.widget
-            if isinstance(widget, ttk.Entry):
-                return
-            master.root.focus_set()
-
-        # ウィジェット外のクリック時に常に FocusOut するよう変更
-        master.root.bind_all("<Button-1>", clear_selection, add="+")
 
     def exists(self) -> bool:
         """
@@ -606,6 +648,19 @@ class Displayer:
         """
         self.to_master.enclose(OnDelete())
 
+    def on_switch_backend(self) -> None:
+        """
+        バックエンド変更を Master に通知する
+        """
+        self.update_configs()
+        self.to_master.enclose(
+            OnSwitchBackend(
+                new_backend=BackEnd.a1111
+                if self.crnt_configs.backend == BackEnd.a1111.value
+                else BackEnd.comfy_ui
+            )
+        )
+
     def update_configs(self) -> None:
         """
         GUI 上の設定値を Master に通知する
@@ -631,6 +686,7 @@ class Displayer:
             sd_height=int(
                 self.main_window.main_tab_obj.sd_interior_config_frame.height_entry.get()
             ),
+            backend=self.main_window.main_tab_obj.thread_sellect_frame.backend_combo.get(),
             allow_edit_clipboard=bool(
                 self.main_window.debug_tab_obj.exe_debug_frame.allow_edit_clipboard_check.get()
             ),

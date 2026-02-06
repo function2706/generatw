@@ -424,10 +424,7 @@ class InfoWindow:
                     }"
                 )
             )
-        self.info_window.title(
-            f"picmaker - 情報 [{self.super_owner.master.frontend_name} "
-            f"- {self.super_owner.master.backend_name}]"
-        )
+        self.info_window.title("picmaker - 情報")
         self.info_window.protocol("WM_DELETE_WINDOW", self.destroy)
         self.info_window.geometry("500x380")
         self.info_window.rowconfigure(0, weight=1)

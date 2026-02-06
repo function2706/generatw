@@ -40,6 +40,7 @@ from master.events import (
     OnForward,
     OnInterruptTask,
     OnRepeatTask,
+    OnSwitchBackend,
     OnUpscale,
     ParserEvent,
     TaskComplete,
@@ -60,7 +61,7 @@ class Master(MasterIF):
     各モジュールの横断処理を統括するクラス
     """
 
-    def __init__(self, frontend: FrontEnd, backend: BackEnd):
+    def __init__(self, frontend: FrontEnd):
         """
         コンストラクタ
 
@@ -85,30 +86,18 @@ class Master(MasterIF):
 
         self.archiver = Archiver(self.parser.pics_dir_path(), self.from_archiver)
 
-        self.backend: BackEnd = backend
-        if backend == BackEnd.a1111:
-            self.generator = A1111Generator(self, self.from_generator)
-        elif backend == BackEnd.comfy_ui:
-            self.generator = ComfyUIGenerator(self, self.from_generator)
-        else:
-            raise ValueError
-
         self.crnt_configs: GUIConfigs = (
             GUIConfigs.fromjson(Consts.config_path)
             if Consts.config_path.exists()
             else GUIConfigs(
+                # コンフィグファイルがない場合は A1111 をバックエンドとして起動
                 srv_ipaddr="127.0.0.1",
-                srv_port=str(
-                    7860
-                    if self.backend == BackEnd.a1111
-                    else 8188
-                    if self.backend == BackEnd.comfy_ui
-                    else 0
-                ),
+                srv_port=str(7860),
                 sd_steps=30,
                 sd_batch_size=2,
                 sd_width=540,
                 sd_height=960,
+                backend=BackEnd.a1111.value,
                 allow_edit_clipboard=False,
                 print_new_clipboard=False,
                 print_new_stats=False,
@@ -116,6 +105,18 @@ class Master(MasterIF):
                 print_event=False,
             )
         )
+
+        self.backend: BackEnd = (
+            BackEnd.a1111 if self.crnt_configs.backend == BackEnd.a1111.value else BackEnd.comfy_ui
+        )
+        if self.backend == BackEnd.a1111:
+            self.generator = A1111Generator(self, self.from_generator)
+        elif self.backend == BackEnd.comfy_ui:
+            self.generator = ComfyUIGenerator(self, self.from_generator)
+        else:
+            raise ValueError
+        self.is_switching_backend = False
+
         self.displayer = Displayer(self, self.from_displayer, self.crnt_configs)
 
         self.parser.start()
@@ -187,6 +188,36 @@ class Master(MasterIF):
                         print(f"{event.next_picstats.name}")
                 self.displayer.update_pic_window(event.next_picstats)
 
+    def switch_backend(self, new_backend: BackEnd) -> None:
+        """
+        バックエンドの切り替えを行う
+
+        Args:
+            new_backend (BackEnd): 新しいバックエンド
+        """
+        if self.is_switching_backend:
+            return
+
+        self.is_switching_backend = True
+
+        old = self.generator
+        old.finalize()
+
+        def worker():
+            old.join()
+
+            self.backend = new_backend
+            self.generator = (
+                A1111Generator(self, self.from_generator)
+                if new_backend == BackEnd.a1111
+                else ComfyUIGenerator(self, self.from_generator)
+            )
+
+            self.generator.start()
+            self.is_switching_backend = False
+
+        self.root.after(0, worker)
+
     def operate_from_displayer(self) -> None:
         """
         Displayer から発行されたイベントに即して作業を実施する\n
@@ -224,6 +255,8 @@ class Master(MasterIF):
                 self.archiver.remove_crnt_picstats()
             if isinstance(event, OnChangeConfig):
                 self.crnt_configs = event.new_config
+            if isinstance(event, OnSwitchBackend):
+                self.switch_backend(event.new_backend)
 
     def operate_from_generator(self) -> None:
         """
@@ -328,7 +361,7 @@ class Master(MasterIF):
         Returns:
             str: バックエンド名
         """
-        return self.generator.whoami()
+        return self.backend.value
 
     @property
     def pics_dir_path(self) -> Path:
@@ -355,7 +388,7 @@ class Master(MasterIF):
         """
         アップスケール予約ボタンハンドラ
         """
-        if self.archiver.crnt_picstats_copy is NoImageStats:
+        if self.archiver.crnt_picstats_copy is NoImageStats or self.is_switching_backend:
             return
 
         self.generator.reserve_img2img(
@@ -380,7 +413,7 @@ class Master(MasterIF):
         ただしプロンプト生成に十分なステータスが記録されていない,\n
         すでにリストに存在する, あるいは作業中のタスクの場合は何もしない
         """
-        if not self.parser.is_stats_enough_for_prompt():
+        if not self.parser.is_stats_enough_for_prompt() or self.is_switching_backend:
             return
 
         self.generator.reserve_txt2img(
@@ -426,7 +459,7 @@ class Master(MasterIF):
         Tkinter メインループにて周期的に呼び出される処理
         """
         try:
-            if not self.root.winfo_exists():
+            if not self.root.winfo_exists() or self.is_switching_backend:
                 return
 
             self.operate_from_parser()

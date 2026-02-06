@@ -41,7 +41,7 @@ class ModeWindow:
         ttk.Label(self.tk_root, text="バックエンド").grid(
             row=1, column=0, padx=6, pady=6, sticky="w"
         )
-        back_options = ["A1111", "ComfyUI"]
+        back_options = [BackEnd.a1111.value, BackEnd.comfy_ui.value]
         self.combo_back = tkinter.StringVar(value=back_options[0])
         combo_back = ttk.Combobox(
             self.tk_root,
@@ -95,38 +95,27 @@ def main() -> None:
     parser.add_argument(
         "-f", "--front", choices=["W", "R", "None"], default="None", help="Frontend"
     )
-    parser.add_argument("-b", "--back", choices=["A", "C", "None"], default="None", help="Backend")
     args = parser.parse_args()
 
     master: Master = None
     try:
-        match (args.front, args.back):
-            case ("R", "A"):
-                master = Master(FrontEnd.reverse, BackEnd.a1111)
-            case ("R", "C"):
-                master = Master(FrontEnd.reverse, BackEnd.comfy_ui)
-            case ("W", "A"):
-                master = Master(FrontEnd.the_world, BackEnd.a1111)
-            case ("W", "C"):
-                master = Master(FrontEnd.the_world, BackEnd.comfy_ui)
-            case _:
-                window = ModeWindow()
-                window.entrypoint()
-                if not window.flag_exe_main:
-                    return
+        if args.front == "R":
+            master = Master(FrontEnd.reverse)
+        elif args.front == "W":
+            master = Master(FrontEnd.the_world)
+        else:
+            window = ModeWindow()
+            window.entrypoint()
+            if not window.flag_exe_main:
+                return
 
-                master = Master(
-                    frontend=FrontEnd.reverse
-                    if window.front == "Reverse"
-                    else FrontEnd.the_world
-                    if window.front == "The World"
-                    else None,
-                    backend=BackEnd.a1111
-                    if window.back == "A1111"
-                    else BackEnd.comfy_ui
-                    if window.back == "ComfyUI"
-                    else None,
-                )
+            master = Master(
+                frontend=FrontEnd.reverse
+                if window.front == "Reverse"
+                else FrontEnd.the_world
+                if window.front == "The World"
+                else None,
+            )
         if master is not None:
             signal.signal(signal.SIGINT, master.sigint_handler)
             master.start()

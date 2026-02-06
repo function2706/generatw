@@ -7,6 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from archiver.dataclasses import NoImageStats, PicStats
+from common.functions import BackEnd
 from displayer.dataclasses import GUIConfigs
 from generator.dataclasses import TaskBlueprint
 
@@ -79,6 +80,11 @@ class OnDelete(DisplayerEvent):
 @dataclass
 class OnChangeConfig(DisplayerEvent):
     new_config: GUIConfigs
+
+
+@dataclass
+class OnSwitchBackend(DisplayerEvent):
+    new_backend: BackEnd
 
 
 @dataclass

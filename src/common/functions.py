@@ -29,8 +29,8 @@ class BackEnd(Enum):
     バックエンド識別子
     """
 
-    a1111 = auto()
-    comfy_ui = auto()
+    a1111 = "A1111"
+    comfy_ui = "ComfyUI"
 
 
 def xxxDEBUGxxx() -> None:

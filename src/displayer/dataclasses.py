@@ -21,6 +21,7 @@ class GUIConfigs:
     sd_batch_size: int = 0
     sd_width: int = 0
     sd_height: int = 0
+    backend: str = ""
     allow_edit_clipboard: bool = False
     print_new_clipboard: bool = False
     print_new_stats: bool = False

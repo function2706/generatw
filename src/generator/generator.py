@@ -242,15 +242,6 @@ class Generator(ABC, Generic[TaskProgress]):
             target=self.observer, args=(), daemon=True, name="observer"
         )
 
-    def whoami(self) -> str:
-        """
-        自身のバックエンド名を取得する
-
-        Returns:
-            str: バックエンド名
-        """
-        return self.__class__.__name__.replace("Generator", "")
-
     def start(self) -> None:
         """
         スレッドを開始する
