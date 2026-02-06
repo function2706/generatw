@@ -1,0 +1,11 @@
+main:
+  ignition:
+    any: ["go"]
+  t:
+    a:
+      pattern: "v:(\\w+)"
+      capturegrp: 1
+      lifetime: stable
+      maps:
+        A: alpha
+        B: beta

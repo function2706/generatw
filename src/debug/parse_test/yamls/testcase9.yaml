@@ -1,0 +1,14 @@
+main:
+  ignition:
+    any: ["go"]
+
+  field:
+    pattern: "v:(A|B)"
+    capturegrp: 1
+    lifetime: stable
+    maps:
+      A:
+        positive: "apple"
+        negative: "bad"
+      B:
+        positive: "banana"

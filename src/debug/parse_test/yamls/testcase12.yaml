@@ -1,0 +1,10 @@
+main:
+  ignition:
+    any: ["go"]
+
+  field:
+    pattern: "v:(A)"
+    capturegrp: 1
+    maps:
+      A:
+        positive: "apple"

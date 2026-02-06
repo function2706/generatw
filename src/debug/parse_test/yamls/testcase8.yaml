@@ -1,0 +1,15 @@
+main:
+  ignition:
+    any: ["go"]
+  t:
+    a:
+      pattern: "(x)"
+      priority: 2
+      maps:
+        x: second
+  u:
+    b:
+      pattern: "(x)"
+      priority: 1
+      maps:
+        x: first

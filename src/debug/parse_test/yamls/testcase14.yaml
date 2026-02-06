@@ -1,0 +1,5 @@
+main:
+  ignition:
+    any: ["go"]
+
+  POSITIVE: ""

@@ -24,8 +24,7 @@
 ## 1. 全体構造
 
 ```yaml
-rule:
-  id: <rule_id>
+<rulename>:                             # ルール名称 (任意)
   ignition:
     any: [<pattern1>, <pattern2>, ...]  # または all
   <section_name>:                       # 任意の階層構造
@@ -41,8 +40,7 @@ rule:
 
 ### 構造のルール
 
-- `rule` は必須のルートオブジェクト
-- `id`: ルールの識別子（文字列）
+- `rulename` ルール名称（任意の文字列）
 - `ignition`: 必須の発火条件
 - フィールドは **任意の深さでネスト可能**（`pattern` キーで識別）
 - `POSITIVE` / `NEGATIVE` は任意（存在すれば必ず末尾に追加）
@@ -85,7 +83,7 @@ ignition:
 `pattern` キーを持つオブジェクトがフィールド定義として認識される。
 
 ```yaml
-rule:
+mainstat:
   character:      # セクション名（任意）
     name:         # フィールド名（任意）
       pattern: "[0-9]{2},\\s(\\w*)"
@@ -117,6 +115,10 @@ pattern: "(1|2)[0-9]{3}/([0-9]{2})"  # 2つのキャプチャグループ
 #### `maps` または `ranges`
 
 マッチした文字列をプロンプトに変換する方法を定義。**どちらか一方が必須。**
+どちらも記述されている場合は`maps`が優先。
+
+pattern が複数回マッチした場合、各マッチを独立に処理し、
+得られたトークンは通常のマージ規則に従って統合される。
 
 ---
 
@@ -133,12 +135,16 @@ pattern: "(1|2)[0-9]{3}/([0-9]{2})"  # 2つのキャプチャグループ
 ```yaml
 priority: 1   # 最優先
 priority: 10  # 低優先度
-# 未指定     # 最低優先度（自動割り当て）
+# 未指定      # 最低優先度（自動割り当て）
 ```
+
+---
 
 #### `capturegrp` (integer, default: 0)
 
 使用するキャプチャグループのインデックス。
+指定された番号のキャプチャグループが存在しない場合、
+そのマッチは無視される（例外にはならない）。
 
 - `0`: パターン全体のマッチ
 - `1`, `2`, ...: 各キャプチャグループ
@@ -153,9 +159,26 @@ pattern: "(1|2)[0-9]{3}/([0-9]{2})"
 capturegrp: 2  # 2番目のグループ（月部分）を使用
 ```
 
+---
+
+#### `lifetime` (string, default: volatile)
+
+トークンを次回以降の評価へ持ち越すかどうかを指定する。
+
+```yaml
+lifetime: stable   # 超越
+lifetime: volatile # 超越しない
+# 未指定           # 超越しない
+```
+
+stable なトークンは、次回評価時に通常のフィールド出力と同様に扱われ、
+priority と weight ルールに従ってマージされる。
+
+---
+
 #### `default` (string | object)
 
-パターンにマッチしなかった場合、またはマッピングが見つからなかった場合のフォールバック。
+パターンに **マッチはしたが、maps / ranges のいずれの rule にもヒットしなかった場合** に適用されるフォールバック。
 
 ```yaml
 default: "unknown"
@@ -168,8 +191,8 @@ default:
   negative: FALLBACK
 ```
 
-- **pattern に一度もマッチしなかった場合のみ適用**
-- entry の解釈は `maps` と同一
+- pattern に一度もマッチしなかった場合は適用されない
+- pattern がマッチし、かつ maps / ranges の結果が空だった場合に適用される
 
 ---
 
@@ -319,6 +342,7 @@ positive: "(foo:1.5)"
 ```
 
 これは positive / negative 共通の振る舞い。
+重みが同一の場合、priority が小さい（先に評価された）ものが採用される。
 
 ---
 
@@ -364,14 +388,15 @@ NEGATIVE: "common negative,low quality,blurry"
 - positive / negative は **完全に独立して集約**
 - token 衝突時は `max(weight)`
 - 特例処理なし（すべて同一ロジック）
+- stable 指定のトークンも priority の影響を受ける
+- 最終的な並び順は period → priority の順で決定される
 
 ---
 
 ## 8. 完全な例
 
 ```yaml
-rule:
-  id: main
+mainstat:
   ignition:
     any: ["today:"]
   
@@ -380,6 +405,7 @@ rule:
       pattern: "[0-9]{2},\\s(\\w*)"
       priority: 6
       capturegrp: 1
+      lifetime: stable
       maps:
         Alice: alice,blonde hair,blue eyes
         Bob: bob,brown hair
@@ -402,6 +428,7 @@ rule:
       pattern: "month:\\s([0-9]{2})"
       priority: 3
       capturegrp: 1
+      lifetime: volatile
       ranges:
         spring: ["03", "04", "05"]
         summer: ["06", "07", "08"]
@@ -448,6 +475,21 @@ rule:
   
   POSITIVE: "masterpiece,best quality"
   NEGATIVE: "worst quality,low quality,blurry"
+sub:
+  ignition:
+    all: ["sub:", "WOW"]
+  mood:
+    pattern: "mood:\\s([^\\)]*)\\s"
+    priority: 2
+    capturegrp: 1
+    maps:
+      Mood1: mood1
+      Mood2:
+        positive: mood2
+        negative: MOOD2
+    default: mood3
+  POSITIVE: "sub common positive"
+  NEGATIVE: "sub common negative"
 ```
 
 ### 入力例
@@ -503,19 +545,33 @@ NEG: FOO,BAR,HOGE,FUGA,BAZ,(nope:1.4),nyome,sad,crying,worst quality,low quality
 
 ### 9.2 Priority
 
-- 同じ priority の場合、YAML 記述順が使用される
-- priority の重複は自動調整される（内部処理で +1 される）
-- 未指定の場合は最大値+1 が自動割り当て
+YAML に記述された priority 値は、読み込み後に以下のルールで再採番される。
+
+1. priority が小さい順に並べる  
+2. 同値の場合は YAML 記述順  
+3. 1, 2, 3, ... の連番に振り直す  
+4. priority 未指定（lowest_priority）は最後に回される
+
+したがって、ユーザーが指定した数値は
+**相対順序を決めるための値**としてのみ使用される。
 
 ### 9.3 トークン
 
 - カンマ `,` はトークン区切り文字（トークン内には使用不可）
 - 括弧 `()` は重み記法の予約文字
 - **スペースはトークン内で使用可能**（例: `blue hair`）
+- `(((foo)))`や`[[[foo]]]`の記法は非対応
+
+同一 token が複数回出現した場合、以下の順で採用が決定される。
+
+1. **より大きい weight** を持つもの
+2. weight が同一なら **priority が小さい（先に評価された）** もの
+
+これは positive / negative で独立に行われる。
 
 ### 9.4 マッピング
 
-- `maps` と `ranges` は排他的（両方指定はエラー）
+- `maps` と `ranges` が同時に指定された場合、maps が優先され、ranges は無視される
 - `ranges` では **key がプロンプト、value が検索対象値リスト**
 - `maps` では **key が検索対象値、value がプロンプト**
 - negative-only 定義が可能（positive を省略可能）
@@ -531,8 +587,6 @@ NEG: FOO,BAR,HOGE,FUGA,BAZ,(nope:1.4),nyome,sad,crying,worst quality,low quality
 
 |予約語|意味|
 |------|------|
-|`rule`|ルール定義のルートオブジェクト|
-|`id`|ルール識別子|
 |`ignition`|発火条件定義|
 |`POSITIVE`|共通ポジティブプロンプト|
 |`NEGATIVE`|共通ネガティブプロンプト|
@@ -551,6 +605,7 @@ NEG: FOO,BAR,HOGE,FUGA,BAZ,(nope:1.4),nyome,sad,crying,worst quality,low quality
 |`pattern`|正規表現パターン|
 |`priority`|出力順序の優先度|
 |`capturegrp`|使用するキャプチャグループ番号|
+|`lifetime`|超越するかどうか|
 |`default`|マッチ失敗時のフォールバック|
 
 ### 10.4 マッピング方式予約語
@@ -601,7 +656,6 @@ NEG: FOO,BAR,HOGE,FUGA,BAZ,(nope:1.4),nyome,sad,crying,worst quality,low quality
 
 ```typescript
 type Rule = {
-  id: string;
   ignition: Ignition;
   POSITIVE?: string;
   NEGATIVE?: string;
@@ -621,6 +675,7 @@ type Field = {
   pattern: string;
   priority?: number;
   capturegrp?: number;
+  lifetime?: string;
   default?: string | PromptEntry;
 } & (MapsField | RangesField);
 
