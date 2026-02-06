@@ -5,10 +5,25 @@ from typing import Any
 
 import yaml
 
-FIELD_TYPE_MAPS = "maps"
-FIELD_TYPE_RANGES = "ranges"
-SIDE_POSITIVE = "positive"
-SIDE_NEGATIVE = "negative"
+
+@dataclass(frozen=True)
+class KeyName:
+    pattern = "pattern"
+    priority = "priority"
+    capturegrp = "capturegrp"
+    lifetime = "lifetime"
+    ruletype = "ruletype"
+    maps = "maps"
+    ranges = "ranges"
+    default = "default"
+    table = "table"
+    positive = "positive"
+    negative = "negative"
+
+
+class ValName:
+    stable = "stable"
+    volatile = "volatile"
 
 
 @dataclass
@@ -54,14 +69,14 @@ class PromptRule:
     negative: list[EasyToken] = field(default_factory=list[EasyToken])
 
     @classmethod
-    def make(cls, d: dict[str, Any], is_maps: bool = True):
+    def make(cls, rule: dict[str, Any], is_maps: bool = True):
         def parse_list(s: str | None) -> list[EasyToken]:
             if not s:
                 return []
             parts = [p.strip() for p in s.split(",") if p.strip()]
             return [EasyToken.make(p) for p in parts]
 
-        key, val = next(iter(d.items()))
+        key, val = next(iter(rule.items()))
         if is_maps:
             subtext = [key]
             if isinstance(val, str):
@@ -89,49 +104,74 @@ class PromptRule:
         return cls(subtext=subtext, positive=positive, negative=negative)
 
 
+@dataclass
+class Field:
+    """
+    capturegrp, priority, is_stable は指定がなければ 0, -1(最低優先度), False(Volatile)
+    """
+
+    pattern: str = ""
+    capturegrp: int = 0
+    priority: int = -1
+    is_stable: bool = False
+    rules: list[PromptRule] = None
+
+    @classmethod
+    def make(cls, field: dict[str, dict]):
+        obj = cls()
+
+        if KeyName.pattern in field:
+            obj.pattern = field.get(KeyName.pattern)
+        else:
+            raise ValueError
+
+        if KeyName.capturegrp in field:
+            obj.capturegrp = int(field.get(KeyName.capturegrp))
+
+        if KeyName.priority in field:
+            obj.priority = int(field.get(KeyName.priority))
+
+        if KeyName.lifetime in field and field.get(KeyName.lifetime) == ValName.stable:
+            obj.is_stable = True
+
+        # 工事中：rulesにはappend, キー全体で回して
+        # default はsubtextが空の際のpos,neg
+        if KeyName.default in field:
+            obj
+
+        if KeyName.maps in field:
+            obj.rules = PromptRule.make(rule=field.get(KeyName.maps), is_maps=True)
+        elif KeyName.ranges in field:
+            obj.rules = PromptRule.make(rule=field.get(KeyName.ranges), is_maps=False)
+        else:
+            raise ValueError
+
+        return obj
+
+
 def load_yaml(path: str) -> dict:
-    """
-    YAML ファイルを読み込む
-
-    Args:
-        path (str): YAMLファイルのパス
-
-    Returns:
-        dict: パースされたYAMLデータ
-    """
     with open(path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
 def normalize_field(field: dict) -> dict:
-    """
-    フィールド定義を正規化する
-
-    Args:
-        field (dict): YAML から読み込んだフィールド定義
-
-    Raises:
-        ValueError: maps または ranges のいずれも定義されていない場合
-
-    Returns:
-        dict: 正規化されたフィールド定義 (type, table, capturegrp, priority, default を含む)
-    """
     result = {
-        "capturegrp": field.get("capturegrp", 0),
-        "priority": field.get("priority"),
+        KeyName.capturegrp: field.get(KeyName.capturegrp, 0),
+        KeyName.priority: field.get(KeyName.priority),
+        KeyName.lifetime: field.get(KeyName.lifetime),
     }
 
-    if "maps" in field:
-        result["type"] = FIELD_TYPE_MAPS
-        result["table"] = field["maps"]
-    elif "ranges" in field:
-        result["type"] = FIELD_TYPE_RANGES
-        result["table"] = field["ranges"]
+    if KeyName.maps in field:
+        result[KeyName.ruletype] = KeyName.maps
+        result[KeyName.table] = field[KeyName.maps]
+    elif KeyName.ranges in field:
+        result[KeyName.ruletype] = KeyName.ranges
+        result[KeyName.table] = field[KeyName.ranges]
     else:
-        raise ValueError(f"Unknown field type: {field}")
+        raise ValueError
 
-    if "default" in field:
-        result["default"] = field["default"]
+    if KeyName.default in field:
+        result[KeyName.default] = field[KeyName.default]
 
     return result
 
@@ -170,8 +210,8 @@ def collect_fields(node: dict, out: dict[str, dict]) -> None:
     if not isinstance(node, dict):
         return
 
-    if "pattern" in node:
-        pattern = node["pattern"]
+    if KeyName.pattern in node:
+        pattern = node[KeyName.pattern]
         field = normalize_field(node)
         out[pattern] = field
         return
