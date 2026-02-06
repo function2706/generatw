@@ -1,4 +1,5 @@
 import re
+from pathlib import Path
 from typing import Any, Literal
 
 import yaml
@@ -109,15 +110,12 @@ def normalize_rule(rule: dict[str, Any]) -> dict:
 
     Args:
         rule (dict[str, Any]): 正規化されたルール\n
-                               (id, ignition, fields, common_positive, common_negativeを含む)
+                               (ignition, fields, common_positive, common_negativeを含む)
 
     Returns:
         dict: YAML から読み込んだルール定義
     """
-    rule_id = rule["id"]
-
     out: dict[str, Any] = {
-        "id": rule_id,
         "ignition": normalize_ignition(rule["ignition"]),
         "fields": {},
     }
@@ -128,7 +126,7 @@ def normalize_rule(rule: dict[str, Any]) -> dict:
         out["common_negative"] = rule["NEGATIVE"]
 
     for k, v in rule.items():
-        if k in ("id", "ignition", "POSITIVE", "NEGATIVE"):
+        if k in ("ignition", "POSITIVE", "NEGATIVE"):
             continue
         collect_fields(v, out["fields"])
 
@@ -288,7 +286,7 @@ def handle_ranges_match(out: PromptResult, key: str, entry: Any, value: str) -> 
         bool: マッチした場合 True
     """
     if isinstance(entry, dict):
-        coords = entry.get("conditions", entry.get("conditions", []))
+        coords = entry.get("conditions", [])
         if value in coords:
             add_to_side(out, SIDE_POSITIVE, parse_prompts(key))
             if SIDE_NEGATIVE in entry:
@@ -372,7 +370,7 @@ def eval_field(text: str, pattern: str, field: dict[str, Any]) -> PromptResult:
     return out
 
 
-def make_prompt(text: str, rule: dict[str, Any]) -> tuple[str, str]:
+def make_prompt(text: str, rule: dict[str, dict]) -> tuple[str, str]:
     """
     テキストからプロンプトを生成する
 
@@ -425,13 +423,32 @@ def make_prompt(text: str, rule: dict[str, Any]) -> tuple[str, str]:
     return pos_str, neg_str
 
 
-# -------------------------------------------------------------------------
+class ParseRulebook:
+    def __init__(self, path: Path):
+        self.rules: list[dict[str, dict]] = []
+
+        data = load_yaml(path)
+        for key in data:
+            rule = normalize_rule(data[key])
+            resolve_priorities(rule["fields"])
+            self.rules.append(rule)
+
+    def make_prompt(self, text: str) -> tuple[str, str]:
+        for rule in self.rules:
+            pos, neg = make_prompt(text, rule)
+            if pos or neg:
+                break
+
+        return pos, neg
+
 
 if __name__ == "__main__":
-    data = load_yaml("src/debug/parse_test/test.yaml")
-    rule = normalize_rule(data["rule"])
-    resolve_priorities(rule["fields"])
-    text = "today: 2026/02/05, Name2 (vibe: )foobarBarfugahogeHogeBazbaz"
-    pos, neg = make_prompt(text, rule)
+    text = "today: 2026/02/05, Name2 (vibe: )foobarBarFugahogeHogeBazbaz"
+    text2 = "sub: WOW!! mood: Mood2 foobar"
+    rulebook = ParseRulebook("src/debug/parse_test/test.yaml")
+    pos, neg = rulebook.make_prompt(text)
+    print("POS:", pos)
+    print("NEG:", neg)
+    pos, neg = rulebook.make_prompt(text2)
     print("POS:", pos)
     print("NEG:", neg)

@@ -24,8 +24,7 @@
 ## 1. 全体構造
 
 ```yaml
-rule:
-  id: <rule_id>
+<rulename>:                             # ルール名称 (任意)
   ignition:
     any: [<pattern1>, <pattern2>, ...]  # または all
   <section_name>:                       # 任意の階層構造
@@ -41,8 +40,7 @@ rule:
 
 ### 構造のルール
 
-- `rule` は必須のルートオブジェクト
-- `id`: ルールの識別子（文字列）
+- `rulename` ルール名称（任意の文字列）
 - `ignition`: 必須の発火条件
 - フィールドは **任意の深さでネスト可能**（`pattern` キーで識別）
 - `POSITIVE` / `NEGATIVE` は任意（存在すれば必ず末尾に追加）
@@ -85,7 +83,7 @@ ignition:
 `pattern` キーを持つオブジェクトがフィールド定義として認識される。
 
 ```yaml
-rule:
+mainstat:
   character:      # セクション名（任意）
     name:         # フィールド名（任意）
       pattern: "[0-9]{2},\\s(\\w*)"
@@ -370,8 +368,7 @@ NEGATIVE: "common negative,low quality,blurry"
 ## 8. 完全な例
 
 ```yaml
-rule:
-  id: main
+mainstat:
   ignition:
     any: ["today:"]
   
@@ -448,6 +445,21 @@ rule:
   
   POSITIVE: "masterpiece,best quality"
   NEGATIVE: "worst quality,low quality,blurry"
+sub:
+  ignition:
+    all: ["sub:", "WOW"]
+  mood:
+    pattern: "mood:\\s([^\\)]*)\\s"
+    priority: 2
+    capturegrp: 1
+    maps:
+      Mood1: mood1
+      Mood2:
+        positive: mood2
+        negative: MOOD2
+    default: mood3
+  POSITIVE: "sub common positive"
+  NEGATIVE: "sub common negative"
 ```
 
 ### 入力例
@@ -531,8 +543,6 @@ NEG: FOO,BAR,HOGE,FUGA,BAZ,(nope:1.4),nyome,sad,crying,worst quality,low quality
 
 |予約語|意味|
 |------|------|
-|`rule`|ルール定義のルートオブジェクト|
-|`id`|ルール識別子|
 |`ignition`|発火条件定義|
 |`POSITIVE`|共通ポジティブプロンプト|
 |`NEGATIVE`|共通ネガティブプロンプト|
@@ -601,7 +611,6 @@ NEG: FOO,BAR,HOGE,FUGA,BAZ,(nope:1.4),nyome,sad,crying,worst quality,low quality
 
 ```typescript
 type Rule = {
-  id: string;
   ignition: Ignition;
   POSITIVE?: string;
   NEGATIVE?: string;

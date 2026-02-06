@@ -1,5 +1,4 @@
-rule:
-  id: main
+main: # 画面種別(名称任意)
   ignition:
     any: ["today:"] # any は論理和, all は論理積
   character: # 項目名は多層的でも構わない
@@ -66,3 +65,18 @@ rule:
           negative: FUGA,(nope:1.3) # token が被った場合, weight は最大のものを1つだけ採用
   POSITIVE: "common positive" # この値は必ずポジティブプロンプトの末尾に追加される
   NEGATIVE: "common negative" # この値は必ずネガティブプロンプトの末尾に追加される
+sub:
+  ignition:
+    all: ["sub:", "WOW"]
+  mood:
+    pattern: "mood:\\s([^\\)]*)\\s"
+    priority: 2
+    capturegrp: 1
+    maps:
+      Mood1: mood1
+      Mood2:
+        positive: mood2
+        negative: MOOD2
+    default: mood3
+  POSITIVE: "sub common positive"
+  NEGATIVE: "sub common negative"
