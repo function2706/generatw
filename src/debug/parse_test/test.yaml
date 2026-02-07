@@ -29,7 +29,7 @@ main: # 画面種別(名称任意)
       lifetime: stable
       ranges: # ranges は <prompt>: [<substr1>,...]
         spring: ["03", "04", "05", "06"] # 値に一致する場合はすべてキーをプロンプトとする
-        summer: ["07", "08"]
+        summer: ["07", "08"] # 数値は必ずダブルクォートで囲むこと(07 は "7" になる)
         autumn: ["09", "10"]
         winter:
           conditions: ["11", "12", "01", "02"]
@@ -85,5 +85,16 @@ sub:
         positive: mood2
         negative: MOOD2
     default: mood3
+  equipment:
+    pattern: "equip:\\s([^\\)]*)\\s"
+    priority: 2
+    capturegrp: 1
+    ranges:
+      shirt: ["Blouse, Shirt"]
+      (pants:1.2): ["Pants"]
+      pants:
+        conditions: ["Shorts", "Slacks"]
+        negative: "skirt"
+      caps: ["Caps"]
   POSITIVE: "sub common positive"
   NEGATIVE: "sub common negative"

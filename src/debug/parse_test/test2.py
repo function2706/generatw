@@ -1,13 +1,15 @@
 import json
 import re
 from dataclasses import asdict, dataclass, field
+from enum import StrEnum
+from pathlib import Path
 from typing import Any
 
 import yaml
 
 
-@dataclass(frozen=True)
-class KeyName:
+class KeyName(StrEnum):
+    ignition = "ignition"
     pattern = "pattern"
     priority = "priority"
     capturegrp = "capturegrp"
@@ -20,37 +22,46 @@ class KeyName:
     positive = "positive"
     negative = "negative"
     conditions = "conditions"
+    POSITIVE = "POSITIVE"
+    NEGATIVE = "NEGATIVE"
 
 
-class ValName:
+class ValName(StrEnum):
     stable = "stable"
     volatile = "volatile"
+    any = "any"
+    all = "all"
 
 
 @dataclass
-class EasyToken:
+class Token:
     """
     '(foo:1.2)' -> (token='foo', weight=1.2)
     """
 
     token: str = ""
-    weight: float = ""
+    weight: float = 0.0
 
     @classmethod
     def make(cls, original_token: str):
-        m = re.fullmatch(r"\(?(\w+)(?::([0-9.]+))?\)?", original_token)
+        m = re.fullmatch(r"\(?([\w\s\-.]+)(?::([0-9.]+))?\)?", original_token.strip())
         if not m:
-            return cls("", "")
-        token, weight = m.groups()
-        return cls(token=token, weight=1.0 if weight is None else float(weight))
+            return cls()
 
-    @property
-    def tostr(self) -> str:
-        return f"({self.token}:{self.weight})"
+        token, weight_str = m.groups()
+        try:
+            weight = float(weight_str) if weight_str is not None else 1.0
+        except ValueError:
+            weight = 1.0
+
+        return cls(token=token, weight=weight)
+
+    def to_prompt(self) -> str:
+        return f"({self.token}:{self.weight})" if self.weight != 1.0 else self.token
 
 
 @dataclass
-class PromptRule:
+class Rule:
     """
     maps:
         {'xxx': {'positive': 'pos1,(pos2:1.2)', 'negative': 'neg1'}}
@@ -64,23 +75,26 @@ class PromptRule:
         {'pos1,(pos2:1.2)': ['con1', 'con2']}
           -> (['con1', 'con2'], [(pos1, 1.0), (pos2, 1.2)], [])
     default:
-        プロンプトのパース規則は maps と同じ, subtext は空
+        プロンプトのパース規則は maps と同じ, matchstr は空
     """
 
-    subtext: list[str] = ""
-    positive: list[EasyToken] = field(default_factory=list[EasyToken])
-    negative: list[EasyToken] = field(default_factory=list[EasyToken])
+    matchstr: list[str] = field(default_factory=list[Token])
+    positive: list[Token] = field(default_factory=list[Token])
+    negative: list[Token] = field(default_factory=list[Token])
 
     @classmethod
     def make(cls, key: str, val: str | dict | list, is_maps: bool = True):
-        def parse_list(s: str | None) -> list[EasyToken]:
-            if not s:
+        def parse_list(s: str | None) -> list[Token]:
+            if s is None or not s:
                 return []
-            parts = [p.strip() for p in s.split(",") if p.strip()]
-            return [EasyToken.make(p) for p in parts]
 
-        if key == KeyName.default:
-            subtext = []
+            s_str = str(s)
+            parts = [p.strip() for p in s_str.split(",") if p.strip()]
+            return [Token.make(p) for p in parts]
+
+        key_str = str(key)
+        if key_str == KeyName.default:
+            matchstr = []
             if isinstance(val, str):
                 positive = parse_list(val)
                 negative = []
@@ -90,7 +104,7 @@ class PromptRule:
             else:
                 raise ValueError
         elif is_maps:
-            subtext = [key]
+            matchstr = [key_str]
             if isinstance(val, str):
                 # {'xxx': 'pos1,(pos2:1.2)'} 型
                 positive = parse_list(val)
@@ -101,33 +115,44 @@ class PromptRule:
             else:
                 raise ValueError
         else:
-            positive = parse_list(key)
+            positive = parse_list(key_str)
             if isinstance(val, list):
                 # {'pos1,(pos2:1.2)': ['con1', 'con2']} 型
-                subtext = val
+                matchstr = [str(i) for i in val]
                 negative = []
             elif isinstance(val, dict):
                 # {'pos1,(pos2:1.2)': {'conditions': ['con1', 'con2'], 'negative': 'neg1'}} 型
-                subtext = val.get(KeyName.conditions, [])
+                matchstr = [str(i) for i in val.get(KeyName.conditions, [])]
                 negative = parse_list(val.get(KeyName.negative))
             else:
                 raise ValueError
 
-        return cls(subtext=subtext, positive=positive, negative=negative)
+        return cls(matchstr=matchstr, positive=positive, negative=negative)
 
 
 @dataclass
 class Field:
     """
     capturegrp, priority, is_stable は指定がなければ 0, -1(最低優先度), False(Volatile)
+
+    {'pattern': '(xxx|yyy)', 'capturegrp': 1, 'priority': 2, 'lifetime': 'stable',
+     'maps': {'xxx': {'positive': 'pos1,(pos2:1.2)', 'negative': 'neg1'}, 'yyy': 'pos3,(pos4:1.5)'},
+     'default': {'positive': 'defpos1,(defpos2:1.7)', 'negative': 'defneg1'}}
+    -> ('(xxx|yyy)', 1, 2, True,
+        [
+          (['xxx'], [(pos1, 1.0), (pos2, 1.2)], [(neg1, 1.0)]),
+          (['yyy'], [(pos3, 1.0), (pos4, 1.5)], [])
+        ],
+        ([], [(defpos1, 1.0), (defpos2, 1.7)], [(defneg1, 1.0)])
+       )
     """
 
     pattern: str = ""
     capturegrp: int = 0
     priority: int = -1
     is_stable: bool = False
-    rules: list[PromptRule] = field(default_factory=list)
-    default: PromptRule = field(default_factory=PromptRule)
+    rules: list[Rule] = field(default_factory=list)
+    default: Rule = None
 
     @classmethod
     def make(cls, field: dict[str, dict]):
@@ -149,135 +174,75 @@ class Field:
 
         if KeyName.maps in field:
             for key, val in field.get(KeyName.maps).items():
-                obj.rules.append(PromptRule.make(key=key, val=val, is_maps=True))
+                obj.rules.append(Rule.make(key=key, val=val, is_maps=True))
         elif KeyName.ranges in field:
             for key, val in field.get(KeyName.ranges).items():
-                obj.rules.append(PromptRule.make(key=key, val=val, is_maps=False))
+                obj.rules.append(Rule.make(key=key, val=val, is_maps=False))
         else:
             raise ValueError
 
         if KeyName.default in field:
             val = field.get(KeyName.default)
-            obj.default = PromptRule.make(KeyName.default, val)
+            obj.default = Rule.make(KeyName.default, val)
 
         return obj
 
 
-def load_yaml(path: str) -> dict:
-    with open(path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+@dataclass
+class Screen:
+    @dataclass
+    class Ignition:
+        pattern: str = ""
+        is_all: bool = False
+
+    ignition: Ignition = field(default_factory=Ignition)
+    fields: list[Field] = field(default_factory=list)
+    common_positive: str = ""
+    common_negative: str = ""
+
+    def collect_fields(self, node: dict) -> None:
+        if not isinstance(node, dict):
+            # str や list は無視
+            return
+
+        if KeyName.pattern in node:
+            # 'pattern' キーが存在することを正しい Field の条件とする
+            self.fields.append(Field.make(node))
+            return
+
+        for v in node.values():
+            self.collect_fields(v)
+
+    @classmethod
+    def make(cls, screen: dict[str, dict[str, Any]]):
+        obj = cls()
+
+        for key, val in screen.items():
+            if key == KeyName.ignition and isinstance(val, dict):
+                type, pattern = next(iter(val.items()))
+                ignition = cls.Ignition(
+                    pattern=pattern, is_all=True if type == ValName.all else False
+                )
+                obj.ignition = ignition
+            elif key == KeyName.POSITIVE and isinstance(val, str):
+                obj.common_positive = val
+            elif key == KeyName.NEGATIVE and isinstance(val, str):
+                obj.common_negative = val
+            else:
+                obj.collect_fields(val)
+        return obj
 
 
-def normalize_field(field: dict) -> dict:
-    result = {
-        KeyName.capturegrp: field.get(KeyName.capturegrp, 0),
-        KeyName.priority: field.get(KeyName.priority),
-        KeyName.lifetime: field.get(KeyName.lifetime),
-    }
+class Prompter:
+    def __init__(self, yamlpath: Path):
+        self.screens: list[Screen] = []
 
-    if KeyName.maps in field:
-        result[KeyName.ruletype] = KeyName.maps
-        result[KeyName.table] = field[KeyName.maps]
-    elif KeyName.ranges in field:
-        result[KeyName.ruletype] = KeyName.ranges
-        result[KeyName.table] = field[KeyName.ranges]
-    else:
-        raise ValueError
-
-    if KeyName.default in field:
-        result[KeyName.default] = field[KeyName.default]
-
-    return result
+        with open(yamlpath, "r", encoding="utf-8") as f:
+            yaml_dict: dict = yaml.safe_load(f)
+        for _, val in yaml_dict.items():
+            self.screens.append(Screen.make(val))
 
 
-def normalize_ignition(ignition: dict) -> dict:
-    """
-    発火条件を正規化する
-
-    Args:
-        ignition (dict): YAMLから読み込んだ ignition 定義
-
-    Raises:
-        ValueError: any または all のいずれも定義されていない場合
-
-    Returns:
-        dict: 正規化された発火条件 (mode: "any"|"all", patterns: リスト)
-    """
-    if "any" in ignition:
-        return {"mode": "any", "patterns": ignition["any"]}
-    elif "all" in ignition:
-        return {"mode": "all", "patterns": ignition["all"]}
-    else:
-        raise ValueError("ignition must contain any or all")
-
-
-def collect_fields(node: dict, out: dict[str, dict]) -> None:
-    """
-    ネストされた YAML 構造から再帰的にフィールド定義を収集する\n
-    pattern キーを持つオブジェクトをフィールドとして認識し,\n
-    それ以外は再帰的に探索する
-
-    Args:
-        node (dict): 探索対象のノード
-        out (dict[str, dict]): 収集結果を格納する辞書 (pattern 文字列がキー)
-    """
-    if not isinstance(node, dict):
-        return
-
-    if KeyName.pattern in node:
-        pattern = node[KeyName.pattern]
-        field = normalize_field(node)
-        out[pattern] = field
-        return
-
-    for v in node.values():
-        collect_fields(v, out)
-
-
-def normalize_rule(rule: dict[str, Any]) -> dict:
-    """
-    ルール定義全体を正規化する
-
-    Args:
-        rule (dict[str, Any]): 正規化されたルール\n
-                               (ignition, fields, common_positive, common_negativeを含む)
-
-    Returns:
-        dict: YAML から読み込んだルール定義
-    """
-    out: dict[str, Any] = {
-        "ignition": normalize_ignition(rule["ignition"]),
-        "fields": {},
-    }
-
-    if "POSITIVE" in rule:
-        out["common_positive"] = rule["POSITIVE"]
-    if "NEGATIVE" in rule:
-        out["common_negative"] = rule["NEGATIVE"]
-
-    for k, v in rule.items():
-        if k in ("ignition", "POSITIVE", "NEGATIVE"):
-            continue
-        collect_fields(v, out["fields"])
-
-    return out
-
-
-yaml_dict = load_yaml("src/debug/parse_test/test.yaml")
-print(json.dumps(yaml_dict, indent=2))
-
-d = {
-    "pattern": "mood:\\s([^\\)]*)\\s",
-    "priority": 1,
-    "capturegrp": 1,
-    "lifetime": "stable",
-    "ranges": {
-        "spring": ["03", "04", "05", "06"],
-        "summer": ["07", "08"],
-        "autumn": ["09", "10"],
-        "winter": {"conditions": ["11", "12", "01", "02"], "negative": "HOT"},
-    },
-    "default": "mood3",
-}
-r = Field.make(d)
-print(json.dumps(asdict(r), indent=2))
+prompter = Prompter("src/debug/parse_test/test.yaml")
+for screen in prompter.screens:
+    print(json.dumps(asdict(screen), indent=2))
