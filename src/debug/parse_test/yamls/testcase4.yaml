@@ -1,0 +1,13 @@
+main:
+  ignition:
+    any: ["go"]
+  t:
+    a:
+      pattern: "(x)"
+      maps:
+        x: (foo:1.1)
+  u:
+    b:
+      pattern: "(x)"
+      maps:
+        x: (foo:1.5)

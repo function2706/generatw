@@ -1,0 +1,13 @@
+main:
+  ignition:
+    any: ["today"]
+  character:
+    name:
+      pattern: "Name(1|2)"
+      capturegrp: 0
+      priority: 1
+      maps:
+        Name1: foo
+        Name2:
+          positive: bar
+          negative: baz

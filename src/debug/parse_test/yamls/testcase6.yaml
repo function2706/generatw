@@ -1,0 +1,11 @@
+main:
+  ignition:
+    any: ["go"]
+  t:
+    r:
+      pattern: "(\\d+)"
+      capturegrp: 1
+      ranges:
+        hot:
+          conditions: ["7", "8"]
+          negative: cold
