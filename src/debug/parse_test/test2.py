@@ -1,5 +1,6 @@
 import json
 import re
+from collections import defaultdict
 from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from pathlib import Path
@@ -33,6 +34,11 @@ class ValName(StrEnum):
     all = "all"
 
 
+@dataclass(frozen=True)
+class Consts:
+    lowest_priority = -1
+
+
 @dataclass
 class Token:
     """
@@ -61,6 +67,34 @@ class Token:
 
 
 @dataclass
+class TokenSet:
+    """
+    token1,(token2:1.2),token3 -> [(token1, 1.0), (token2, 1.2), (token3, 1.0)]
+    """
+
+    tokens: list[Token] = field(default_factory=list)
+
+    @classmethod
+    def make(cls, text: str | None):
+        if text is None or not text:
+            return cls(tokens=[])
+
+        text_str = str(text)
+        parts = [p.strip() for p in text_str.split(",") if p.strip()]
+        return cls(tokens=[Token.make(p) for p in parts])
+
+    def toprompt(self) -> str:
+        return ",".join(token.to_prompt() for token in self.tokens)
+
+
+@dataclass
+class PromptBlueprint:
+    token: Token = None
+    priority: int = 0
+    is_stable: bool = False
+
+
+@dataclass
 class Rule:
     """
     maps:
@@ -78,62 +112,69 @@ class Rule:
         プロンプトのパース規則は maps と同じ, matchstr は空
     """
 
-    matchstr: list[str] = field(default_factory=list[Token])
-    positive: list[Token] = field(default_factory=list[Token])
-    negative: list[Token] = field(default_factory=list[Token])
+    matches: list[str] = field(default_factory=list)
+    positive: TokenSet = field(default_factory=TokenSet)
+    negative: TokenSet = field(default_factory=TokenSet)
 
     @classmethod
     def make(cls, key: str, val: str | dict | list, is_maps: bool = True):
-        def parse_list(s: str | None) -> list[Token]:
-            if s is None or not s:
-                return []
-
-            s_str = str(s)
-            parts = [p.strip() for p in s_str.split(",") if p.strip()]
-            return [Token.make(p) for p in parts]
-
         key_str = str(key)
         if key_str == KeyName.default:
-            matchstr = []
+            matches = []
             if isinstance(val, str):
-                positive = parse_list(val)
-                negative = []
+                positive = TokenSet.make(val)
+                negative = TokenSet()
             elif isinstance(val, dict):
-                positive = parse_list(val.get(KeyName.positive))
-                negative = parse_list(val.get(KeyName.negative))
+                positive = TokenSet.make(val.get(KeyName.positive))
+                negative = TokenSet.make(val.get(KeyName.negative))
             else:
                 raise ValueError
         elif is_maps:
-            matchstr = [key_str]
+            matches = [key_str]
             if isinstance(val, str):
                 # {'xxx': 'pos1,(pos2:1.2)'} 型
-                positive = parse_list(val)
-                negative = []
+                positive = TokenSet.make(val)
+                negative = TokenSet()
             elif isinstance(val, dict):
-                positive = parse_list(val.get(KeyName.positive))
-                negative = parse_list(val.get(KeyName.negative))
+                positive = TokenSet.make(val.get(KeyName.positive))
+                negative = TokenSet.make(val.get(KeyName.negative))
             else:
                 raise ValueError
         else:
-            positive = parse_list(key_str)
+            positive = TokenSet.make(key_str)
             if isinstance(val, list):
                 # {'pos1,(pos2:1.2)': ['con1', 'con2']} 型
-                matchstr = [str(i) for i in val]
-                negative = []
+                matches = [str(i) for i in val]
+                negative = TokenSet()
             elif isinstance(val, dict):
                 # {'pos1,(pos2:1.2)': {'conditions': ['con1', 'con2'], 'negative': 'neg1'}} 型
-                matchstr = [str(i) for i in val.get(KeyName.conditions, [])]
-                negative = parse_list(val.get(KeyName.negative))
+                matches = [str(i) for i in val.get(KeyName.conditions, [])]
+                negative = TokenSet.make(val.get(KeyName.negative))
             else:
                 raise ValueError
 
-        return cls(matchstr=matchstr, positive=positive, negative=negative)
+        return cls(matches=matches, positive=positive, negative=negative)
+
+    def toprompt(
+        self, match: str, priority: int, is_stable: bool
+    ) -> tuple[list[PromptBlueprint], list[PromptBlueprint]]:
+        if match not in self.matches:
+            return [], []
+
+        positive: list[PromptBlueprint] = []
+        negative: list[PromptBlueprint] = []
+
+        for token in self.positive.tokens:
+            positive.append(PromptBlueprint(token=token, priority=priority, is_stable=is_stable))
+        for token in self.negative.tokens:
+            negative.append(PromptBlueprint(token=token, priority=priority, is_stable=is_stable))
+        return positive, negative
 
 
 @dataclass
 class Field:
     """
-    capturegrp, priority, is_stable は指定がなければ 0, -1(最低優先度), False(Volatile)
+    capturegrp, priority, is_stable は指定がなければ 0, lowest_priority(最低優先度), False(Volatile)
 
     {'pattern': '(xxx|yyy)', 'capturegrp': 1, 'priority': 2, 'lifetime': 'stable',
      'maps': {'xxx': {'positive': 'pos1,(pos2:1.2)', 'negative': 'neg1'}, 'yyy': 'pos3,(pos4:1.5)'},
@@ -149,7 +190,7 @@ class Field:
 
     pattern: str = ""
     capturegrp: int = 0
-    priority: int = -1
+    priority: int = Consts.lowest_priority
     is_stable: bool = False
     rules: list[Rule] = field(default_factory=list)
     default: Rule = None
@@ -187,18 +228,37 @@ class Field:
 
         return obj
 
+    def toprompt(self, text: str) -> tuple[list[PromptBlueprint], list[PromptBlueprint]]:
+        positive: list[PromptBlueprint] = []
+        negative: list[PromptBlueprint] = []
+
+        try:
+            matches = re.findall(self.pattern, text)
+        except re.error as e:
+            raise ValueError(f"Invalid regex pattern: {self.pattern}") from e
+
+        for match in matches:
+            for rule in self.rules:
+                pos, neg = rule.toprompt(
+                    match=match, priority=self.priority, is_stable=self.is_stable
+                )
+                positive += pos
+                negative += neg
+
+        return positive, negative
+
 
 @dataclass
 class Screen:
     @dataclass
     class Ignition:
-        pattern: str = ""
+        patterns: list[str] = None
         is_all: bool = False
 
     ignition: Ignition = field(default_factory=Ignition)
     fields: list[Field] = field(default_factory=list)
-    common_positive: str = ""
-    common_negative: str = ""
+    common_positive: TokenSet = field(default_factory=TokenSet)
+    common_negative: TokenSet = field(default_factory=TokenSet)
 
     def collect_fields(self, node: dict) -> None:
         if not isinstance(node, dict):
@@ -219,30 +279,105 @@ class Screen:
 
         for key, val in screen.items():
             if key == KeyName.ignition and isinstance(val, dict):
-                type, pattern = next(iter(val.items()))
-                ignition = cls.Ignition(
-                    pattern=pattern, is_all=True if type == ValName.all else False
+                type, patterns = next(iter(val.items()))
+                if isinstance(patterns, str):
+                    pattern_str = patterns
+                    patterns = []
+                    patterns.append(pattern_str)
+                obj.ignition = cls.Ignition(
+                    patterns=[str(x) for x in patterns],
+                    is_all=True if type == ValName.all else False,
                 )
-                obj.ignition = ignition
             elif key == KeyName.POSITIVE and isinstance(val, str):
-                obj.common_positive = val
+                obj.common_positive = TokenSet.make(val)
             elif key == KeyName.NEGATIVE and isinstance(val, str):
-                obj.common_negative = val
+                obj.common_negative = TokenSet.make(val)
             else:
                 obj.collect_fields(val)
         return obj
 
+    def sort(self) -> None:
+        # バケット: 値 -> 出現 index のリスト
+        buckets = defaultdict(list)
+        for idx, fld in enumerate(self.fields):
+            buckets[fld.priority].append(idx)
 
+        # lowest_priority は最後に回すため除外してソート
+        keys = sorted(k for k in buckets.keys() if k != Consts.lowest_priority)
+        # 結果配列（初期値は元の値をコピー）
+        result = list(self.fields)
+
+        crnt_priority = 1  # 連番カウンタ
+        for k in keys:
+            # 元の値が 1,2,3,... の場合のみ連番を振る
+            if k != Consts.lowest_priority:
+                for idx in buckets[k]:
+                    result[idx].priority = crnt_priority
+                    crnt_priority += 1
+
+        if Consts.lowest_priority in buckets:
+            # 最後に lowest_priority を処理
+            for idx in buckets[Consts.lowest_priority]:
+                result[idx].priority = crnt_priority
+                crnt_priority += 1
+
+        self.fields = result
+
+    def check_ignition(self, text: str) -> bool:
+        if self.ignition.is_all:
+            return all(re.search(p, text) for p in self.ignition.patterns)
+        else:
+            return any(re.search(p, text) for p in self.ignition.patterns)
+
+    def toprompt(self, text: str) -> tuple[list[PromptBlueprint], list[PromptBlueprint]]:
+        if not self.check_ignition(text):
+            return [], []
+
+        positive: list[PromptBlueprint] = []
+        negative: list[PromptBlueprint] = []
+        for fld in self.fields:
+            pos, neg = fld.toprompt(text)
+            positive += pos
+            negative += neg
+
+        return positive, negative
+
+
+@dataclass
 class Prompter:
-    def __init__(self, yamlpath: Path):
-        self.screens: list[Screen] = []
+    screens: list[Screen] = field(default_factory=list)
+    continuing_tokens: list[PromptBlueprint] = field(default_factory=list)
 
+    @classmethod
+    def make(cls, yamlpath: Path):
+        obj = cls()
         with open(yamlpath, "r", encoding="utf-8") as f:
             yaml_dict: dict = yaml.safe_load(f)
         for _, val in yaml_dict.items():
-            self.screens.append(Screen.make(val))
+            obj.screens.append(Screen.make(val))
+        obj.sort()
+        return obj
+
+    def sort(self) -> None:
+        for screen in self.screens:
+            screen.sort()
+
+    def toprompt(self, text: str):
+        positive: list[PromptBlueprint] = []
+        negative: list[PromptBlueprint] = []
+        for screen in self.screens:
+            pos, neg = screen.toprompt(text)
+            positive += pos
+            negative += neg
+
+        # for blueprint in positive:
+        # print(json.dumps(asdict(blueprint), indent=2))
+        # for blueprint in negative:
+        # print(json.dumps(asdict(blueprint), indent=2))
+        return ""
 
 
-prompter = Prompter("src/debug/parse_test/test.yaml")
+prompter = Prompter.make("src/debug/parse_test/test.yaml")
+prompter.toprompt("today: 2026/02/05, Name1 (vibe: Vibe1) sunny")
 for screen in prompter.screens:
     print(json.dumps(asdict(screen), indent=2))
