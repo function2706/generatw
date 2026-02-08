@@ -73,9 +73,9 @@ class TokenSet:
     tokens: list[Token] = field(default_factory=list)
 
     @classmethod
-    def make(cls, text: str | None):
+    def make(cls, text: str | None = None):
         if text is None or not text:
-            return cls()
+            return cls(tokens=[Token()])
 
         text_str = str(text)
         parts = [p.strip() for p in text_str.split(",") if p.strip()]
@@ -141,6 +141,10 @@ class PromptBlueprint:
         best: dict[str, TokenBlueprint] = {}
 
         for token in self.tokens:
+            if not token.token.token:
+                # 空文字列(=period 更新時の相方のトークン削除用)は全て残したい
+                continue
+
             key = token.token.token
             if key not in best:
                 best[key] = token
@@ -189,7 +193,7 @@ class Rule:
             matches = set()
             if isinstance(val, str):
                 positive = TokenSet.make(val)
-                negative = TokenSet()
+                negative = TokenSet.make()
             elif isinstance(val, dict):
                 positive = TokenSet.make(val.get(KeyName.positive))
                 negative = TokenSet.make(val.get(KeyName.negative))
@@ -200,7 +204,7 @@ class Rule:
             if isinstance(val, str):
                 # {'xxx': 'pos1,(pos2:1.2)'} 型
                 positive = TokenSet.make(val)
-                negative = TokenSet()
+                negative = TokenSet.make()
             elif isinstance(val, dict):
                 positive = TokenSet.make(val.get(KeyName.positive))
                 negative = TokenSet.make(val.get(KeyName.negative))
@@ -213,7 +217,7 @@ class Rule:
             if isinstance(val, list):
                 # {'pos1,(pos2:1.2)': ['con1', 'con2']} 型
                 matches = {str(i) for i in val}
-                negative = TokenSet()
+                negative = TokenSet.make()
             elif isinstance(val, dict):
                 # {'pos1,(pos2:1.2)': {'conditions': ['con1', 'con2'], 'negative': 'neg1'}} 型
                 matches = {str(i) for i in val.get(KeyName.conditions, [])}
@@ -552,47 +556,94 @@ class Prompter:
 
 prompter = Prompter.make("src/debug/parse_test/yamls/testcase1.yaml")
 pos, neg = prompter.toprompt("today Name2")
-print("POS:", pos)
-print("NEG:", neg)
+print("POS1:", pos)
+print("NEG1:", neg)
 prompter = Prompter.make("src/debug/parse_test/yamls/testcase2.yaml")
 pos, neg = prompter.toprompt("go id:10")
-print("POS:", pos)
-print("NEG:", neg)
+print("POS2:", pos)
+print("NEG2:", neg)
 prompter = Prompter.make("src/debug/parse_test/yamls/testcase3.yaml")
 pos, neg = prompter.toprompt("go v:B")
-print("POS:", pos)
-print("NEG:", neg)
+print("POS3:", pos)
+print("NEG3:", neg)
 prompter = Prompter.make("src/debug/parse_test/yamls/testcase3.yaml")
 pos, neg = prompter.toprompt("go nothing")
-print("POS:", pos)
-print("NEG:", neg)
+print("POS4:", pos)
+print("NEG4:", neg)
 prompter = Prompter.make("src/debug/parse_test/yamls/testcase4.yaml")
 pos, neg = prompter.toprompt("go x")
-print("POS:", pos)
-print("NEG:", neg)
+print("POS5:", pos)
+print("NEG5:", neg)
 prompter = Prompter.make("src/debug/parse_test/yamls/testcase5.yaml")
 pos, neg = prompter.toprompt("go v:A")
-print("POS:", pos)
-print("NEG:", neg)
+print("POS6-1:", pos)
+print("NEG6-1:", neg)
 pos, neg = prompter.toprompt("go v:B")
-print("POS:", pos)
-print("NEG:", neg)
+print("POS6-2:", pos)
+print("NEG6-2:", neg)
 prompter = Prompter.make("src/debug/parse_test/yamls/testcase5.yaml")
 pos, neg = prompter.toprompt("hello v:A")
-print("POS:", pos)
-print("NEG:", neg)
+print("POS7:", pos)
+print("NEG7:", neg)
 prompter = Prompter.make("src/debug/parse_test/yamls/testcase6.yaml")
 pos, neg = prompter.toprompt("go 8")
-print("POS:", pos)
-print("NEG:", neg)
+print("POS8:", pos)
+print("NEG8:", neg)
 prompter = Prompter.make("src/debug/parse_test/yamls/testcase7.yaml")
 pos, neg = prompter.toprompt("go x")
-print("POS:", pos)
-print("NEG:", neg)
+print("POS9:", pos)
+print("NEG9:", neg)
 prompter = Prompter.make("src/debug/parse_test/yamls/testcase8.yaml")
 pos, neg = prompter.toprompt("go x")
-print("POS:", pos)
-print("NEG:", neg)
+print("POS10:", pos)
+print("NEG10:", neg)
+prompter = Prompter.make("src/debug/parse_test/yamls/testcase9.yaml")
+pos, neg = prompter.toprompt("go v:A")
+print("POS11-1:", pos)
+print("NEG11-1:", neg)
+pos, neg = prompter.toprompt("go v:B")
+print("POS11-2:", pos)
+print("NEG11-2:", neg)
+prompter = Prompter.make("src/debug/parse_test/yamls/testcase10.yaml")
+pos, neg = prompter.toprompt("go v:A")
+print("POS12-1:", pos)
+print("NEG12-1:", neg)
+pos, neg = prompter.toprompt("go v:B")
+print("POS12-2:", pos)
+print("NEG12-2:", neg)
+prompter = Prompter.make("src/debug/parse_test/yamls/testcase11.yaml")
+pos, neg = prompter.toprompt("go v:A")
+print("POS13-1:", pos)
+print("NEG13-1:", neg)
+pos, neg = prompter.toprompt("go v:B")
+print("POS13-2:", pos)
+print("NEG13-2:", neg)
+prompter = Prompter.make("src/debug/parse_test/yamls/testcase12.yaml")
+pos, neg = prompter.toprompt("go v:A")
+print("POS14-1:", pos)
+print("NEG14-1:", neg)
+pos, neg = prompter.toprompt("go nothing")
+print("POS14-2:", pos)
+print("NEG14-2:", neg)
+prompter = Prompter.make("src/debug/parse_test/yamls/testcase13.yaml")
+pos, neg = prompter.toprompt("go v:A")
+print("POS15-1:", pos)
+print("NEG15-1:", neg)
+pos, neg = prompter.toprompt("go v:B")
+print("POS15-2:", pos)
+print("NEG15-2:", neg)
+prompter = Prompter.make("src/debug/parse_test/yamls/testcase14.yaml")
+pos, neg = prompter.toprompt("go")
+print("POS16:", pos)
+print("NEG16:", neg)
+prompter = Prompter.make("src/debug/parse_test/yamls/testcase15.yaml")
+pos, neg = prompter.toprompt("go a:on b:on")
+print("POS17-1:", pos)
+print("NEG17-1:", neg)
+pos, neg = prompter.toprompt("go a:off")
+print("POS17-2:", pos)
+print("NEG17-2:", neg)
+
 prompter = Prompter.make("src/debug/parse_test/yamls/test2.yaml")
 pos, neg = prompter.toprompt("start name:alice boost month:04 tag:a tag:b miss:bad side")
 print("POS:", pos)

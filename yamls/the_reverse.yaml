@@ -1,0 +1,170 @@
+main:
+  ignition:
+    any: ["^\\s*\\S+\\s\\[LV"]
+  character:
+    name:
+      pattern: "^(.+?)\\s*(?:（[^）]+）)?\\s*\\(好感度"
+      priority: 1
+      capturegrp: 1
+      lifetime: stable
+      maps:
+        "博麗 霊夢": hakurei reimu
+        Name2:
+          positive: name2,feature2
+          negative: NAME2
+    vibe:
+      pattern: "[0-9]{2},\\s(\\w*)"
+      priority: 1
+      capturegrp: 1
+      lifetime: stable
+      maps:
+        Name1: name1,feature1
+        Name2:
+          positive: name2,feature2
+          negative: NAME2
+    affection:
+      pattern: "[0-9]{2},\\s(\\w*)"
+      priority: 1
+      capturegrp: 1
+      lifetime: stable
+      maps:
+        Name1: name1,feature1
+        Name2:
+          positive: name2,feature2
+          negative: NAME2
+    trust:
+      pattern: "[0-9]{2},\\s(\\w*)"
+      priority: 1
+      capturegrp: 1
+      lifetime: stable
+      maps:
+        Name1: name1,feature1
+        Name2:
+          positive: name2,feature2
+          negative: NAME2
+    frustration:
+      pattern: "[0-9]{2},\\s(\\w*)"
+      priority: 1
+      capturegrp: 1
+      lifetime: stable
+      maps:
+        Name1: name1,feature1
+        Name2:
+          positive: name2,feature2
+          negative: NAME2
+    angry:
+      pattern: "[0-9]{2},\\s(\\w*)"
+      priority: 1
+      capturegrp: 1
+      lifetime: stable
+      maps:
+        Name1: name1,feature1
+        Name2:
+          positive: name2,feature2
+          negative: NAME2
+    in_heat:
+      pattern: "[0-9]{2},\\s(\\w*)"
+      priority: 1
+      capturegrp: 1
+      lifetime: stable
+      maps:
+        Name1: name1,feature1
+        Name2:
+          positive: name2,feature2
+          negative: NAME2
+    mood:
+      pattern: "[0-9]{2},\\s(\\w*)"
+      priority: 1
+      capturegrp: 1
+      lifetime: stable
+      maps:
+        Name1: name1,feature1
+        Name2:
+          positive: name2,feature2
+          negative: NAME2
+    corruption:
+      pattern: "[0-9]{2},\\s(\\w*)"
+      priority: 1
+      capturegrp: 1
+      lifetime: stable
+      maps:
+        Name1: name1,feature1
+        Name2:
+          positive: name2,feature2
+          negative: NAME2
+    upper:
+      pattern: "[0-9]{2},\\s(\\w*)"
+      priority: 1
+      capturegrp: 1
+      lifetime: stable
+      maps:
+        Name1: name1,feature1
+        Name2:
+          positive: name2,feature2
+          negative: NAME2
+    upper_state:
+      pattern: "[0-9]{2},\\s(\\w*)"
+      priority: 1
+      capturegrp: 1
+      lifetime: stable
+      maps:
+        Name1: name1,feature1
+        Name2:
+          positive: name2,feature2
+          negative: NAME2
+    lower:
+      pattern: "[0-9]{2},\\s(\\w*)"
+      priority: 1
+      capturegrp: 1
+      lifetime: stable
+      maps:
+        Name1: name1,feature1
+        Name2:
+          positive: name2,feature2
+          negative: NAME2
+    lower_state:
+      pattern: "[0-9]{2},\\s(\\w*)"
+      priority: 1
+      capturegrp: 1
+      lifetime: stable
+      maps:
+        Name1: name1,feature1
+        Name2:
+          positive: name2,feature2
+          negative: NAME2
+  meta:
+    season:
+      pattern: "(sunny|rainy)"
+      priority: 2
+      maps:
+        sunny: sunny
+        rainy: rainy
+      default: cloudy
+    time:
+      pattern: "(1|2)[0-9]{3}/([0-9]{2})"
+      priority: 4
+      capturegrp: 2
+      lifetime: stable
+      ranges:
+        spring: ["03", "04", "05", "06"]
+        summer: ["07", "08"]
+        autumn: ["09", "10"]
+        winter:
+          conditions: ["11", "12", "01", "02"]
+          negative: HOT
+    location:
+      pattern: "(sunny|rainy)"
+      priority: 2
+      maps:
+        sunny: sunny
+        rainy: rainy
+      default: cloudy
+    weather:
+      pattern: "(sunny|rainy)"
+      priority: 2
+      maps:
+        sunny: sunny
+        rainy: rainy
+      default: cloudy
+  POSITIVE: "common positive"
+  NEGATIVE: "common negative"
