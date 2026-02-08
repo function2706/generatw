@@ -363,7 +363,7 @@ class Field:
 class Screen:
     @dataclass
     class Ignition:
-        patterns: list[str] = field(default_factory=list)
+        patterns: list[re.Pattern] = field(default_factory=list)
         is_all: bool = False
 
     ignition: Ignition = field(default_factory=Ignition)
@@ -396,7 +396,7 @@ class Screen:
             if key == KeyName.ignition and isinstance(val, dict):
                 type, patterns = next(iter(val.items()))
                 obj.ignition = cls.Ignition(
-                    patterns=[str(x) for x in patterns],
+                    patterns=[re.compile(str(p)) for p in patterns],
                     is_all=True if type == ValName.all else False,
                 )
             elif key == KeyName.POSITIVE and isinstance(val, str):
@@ -440,9 +440,9 @@ class Screen:
             return False
 
         if self.ignition.is_all:
-            return all(re.search(p, text) for p in self.ignition.patterns)
+            return all(p.search(text) for p in self.ignition.patterns)
         else:
-            return any(re.search(p, text) for p in self.ignition.patterns)
+            return any(p.search(text) for p in self.ignition.patterns)
 
     def toprompt(self, text: str, period: int) -> tuple[PromptBlueprint, PromptBlueprint]:
         if not self.check_ignition(text):
