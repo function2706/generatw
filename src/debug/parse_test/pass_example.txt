@@ -70,5 +70,5 @@ POS: name2,feature2,vibe1,winter,mood2,fuga,(hoge:1.3),foo,(bar:1.3),baz,common 
 NEG: NAME2,HOT,MOOD2,FUGA,HOGE,FOO,(nope:1.4),BAR,nyome,BAZ,common negative
 POS: name2,feature2,vibe1,winter,mood1,shirt,sub common positive
 NEG: NAME2,HOT,sub common negative
-POS: mood1,name1,feature1,vibe1,vibe2,fuga,(hoge:1.3),summer,foo,(bar:1.3),baz,common positive
+POS: mood1,name1,feature1,vibe3,fuga,(hoge:1.3),summer,foo,(bar:1.3),baz,common positive
 NEG: FUGA,HOGE,FOO,(nope:1.4),BAR,nyome,BAZ,common negative
