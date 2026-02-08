@@ -4,7 +4,7 @@ from collections import defaultdict
 from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeAlias
 
 import yaml
 
@@ -81,6 +81,9 @@ class TokenSet:
         return cls(tokens=[Token.make(p) for p in parts])
 
 
+SourcePath: TypeAlias = list[str]
+
+
 @dataclass
 class TokenBlueprint:
     """
@@ -90,6 +93,7 @@ class TokenBlueprint:
     token: Token = field(default_factory=Token)
     priority: int = 0
     is_stable: bool = False
+    source_path: SourcePath = field(default_factory=SourcePath)
 
     def to_promptstr(self) -> str:
         return (
@@ -212,7 +216,7 @@ class Rule:
         return cls(matches=matches, positive=positive, negative=negative)
 
     def toprompt(
-        self, priority: int, is_stable: bool, match: str = None
+        self, priority: int, is_stable: bool, source_path: SourcePath, match: str = None
     ) -> tuple[PromptBlueprint, PromptBlueprint]:
         if self.matches and match and match not in self.matches:
             # default = matches が空, もしくは match 未指定の場合はここに入らない
@@ -223,11 +227,17 @@ class Rule:
 
         for token in self.positive.tokens:
             positive.append(
-                TokenBlueprint(token=token, priority=priority, is_stable=is_stable), sort=True
+                TokenBlueprint(
+                    token=token, priority=priority, is_stable=is_stable, source_path=source_path
+                ),
+                sort=True,
             )
         for token in self.negative.tokens:
             negative.append(
-                TokenBlueprint(token=token, priority=priority, is_stable=is_stable), sort=True
+                TokenBlueprint(
+                    token=token, priority=priority, is_stable=is_stable, source_path=source_path
+                ),
+                sort=True,
             )
         return positive, negative
 
@@ -255,6 +265,8 @@ class Field:
     is_stable: bool = False
     rules: list[Rule] = field(default_factory=list)
     default: Rule | None = None
+
+    source_path: SourcePath = field(default_factory=list)
 
     re_cache: re.Pattern[str] = field(default=None, init=False, repr=False, compare=False)
 
@@ -310,14 +322,21 @@ class Field:
 
             for rule in self.rules:
                 pos, neg = rule.toprompt(
-                    match=match, priority=self.priority, is_stable=self.is_stable
+                    match=match,
+                    priority=self.priority,
+                    is_stable=self.is_stable,
+                    source_path=self.source_path,
                 )
                 positive.append(pos, sort=True)
                 negative.append(neg, sort=True)
 
         if self.default and not positive.tokens and not negative.tokens:
             # default
-            pos, neg = self.default.toprompt(priority=self.priority, is_stable=self.is_stable)
+            pos, neg = self.default.toprompt(
+                priority=self.priority,
+                is_stable=self.is_stable,
+                source_path=self.source_path,
+            )
             positive.append(pos, sort=True)
             negative.append(neg, sort=True)
 
@@ -336,21 +355,25 @@ class Screen:
     common_positive: TokenSet = field(default_factory=TokenSet)
     common_negative: TokenSet = field(default_factory=TokenSet)
 
-    def collect_fields(self, node: dict) -> None:
+    def collect_fields(self, node: dict, source_path: SourcePath) -> None:
         if not isinstance(node, dict):
             # str や list は無視
             return
 
         if KeyName.pattern in node:
             # 'pattern' キーが存在することを正しい Field の条件とする
-            self.fields.append(Field.make(node))
+            field = Field.make(node)
+            field.source_path = source_path.copy()
+            self.fields.append(field)
             return
 
-        for v in node.values():
-            self.collect_fields(v)
+        for k, v in node.items():
+            source_path.append(k)
+            self.collect_fields(v, source_path)
+            source_path.pop()
 
     @classmethod
-    def make(cls, screen: dict[str, dict[str, Any]]):
+    def make(cls, screen_name: str, screen: dict[str, dict[str, Any]]):
         obj = cls()
 
         for key, val in screen.items():
@@ -365,7 +388,8 @@ class Screen:
             elif key == KeyName.NEGATIVE and isinstance(val, str):
                 obj.common_negative = TokenSet.make(val)
             else:
-                obj.collect_fields(val)
+                source_path: SourcePath = [screen_name, key]
+                obj.collect_fields(val, source_path)
         return obj
 
     def sort(self) -> None:
@@ -440,8 +464,8 @@ class Prompter:
         obj = cls()
         with open(yamlpath, "r", encoding="utf-8") as f:
             yaml_dict: dict = yaml.safe_load(f)
-        for _, val in yaml_dict.items():
-            obj.screens.append(Screen.make(val))
+        for key, val in yaml_dict.items():
+            obj.screens.append(Screen.make(key, val))
         obj.renumber_priorities()
         return obj
 
@@ -457,12 +481,6 @@ class Prompter:
             positive.append(pos, sort=True)
             negative.append(neg, sort=True)
 
-        print("pos----------------------------------")
-        for token in positive.tokens:
-            print(json.dumps(asdict(token), indent=2))
-        print("neg----------------------------------")
-        for token in negative.tokens:
-            print(json.dumps(asdict(token), indent=2))
         return positive.to_promptstr(), negative.to_promptstr()
 
 
@@ -476,7 +494,8 @@ def json_default(obj: Any) -> str:
 
 prompter = Prompter.make("src/debug/parse_test/test.yaml")
 pos, neg = prompter.toprompt("today: 2026/02/05, Name2 (vibe: Vibe1)foobarBarFugahogeHogeBazbaz")
-# for s=creen in prompter.screens:
-#    print(json.dumps(asdict(screen), indent=2, default=json_default))
+print("POS:", pos)
+print("NEG:", neg)
+pos, neg = prompter.toprompt("sub: WOW!! mood: Mood2 , equip: Slacks foobar")
 print("POS:", pos)
 print("NEG:", neg)
