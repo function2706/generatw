@@ -5,6 +5,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any, TypeAlias
 
+import pyperclip
 import yaml
 
 
@@ -49,7 +50,7 @@ class Token:
 
     @classmethod
     def make(cls, original_token: str):
-        m = re.fullmatch(r"\(?([\w\s\-.]+)(?::([0-9.]+))?\)?", original_token.strip())
+        m = re.fullmatch(r"\(?([\w\s\-\(\)\\'.]+)(?::([0-9.]+))?\)?", original_token.strip())
         if not m:
             raise ValueError(
                 f"Invalid token format: '{original_token}'. Expected 'word' or '(word:1.2)'."
@@ -237,8 +238,8 @@ class Rule:
         period: int,
         match: str = None,
     ) -> tuple[PromptBlueprint, PromptBlueprint]:
-        if self.matches and match and match not in self.matches:
-            # default = matches が空, もしくは match 未指定の場合はここに入らない
+        if self.matches and match not in self.matches:
+            # default = matches が空の場合はここに入らない
             return PromptBlueprint(), PromptBlueprint()
 
         positive = PromptBlueprint()
@@ -333,7 +334,7 @@ class Field:
 
         try:
             if obj.re_cache is None:
-                obj.re_cache = re.compile(obj.pattern)
+                obj.re_cache = re.compile(obj.pattern, flags=re.MULTILINE)
         except re.error as e:
             raise ValueError(f"Invalid regex pattern: {obj.pattern}") from e
 
@@ -684,5 +685,11 @@ pos, neg = prompter.toprompt("sub: WOW!! mood: Mood1 , equip: Blouse ")
 print("POS:", pos)
 print("NEG:", neg)
 pos, neg = prompter.toprompt("today: 2026/07/21, Name1 (vibe: ) foobarBarFugahogeHogeBazbaz")
+print("POS:", pos)
+print("NEG:", neg)
+
+prompter = Prompter.make("yamls/the_world.yaml")
+new_clipboard = pyperclip.paste()
+pos, neg = prompter.toprompt(new_clipboard)
 print("POS:", pos)
 print("NEG:", neg)
