@@ -52,7 +52,7 @@ class Token:
     def make(cls, original_token: str):
         m = re.fullmatch(r"\(?([\w\s\-.]+)(?::([0-9.]+))?\)?", original_token.strip())
         if not m:
-            return cls()
+            raise ValueError
 
         token, weight_str = m.groups()
         try:
@@ -61,9 +61,6 @@ class Token:
             weight = 1.0
 
         return cls(token=token, weight=weight)
-
-    def to_prompt(self) -> str:
-        return f"({self.token}:{self.weight})" if self.weight != 1.0 else self.token
 
 
 @dataclass
@@ -77,21 +74,60 @@ class TokenSet:
     @classmethod
     def make(cls, text: str | None):
         if text is None or not text:
-            return cls(tokens=[])
+            return cls()
 
         text_str = str(text)
         parts = [p.strip() for p in text_str.split(",") if p.strip()]
         return cls(tokens=[Token.make(p) for p in parts])
 
-    def toprompt(self) -> str:
-        return ",".join(token.to_prompt() for token in self.tokens)
+
+@dataclass
+class TokenBlueprint:
+    """
+    プロンプト化のためのトークンデータ
+    """
+
+    token: Token = field(default_factory=Token)
+    priority: int = 0
+    is_stable: bool = False
+
+    def to_promptstr(self) -> str:
+        return (
+            f"({self.token.token}:{self.token.weight})"
+            if self.token.weight != 1.0
+            else self.token.token
+        )
 
 
 @dataclass
 class PromptBlueprint:
-    token: Token = None
-    priority: int = 0
-    is_stable: bool = False
+    """
+    プロンプト化のためのトークンの集合とその処理を司るクラス
+    """
+
+    tokens: list[TokenBlueprint] = field(default_factory=list)
+
+    def append(self, token: Token, priority: int, is_stable: bool):
+        self.tokens.append(TokenBlueprint(token=token, priority=priority, is_stable=is_stable))
+        self.sort()
+
+    def __iadd__(self, other):
+        if not isinstance(other, PromptBlueprint):
+            raise TypeError
+        self.tokens += other.tokens
+        self.sort()
+        return self
+
+    def sort(self) -> None:
+        self.tokens = sorted(self.tokens, key=lambda t: t.priority)
+
+    # 優先度解決, 多重プロンプト解決, 文字列化
+
+    def to_promptstr(self) -> str:
+        tokenstrs = []
+        for token in self.tokens:
+            tokenstrs.append(token.to_promptstr())
+        return ",".join(filter(None, tokenstrs))
 
 
 @dataclass
@@ -112,7 +148,7 @@ class Rule:
         プロンプトのパース規則は maps と同じ, matchstr は空
     """
 
-    matches: list[str] = field(default_factory=list)
+    matches: set[str] = field(default_factory=set)
     positive: TokenSet = field(default_factory=TokenSet)
     negative: TokenSet = field(default_factory=TokenSet)
 
@@ -120,7 +156,7 @@ class Rule:
     def make(cls, key: str, val: str | dict | list, is_maps: bool = True):
         key_str = str(key)
         if key_str == KeyName.default:
-            matches = []
+            matches = set()
             if isinstance(val, str):
                 positive = TokenSet.make(val)
                 negative = TokenSet()
@@ -130,7 +166,7 @@ class Rule:
             else:
                 raise ValueError
         elif is_maps:
-            matches = [key_str]
+            matches = {key_str}
             if isinstance(val, str):
                 # {'xxx': 'pos1,(pos2:1.2)'} 型
                 positive = TokenSet.make(val)
@@ -144,11 +180,11 @@ class Rule:
             positive = TokenSet.make(key_str)
             if isinstance(val, list):
                 # {'pos1,(pos2:1.2)': ['con1', 'con2']} 型
-                matches = [str(i) for i in val]
+                matches = {str(i) for i in val}
                 negative = TokenSet()
             elif isinstance(val, dict):
                 # {'pos1,(pos2:1.2)': {'conditions': ['con1', 'con2'], 'negative': 'neg1'}} 型
-                matches = [str(i) for i in val.get(KeyName.conditions, [])]
+                matches = {str(i) for i in val.get(KeyName.conditions, [])}
                 negative = TokenSet.make(val.get(KeyName.negative))
             else:
                 raise ValueError
@@ -157,18 +193,18 @@ class Rule:
 
     def toprompt(
         self, priority: int, is_stable: bool, match: str = None
-    ) -> tuple[list[PromptBlueprint], list[PromptBlueprint]]:
+    ) -> tuple[PromptBlueprint, PromptBlueprint]:
         if self.matches and match and match not in self.matches:
             # default = matches が空, もしくは match 未指定の場合はここに入らない
-            return [], []
+            return PromptBlueprint(), PromptBlueprint()
 
-        positive: list[PromptBlueprint] = []
-        negative: list[PromptBlueprint] = []
+        positive = PromptBlueprint()
+        negative = PromptBlueprint()
 
         for token in self.positive.tokens:
-            positive.append(PromptBlueprint(token=token, priority=priority, is_stable=is_stable))
+            positive.append(token=token, priority=priority, is_stable=is_stable)
         for token in self.negative.tokens:
-            negative.append(PromptBlueprint(token=token, priority=priority, is_stable=is_stable))
+            negative.append(token=token, priority=priority, is_stable=is_stable)
         return positive, negative
 
 
@@ -194,7 +230,9 @@ class Field:
     priority: int = Consts.lowest_priority
     is_stable: bool = False
     rules: list[Rule] = field(default_factory=list)
-    default: Rule = None
+    default: Rule | None = None
+
+    re_cache: re.Pattern[str] = field(default=None, init=False, repr=False, compare=False)
 
     @classmethod
     def make(cls, field: dict[str, dict]):
@@ -229,16 +267,17 @@ class Field:
 
         return obj
 
-    def toprompt(self, text: str) -> tuple[list[PromptBlueprint], list[PromptBlueprint]]:
-        positive: list[PromptBlueprint] = []
-        negative: list[PromptBlueprint] = []
+    def toprompt(self, text: str) -> tuple[PromptBlueprint, PromptBlueprint]:
+        positive = PromptBlueprint()
+        negative = PromptBlueprint()
 
         try:
-            match_itrs = re.finditer(self.pattern, text)
+            if self.re_cache is None:
+                self.re_cache = re.compile(self.pattern)
         except re.error as e:
             raise ValueError(f"Invalid regex pattern: {self.pattern}") from e
 
-        for match_itr in match_itrs:
+        for match_itr in self.re_cache.finditer(text):
             try:
                 match = match_itr.group(self.capturegrp)
             except Exception:
@@ -252,11 +291,11 @@ class Field:
                 positive += pos
                 negative += neg
 
-            if not positive and not negative:
-                # default
-                pos, neg = self.default.toprompt(priority=self.priority, is_stable=self.is_stable)
-                positive += pos
-                negative += neg
+        if self.default and not positive.tokens and not negative.tokens:
+            # default
+            pos, neg = self.default.toprompt(priority=self.priority, is_stable=self.is_stable)
+            positive += pos
+            negative += neg
 
         return positive, negative
 
@@ -265,7 +304,7 @@ class Field:
 class Screen:
     @dataclass
     class Ignition:
-        patterns: list[str] = None
+        patterns: list[str] = field(default_factory=list)
         is_all: bool = False
 
     ignition: Ignition = field(default_factory=Ignition)
@@ -293,10 +332,6 @@ class Screen:
         for key, val in screen.items():
             if key == KeyName.ignition and isinstance(val, dict):
                 type, patterns = next(iter(val.items()))
-                if isinstance(patterns, str):
-                    pattern_str = patterns
-                    patterns = []
-                    patterns.append(pattern_str)
                 obj.ignition = cls.Ignition(
                     patterns=[str(x) for x in patterns],
                     is_all=True if type == ValName.all else False,
@@ -337,21 +372,30 @@ class Screen:
         self.fields = result
 
     def check_ignition(self, text: str) -> bool:
+        if not self.ignition.patterns:
+            return False
+
         if self.ignition.is_all:
             return all(re.search(p, text) for p in self.ignition.patterns)
         else:
             return any(re.search(p, text) for p in self.ignition.patterns)
 
-    def toprompt(self, text: str) -> tuple[list[PromptBlueprint], list[PromptBlueprint]]:
+    def toprompt(self, text: str) -> tuple[PromptBlueprint, PromptBlueprint]:
         if not self.check_ignition(text):
-            return [], []
+            return PromptBlueprint(), PromptBlueprint()
 
-        positive: list[PromptBlueprint] = []
-        negative: list[PromptBlueprint] = []
+        positive = PromptBlueprint()
+        negative = PromptBlueprint()
         for fld in self.fields:
             pos, neg = fld.toprompt(text)
             positive += pos
             negative += neg
+
+        # 共通プロンプトは常に最後尾
+        for token in self.common_positive.tokens:
+            positive.append(token=token, priority=len(positive.tokens) + 1, is_stable=False)
+        for token in self.common_negative.tokens:
+            negative.append(token=token, priority=len(negative.tokens) + 1, is_stable=False)
 
         return positive, negative
 
@@ -359,7 +403,7 @@ class Screen:
 @dataclass
 class Prompter:
     screens: list[Screen] = field(default_factory=list)
-    continuing_tokens: list[PromptBlueprint] = field(default_factory=list)
+    continuing_tokens: PromptBlueprint = field(default_factory=PromptBlueprint)
 
     @classmethod
     def make(cls, yamlpath: Path):
@@ -368,29 +412,41 @@ class Prompter:
             yaml_dict: dict = yaml.safe_load(f)
         for _, val in yaml_dict.items():
             obj.screens.append(Screen.make(val))
-        obj.sort()
+        obj.renumber_priorities()
         return obj
 
-    def sort(self) -> None:
+    def renumber_priorities(self) -> None:
         for screen in self.screens:
             screen.sort()
 
-    def toprompt(self, text: str):
-        positive: list[PromptBlueprint] = []
-        negative: list[PromptBlueprint] = []
+    def toprompt(self, text: str) -> tuple[str, str]:
+        positive = PromptBlueprint()
+        negative = PromptBlueprint()
         for screen in self.screens:
             pos, neg = screen.toprompt(text)
             positive += pos
             negative += neg
 
-        for blueprint in positive:
-            print(json.dumps(asdict(blueprint), indent=2))
-        for blueprint in negative:
-            print(json.dumps(asdict(blueprint), indent=2))
-        return ""
+        print("pos----------------------------------")
+        for token in positive.tokens:
+            print(json.dumps(asdict(token), indent=2))
+        print("neg----------------------------------")
+        for token in negative.tokens:
+            print(json.dumps(asdict(token), indent=2))
+        return positive.to_promptstr(), negative.to_promptstr()
+
+
+def json_default(obj: Any) -> str:
+    if isinstance(obj, set):
+        lst = []
+        for e in obj:
+            lst.append(e)
+        return lst
 
 
 prompter = Prompter.make("src/debug/parse_test/test.yaml")
-prompter.toprompt("today: 2026/02/05, Name1 (vibe: Vibe) sunny")
-# for screen in prompter.screens:
-# print(json.dumps(asdict(screen), indent=2))
+pos, neg = prompter.toprompt("today: 2026/02/05, Name2 (vibe: )foobarBarFugahogeHogeBazbaz")
+# for s=creen in prompter.screens:
+#    print(json.dumps(asdict(screen), indent=2, default=json_default))
+print("POS:", pos)
+print("NEG:", neg)
