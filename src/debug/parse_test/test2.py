@@ -107,21 +107,41 @@ class PromptBlueprint:
 
     tokens: list[TokenBlueprint] = field(default_factory=list)
 
-    def append(self, token: Token, priority: int, is_stable: bool):
-        self.tokens.append(TokenBlueprint(token=token, priority=priority, is_stable=is_stable))
-        self.sort()
-
-    def __iadd__(self, other):
-        if not isinstance(other, PromptBlueprint):
+    def append(self, other: Any, sort: bool = False) -> None:
+        if isinstance(other, TokenBlueprint):
+            self.tokens.append(other)
+        elif isinstance(other, PromptBlueprint):
+            self.tokens += other.tokens
+        else:
             raise TypeError
-        self.tokens += other.tokens
-        self.sort()
-        return self
+
+        self.dedupe()
+        if sort:
+            self.sort()
 
     def sort(self) -> None:
         self.tokens = sorted(self.tokens, key=lambda t: t.priority)
 
-    # 優先度解決, 多重プロンプト解決, 文字列化
+    def dedupe(self) -> None:
+        best: dict[str, TokenBlueprint] = {}
+
+        for token in self.tokens:
+            key = token.token.token
+            if key not in best:
+                best[key] = token
+                continue
+
+            crnt = best[key]
+            # weight が大きい方を優先
+            if token.token.weight > crnt.token.weight:
+                best[key] = token
+                continue
+
+            # weight が同じなら priority が小さい方を優先
+            if token.token.weight == crnt.token.weight and token.priority < crnt.priority:
+                best[key] = token
+
+        self.tokens = list(best.values())
 
     def to_promptstr(self) -> str:
         tokenstrs = []
@@ -202,9 +222,13 @@ class Rule:
         negative = PromptBlueprint()
 
         for token in self.positive.tokens:
-            positive.append(token=token, priority=priority, is_stable=is_stable)
+            positive.append(
+                TokenBlueprint(token=token, priority=priority, is_stable=is_stable), sort=True
+            )
         for token in self.negative.tokens:
-            negative.append(token=token, priority=priority, is_stable=is_stable)
+            negative.append(
+                TokenBlueprint(token=token, priority=priority, is_stable=is_stable), sort=True
+            )
         return positive, negative
 
 
@@ -288,14 +312,14 @@ class Field:
                 pos, neg = rule.toprompt(
                     match=match, priority=self.priority, is_stable=self.is_stable
                 )
-                positive += pos
-                negative += neg
+                positive.append(pos, sort=True)
+                negative.append(neg, sort=True)
 
         if self.default and not positive.tokens and not negative.tokens:
             # default
             pos, neg = self.default.toprompt(priority=self.priority, is_stable=self.is_stable)
-            positive += pos
-            negative += neg
+            positive.append(pos, sort=True)
+            negative.append(neg, sort=True)
 
         return positive, negative
 
@@ -388,14 +412,20 @@ class Screen:
         negative = PromptBlueprint()
         for fld in self.fields:
             pos, neg = fld.toprompt(text)
-            positive += pos
-            negative += neg
+            positive.append(pos, sort=True)
+            negative.append(neg, sort=True)
 
         # 共通プロンプトは常に最後尾
         for token in self.common_positive.tokens:
-            positive.append(token=token, priority=len(positive.tokens) + 1, is_stable=False)
+            positive.append(
+                TokenBlueprint(token=token, priority=len(positive.tokens) + 1, is_stable=False),
+                sort=True,
+            )
         for token in self.common_negative.tokens:
-            negative.append(token=token, priority=len(negative.tokens) + 1, is_stable=False)
+            negative.append(
+                TokenBlueprint(token=token, priority=len(negative.tokens) + 1, is_stable=False),
+                sort=True,
+            )
 
         return positive, negative
 
@@ -424,8 +454,8 @@ class Prompter:
         negative = PromptBlueprint()
         for screen in self.screens:
             pos, neg = screen.toprompt(text)
-            positive += pos
-            negative += neg
+            positive.append(pos, sort=True)
+            negative.append(neg, sort=True)
 
         print("pos----------------------------------")
         for token in positive.tokens:
@@ -445,7 +475,7 @@ def json_default(obj: Any) -> str:
 
 
 prompter = Prompter.make("src/debug/parse_test/test.yaml")
-pos, neg = prompter.toprompt("today: 2026/02/05, Name2 (vibe: )foobarBarFugahogeHogeBazbaz")
+pos, neg = prompter.toprompt("today: 2026/02/05, Name2 (vibe: Vibe1)foobarBarFugahogeHogeBazbaz")
 # for s=creen in prompter.screens:
 #    print(json.dumps(asdict(screen), indent=2, default=json_default))
 print("POS:", pos)
