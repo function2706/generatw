@@ -156,9 +156,10 @@ class Rule:
         return cls(matches=matches, positive=positive, negative=negative)
 
     def toprompt(
-        self, match: str, priority: int, is_stable: bool
+        self, priority: int, is_stable: bool, match: str = None
     ) -> tuple[list[PromptBlueprint], list[PromptBlueprint]]:
-        if match not in self.matches:
+        if self.matches and match and match not in self.matches:
+            # default = matches が空, もしくは match 未指定の場合はここに入らない
             return [], []
 
         positive: list[PromptBlueprint] = []
@@ -233,15 +234,27 @@ class Field:
         negative: list[PromptBlueprint] = []
 
         try:
-            matches = re.findall(self.pattern, text)
+            match_itrs = re.finditer(self.pattern, text)
         except re.error as e:
             raise ValueError(f"Invalid regex pattern: {self.pattern}") from e
 
-        for match in matches:
+        for match_itr in match_itrs:
+            try:
+                match = match_itr.group(self.capturegrp)
+            except Exception:
+                # キャプチャグループ不正は無視
+                continue
+
             for rule in self.rules:
                 pos, neg = rule.toprompt(
                     match=match, priority=self.priority, is_stable=self.is_stable
                 )
+                positive += pos
+                negative += neg
+
+            if not positive and not negative:
+                # default
+                pos, neg = self.default.toprompt(priority=self.priority, is_stable=self.is_stable)
                 positive += pos
                 negative += neg
 
@@ -370,14 +383,14 @@ class Prompter:
             positive += pos
             negative += neg
 
-        # for blueprint in positive:
-        # print(json.dumps(asdict(blueprint), indent=2))
-        # for blueprint in negative:
-        # print(json.dumps(asdict(blueprint), indent=2))
+        for blueprint in positive:
+            print(json.dumps(asdict(blueprint), indent=2))
+        for blueprint in negative:
+            print(json.dumps(asdict(blueprint), indent=2))
         return ""
 
 
 prompter = Prompter.make("src/debug/parse_test/test.yaml")
-prompter.toprompt("today: 2026/02/05, Name1 (vibe: Vibe1) sunny")
-for screen in prompter.screens:
-    print(json.dumps(asdict(screen), indent=2))
+prompter.toprompt("today: 2026/02/05, Name1 (vibe: Vibe) sunny")
+# for screen in prompter.screens:
+# print(json.dumps(asdict(screen), indent=2))
