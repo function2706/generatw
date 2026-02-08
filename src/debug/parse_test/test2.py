@@ -51,7 +51,9 @@ class Token:
     def make(cls, original_token: str):
         m = re.fullmatch(r"\(?([\w\s\-.]+)(?::([0-9.]+))?\)?", original_token.strip())
         if not m:
-            raise ValueError
+            raise ValueError(
+                f"Invalid token format: '{original_token}'. Expected 'word' or '(word:1.2)'."
+            )
 
         token, weight_str = m.groups()
         try:
@@ -127,7 +129,10 @@ class PromptBlueprint:
             for token in other.tokens:
                 self.append(token)
         else:
-            raise TypeError
+            raise TypeError(
+                f"Cannot append {type(other).__name__} to PromptBlueprint."
+                " Expected TokenBlueprint or PromptBlueprint."
+            )
 
     def sort(self) -> None:
         self.tokens = sorted(self.tokens, key=lambda t: (t.period, t.priority))
@@ -200,7 +205,9 @@ class Rule:
                 positive = TokenSet.make(val.get(KeyName.positive))
                 negative = TokenSet.make(val.get(KeyName.negative))
             else:
-                raise ValueError
+                raise ValueError(
+                    f"Rule '{key}' in 'maps' must be a string or dict, but {type(val).__name__}."
+                )
         else:
             positive = TokenSet.make(key_str)
             if isinstance(val, list):
@@ -212,7 +219,9 @@ class Rule:
                 matches = {str(i) for i in val.get(KeyName.conditions, [])}
                 negative = TokenSet.make(val.get(KeyName.negative))
             else:
-                raise ValueError
+                raise ValueError(
+                    f"Rule '{key}' in 'ranges' must be a list or dict, but {type(val).__name__}."
+                )
 
         return cls(matches=matches, positive=positive, negative=negative)
 
@@ -289,7 +298,7 @@ class Field:
         if KeyName.pattern in field:
             obj.pattern = field.get(KeyName.pattern)
         else:
-            raise ValueError
+            raise ValueError(f"Field definition missing mandatory 'pattern' key. Source: {field}")
 
         if KeyName.capturegrp in field:
             obj.capturegrp = int(field.get(KeyName.capturegrp))
@@ -307,11 +316,16 @@ class Field:
             for key, val in field.get(KeyName.ranges).items():
                 obj.rules.append(Rule.make(key=key, val=val, is_maps=False))
         else:
-            raise ValueError
+            raise ValueError(
+                f"Field '{field.get(KeyName.pattern)}' must have either 'maps' or 'ranges'."
+            )
 
         if KeyName.default in field:
             val = field.get(KeyName.default)
-            obj.default = Rule.make(KeyName.default, val)
+            try:
+                obj.default = Rule.make(KeyName.default, val)
+            except Exception as e:
+                raise ValueError(f"Invalid default in field '{obj.pattern}'") from e
 
         try:
             if obj.re_cache is None:
@@ -332,6 +346,10 @@ class Field:
                 match = match_itr.group(self.capturegrp)
             except Exception:
                 # キャプチャグループ不正は無視
+                print(
+                    f"Capture group {self.capturegrp} not found in pattern '{self.pattern}'"
+                    f" for text '{text}'"
+                )
                 continue
 
             for rule in self.rules:
@@ -395,6 +413,9 @@ class Screen:
         for key, val in screen.items():
             if key == KeyName.ignition and isinstance(val, dict):
                 type, patterns = next(iter(val.items()))
+                if not isinstance(patterns, list):
+                    raise ValueError("Ignition patterns must be list")
+
                 obj.ignition = cls.Ignition(
                     patterns=[re.compile(str(p)) for p in patterns],
                     is_all=True if type == ValName.all else False,
