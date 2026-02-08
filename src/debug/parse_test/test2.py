@@ -111,7 +111,7 @@ class PromptBlueprint:
 
     tokens: list[TokenBlueprint] = field(default_factory=list)
 
-    def append(self, other: Any, sort: bool = False) -> None:
+    def append(self, other: Any) -> None:
         """
         tokens に要素を追加し, 共通する SourcePath のものは削除する
         """
@@ -129,10 +129,6 @@ class PromptBlueprint:
         else:
             raise TypeError
 
-        self.dedupe()
-        if sort:
-            self.sort()
-
     def sort(self) -> None:
         self.tokens = sorted(self.tokens, key=lambda t: (t.period, t.priority))
 
@@ -146,22 +142,17 @@ class PromptBlueprint:
                 continue
 
             crnt = best[key]
-            # weight が大きい方を優先
-            if token.token.weight > crnt.token.weight:
-                best[key] = token
-                continue
-
-            # weight が同じなら priority が小さい方を優先
-            if token.token.weight == crnt.token.weight and token.priority < crnt.priority:
+            if (token.token.weight > crnt.token.weight) or (
+                token.token.weight == crnt.token.weight and token.priority < crnt.priority
+            ):
                 best[key] = token
 
         self.tokens = list(best.values())
 
     def to_promptstr(self) -> str:
-        tokenstrs = []
-        for token in self.tokens:
-            tokenstrs.append(token.to_promptstr())
-        return ",".join(filter(None, tokenstrs))
+        self.dedupe()
+        self.sort()
+        return ",".join(t.to_promptstr() for t in self.tokens if t.token.token)
 
 
 @dataclass
@@ -248,8 +239,7 @@ class Rule:
                     is_stable=is_stable,
                     source_path=source_path,
                     period=period,
-                ),
-                sort=True,
+                )
             )
         for token in self.negative.tokens:
             negative.append(
@@ -259,8 +249,7 @@ class Rule:
                     is_stable=is_stable,
                     source_path=source_path,
                     period=period,
-                ),
-                sort=True,
+                )
             )
         return positive, negative
 
@@ -324,17 +313,17 @@ class Field:
             val = field.get(KeyName.default)
             obj.default = Rule.make(KeyName.default, val)
 
+        try:
+            if obj.re_cache is None:
+                obj.re_cache = re.compile(obj.pattern)
+        except re.error as e:
+            raise ValueError(f"Invalid regex pattern: {obj.pattern}") from e
+
         return obj
 
     def toprompt(self, text: str, period: int) -> tuple[PromptBlueprint, PromptBlueprint]:
         positive = PromptBlueprint()
         negative = PromptBlueprint()
-
-        try:
-            if self.re_cache is None:
-                self.re_cache = re.compile(self.pattern)
-        except re.error as e:
-            raise ValueError(f"Invalid regex pattern: {self.pattern}") from e
 
         matched_once = False
         for match_itr in self.re_cache.finditer(text):
@@ -353,8 +342,8 @@ class Field:
                     source_path=self.source_path,
                     period=period,
                 )
-                positive.append(pos, sort=True)
-                negative.append(neg, sort=True)
+                positive.append(pos)
+                negative.append(neg)
 
         if matched_once and self.default and not positive.tokens and not negative.tokens:
             # default
@@ -364,8 +353,8 @@ class Field:
                 source_path=self.source_path,
                 period=period,
             )
-            positive.append(pos, sort=True)
-            negative.append(neg, sort=True)
+            positive.append(pos)
+            negative.append(neg)
 
         return positive, negative
 
@@ -463,8 +452,8 @@ class Screen:
         negative = PromptBlueprint()
         for fld in self.fields:
             pos, neg = fld.toprompt(text, period=period)
-            positive.append(pos, sort=True)
-            negative.append(neg, sort=True)
+            positive.append(pos)
+            negative.append(neg)
 
         # 共通プロンプトは常に最後尾
         for token in self.common_positive.tokens:
@@ -476,8 +465,7 @@ class Screen:
                     else 1,
                     is_stable=False,
                     period=period,
-                ),
-                sort=True,
+                )
             )
         for token in self.common_negative.tokens:
             negative.append(
@@ -488,8 +476,7 @@ class Screen:
                     else 1,
                     is_stable=False,
                     period=period,
-                ),
-                sort=True,
+                )
             )
 
         return positive, negative
@@ -521,33 +508,25 @@ class Prompter:
         negative = PromptBlueprint()
 
         # 継続分を最初に記録
-        positive.append(self.continuing_positive, sort=True)
-        negative.append(self.continuing_negative, sort=True)
+        positive.append(self.continuing_positive)
+        negative.append(self.continuing_negative)
 
         for screen in self.screens:
             pos, neg = screen.toprompt(text, self.period)
-            positive.append(pos, sort=True)
-            negative.append(neg, sort=True)
+            positive.append(pos)
+            negative.append(neg)
 
         # 継続分を記録, ただし同じルール元パスのものは更新
         for token in positive.tokens:
             if token.is_stable:
-                self.continuing_positive.append(token, sort=True)
+                self.continuing_positive.append(token)
         for token in negative.tokens:
             if token.is_stable:
-                self.continuing_negative.append(token, sort=True)
+                self.continuing_negative.append(token)
 
         self.period += 1
 
         return positive.to_promptstr(), negative.to_promptstr()
-
-
-def json_default(obj: Any) -> str:
-    if isinstance(obj, set):
-        lst = []
-        for e in obj:
-            lst.append(e)
-        return lst
 
 
 prompter = Prompter.make("src/debug/parse_test/yamls/testcase1.yaml")
@@ -617,5 +596,21 @@ pos, neg = prompter.toprompt("sub go")
 print("POS:", pos)
 print("NEG:", neg)
 pos, neg = prompter.toprompt("sub go mood:bad")
+print("POS:", pos)
+print("NEG:", neg)
+prompter = Prompter.make("src/debug/parse_test/yamls/test.yaml")
+pos, neg = prompter.toprompt("today: 2026/02/05, Name2 (vibe: Vibe1)")
+print("POS:", pos)
+print("NEG:", neg)
+pos, neg = prompter.toprompt("sub: WOW!! mood: Mood2 , equip: Slacks foobar")
+print("POS:", pos)
+print("NEG:", neg)
+pos, neg = prompter.toprompt("today: foobarBarFugahogeHogeBazbaz")
+print("POS:", pos)
+print("NEG:", neg)
+pos, neg = prompter.toprompt("sub: WOW!! mood: Mood1 , equip: Blouse ")
+print("POS:", pos)
+print("NEG:", neg)
+pos, neg = prompter.toprompt("today: 2026/07/21, Name1 (vibe: ) foobarBarFugahogeHogeBazbaz")
 print("POS:", pos)
 print("NEG:", neg)

@@ -1,0 +1,48 @@
+POS: bar
+NEG: baz
+POS: ten
+NEG:
+POS: zzz
+NEG:
+POS:
+NEG:
+POS: (foo:1.5)
+NEG:
+POS: alpha
+NEG:
+POS: beta
+NEG:
+POS:
+NEG:
+POS: hot
+NEG: cold
+POS: foo,common
+NEG:
+POS: first,second
+NEG:
+POS: (girl:1.5),spring,A,B,DEF,SIDE_P,commonA
+NEG: snow,SIDE_N,commonN
+POS: alice,spring,happy,main_common_p
+NEG: main_common_n
+POS: alice,spring,main_common_p
+NEG: main_common_n
+POS: bob,(alice:1.5),winter,main_common_p
+NEG: cold,main_common_n
+POS: bob,winter
+NEG: cold
+POS: bob,winter,good,sub_common_p
+NEG: cold,sub_common_n
+POS: bob,winter,good,sub_common_p
+NEG: cold,sub_common_n
+POS: bob,winter,good,sub_common_p
+NEG: cold,BAD,sub_common_n
+POS: name2,feature2,vibe1,winter,common positive
+NEG: NAME2,HOT,common negative
+POS: name2,feature2,vibe1,winter,mood2,pants,sub common positive
+NEG: NAME2,HOT,MOOD2,skirt,sub common negative
+POS: name2,feature2,vibe1,winter,mood2,fuga,(hoge:1.3),foo,(bar:1.3),baz,common positive
+NEG: NAME2,HOT,MOOD2,FUGA,HOGE,FOO,(nope:1.4),BAR,nyome,BAZ,common negative
+POS: name2,feature2,vibe1,winter,mood1,shirt,sub common positive
+NEG: NAME2,HOT,MOOD2,sub common negative
+POS: mood1,name1,feature1,vibe1,vibe2,fuga,(hoge:1.3),summer,foo,(bar:1.3),baz,common positive
+NEG: NAME2,HOT,MOOD2,FUGA,HOGE,FOO,(nope:1.4),BAR,nyome,BAZ,common negative
