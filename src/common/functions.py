@@ -60,6 +60,11 @@ def json_default(obj: Any) -> str:
         return str(obj)
     if isinstance(obj, deque):
         return list(obj)
+    if isinstance(obj, set):
+        lst = []
+        for e in obj:
+            lst.append(e)
+        return lst
     raise TypeError(f"{obj.__class__.__name__} is not JSON serializable")
 
 
