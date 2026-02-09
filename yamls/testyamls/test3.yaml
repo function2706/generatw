@@ -31,7 +31,7 @@ main:
     ranges:
       spring: ["03", "04", "05"]
       winter:
-        conditions: ["12", "01", "02"]
+        positive: ["12", "01", "02"]
         negative: cold
 
   # default が出る

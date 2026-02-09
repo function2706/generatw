@@ -271,7 +271,7 @@ main:
         summer: ["07", "08"]
         autumn: ["09", "10"]
         winter:
-          conditions: ["11", "12", "01", "02"]
+          positive: ["11", "12", "01", "02"]
           negative: HOT
     location:
       pattern: "(sunny|rainy)"

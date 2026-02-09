@@ -272,27 +272,27 @@ ranges:
 - マッチした値が `"03"` なら → `spring` が positive に追加
 - マッチした値が `"07"` なら → `summer` が positive に追加
 
-#### 例2: conditions + negative
+#### 例2: positive + negative
 
 ```yaml
 ranges:
   (hoge:1.3):
-    conditions: ["hoge"]
+    positive: ["hoge"]
     negative: HOGE,nope
   fuga:
-    conditions: ["fuga", "Fuga"]
-    negative: FUGA,(nope:1.3)
+    positive: FUGA,(nope:1.3)
+    negative: ["fuga", "Fuga"]
 ```
 
-- `conditions` に含まれていれば **キー自体が positive として使用**
-- `negative` があれば negative にも追加
-- キー部分（`(hoge:1.3)`, `fuga`）が positive プロンプト
+- `positive` (もしくは `negative`) に含まれていれば **キー自体が positive (もしくは negative) として使用**
+- キー部分（`(hoge:1.3)`, `fuga`）が positive (もしくは negative) プロンプト
+- `positive` と `negative` の一方は必ず list でなければならず, 他方は string でなければならない
 
-#### 例3: conditions のみ
+#### 例3: positive (もしくは negative) のみ
 
 ```yaml
 (hoge:1.2):
-  conditions: ["Hoge"]
+  positive: ["Hoge"]
 ```
 
 - negative の定義は不要
@@ -465,12 +465,12 @@ mainstat:
       priority: 2
       ranges:
         (hoge:1.3):
-          conditions: ["hoge"]
+          positive: ["hoge"]
           negative: HOGE,nope
         (hoge:1.2):
-          conditions: ["Hoge"]
+          negative: ["Hoge"]
         fuga:
-          conditions: ["fuga", "Fuga"]
+          positive: ["fuga", "Fuga"]
           negative: FUGA,(nope:1.3)
   
   POSITIVE: "masterpiece,best quality"
@@ -623,7 +623,7 @@ YAML に記述された priority 値は、読み込み後に以下のルール�
 |予約語|意味|
 |------|------|
 |`ranges`|プロンプト → 値集合の逆引きマッピング|
-|`conditions`|マッチ対象となる値リスト|
+|`positive`|マッチ対象となる値リスト|
 |`negative`|ネガティブプロンプト|
 
 ※ `ranges` では **キー自体が positive プロンプト** として使用される。
@@ -697,8 +697,8 @@ type PromptEntry = {
 };
 
 type RangeEntry = {
-  conditions: string[];
-  negative?: string;
+  positive?: string[] | string;
+  negative?: string | string[];
 };
 ```
 

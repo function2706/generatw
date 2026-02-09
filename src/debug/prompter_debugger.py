@@ -3,7 +3,6 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-import pyperclip
 import yaml
 
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -26,7 +25,13 @@ CORRECT_RESULT = {
         "testcase5-2: 'go v:B'": {"POS": "beta", "NEG": ""},
     },
     "case-7": {"testcase5-1: 'hello v:A'": {"POS": "", "NEG": ""}},
-    "case-8": {"testcase6-1: 'go 8'": {"POS": "hot", "NEG": "cold"}},
+    "case-8": {
+        "testcase6-1: 'go 8'": {"POS": "hot", "NEG": "cold"},
+        "testcase6-2: 'go 5'": {"POS": "warm", "NEG": "cold"},
+        "testcase6-3: 'go 2'": {"POS": "cool", "NEG": ""},
+        "testcase6-4: 'go 9'": {"POS": "warm", "NEG": ""},
+        "testcase6-5: 'go 1'": {"POS": "", "NEG": "heat"},
+    },
     "case-9": {"testcase7-1: 'go x'": {"POS": "foo,common", "NEG": ""}},
     "case-10": {"testcase8-1: 'go x'": {"POS": "first,second", "NEG": ""}},
     "case-11": {
@@ -77,6 +82,12 @@ CORRECT_RESULT = {
         },
     },
     "case-19": {
+        "test2-1: 'start name:alice boost month:04 tag:a tag:b miss:bad side'": {
+            "POS": "(girl:1.5),spring,A,B,DEF,SIDE_P,commonA",
+            "NEG": "snow,SIDE_N,commonN",
+        }
+    },
+    "case-20": {
         "test3-1: 'today name:alice m:03 vibe:happy'": {
             "POS": "alice,spring,happy,main_common_p",
             "NEG": "main_common_n",
@@ -96,12 +107,6 @@ CORRECT_RESULT = {
             "POS": "bob,winter,sub_common_p",
             "NEG": "cold,BAD,sub_common_n",
         },
-    },
-    "case-20": {
-        "test2-1: 'start name:alice boost month:04 tag:a tag:b miss:bad side'": {
-            "POS": "(girl:1.5),spring,A,B,DEF,SIDE_P,commonA",
-            "NEG": "snow,SIDE_N,commonN",
-        }
     },
 }
 
@@ -137,9 +142,12 @@ class PrompterDebugger:
         yamlname = self.yamlpath.name.replace(".yaml", "")
         result: dict[str, dict[str, str]] = {}
         for i, text in enumerate(texts):
-            pos, neg = self.prompter.toprompt(text)
-            posneg = {"POS": pos, "NEG": neg}
-            result[f"{yamlname}-{i + 1}: '{text}'"] = posneg
+            try:
+                pos, neg = self.prompter.toprompt(text)
+                posneg = {"POS": pos, "NEG": neg}
+                result[f"{yamlname}-{i + 1}: '{text}'"] = posneg
+            except Exception as e:
+                raise Exception(f"Error with '{text}'") from e
         return result
 
     def debug_cases(
@@ -156,16 +164,13 @@ class PrompterDebugger:
         for id, texts_n_paths in cases.items():
             result_by_texts = {}
             for yamlpath, texts in texts_n_paths.items():
-                self.set(Path(yamlpath))
-                result_by_texts = self.debug_texts(texts)
+                try:
+                    self.set(Path(yamlpath))
+                    result_by_texts = self.debug_texts(texts)
+                except Exception as e:
+                    raise Exception(f"Error on '{yamlpath}'") from e
             result[f"case-{id}"] = result_by_texts
         return result
-
-    def debug_clipboard(self) -> None:
-        """
-        展開中 yaml について現在のクリップボードの内容を適用する
-        """
-        self.debug_texts([pyperclip.paste()])
 
 
 def debug() -> None:
@@ -179,7 +184,7 @@ def debug() -> None:
             "5": {"yamls/testyamls/testcase4.yaml": ["go x"]},
             "6": {"yamls/testyamls/testcase5.yaml": ["go v:A", "go v:B"]},
             "7": {"yamls/testyamls/testcase5.yaml": ["hello v:A"]},
-            "8": {"yamls/testyamls/testcase6.yaml": ["go 8"]},
+            "8": {"yamls/testyamls/testcase6.yaml": ["go 8", "go 5", "go 2", "go 9", "go 1"]},
             "9": {"yamls/testyamls/testcase7.yaml": ["go x"]},
             "10": {"yamls/testyamls/testcase8.yaml": ["go x"]},
             "11": {"yamls/testyamls/testcase9.yaml": ["go v:A", "go v:B"]},
@@ -199,6 +204,11 @@ def debug() -> None:
                 ]
             },
             "19": {
+                "yamls/testyamls/test2.yaml": [
+                    "start name:alice boost month:04 tag:a tag:b miss:bad side"
+                ]
+            },
+            "20": {
                 "yamls/testyamls/test3.yaml": [
                     "today name:alice m:03 vibe:happy",
                     "today m:03",
@@ -209,15 +219,19 @@ def debug() -> None:
                     "sub go mood:bad",
                 ]
             },
-            "20": {
-                "yamls/testyamls/test2.yaml": [
-                    "start name:alice boost month:04 tag:a tag:b miss:bad side"
-                ]
-            },
         }
     )
     dump_json(result, "debug")
-    print(f"Result:{result == CORRECT_RESULT}")
+    for key, test_result in result.items():
+        correct_result = CORRECT_RESULT.get(key)
+        print(f"{key:10}:", end="")
+        if correct_result is None:
+            print("NEW")
+        else:
+            if test_result == correct_result:
+                print("o")
+            else:
+                print("x !")
 
 
 debug()

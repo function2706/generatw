@@ -32,7 +32,7 @@ main: # 画面種別(名称任意)
         summer: ["07", "08"] # 数値は必ずダブルクォートで囲むこと(07 は "7" になる)
         autumn: ["09", "10"]
         winter:
-          conditions: ["11", "12", "01", "02"]
+          positive: ["11", "12", "01", "02"]
           negative: HOT
     weather:
       pattern: "(sunny|rainy)"
@@ -63,12 +63,12 @@ main: # 画面種別(名称任意)
       priority: 2
       ranges:
         (hoge:1.3): # token が被った場合, weight は最大のものを1つだけ採用
-          conditions: ["hoge"]
+          positive: ["hoge"]
           negative: HOGE,nope
         (hoge:1.2):
-          conditions: ["Hoge"]
+          positive: ["Hoge"]
         fuga:
-          conditions: ["fuga", "Fuga"]
+          positive: ["fuga", "Fuga"]
           negative: FUGA,(nope:1.3) # token が被った場合, weight は最大のものを1つだけ採用
   POSITIVE: "common positive" # この値は必ずポジティブプロンプトの末尾に追加される
   NEGATIVE: "common negative" # この値は必ずネガティブプロンプトの末尾に追加される
@@ -94,7 +94,7 @@ sub:
       shirt: ["Blouse", "Shirt"]
       (pants:1.2): ["Pants"]
       pants:
-        conditions: ["Shorts", "Slacks"]
+        positive: ["Shorts", "Slacks"]
         negative: "skirt"
       caps: ["Caps"]
   POSITIVE: "sub common positive"

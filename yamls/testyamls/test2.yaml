@@ -29,7 +29,7 @@ all_in_one:
     priority: 3
     ranges:
       spring:
-        conditions: ["03", "04", "05"]
+        positive: ["03", "04", "05"]
         negative: "snow"
       winter: ["12", "01", "02"]
 

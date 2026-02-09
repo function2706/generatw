@@ -1,11 +1,13 @@
 import re
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from pathlib import Path
 from typing import Any, TypeAlias
 
 import yaml
+
+from common.functions import dump_json
 
 
 class KeyName(StrEnum):
@@ -23,7 +25,6 @@ class KeyName(StrEnum):
     table = "table"
     positive = "positive"
     negative = "negative"
-    conditions = "conditions"
     POSITIVE = "POSITIVE"
     NEGATIVE = "NEGATIVE"
 
@@ -302,15 +303,26 @@ class Rule:
                     f"Rule '{key}' in 'maps' must be a string or dict, but {type(val).__name__}."
                 )
         else:
-            positive = TokenSet.make(key_str)
             if isinstance(val, list):
                 # {'pos1,(pos2:1.2)': ['con1', 'con2']} 型
                 matches = {str(i) for i in val}
+                positive = TokenSet.make(key_str)
                 negative = TokenSet.make()
             elif isinstance(val, dict):
-                # {'pos1,(pos2:1.2)': {'conditions': ['con1', 'con2'], 'negative': 'neg1'}} 型
-                matches = {str(i) for i in val.get(KeyName.conditions, [])}
-                negative = TokenSet.make(val.get(KeyName.negative))
+                if isinstance(val.get(KeyName.positive), list):
+                    # {'pos1,(pos2:1.2)': {'positive': ['con1', 'con2'], 'negative': 'neg1'}} 型
+                    matches = {str(i) for i in val.get(KeyName.positive, [])}
+                    positive = TokenSet.make(key_str)
+                    negative = TokenSet.make(val.get(KeyName.negative))
+                elif isinstance(val.get(KeyName.negative), list):
+                    # {'pos1,(pos2:1.2)': {'positive': 'neg1', 'negative': ['con1', 'con2'], }} 型
+                    matches = {str(i) for i in val.get(KeyName.negative, [])}
+                    positive = TokenSet.make(val.get(KeyName.positive))
+                    negative = TokenSet.make(key_str)
+                else:
+                    raise ValueError(
+                        f"Rule '{key}' in 'ranges' must have 'positive' or 'negative' label."
+                    )
             else:
                 raise ValueError(
                     f"Rule '{key}' in 'ranges' must be a list or dict, but {type(val).__name__}."
@@ -734,8 +746,8 @@ class Prompter:
         """
         obj = cls()
         with open(yamlpath, "r", encoding="utf-8") as f:
-            yaml_dict: dict = yaml.safe_load(f)
-        for key, val in yaml_dict.items():
+            yamldict: dict = yaml.safe_load(f)
+        for key, val in yamldict.items():
             obj.screens.append(Screen.make(key, val))
         obj.renumber_priorities()
         return obj
@@ -779,3 +791,7 @@ class Prompter:
         self.period += 1
 
         return positive.to_promptstr(), negative.to_promptstr()
+
+    def dump(self) -> None:
+        for screen in self.screens:
+            dump_json(asdict(screen), label="prompter")
