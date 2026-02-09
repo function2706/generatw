@@ -32,7 +32,7 @@
       pattern: <regex>
       priority: <number>
       capturegrp: <number>
-      maps: <mapping>                   # または ranges
+      maps: <mapping>                   # または ranges, intervals
       default: <prompt>                 # オプション
   POSITIVE: <common_prompt>             # オプション
   NEGATIVE: <common_prompt>             # オプション
@@ -112,10 +112,10 @@ pattern: "(sunny|rainy|cloudy)"
 pattern: "(1|2)[0-9]{3}/([0-9]{2})"  # 2つのキャプチャグループ
 ```
 
-#### `maps` または `ranges`
+#### `maps` または `ranges` または `intervals`
 
-マッチした文字列をプロンプトに変換する方法を定義。**どちらか一方が必須。**
-どちらも記述されている場合は`maps`が優先。
+マッチした文字列をプロンプトに変換する方法を定義。**どれか一つが必須。**
+2つ以上記述されている場合は`maps` > `ranges` > `intervals`の優先順位。
 
 pattern が複数回マッチした場合、各マッチを独立に処理し、
 得られたトークンは通常のマージ規則に従って統合される。
@@ -178,7 +178,7 @@ priority と weight ルールに従ってマージされる。
 
 #### `default` (string | object)
 
-パターンに **マッチはしたが、maps / ranges のいずれの rule にもヒットしなかった場合** に適用されるフォールバック。
+パターンに **マッチはしたが、maps / ranges / intervals のいずれの rule にもヒットしなかった場合** に適用されるフォールバック。
 
 ```yaml
 default: "unknown"
@@ -192,7 +192,7 @@ default:
 ```
 
 - pattern に一度もマッチしなかった場合は適用されない
-- pattern がマッチし、かつ maps / ranges の結果が空だった場合に適用される
+- pattern がマッチし、かつ maps / ranges / intervals の結果が空だった場合に適用される
 
 ---
 
@@ -256,9 +256,9 @@ ranges:
 ```
 
 - **プロンプト（キー）** に対して、該当する値のリストを定義
-- 抽出した値がリストに含まれていれば、キーが positive として使用される
+- 抽出した値がリストに含まれていれば、キーが positive もしくは negative として使用される
 
-#### 例1: シンプルな範囲
+#### 例4.2.1: シンプルな範囲
 
 ```yaml
 pattern: "([0-9]{2})"
@@ -272,7 +272,7 @@ ranges:
 - マッチした値が `"03"` なら → `spring` が positive に追加
 - マッチした値が `"07"` なら → `summer` が positive に追加
 
-#### 例2: positive + negative
+#### 例4.2.2: positive + negative
 
 ```yaml
 ranges:
@@ -288,15 +288,78 @@ ranges:
 - キー部分（`(hoge:1.3)`, `fuga`）が positive (もしくは negative) プロンプト
 - `positive` と `negative` の一方は必ず list でなければならず, 他方は string でなければならない
 
-#### 例3: positive (もしくは negative) のみ
+#### 例4.2.3: positive (もしくは negative) のみ
 
 ```yaml
 (hoge:1.2):
   positive: ["Hoge"]
 ```
 
-- negative の定義は不要
-- キー `(hoge:1.2)` が positive として使用される
+- キー `(hoge:1.2)` が positive (もしくは negative) として使用される
+
+---
+
+### 4.3 `intervals` - 区間マッピング
+
+**キーと値の役割が逆転する**ことに注意。
+
+```yaml
+ranges:
+  <prompt_key>: <intervals>
+```
+
+- **プロンプト（キー）** に対して、該当する値の範囲を定義
+- 抽出した値が範囲内であれば、キーが positive もしくは negative として使用される
+- リストの長さは 2, かつ昇順でないといけない
+- リストは数値以外の要素を含んでいてはいけない
+
+```yaml
+OK1: [20, 40.3]
+OK2: ["20", "40.3"]
+NG1: [1, 2, 3]
+NG2: [40, 20]
+NG3: [a, 20]
+```
+
+#### 例4.3.1: シンプルな範囲
+
+```yaml
+pattern: "(\\d+)"
+capturegrp: 1
+ranges:
+  good: [71, 100]
+  normal: [30, 70]
+  bad: [0, 30]
+```
+
+- マッチした値が `"40"` なら → `normal` が positive に追加
+- マッチした値が `"30"` なら → `normal,bad` が positive に追加
+- マッチした値が `"70.5"` なら → positive には追加されない
+
+#### 例4.3.2: positive + negative
+
+```yaml
+ranges:
+  (hoge:1.3):
+    positive: [20, 40]
+    negative: HOGE,nope
+  fuga:
+    positive: FUGA,(nope:1.3)
+    negative: [60, 80]
+```
+
+- `positive` (もしくは `negative`) に含まれていれば **キー自体が positive (もしくは negative) として使用**
+- キー部分（`(hoge:1.3)`, `fuga`）が positive (もしくは negative) プロンプト
+- `positive` と `negative` の一方は必ず list でなければならず, 他方は string でなければならない
+
+#### 例3: positive (もしくは negative) のみ
+
+```yaml
+(hoge:1.2):
+  positive: [20, 40]
+```
+
+- キー `(hoge:1.2)` が positive (もしくは negative) として使用される
 
 ---
 
@@ -377,7 +440,7 @@ NEGATIVE: "common negative,low quality,blurry"
 2. **Priority ソート**: すべてのフィールドを priority 順に並べる
 3. **パターンマッチ**: 各フィールドの pattern でテキストを検索
 4. **値抽出**: capturegrp で指定されたグループの値を取得
-5. **マッピング**: maps または ranges で値をプロンプトに変換
+5. **マッピング**: maps または ranges または intervals で値をプロンプトに変換
 6. **マージ**: 同じトークンは最大重みで統合（positive/negative は完全に独立）
 7. **共通プロンプト追加**: POSITIVE/NEGATIVE を末尾に追加
 8. **出力**: カンマ区切りの文字列として出力
@@ -488,6 +551,22 @@ sub:
         positive: mood2
         negative: MOOD2
     default: mood3
+  s1:
+    pattern: "(\\d+)"
+    capturegrp: 1
+    intervals:
+      low:
+        positive: [0, 50]
+        negative: good
+      high:
+        positive: bad
+        negative: [0, 70]
+      middle: [40, 60]
+      perfect:
+        positive: [95, 100]
+      ok:
+        negative: [0, 40]
+    default: average
   POSITIVE: "sub common positive"
   NEGATIVE: "sub common negative"
 ```
@@ -571,8 +650,8 @@ YAML に記述された priority 値は、読み込み後に以下のルール�
 
 ### 9.4 マッピング
 
-- `maps` と `ranges` が同時に指定された場合、maps が優先され、ranges は無視される
-- `ranges` では **key がプロンプト、value が検索対象値リスト**
+- `maps` と `ranges` と `intervals` はこの順で優先的に適用される
+- `ranges` 及び `intervals` では **key がプロンプト、value が検索対象値リスト**
 - `maps` では **key が検索対象値、value がプロンプト**
 - negative-only 定義が可能（positive を省略可能）
 
@@ -623,10 +702,20 @@ YAML に記述された priority 値は、読み込み後に以下のルール�
 |予約語|意味|
 |------|------|
 |`ranges`|プロンプト → 値集合の逆引きマッピング|
-|`positive`|マッチ対象となる値リスト|
-|`negative`|ネガティブプロンプト|
+|`positive`|マッチ対象となる値リスト(ポジティブプロンプト)|
+|`negative`|マッチ対象となる値リスト(ネガティブプロンプト)|
 
 ※ `ranges` では **キー自体が positive プロンプト** として使用される。
+
+#### 10.4.3 intervals 型
+
+|予約語|意味|
+|------|------|
+|`intervals`|プロンプト → 値区間の逆引きマッピング|
+|`positive`|マッチ対象となる値区間(ポジティブプロンプト)|
+|`negative`|マッチ対象となる値区間(ネガティブプロンプト)|
+
+※ `intervals` では **キー自体が positive プロンプト** として使用される。
 
 ### 10.5 プロンプト文字列予約記号（構文レベル）
 
@@ -691,6 +780,12 @@ type RangesField = {
   };
 };
 
+type IntervalsField = {
+  intervals: {
+    [prompt: string]: string[] | IntervalEntry;
+  };
+};
+
 type PromptEntry = {
   positive?: string;
   negative?: string;
@@ -699,6 +794,11 @@ type PromptEntry = {
 type RangeEntry = {
   positive?: string[] | string;
   negative?: string | string[];
+};
+
+type IntervalEntry = {
+  positive?: float[] | string;
+  negative?: string | float[];
 };
 ```
 

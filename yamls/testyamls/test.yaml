@@ -97,5 +97,21 @@ sub:
         positive: ["Shorts", "Slacks"]
         negative: "skirt"
       caps: ["Caps"]
+  s1:
+    pattern: "point:\\s(\\d+)"
+    capturegrp: 1
+    intervals:
+      low:
+        positive: [0, 50]
+        negative: good
+      high:
+        positive: bad
+        negative: [0, 70]
+      middle: [40, 60]
+      perfect:
+        positive: [95, 100]
+      ok:
+        negative: [0, 40]
+    default: average
   POSITIVE: "sub common positive"
   NEGATIVE: "sub common negative"

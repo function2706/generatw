@@ -59,6 +59,14 @@ CORRECT_RESULT = {
         "testcase15-1: 'go a:on b:on'": {"POS": "A,B", "NEG": ""},
         "testcase15-2: 'go a:off'": {"POS": "B", "NEG": ""},
     },
+    "CASE 'interval'": {
+        "testcase16-1: 'go 20'": {"POS": "low,bad", "NEG": "good,high,ok"},
+        "testcase16-2: 'go 50'": {"POS": "low,bad,middle", "NEG": "good,high"},
+        "testcase16-3: 'go 55'": {"POS": "bad,middle", "NEG": "high"},
+        "testcase16-4: 'go 97'": {"POS": "perfect", "NEG": ""},
+        "testcase16-5: 'go 10'": {"POS": "low,bad", "NEG": "good,high,ok"},
+        "testcase16-6: 'go 75'": {"POS": "average", "NEG": ""},
+    },
     "CASE 'complex 1'": {
         "test-1: 'today: 2026/02/05, Name2 (vibe: Vibe1)'": {
             "POS": "name2,feature2,vibe1,winter,common positive",
@@ -72,9 +80,9 @@ CORRECT_RESULT = {
             "POS": "name2,feature2,vibe1,winter,mood2,fuga,(hoge:1.3),foo,(bar:1.3),baz,common positive",  # noqa: E501
             "NEG": "NAME2,HOT,MOOD2,FUGA,HOGE,FOO,(nope:1.4),BAR,nyome,BAZ,common negative",
         },
-        "test-4: 'sub: WOW!! mood: Mood1 , equip: Blouse '": {
-            "POS": "name2,feature2,vibe1,winter,mood1,shirt,sub common positive",
-            "NEG": "NAME2,HOT,sub common negative",
+        "test-4: 'sub: WOW!! mood: Mood1 , equip: Blouse point: 20'": {
+            "POS": "name2,feature2,vibe1,winter,mood1,low,bad,sub common positive",
+            "NEG": "NAME2,HOT,good,high,ok,sub common negative",
         },
         "test-5: 'today: 2026/07/21, Name1 (vibe: ) foobarBarFugahogeHogeBazbaz'": {
             "POS": "mood1,name1,feature1,vibe3,fuga,(hoge:1.3),summer,foo,(bar:1.3),baz,common positive",  # noqa: E501
@@ -199,12 +207,22 @@ def debug() -> None:
             "another rule kill nobody": {
                 "yamls/testyamls/testcase15.yaml": ["go a:on b:on", "go a:off"]
             },
+            "interval": {
+                "yamls/testyamls/testcase16.yaml": [
+                    "go 20",
+                    "go 50",
+                    "go 55",
+                    "go 97",
+                    "go 10",
+                    "go 75",
+                ]
+            },
             "complex 1": {
                 "yamls/testyamls/test.yaml": [
                     "today: 2026/02/05, Name2 (vibe: Vibe1)",
                     "sub: WOW!! mood: Mood2 , equip: Slacks foobar",
                     "today: foobarBarFugahogeHogeBazbaz",
-                    "sub: WOW!! mood: Mood1 , equip: Blouse ",
+                    "sub: WOW!! mood: Mood1 , equip: Blouse point: 20",
                     "today: 2026/07/21, Name1 (vibe: ) foobarBarFugahogeHogeBazbaz",
                 ]
             },

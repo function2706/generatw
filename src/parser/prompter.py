@@ -1,7 +1,7 @@
 import re
 from collections import defaultdict
 from dataclasses import asdict, dataclass, field
-from enum import StrEnum
+from enum import Enum, StrEnum, auto
 from pathlib import Path
 from typing import Any, TypeAlias
 
@@ -19,6 +19,7 @@ class KeyName(StrEnum):
     ruletype = "ruletype"
     maps = "maps"
     ranges = "ranges"
+    intervals = "intervals"
     default = "default"
     table = "table"
     positive = "positive"
@@ -238,6 +239,13 @@ class PromptBlueprint:
         return ",".join(t.to_promptstr() for t in self.tokens if t.token.token)
 
 
+class RuleType(Enum):
+    maps = auto()
+    ranges = auto()
+    intervals = auto()
+    default = auto()
+
+
 @dataclass
 class Rule:
     """
@@ -249,26 +257,30 @@ class Rule:
           -> Rule(matches={'xxx'}, positive=TokenSet([...]), negative=TokenSet([...]))\n
         ranges: {'pos1,(pos2:1.2)': ['con1', 'con2']}\n
           -> Rule(matches={'con1', 'con2'}, positive=TokenSet([...]), negative=TokenSet([]))
+        interval: {'pos1,(pos2:1.2)': [min, max]}\n
+          -> Rule(interval=(min, max), positive=TokenSet([...]), negative=TokenSet([]))
 
     Attributes:
         matches (set[str]): マッチ対象文字列の集合
+        interval (tuple[float, float]): interval の場合の最大値と最小値
         positive (TokenSet): ポジティブプロンプトのトークン集合
         negative (TokenSet): ネガティブプロンプトのトークン集合
     """
 
     matches: set[str] = field(default_factory=set)
+    interval: tuple[float, float] = field(default_factory=tuple)
     positive: TokenSet = field(default_factory=TokenSet)
     negative: TokenSet = field(default_factory=TokenSet)
 
     @classmethod
-    def make(cls, key: str, val: str | dict | list, is_maps: bool = True):
+    def make(cls, key: str, val: str | dict | list, ruletype: RuleType):
         """
         YAML の定義から Rule インスタンスを生成する
 
         Args:
             key (str): ルールのキー
             val (str | dict | list): ルールの値
-            is_maps (bool): maps形式の場合True, ranges形式の場合False
+            ruletype (RuleType): maps / ranges / interval
 
         Returns:
             Rule: 生成されたRuleインスタンス
@@ -277,8 +289,9 @@ class Rule:
             ValueError: 定義形式が不正な場合
         """
         key_str = str(key)
-        if key_str == KeyName.default:
+        if ruletype == RuleType.default:
             matches = set()
+            interval = tuple()
             if isinstance(val, str):
                 positive = TokenSet.make(val)
                 negative = TokenSet.make()
@@ -287,8 +300,9 @@ class Rule:
                 negative = TokenSet.make(val.get(KeyName.negative))
             else:
                 raise ValueError
-        elif is_maps:
+        elif ruletype == RuleType.maps:
             matches = {key_str}
+            interval = tuple()
             if isinstance(val, str):
                 # {'xxx': 'pos1,(pos2:1.2)'} 型
                 positive = TokenSet.make(val)
@@ -300,7 +314,8 @@ class Rule:
                 raise ValueError(
                     f"Rule '{key}' in 'maps' must be a string or dict, but {type(val).__name__}."
                 )
-        else:
+        elif ruletype == RuleType.ranges:
+            interval = tuple()
             if isinstance(val, list):
                 # {'pos1,(pos2:1.2)': ['con1', 'con2']} 型
                 matches = {str(i) for i in val}
@@ -313,7 +328,7 @@ class Rule:
                     positive = TokenSet.make(key_str)
                     negative = TokenSet.make(val.get(KeyName.negative))
                 elif isinstance(val.get(KeyName.negative), list):
-                    # {'pos1,(pos2:1.2)': {'positive': 'neg1', 'negative': ['con1', 'con2'], }} 型
+                    # {'pos1,(pos2:1.2)': {'positive': 'pos1', 'negative': ['con1', 'con2'], }} 型
                     matches = {str(i) for i in val.get(KeyName.negative, [])}
                     positive = TokenSet.make(val.get(KeyName.positive))
                     negative = TokenSet.make(key_str)
@@ -325,8 +340,50 @@ class Rule:
                 raise ValueError(
                     f"Rule '{key}' in 'ranges' must be a list or dict, but {type(val).__name__}."
                 )
+        elif ruletype == RuleType.intervals:
 
-        return cls(matches=matches, positive=positive, negative=negative)
+            def check_list(lst: list) -> tuple[float, float]:
+                if len(lst) != 2:
+                    raise ValueError(
+                        f"'interval' list must be 2-length, this is {len(lst)}-length."
+                    )
+                try:
+                    min = float(lst[0])
+                    max = float(lst[1])
+                except Exception as e:
+                    raise TypeError(f"'{lst[0]}' or '{lst[1]}' is invalid value form.") from e
+                if min > max:
+                    raise ValueError(f"Invalid interval: min={lst[0]} > max={lst[1]}")
+                return min, max
+
+            matches = set()
+            if isinstance(val, list):
+                # {'pos1,(pos2:1.2)': [min, max]} 型
+                min, max = check_list(val)
+                positive = TokenSet.make(key_str)
+                negative = TokenSet.make()
+            elif isinstance(val, dict):
+                if isinstance(val.get(KeyName.positive), list):
+                    # {'pos1,(pos2:1.2)': {'positive': [min, max], 'negative': 'neg1'}} 型
+                    min, max = check_list(val.get(KeyName.positive))
+                    positive = TokenSet.make(key_str)
+                    negative = TokenSet.make(val.get(KeyName.negative))
+                elif isinstance(val.get(KeyName.negative), list):
+                    # {'pos1,(pos2:1.2)': {'positive': 'pos1', 'negative': [min, max], }} 型
+                    min, max = check_list(val.get(KeyName.negative))
+                    positive = TokenSet.make(val.get(KeyName.positive))
+                    negative = TokenSet.make(key_str)
+                else:
+                    raise ValueError(
+                        f"Rule '{key}' in 'intervals' must have 'positive' or 'negative' label."
+                    )
+            else:
+                raise ValueError(
+                    f"Rule '{key}' in 'intervals' must be a list or dict, but {type(val).__name__}."
+                )
+            interval = (min, max)
+
+        return cls(matches=matches, interval=interval, positive=positive, negative=negative)
 
     def toprompt(
         self,
@@ -350,7 +407,10 @@ class Rule:
             tuple[PromptBlueprint, PromptBlueprint]: タプル
         """
         if self.matches and match not in self.matches:
-            # default = matches が空の場合はここに入らない
+            # default つまり matches が空の場合はここに入らない
+            return PromptBlueprint(), PromptBlueprint()
+        elif self.interval and (float(match) < self.interval[0] or float(match) > self.interval[1]):
+            # default つまり interval が空の場合はここに入らない
             return PromptBlueprint(), PromptBlueprint()
 
         positive = PromptBlueprint()
@@ -445,19 +505,23 @@ class Field:
 
         if KeyName.maps in field:
             for key, val in field.get(KeyName.maps).items():
-                obj.rules.append(Rule.make(key=key, val=val, is_maps=True))
+                obj.rules.append(Rule.make(key=key, val=val, ruletype=RuleType.maps))
         elif KeyName.ranges in field:
             for key, val in field.get(KeyName.ranges).items():
-                obj.rules.append(Rule.make(key=key, val=val, is_maps=False))
+                obj.rules.append(Rule.make(key=key, val=val, ruletype=RuleType.ranges))
+        elif KeyName.intervals in field:
+            for key, val in field.get(KeyName.intervals).items():
+                obj.rules.append(Rule.make(key=key, val=val, ruletype=RuleType.intervals))
         else:
             raise ValueError(
-                f"Field '{field.get(KeyName.pattern)}' must have either 'maps' or 'ranges'."
+                f"Field '{field.get(KeyName.pattern)}' must have either"
+                " 'maps' or 'ranges' or 'intervals'."
             )
 
         if KeyName.default in field:
             val = field.get(KeyName.default)
             try:
-                obj.default = Rule.make(KeyName.default, val)
+                obj.default = Rule.make(KeyName.default, val, RuleType.default)
             except Exception as e:
                 raise ValueError(f"Invalid default in field '{obj.pattern}'") from e
 
@@ -566,8 +630,11 @@ class Screen:
             # str や list は無視
             return
 
-        if KeyName.pattern in node and (KeyName.maps in node or KeyName.ranges in node):
-            # 'pattern' キーが存在することを正しい Field の条件とする
+        if KeyName.pattern in node and (
+            KeyName.maps in node or KeyName.ranges in node or KeyName.intervals in node
+        ):
+            # 'pattern' キー及び 'maps'/'ranges'/'intervals'が存在することを
+            # 正しい Field の条件とする
             field = Field.make(node)
             field.source_path = source_path.copy()
             self.fields.append(field)

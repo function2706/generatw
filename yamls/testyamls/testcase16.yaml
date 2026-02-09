@@ -1,0 +1,19 @@
+main:
+  ignition:
+    any: ["go"]
+  s1:
+    pattern: "(\\d+)"
+    capturegrp: 1
+    intervals:
+      low:
+        positive: [0, 50]
+        negative: good
+      high:
+        positive: bad
+        negative: [0, 70]
+      middle: [40, 60]
+      perfect:
+        positive: [95, 100]
+      ok:
+        negative: [0, 40]
+    default: average
