@@ -132,6 +132,9 @@ class PrompterDebugger:
     def dump_yamldict(self) -> None:
         dump_json(self.yamldict, self.yamlpath.name.replace(".yaml", ""))
 
+    def dump_normalized_yamldict(self) -> None:
+        dump_json(self.prompter.todict(), f"normalized {self.yamlpath.name.replace('.yaml', '')}")
+
     def debug_texts(self, texts: list[str]) -> dict[str, dict[str, str]]:
         """
         展開中 yaml について texts 内のテキストを順に適用する

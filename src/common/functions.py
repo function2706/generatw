@@ -65,6 +65,8 @@ def json_default(obj: Any) -> str:
         for e in obj:
             lst.append(e)
         return lst
+    if isinstance(obj, re.Pattern):
+        return obj.pattern
     raise TypeError(f"{obj.__class__.__name__} is not JSON serializable")
 
 

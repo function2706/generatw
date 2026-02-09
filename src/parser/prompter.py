@@ -7,8 +7,6 @@ from typing import Any, TypeAlias
 
 import yaml
 
-from common.functions import dump_json
-
 
 class KeyName(StrEnum):
     """YAML設定ファイルで使用されるキー名の定数"""
@@ -792,6 +790,5 @@ class Prompter:
 
         return positive.to_promptstr(), negative.to_promptstr()
 
-    def dump(self) -> None:
-        for screen in self.screens:
-            dump_json(asdict(screen), label="prompter")
+    def todict(self) -> dict:
+        return asdict(self)
