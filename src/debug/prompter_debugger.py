@@ -15,51 +15,51 @@ from common.functions import dump_json  # noqa: E402
 from parser.prompter import Prompter  # noqa: E402
 
 CORRECT_RESULT = {
-    "case-1": {"testcase1-1: 'today Name2'": {"POS": "bar", "NEG": "baz"}},
-    "case-2": {"testcase2-1: 'go id:10'": {"POS": "ten", "NEG": ""}},
-    "case-3": {"testcase3-1: 'go v:B'": {"POS": "zzz", "NEG": ""}},
-    "case-4": {"testcase3-1: 'go nothing'": {"POS": "", "NEG": ""}},
-    "case-5": {"testcase4-1: 'go x'": {"POS": "(foo:1.5)", "NEG": ""}},
-    "case-6": {
+    "CASE 'match'": {"testcase1-1: 'today Name2'": {"POS": "bar", "NEG": "baz"}},
+    "CASE 'int or string'": {"testcase2-1: 'go id:10'": {"POS": "ten", "NEG": ""}},
+    "CASE 'default'": {"testcase3-1: 'go v:B'": {"POS": "zzz", "NEG": ""}},
+    "CASE 'no match'": {"testcase3-1: 'go nothing'": {"POS": "", "NEG": ""}},
+    "CASE 'weight dedupe'": {"testcase4-1: 'go x'": {"POS": "(foo:1.5)", "NEG": ""}},
+    "CASE 'stable push stable out'": {
         "testcase5-1: 'go v:A'": {"POS": "alpha", "NEG": ""},
         "testcase5-2: 'go v:B'": {"POS": "beta", "NEG": ""},
     },
-    "case-7": {"testcase5-1: 'hello v:A'": {"POS": "", "NEG": ""}},
-    "case-8": {
+    "CASE 'wetty'": {"testcase5-1: 'hello v:A'": {"POS": "", "NEG": ""}},
+    "CASE 'ranges'": {
         "testcase6-1: 'go 8'": {"POS": "hot", "NEG": "cold"},
         "testcase6-2: 'go 5'": {"POS": "warm", "NEG": "cold"},
         "testcase6-3: 'go 2'": {"POS": "cool", "NEG": ""},
         "testcase6-4: 'go 9'": {"POS": "warm", "NEG": ""},
         "testcase6-5: 'go 1'": {"POS": "", "NEG": "heat"},
     },
-    "case-9": {"testcase7-1: 'go x'": {"POS": "foo,common", "NEG": ""}},
-    "case-10": {"testcase8-1: 'go x'": {"POS": "first,second", "NEG": ""}},
-    "case-11": {
+    "CASE 'common'": {"testcase7-1: 'go x'": {"POS": "foo,common", "NEG": ""}},
+    "CASE 'priority dedupe'": {"testcase8-1: 'go x'": {"POS": "first,second", "NEG": ""}},
+    "CASE 'pos pop, neg vanish'": {
         "testcase9-1: 'go v:A'": {"POS": "apple", "NEG": "bad"},
         "testcase9-2: 'go v:B'": {"POS": "banana", "NEG": ""},
     },
-    "case-12": {
+    "CASE 'neg pop, pos vanish'": {
         "testcase10-1: 'go v:A'": {"POS": "apple", "NEG": ""},
         "testcase10-2: 'go v:B'": {"POS": "", "NEG": "bad"},
     },
-    "case-13": {
+    "CASE 'both vanish'": {
         "testcase11-1: 'go v:A'": {"POS": "apple", "NEG": "bad"},
         "testcase11-2: 'go v:B'": {"POS": "", "NEG": ""},
     },
-    "case-14": {
+    "CASE 'volatile vanish soon'": {
         "testcase12-1: 'go v:A'": {"POS": "apple", "NEG": ""},
         "testcase12-2: 'go nothing'": {"POS": "", "NEG": ""},
     },
-    "case-15": {
+    "CASE 'no match, default pop'": {
         "testcase13-1: 'go v:A'": {"POS": "apple", "NEG": ""},
         "testcase13-2: 'go v:B'": {"POS": "default", "NEG": ""},
     },
-    "case-16": {"testcase14-1: 'go'": {"POS": "", "NEG": ""}},
-    "case-17": {
+    "CASE 'empty token'": {"testcase14-1: 'go'": {"POS": "", "NEG": ""}},
+    "CASE 'another rule kill nobody'": {
         "testcase15-1: 'go a:on b:on'": {"POS": "A,B", "NEG": ""},
         "testcase15-2: 'go a:off'": {"POS": "B", "NEG": ""},
     },
-    "case-18": {
+    "CASE 'complex 1'": {
         "test-1: 'today: 2026/02/05, Name2 (vibe: Vibe1)'": {
             "POS": "name2,feature2,vibe1,winter,common positive",
             "NEG": "NAME2,HOT,common negative",
@@ -81,13 +81,13 @@ CORRECT_RESULT = {
             "NEG": "FUGA,HOGE,FOO,(nope:1.4),BAR,nyome,BAZ,common negative",
         },
     },
-    "case-19": {
+    "CASE 'complex 2'": {
         "test2-1: 'start name:alice boost month:04 tag:a tag:b miss:bad side'": {
             "POS": "(girl:1.5),spring,A,B,DEF,SIDE_P,commonA",
             "NEG": "snow,SIDE_N,commonN",
         }
     },
-    "case-20": {
+    "CASE 'complex 3'": {
         "test3-1: 'today name:alice m:03 vibe:happy'": {
             "POS": "alice,spring,happy,main_common_p",
             "NEG": "main_common_n",
@@ -172,7 +172,7 @@ class PrompterDebugger:
                     result_by_texts = self.debug_texts(texts)
                 except Exception as e:
                     raise Exception(f"Error on '{yamlpath}'") from e
-            result[f"case-{id}"] = result_by_texts
+            result[f"CASE '{id}'"] = result_by_texts
         return result
 
 
@@ -180,24 +180,26 @@ def debug() -> None:
     debugger = PrompterDebugger()
     result = debugger.debug_cases(
         {
-            "1": {"yamls/testyamls/testcase1.yaml": ["today Name2"]},
-            "2": {"yamls/testyamls/testcase2.yaml": ["go id:10"]},
-            "3": {"yamls/testyamls/testcase3.yaml": ["go v:B"]},
-            "4": {"yamls/testyamls/testcase3.yaml": ["go nothing"]},
-            "5": {"yamls/testyamls/testcase4.yaml": ["go x"]},
-            "6": {"yamls/testyamls/testcase5.yaml": ["go v:A", "go v:B"]},
-            "7": {"yamls/testyamls/testcase5.yaml": ["hello v:A"]},
-            "8": {"yamls/testyamls/testcase6.yaml": ["go 8", "go 5", "go 2", "go 9", "go 1"]},
-            "9": {"yamls/testyamls/testcase7.yaml": ["go x"]},
-            "10": {"yamls/testyamls/testcase8.yaml": ["go x"]},
-            "11": {"yamls/testyamls/testcase9.yaml": ["go v:A", "go v:B"]},
-            "12": {"yamls/testyamls/testcase10.yaml": ["go v:A", "go v:B"]},
-            "13": {"yamls/testyamls/testcase11.yaml": ["go v:A", "go v:B"]},
-            "14": {"yamls/testyamls/testcase12.yaml": ["go v:A", "go nothing"]},
-            "15": {"yamls/testyamls/testcase13.yaml": ["go v:A", "go v:B"]},
-            "16": {"yamls/testyamls/testcase14.yaml": ["go"]},
-            "17": {"yamls/testyamls/testcase15.yaml": ["go a:on b:on", "go a:off"]},
-            "18": {
+            "match": {"yamls/testyamls/testcase1.yaml": ["today Name2"]},
+            "int or string": {"yamls/testyamls/testcase2.yaml": ["go id:10"]},
+            "default": {"yamls/testyamls/testcase3.yaml": ["go v:B"]},
+            "no match": {"yamls/testyamls/testcase3.yaml": ["go nothing"]},
+            "weight dedupe": {"yamls/testyamls/testcase4.yaml": ["go x"]},
+            "stable push stable out": {"yamls/testyamls/testcase5.yaml": ["go v:A", "go v:B"]},
+            "wetty": {"yamls/testyamls/testcase5.yaml": ["hello v:A"]},
+            "ranges": {"yamls/testyamls/testcase6.yaml": ["go 8", "go 5", "go 2", "go 9", "go 1"]},
+            "common": {"yamls/testyamls/testcase7.yaml": ["go x"]},
+            "priority dedupe": {"yamls/testyamls/testcase8.yaml": ["go x"]},
+            "pos pop, neg vanish": {"yamls/testyamls/testcase9.yaml": ["go v:A", "go v:B"]},
+            "neg pop, pos vanish": {"yamls/testyamls/testcase10.yaml": ["go v:A", "go v:B"]},
+            "both vanish": {"yamls/testyamls/testcase11.yaml": ["go v:A", "go v:B"]},
+            "volatile vanish soon": {"yamls/testyamls/testcase12.yaml": ["go v:A", "go nothing"]},
+            "no match, default pop": {"yamls/testyamls/testcase13.yaml": ["go v:A", "go v:B"]},
+            "empty token": {"yamls/testyamls/testcase14.yaml": ["go"]},
+            "another rule kill nobody": {
+                "yamls/testyamls/testcase15.yaml": ["go a:on b:on", "go a:off"]
+            },
+            "complex 1": {
                 "yamls/testyamls/test.yaml": [
                     "today: 2026/02/05, Name2 (vibe: Vibe1)",
                     "sub: WOW!! mood: Mood2 , equip: Slacks foobar",
@@ -206,12 +208,12 @@ def debug() -> None:
                     "today: 2026/07/21, Name1 (vibe: ) foobarBarFugahogeHogeBazbaz",
                 ]
             },
-            "19": {
+            "complex 2": {
                 "yamls/testyamls/test2.yaml": [
                     "start name:alice boost month:04 tag:a tag:b miss:bad side"
                 ]
             },
-            "20": {
+            "complex 3": {
                 "yamls/testyamls/test3.yaml": [
                     "today name:alice m:03 vibe:happy",
                     "today m:03",
@@ -227,14 +229,14 @@ def debug() -> None:
     dump_json(result, "debug")
     for key, test_result in result.items():
         correct_result = CORRECT_RESULT.get(key)
-        print(f"{key:10}:", end="")
         if correct_result is None:
-            print("NEW")
+            print("NEW - ", end="")
         else:
             if test_result == correct_result:
-                print("o")
+                print("OK  - ", end="")
             else:
-                print("x !")
+                print("NG  - ", end="")
+        print(f"{key}")
 
 
 debug()
