@@ -10,6 +10,8 @@ import yaml
 
 
 class KeyName(StrEnum):
+    """YAML設定ファイルで使用されるキー名の定数"""
+
     ignition = "ignition"
     pattern = "pattern"
     priority = "priority"
@@ -28,6 +30,8 @@ class KeyName(StrEnum):
 
 
 class ValName(StrEnum):
+    """YAML設定ファイルで使用される値の定数"""
+
     stable = "stable"
     volatile = "volatile"
     any = "any"
@@ -36,13 +40,20 @@ class ValName(StrEnum):
 
 @dataclass(frozen=True)
 class Consts:
+    """システム全体で使用される定数"""
+
     lowest_priority = -1
 
 
 @dataclass
 class Token:
     """
-    '(foo:1.2)' -> (token='foo', weight=1.2)
+    重み付きトークンを表すクラス\n
+    例: '(foo:1.2)' -> Token(token='foo', weight=1.2)
+
+    Attributes:
+        token (str): トークン文字列
+        weight (float): トークンの重み
     """
 
     token: str = ""
@@ -50,6 +61,18 @@ class Token:
 
     @classmethod
     def make(cls, original_token: str):
+        """
+        文字列からTokenインスタンスを生成する
+
+        Args:
+            original_token (str): 元のトークン文字列('word' または '(word:1.2)' 形式)
+
+        Returns:
+            Token: 生成されたTokenインスタンス
+
+        Raises:
+            ValueError: トークンの形式が不正な場合
+        """
         m = re.fullmatch(r"\(?([\w\s\-\(\)\\'.]+)(?::([0-9.]+))?\)?", original_token.strip())
         if not m:
             raise ValueError(
@@ -68,13 +91,27 @@ class Token:
 @dataclass
 class TokenSet:
     """
-    token1,(token2:1.2),token3 -> [(token1, 1.0), (token2, 1.2), (token3, 1.0)]
+    複数の重み付きトークンの集合を表すクラス\n
+    例: 'token1,(token2:1.2),token3'
+        -> [Token('token1', 1.0), Token('token2', 1.2), Token('token3', 1.0)]
+
+    Attributes:
+        tokens (list[Token]): トークンのリスト
     """
 
     tokens: list[Token] = field(default_factory=list)
 
     @classmethod
     def make(cls, text: str | None = None):
+        """
+        カンマ区切りの文字列からTokenSetインスタンスを生成する
+
+        Args:
+            text (str | None): カンマ区切りのトークン文字列
+
+        Returns:
+            TokenSet: 生成されたTokenSetインスタンス
+        """
         if text is None or not text:
             return cls(tokens=[Token()])
 
@@ -89,7 +126,15 @@ SourcePath: TypeAlias = list[str]
 @dataclass
 class TokenBlueprint:
     """
-    プロンプト化のためのトークンデータ
+    プロンプト化のためのトークンデータ\n
+    トークン本体に加えて, 優先度や安定性などのメタデータを保持する
+
+    Attributes:
+        token (Token): トークン本体
+        priority (int): 優先度(小さいほど高優先)
+        is_stable (bool): 安定フラグ(True の場合は次回以降も継続)
+        source_path (SourcePath): ソースパス(YAML内の階層)
+        period (int): 生成された世代番号
     """
 
     token: Token = field(default_factory=Token)
@@ -99,6 +144,12 @@ class TokenBlueprint:
     period: int = 0
 
     def to_promptstr(self) -> str:
+        """
+        プロンプト文字列に変換する
+
+        Returns:
+            str: プロンプト文字列('token' または '(token:weight)' 形式)
+        """
         return (
             f"({self.token.token}:{self.token.weight})"
             if self.token.weight != 1.0
@@ -109,14 +160,25 @@ class TokenBlueprint:
 @dataclass
 class PromptBlueprint:
     """
-    プロンプト化のためのトークンの集合とその処理を司るクラス
+    プロンプト化のためのトークンの集合とその処理を司るクラス\n
+    複数のTokenBlueprintを管理し, 重複排除やソートを行う
+
+    Attributes:
+        tokens (list[TokenBlueprint]): トークンのリスト
     """
 
     tokens: list[TokenBlueprint] = field(default_factory=list)
 
     def append(self, other: Any) -> None:
         """
-        tokens に要素を追加し, 共通する SourcePath のものは削除する
+        tokens に要素を追加し, 共通する SourcePath のものは削除する\n
+        より新しい period を持つトークンで既存のトークンを上書きする
+
+        Args:
+            other (TokenBlueprint | PromptBlueprint): 追加する要素
+
+        Raises:
+            TypeError: 引数の型が不正な場合
         """
         if isinstance(other, TokenBlueprint):
             self.tokens = [
@@ -136,9 +198,15 @@ class PromptBlueprint:
             )
 
     def sort(self) -> None:
+        """トークンを period と priority でソートする"""
         self.tokens = sorted(self.tokens, key=lambda t: (t.period, t.priority))
 
     def dedupe(self) -> None:
+        """
+        重複するトークンを排除する\n
+        同じトークン文字列が複数ある場合, より高い weight を持つものを優先し,\n
+        weight が同じ場合はより小さい priority を持つものを優先する
+        """
         best: dict[str, TokenBlueprint] = {}
 
         for token in self.tokens:
@@ -160,6 +228,13 @@ class PromptBlueprint:
         self.tokens = list(best.values())
 
     def to_promptstr(self) -> str:
+        """
+        プロンプト文字列に変換する\n
+        重複排除とソートを行った後, カンマ区切りの文字列を生成する
+
+        Returns:
+            str: カンマ区切りのプロンプト文字列
+        """
         self.dedupe()
         self.sort()
         return ",".join(t.to_promptstr() for t in self.tokens if t.token.token)
@@ -168,19 +243,19 @@ class PromptBlueprint:
 @dataclass
 class Rule:
     """
-    maps:
-        {'xxx': {'positive': 'pos1,(pos2:1.2)', 'negative': 'neg1'}}
-          -> (['xxx'], [(pos1, 1.0), (pos2, 1.2)], [(neg1, 1.0)])
-        {'xxx': {'positive': 'pos1,(pos2:1.2)'}} -> (['xxx'], [(pos1, 1.0), (pos2, 1.2)], [])
-        {'xxx': {'negative': 'neg1'} -> (['xxx'], [], [(neg1, 1.0)])}
-        {'xxx': 'pos1,(pos2:1.2)'} -> (['xxx'], [(pos1, 1.0), (pos2, 1.2)], [])
-    ranges:
-        {'pos1,(pos2:1.2)': {'conditions': ['con1', 'con2'], 'negative': 'neg1'}}
-          -> (['con1', 'con2'], [(pos1, 1.0), (pos2, 1.2)], [(neg1, 1.0)])
-        {'pos1,(pos2:1.2)': ['con1', 'con2']}
-          -> (['con1', 'con2'], [(pos1, 1.0), (pos2, 1.2)], [])
-    default:
-        プロンプトのパース規則は maps と同じ, matchstr は空
+    マッチ条件とプロンプトの対応関係を定義するクラス\n
+    maps形式またはranges形式で定義される
+
+    例:
+        maps: {'xxx': {'positive': 'pos1,(pos2:1.2)', 'negative': 'neg1'}}\n
+          -> Rule(matches={'xxx'}, positive=TokenSet([...]), negative=TokenSet([...]))\n
+        ranges: {'pos1,(pos2:1.2)': ['con1', 'con2']}\n
+          -> Rule(matches={'con1', 'con2'}, positive=TokenSet([...]), negative=TokenSet([]))
+
+    Attributes:
+        matches (set[str]): マッチ対象文字列の集合
+        positive (TokenSet): ポジティブプロンプトのトークン集合
+        negative (TokenSet): ネガティブプロンプトのトークン集合
     """
 
     matches: set[str] = field(default_factory=set)
@@ -189,6 +264,20 @@ class Rule:
 
     @classmethod
     def make(cls, key: str, val: str | dict | list, is_maps: bool = True):
+        """
+        YAML の定義から Rule インスタンスを生成する
+
+        Args:
+            key (str): ルールのキー
+            val (str | dict | list): ルールの値
+            is_maps (bool): maps形式の場合True, ranges形式の場合False
+
+        Returns:
+            Rule: 生成されたRuleインスタンス
+
+        Raises:
+            ValueError: 定義形式が不正な場合
+        """
         key_str = str(key)
         if key_str == KeyName.default:
             matches = set()
@@ -238,6 +327,19 @@ class Rule:
         period: int,
         match: str = None,
     ) -> tuple[PromptBlueprint, PromptBlueprint]:
+        """
+        マッチ文字列が条件を満たす場合にプロンプトを生成する
+
+        Args:
+            priority (int): 優先度
+            is_stable (bool): 安定フラグ
+            source_path (SourcePath): ソースパス
+            period (int): 世代番号
+            match (str, optional): マッチした文字列
+
+        Returns:
+            tuple[PromptBlueprint, PromptBlueprint]: タプル
+        """
         if self.matches and match not in self.matches:
             # default = matches が空の場合はここに入らない
             return PromptBlueprint(), PromptBlueprint()
@@ -271,18 +373,24 @@ class Rule:
 @dataclass
 class Field:
     """
-    capturegrp, priority, is_stable は指定がなければ 0, lowest_priority(最低優先度), False(Volatile)
+    正規表現パターンとルールの組み合わせを定義するクラス\n
+    テキストからパターンマッチングでトークンを抽出し, ルールに従ってプロンプトを生成する
 
-    {'pattern': '(xxx|yyy)', 'capturegrp': 1, 'priority': 2, 'lifetime': 'stable',
-     'maps': {'xxx': {'positive': 'pos1,(pos2:1.2)', 'negative': 'neg1'}, 'yyy': 'pos3,(pos4:1.5)'},
-     'default': {'positive': 'defpos1,(defpos2:1.7)', 'negative': 'defneg1'}}
-    -> ('(xxx|yyy)', 1, 2, True,
-        [
-          (['xxx'], [(pos1, 1.0), (pos2, 1.2)], [(neg1, 1.0)]),
-          (['yyy'], [(pos3, 1.0), (pos4, 1.5)], [])
-        ],
-        ([], [(defpos1, 1.0), (defpos2, 1.7)], [(defneg1, 1.0)])
-       )
+    例:
+        {'pattern': '(xxx|yyy)', 'capturegrp': 1, 'priority': 2, 'lifetime': 'stable',\n
+         'maps': {'xxx': {'positive': 'pos1,(pos2:1.2)', 'negative': 'neg1'},\n
+         'yyy': 'pos3,(pos4:1.5)'},\n
+         'default': {'positive': 'defpos1,(defpos2:1.7)', 'negative': 'defneg1'}}
+
+    Attributes:
+        pattern (str): 正規表現パターン
+        capturegrp (int): キャプチャグループ番号(デフォルト: 0)
+        priority (int): 優先度(デフォルト: lowest_priority)
+        is_stable (bool): 安定フラグ(デフォルト: False)
+        rules (list[Rule]): ルールのリスト
+        default (Rule | None): デフォルトルール
+        source_path (SourcePath): ソースパス
+        re_cache (re.Pattern[str]): コンパイル済み正規表現
     """
 
     pattern: str = ""
@@ -298,6 +406,18 @@ class Field:
 
     @classmethod
     def make(cls, field: dict[str, dict]):
+        """
+        YAML の定義から Field インスタンスを生成する
+
+        Args:
+            field (dict[str, dict]): フィールド定義の辞書
+
+        Returns:
+            Field: 生成されたFieldインスタンス
+
+        Raises:
+            ValueError: 定義形式が不正な場合, または正規表現が不正な場合
+        """
         obj = cls()
 
         if KeyName.pattern in field:
@@ -341,6 +461,17 @@ class Field:
         return obj
 
     def toprompt(self, text: str, period: int) -> tuple[PromptBlueprint, PromptBlueprint]:
+        """
+        指定の text をポジティブプロンプト・ネガティブプロンプトのタプルにする\n
+        マッチしない(キャプチャ逸脱を含む)場合はデフォルトを採用する
+
+        Args:
+            text (str): テキスト
+            period (int): プロンプト化の世代
+
+        Returns:
+            tuple[PromptBlueprint, PromptBlueprint]: タプル
+        """
         positive = PromptBlueprint()
         negative = PromptBlueprint()
 
@@ -384,8 +515,28 @@ class Field:
 
 @dataclass
 class Screen:
+    """
+    複数のFieldと共通プロンプトをまとめた画面定義クラス\n
+    ignitionパターンによる発火条件と, 複数のフィールドを持つ
+
+    Attributes:
+        ignition (Ignition): 発火条件
+        fields (list[Field]): フィールドのリスト
+        common_positive (TokenSet): 共通ポジティブプロンプト
+        common_negative (TokenSet): 共通ネガティブプロンプト
+    """
+
     @dataclass
     class Ignition:
+        """
+        画面の発火条件を定義するクラス
+
+        Attributes:
+            patterns (list[re.Pattern]): 発火パターンのリスト
+            is_all (bool): 全てのパターンにマッチする必要がある場合True,\n
+                           いずれかにマッチすればよい場合False
+        """
+
         patterns: list[re.Pattern] = field(default_factory=list)
         is_all: bool = False
 
@@ -395,6 +546,13 @@ class Screen:
     common_negative: TokenSet = field(default_factory=TokenSet)
 
     def collect_fields(self, node: dict, source_path: SourcePath) -> None:
+        """
+        YAML のノードを再帰的に探索し, Field 定義を収集する
+
+        Args:
+            node (dict): 探索対象のノード
+            source_path (SourcePath): 現在のソースパス
+        """
         if not isinstance(node, dict):
             # str や list は無視
             return
@@ -413,6 +571,19 @@ class Screen:
 
     @classmethod
     def make(cls, screen_name: str, screen: dict[str, dict[str, Any]]):
+        """
+        YAML の定義から Screen インスタンスを生成する
+
+        Args:
+            screen_name (str): 画面名
+            screen (dict[str, dict[str, Any]]): 画面定義の辞書
+
+        Returns:
+            Screen: 生成されたScreenインスタンス
+
+        Raises:
+            ValueError: ignitionパターンの定義が不正な場合
+        """
         obj = cls()
 
         for key, val in screen.items():
@@ -435,6 +606,11 @@ class Screen:
         return obj
 
     def sort(self) -> None:
+        """
+        フィールドの優先度を連番に振り直す\n
+        lowest_priority を除く優先度順にソートし, 1から始まる連番を割り当てる\n
+        lowest_priority は最後に配置される
+        """
         # バケット: 値 -> 出現 index のリスト
         buckets = defaultdict(list)
         for idx, fld in enumerate(self.fields):
@@ -462,6 +638,15 @@ class Screen:
         self.fields = result
 
     def check_ignition(self, text: str) -> bool:
+        """
+        テキストが発火条件を満たすかチェックする
+
+        Args:
+            text (str): チェック対象のテキスト
+
+        Returns:
+            bool: 発火条件を満たす場合True, そうでない場合False
+        """
         if not self.ignition.patterns:
             return False
 
@@ -471,6 +656,17 @@ class Screen:
             return any(p.search(text) for p in self.ignition.patterns)
 
     def toprompt(self, text: str, period: int) -> tuple[PromptBlueprint, PromptBlueprint]:
+        """
+        テキストからプロンプトを生成する\n
+        発火条件を満たさない場合は空のプロンプトを返す
+
+        Args:
+            text (str): テキスト
+            period (int): プロンプト化の世代
+
+        Returns:
+            tuple[PromptBlueprint, PromptBlueprint]: タプル
+        """
         if not self.check_ignition(text):
             return PromptBlueprint(), PromptBlueprint()
 
@@ -510,6 +706,17 @@ class Screen:
 
 @dataclass
 class Prompter:
+    """
+    複数の Screen を管理し, テキストからプロンプトを生成するメインクラス\n
+    stable トークンを継続的に保持し, 世代管理を行う
+
+    Attributes:
+        screens (list[Screen]): 画面のリスト
+        continuing_positive (PromptBlueprint): 継続ポジティブプロンプト
+        continuing_negative (PromptBlueprint): 継続ネガティブプロンプト
+        period (int): 現在の世代番号
+    """
+
     screens: list[Screen] = field(default_factory=list)
     continuing_positive: PromptBlueprint = field(default_factory=PromptBlueprint)
     continuing_negative: PromptBlueprint = field(default_factory=PromptBlueprint)
@@ -517,6 +724,15 @@ class Prompter:
 
     @classmethod
     def make(cls, yamlpath: Path):
+        """
+        YAML ファイルから Prompter インスタンスを生成する
+
+        Args:
+            yamlpath (Path): YAMLファイルのパス
+
+        Returns:
+            Prompter: 生成されたPrompterインスタンス
+        """
         obj = cls()
         with open(yamlpath, "r", encoding="utf-8") as f:
             yaml_dict: dict = yaml.safe_load(f)
@@ -526,10 +742,21 @@ class Prompter:
         return obj
 
     def renumber_priorities(self) -> None:
+        """全ての Screen のフィールド優先度を連番に振り直す"""
         for screen in self.screens:
             screen.sort()
 
     def toprompt(self, text: str) -> tuple[str, str]:
+        """
+        テキストからポジティブプロンプトとネガティブプロンプトを生成する\n
+        stable トークンは継続プロンプトとして保持され, 次回以降も使用される
+
+        Args:
+            text (str): テキスト
+
+        Returns:
+            tuple[str, str]: (ポジティブプロンプト文字列, ネガティブプロンプト文字列) のタプル
+        """
         positive = PromptBlueprint()
         negative = PromptBlueprint()
 
