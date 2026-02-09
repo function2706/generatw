@@ -167,31 +167,33 @@ main:
         宮出口 瑞霊: miyadeguchi mizuchi,blue hair,blue eyes,ponytail,crossed bangs,hair between eyes
     vibe:
       pattern: '^.+?\s*(?:（([^）]+)）)?\s*\(好感度'
-      priority: 2
+      priority: 4
       capturegrp: 1
       lifetime: stable
       maps:
-        ご機嫌: happy
-        フキゲン: angry
+        ご機嫌: (smile:1.1)
+        フキゲン: (angry:1.1)
     affection:
       pattern: "好感度:\\s*([a-zA-Z]+)\\s*\\d+"
       priority: 3
       capturegrp: 1
       lifetime: stable
       ranges:
-        looking at viewer: [Ex, SS, S, A, B, C, D, E]
+        looking at viewer: [Ex, SS, S, A]
         looking away: [F, G]
     trust:
       pattern: "信頼度:\\s*([a-zA-Z]+)\\s*\\d+"
-      priority: 4
+      priority: 3
       capturegrp: 1
       lifetime: stable
       ranges:
-        looking at viewer: [Ex, S, A, B, C, D, E]
-        looking away: [F, G]
+        smile:
+          negative: [F, G]
+        disgusting:
+          negative: [Ex, SS, S, A]
     frustration:
       pattern: '欲求不満度:\s*(\d+)％'
-      priority: 2
+      priority: 5
       capturegrp: 1
       lifetime: stable
       maps:
@@ -202,29 +204,46 @@ main:
       capturegrp: 1
       lifetime: stable
       maps:
-        xxx: xxx
+        ！: jitome
+        ！！: annoyed
+        ！！！: angry
+        ！！！！: (angry:1.1)
+        ！！！！！: (angry:1.2)
+        怒: (angry:1.2),v-shaped eyebrows
     in_heat:
       pattern: "発情中"
       priority: 4
       lifetime: stable
       maps:
-        発情中: blush
+        発情中: blush,in heat
     mood:
       pattern: 'ムード:\s*(OverDrive!!|❤*)'
       priority: 2
       capturegrp: 1
       lifetime: stable
       ranges:
-        loving: [❤, ❤❤, ❤❤❤]
-        loving,blush: [❤❤❤❤, ❤❤❤❤❤]
-        (loving:1.2),blush: [OverDrive!!]
+        ❤: (happy:0.9)
+        ❤❤: happy
+        ❤❤❤: happy
+        ❤❤❤❤: happy,blush
+        ❤❤❤❤❤: (happy:1.2),blush
+        OverDrive!!: (happy:1.2),blush,seductive smile
     reason:
       pattern: '理性:\s*(LimitBreak!!|★*)'
       priority: 2
       capturegrp: 1
       lifetime: stable
       maps:
-        xxx: xxx
+        ★:
+          negative: (in heat:0.9)
+        ★★:
+          negative: in heat
+        ★★★:
+          negative: in heat,blush
+        ★★★★:
+          negative: (in heat:1.1),(blush:1.1)
+        ★★★★★:
+          negative: (in heat:1.2),(blush:1.2)
     upper:
       pattern: '【上半身】\s*([^\s]*)'
       priority: 5
