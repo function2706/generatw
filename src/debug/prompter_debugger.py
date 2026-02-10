@@ -15,105 +15,229 @@ from common.functions import dump_json  # noqa: E402
 from parser.prompter import Prompter  # noqa: E402
 
 CORRECT_RESULT = {
-    "CASE 'match'": {"testcase1-1: 'today Name2'": {"POS": "bar", "NEG": "baz"}},
-    "CASE 'int or string'": {"testcase2-1: 'go id:10'": {"POS": "ten", "NEG": ""}},
-    "CASE 'default'": {"testcase3-1: 'go v:B'": {"POS": "zzz", "NEG": ""}},
-    "CASE 'no match'": {"testcase3-1: 'go nothing'": {"POS": "", "NEG": ""}},
-    "CASE 'weight dedupe'": {"testcase4-1: 'go x'": {"POS": "(foo:1.5)", "NEG": ""}},
+    "CASE 'match'": {"testcase1-1: 'today Name2'": {"POS": "bar", "NEG": "baz", "FLAGS": []}},
+    "CASE 'int or string'": {"testcase2-1: 'go id:10'": {"POS": "ten", "NEG": "", "FLAGS": []}},
+    "CASE 'default'": {"testcase3-1: 'go v:B'": {"POS": "zzz", "NEG": "", "FLAGS": []}},
+    "CASE 'no match'": {"testcase3-1: 'go nothing'": {"POS": "", "NEG": "", "FLAGS": []}},
+    "CASE 'weight dedupe'": {"testcase4-1: 'go x'": {"POS": "(foo:1.5)", "NEG": "", "FLAGS": []}},
     "CASE 'stable push stable out'": {
-        "testcase5-1: 'go v:A'": {"POS": "alpha", "NEG": ""},
-        "testcase5-2: 'go v:B'": {"POS": "beta", "NEG": ""},
+        "testcase5-1: 'go v:A'": {"POS": "alpha", "NEG": "", "FLAGS": []},
+        "testcase5-2: 'go v:B'": {"POS": "beta", "NEG": "", "FLAGS": []},
     },
-    "CASE 'wetty'": {"testcase5-1: 'hello v:A'": {"POS": "", "NEG": ""}},
+    "CASE 'wetty'": {"testcase5-1: 'hello v:A'": {"POS": "", "NEG": "", "FLAGS": []}},
     "CASE 'ranges'": {
-        "testcase6-1: 'go 8'": {"POS": "hot", "NEG": "cold"},
-        "testcase6-2: 'go 5'": {"POS": "warm", "NEG": "cold"},
-        "testcase6-3: 'go 2'": {"POS": "cool", "NEG": ""},
-        "testcase6-4: 'go 9'": {"POS": "warm", "NEG": ""},
-        "testcase6-5: 'go 1'": {"POS": "", "NEG": "heat"},
+        "testcase6-1: 'go 8'": {"POS": "hot", "NEG": "cold", "FLAGS": []},
+        "testcase6-2: 'go 5'": {"POS": "warm", "NEG": "cold", "FLAGS": []},
+        "testcase6-3: 'go 2'": {"POS": "cool", "NEG": "", "FLAGS": []},
+        "testcase6-4: 'go 9'": {"POS": "warm", "NEG": "", "FLAGS": []},
+        "testcase6-5: 'go 1'": {"POS": "", "NEG": "heat", "FLAGS": []},
     },
-    "CASE 'common'": {"testcase7-1: 'go x'": {"POS": "foo,common", "NEG": ""}},
-    "CASE 'priority dedupe'": {"testcase8-1: 'go x'": {"POS": "first,second", "NEG": ""}},
+    "CASE 'common'": {"testcase7-1: 'go x'": {"POS": "foo,common", "NEG": "", "FLAGS": []}},
+    "CASE 'priority dedupe'": {
+        "testcase8-1: 'go x'": {"POS": "first,second", "NEG": "", "FLAGS": []}
+    },
     "CASE 'pos pop, neg vanish'": {
-        "testcase9-1: 'go v:A'": {"POS": "apple", "NEG": "bad"},
-        "testcase9-2: 'go v:B'": {"POS": "banana", "NEG": ""},
+        "testcase9-1: 'go v:A'": {"POS": "apple", "NEG": "bad", "FLAGS": []},
+        "testcase9-2: 'go v:B'": {"POS": "banana", "NEG": "", "FLAGS": []},
     },
     "CASE 'neg pop, pos vanish'": {
-        "testcase10-1: 'go v:A'": {"POS": "apple", "NEG": ""},
-        "testcase10-2: 'go v:B'": {"POS": "", "NEG": "bad"},
+        "testcase10-1: 'go v:A'": {"POS": "apple", "NEG": "", "FLAGS": []},
+        "testcase10-2: 'go v:B'": {"POS": "", "NEG": "bad", "FLAGS": []},
     },
     "CASE 'both vanish'": {
-        "testcase11-1: 'go v:A'": {"POS": "apple", "NEG": "bad"},
-        "testcase11-2: 'go v:B'": {"POS": "", "NEG": ""},
+        "testcase11-1: 'go v:A'": {"POS": "apple", "NEG": "bad", "FLAGS": []},
+        "testcase11-2: 'go v:B'": {"POS": "", "NEG": "", "FLAGS": []},
     },
     "CASE 'volatile vanish soon'": {
-        "testcase12-1: 'go v:A'": {"POS": "apple", "NEG": ""},
-        "testcase12-2: 'go nothing'": {"POS": "", "NEG": ""},
+        "testcase12-1: 'go v:A'": {"POS": "apple", "NEG": "", "FLAGS": []},
+        "testcase12-2: 'go nothing'": {"POS": "", "NEG": "", "FLAGS": []},
     },
     "CASE 'no match, default pop'": {
-        "testcase13-1: 'go v:A'": {"POS": "apple", "NEG": ""},
-        "testcase13-2: 'go v:B'": {"POS": "default", "NEG": ""},
+        "testcase13-1: 'go v:A'": {"POS": "apple", "NEG": "", "FLAGS": []},
+        "testcase13-2: 'go v:B'": {"POS": "default", "NEG": "", "FLAGS": []},
     },
-    "CASE 'empty token'": {"testcase14-1: 'go'": {"POS": "", "NEG": ""}},
+    "CASE 'empty token'": {"testcase14-1: 'go'": {"POS": "", "NEG": "", "FLAGS": []}},
     "CASE 'another rule kill nobody'": {
-        "testcase15-1: 'go a:on b:on'": {"POS": "A,B", "NEG": ""},
-        "testcase15-2: 'go a:off'": {"POS": "B", "NEG": ""},
+        "testcase15-1: 'go a:on b:on'": {"POS": "A,B", "NEG": "", "FLAGS": []},
+        "testcase15-2: 'go a:off'": {"POS": "B", "NEG": "", "FLAGS": []},
     },
     "CASE 'interval'": {
-        "testcase16-1: 'go 20'": {"POS": "low,bad", "NEG": "good,high,ok"},
-        "testcase16-2: 'go 50'": {"POS": "low,bad,middle", "NEG": "good,high"},
-        "testcase16-3: 'go 55'": {"POS": "bad,middle", "NEG": "high"},
-        "testcase16-4: 'go 97'": {"POS": "perfect", "NEG": ""},
-        "testcase16-5: 'go 10'": {"POS": "low,bad", "NEG": "good,high,ok"},
-        "testcase16-6: 'go 75'": {"POS": "average", "NEG": ""},
+        "testcase16-1: 'go 20'": {"POS": "low,bad", "NEG": "good,high,ok", "FLAGS": []},
+        "testcase16-2: 'go 50'": {"POS": "low,bad,middle", "NEG": "good,high", "FLAGS": []},
+        "testcase16-3: 'go 55'": {"POS": "bad,middle", "NEG": "high", "FLAGS": []},
+        "testcase16-4: 'go 97'": {"POS": "perfect", "NEG": "", "FLAGS": []},
+        "testcase16-5: 'go 10'": {"POS": "low,bad", "NEG": "good,high,ok", "FLAGS": []},
+        "testcase16-6: 'go 75'": {"POS": "average", "NEG": "", "FLAGS": []},
+    },
+    "CASE 'flag stable'": {
+        "testcase17-1: 'environment: room, sunny'": {
+            "POS": "room",
+            "NEG": "",
+            "FLAGS": ["indoors", "private"],
+        },
+        "testcase17-2: 'character: Light Style, Umbrella'": {
+            "POS": "room,light style",
+            "NEG": "",
+            "FLAGS": ["indoors", "private"],
+        },
+        "testcase17-3: 'character: Casual Style'": {
+            "POS": "room,casual style",
+            "NEG": "",
+            "FLAGS": ["indoors", "private"],
+        },
+        "testcase17-4: 'environment: office, rainy'": {
+            "POS": "office",
+            "NEG": "",
+            "FLAGS": ["indoors", "public"],
+        },
+        "testcase17-5: 'character: Formal Style, Caps'": {
+            "POS": "office,formal style",
+            "NEG": "",
+            "FLAGS": ["indoors", "public"],
+        },
+        "testcase17-6: 'environment: city, windy'": {
+            "POS": "city,windy",
+            "NEG": "",
+            "FLAGS": ["cold", "outdoors", "public"],
+        },
+        "testcase17-7: 'character: CoolBiz Style, Caps'": {
+            "POS": "city,windy",
+            "NEG": "",
+            "FLAGS": ["cold", "outdoors", "public"],
+        },
+    },
+    "CASE 'flag formula'": {
+        "testcase17-1: 'TEST testp'": {"POS": "p", "NEG": "", "FLAGS": ["p"]},
+        "testcase17-2: 'TEST test1'": {"POS": "", "NEG": "", "FLAGS": ["p"]},
+        "testcase17-3: 'TEST test2'": {"POS": "", "NEG": "", "FLAGS": ["p"]},
+        "testcase17-4: 'TEST testq'": {"POS": "q", "NEG": "", "FLAGS": ["p", "q"]},
+        "testcase17-5: 'TEST test1'": {"POS": "test1", "NEG": "", "FLAGS": ["p", "q"]},
+        "testcase17-6: 'TEST test2'": {"POS": "test2", "NEG": "", "FLAGS": ["p", "q"]},
+    },
+    "CASE 'flag simple'": {
+        "testcase17-1: 'TEST simple2'": {"POS": "", "NEG": "", "FLAGS": []},
+        "testcase17-2: 'TEST simple1'": {"POS": "sim1", "NEG": "", "FLAGS": ["sim1"]},
+        "testcase17-3: 'TEST simple2'": {"POS": "sim2", "NEG": "", "FLAGS": ["sim1"]},
+    },
+    "CASE 'flag circ'": {
+        "testcase17-1: 'TEST circ1'": {"POS": "", "NEG": "", "FLAGS": []},
+        "testcase17-2: 'TEST circ2'": {"POS": "", "NEG": "", "FLAGS": []},
+    },
+    "CASE 'flag self'": {
+        "testcase17-1: 'TEST self1'": {"POS": "", "NEG": "", "FLAGS": []},
+        "testcase17-2: 'TEST self2'": {"POS": "", "NEG": "", "FLAGS": []},
+    },
+    "CASE 'flag add-remove'": {
+        "testcase17-1: 'TEST scene1'": {"POS": "scene1", "NEG": "", "FLAGS": ["s1"]},
+        "testcase17-2: 'TEST scene2'": {"POS": "scene2", "NEG": "", "FLAGS": ["s2"]},
+        "testcase17-3: 'TEST scene1'": {"POS": "scene1", "NEG": "", "FLAGS": ["s1", "s2"]},
+        "testcase17-4: 'TEST Scene2'": {"POS": "scene2_p", "NEG": "", "FLAGS": ["s2", "s2_p"]},
+        "testcase17-5: 'TEST scene3'": {"POS": "scene3", "NEG": "", "FLAGS": ["s2", "s2_p"]},
+        "testcase17-6: 'TEST scene4'": {"POS": "", "NEG": "", "FLAGS": ["s2", "s2_p"]},
+        "testcase17-7: 'TEST Scene3'": {
+            "POS": "scene3_p",
+            "NEG": "",
+            "FLAGS": ["s2", "s2_p", "s3"],
+        },
+        "testcase17-8: 'TEST scene4'": {"POS": "scene4", "NEG": "", "FLAGS": ["s2", "s2_p", "s3"]},
+    },
+    "CASE 'flag ranges'": {
+        "testcase17-1: 'TEST range4'": {"POS": "", "NEG": "", "FLAGS": []},
+        "testcase17-2: 'TEST range7'": {"POS": "", "NEG": "", "FLAGS": []},
+        "testcase17-3: 'TEST range1'": {"POS": "low", "NEG": "", "FLAGS": ["range_low"]},
+        "testcase17-4: 'TEST range8'": {"POS": "", "NEG": "", "FLAGS": ["range_low"]},
+        "testcase17-5: 'TEST range5'": {
+            "POS": "middle",
+            "NEG": "",
+            "FLAGS": ["range_low", "range_middle"],
+        },
+        "testcase17-6: 'TEST range9'": {
+            "POS": "high",
+            "NEG": "",
+            "FLAGS": ["range_low", "range_middle"],
+        },
+    },
+    "CASE 'flag intervals'": {
+        "testcase17-1: 'TEST interval4'": {"POS": "", "NEG": "", "FLAGS": []},
+        "testcase17-2: 'TEST interval7'": {"POS": "", "NEG": "", "FLAGS": []},
+        "testcase17-3: 'TEST interval1'": {"POS": "low", "NEG": "", "FLAGS": ["interval_low"]},
+        "testcase17-4: 'TEST interval8'": {"POS": "", "NEG": "", "FLAGS": ["interval_low"]},
+        "testcase17-5: 'TEST interval5'": {
+            "POS": "middle",
+            "NEG": "",
+            "FLAGS": ["interval_low", "interval_middle"],
+        },
+        "testcase17-6: 'TEST interval9'": {
+            "POS": "high",
+            "NEG": "",
+            "FLAGS": ["interval_low", "interval_middle"],
+        },
     },
     "CASE 'complex 1'": {
         "test-1: 'today: 2026/02/05, Name2 (vibe: Vibe1)'": {
             "POS": "name2,feature2,vibe1,winter,common positive",
             "NEG": "NAME2,HOT,common negative",
+            "FLAGS": [],
         },
         "test-2: 'sub: WOW!! mood: Mood2 , equip: Slacks foobar'": {
             "POS": "name2,feature2,vibe1,winter,mood2,pants,sub common positive",
             "NEG": "NAME2,HOT,MOOD2,skirt,sub common negative",
+            "FLAGS": [],
         },
         "test-3: 'today: foobarBarFugahogeHogeBazbaz'": {
             "POS": "name2,feature2,vibe1,winter,mood2,fuga,(hoge:1.3),foo,(bar:1.3),baz,common positive",  # noqa: E501
             "NEG": "NAME2,HOT,MOOD2,FUGA,HOGE,FOO,(nope:1.4),BAR,nyome,BAZ,common negative",
+            "FLAGS": [],
         },
         "test-4: 'sub: WOW!! mood: Mood1 , equip: Blouse point: 20'": {
             "POS": "name2,feature2,vibe1,winter,mood1,low,bad,sub common positive",
             "NEG": "NAME2,HOT,good,high,ok,sub common negative",
+            "FLAGS": [],
         },
         "test-5: 'today: 2026/07/21, Name1 (vibe: ) foobarBarFugahogeHogeBazbaz'": {
             "POS": "mood1,name1,feature1,vibe3,fuga,(hoge:1.3),summer,foo,(bar:1.3),baz,common positive",  # noqa: E501
             "NEG": "FUGA,HOGE,FOO,(nope:1.4),BAR,nyome,BAZ,common negative",
+            "FLAGS": [],
         },
     },
     "CASE 'complex 2'": {
         "test2-1: 'start name:alice boost month:04 tag:a tag:b miss:bad side'": {
             "POS": "(girl:1.5),spring,A,B,DEF,SIDE_P,commonA",
             "NEG": "snow,SIDE_N,commonN",
+            "FLAGS": [],
         }
     },
     "CASE 'complex 3'": {
         "test3-1: 'today name:alice m:03 vibe:happy'": {
             "POS": "alice,spring,happy,main_common_p",
             "NEG": "main_common_n",
+            "FLAGS": [],
         },
-        "test3-2: 'today m:03'": {"POS": "alice,spring,main_common_p", "NEG": "main_common_n"},
+        "test3-2: 'today m:03'": {
+            "POS": "alice,spring,main_common_p",
+            "NEG": "main_common_n",
+            "FLAGS": [],
+        },
         "test3-3: 'today name:bob boost m:12'": {
             "POS": "bob,(alice:1.5),winter,main_common_p",
             "NEG": "cold,main_common_n",
+            "FLAGS": [],
         },
-        "test3-4: 'hello name:alice'": {"POS": "bob,winter", "NEG": "cold"},
+        "test3-4: 'hello name:alice'": {"POS": "bob,winter", "NEG": "cold", "FLAGS": []},
         "test3-5: 'sub go mood:good'": {
             "POS": "bob,winter,good,sub_common_p",
             "NEG": "cold,sub_common_n",
+            "FLAGS": [],
         },
-        "test3-6: 'sub go'": {"POS": "bob,winter,good,sub_common_p", "NEG": "cold,sub_common_n"},
+        "test3-6: 'sub go'": {
+            "POS": "bob,winter,good,sub_common_p",
+            "NEG": "cold,sub_common_n",
+            "FLAGS": [],
+        },
         "test3-7: 'sub go mood:bad'": {
             "POS": "bob,winter,sub_common_p",
             "NEG": "cold,BAD,sub_common_n",
+            "FLAGS": [],
         },
     },
 }
@@ -154,8 +278,8 @@ class PrompterDebugger:
         result: dict[str, dict[str, str]] = {}
         for i, text in enumerate(texts):
             try:
-                pos, neg = self.prompter.toprompt(text)
-                posneg = {"POS": pos, "NEG": neg}
+                pos, neg, active_flags = self.prompter.toprompt(text)
+                posneg = {"POS": pos, "NEG": neg, "FLAGS": active_flags}
                 result[f"{yamlname}-{i + 1}: '{text}'"] = posneg
             except Exception as e:
                 raise Exception(f"Error with '{text}'") from e
@@ -215,6 +339,74 @@ def debug() -> None:
                     "go 97",
                     "go 10",
                     "go 75",
+                ]
+            },
+            "flag stable": {
+                "yamls/testyamls/testcase17.yaml": [
+                    "environment: room, sunny",
+                    "character: Light Style, Umbrella",
+                    "character: Casual Style",
+                    "environment: office, rainy",
+                    "character: Formal Style, Caps",
+                    "environment: city, windy",
+                    "character: CoolBiz Style, Caps",
+                ]
+            },
+            "flag formula": {
+                "yamls/testyamls/testcase17.yaml": [
+                    "TEST testp",
+                    "TEST test1",
+                    "TEST test2",
+                    "TEST testq",
+                    "TEST test1",
+                    "TEST test2",
+                ]
+            },
+            "flag simple": {
+                "yamls/testyamls/testcase17.yaml": ["TEST simple2", "TEST simple1", "TEST simple2"]
+            },
+            "flag circ": {"yamls/testyamls/testcase17.yaml": ["TEST circ1", "TEST circ2"]},
+            "flag self": {"yamls/testyamls/testcase17.yaml": ["TEST self1", "TEST self2"]},
+            "flag add-remove": {
+                "yamls/testyamls/testcase17.yaml": [
+                    "TEST scene1",
+                    "TEST scene2",
+                    "TEST scene1",
+                    "TEST Scene2",
+                    "TEST scene3",
+                    "TEST scene4",
+                    "TEST Scene3",
+                    "TEST scene4",
+                ]
+            },
+            "flag ranges": {
+                "yamls/testyamls/testcase17.yaml": [
+                    "TEST range4",
+                    "TEST range7",
+                    "TEST range1",
+                    "TEST range8",
+                    "TEST range5",
+                    "TEST range9",
+                ]
+            },
+            "flag intervals": {
+                "yamls/testyamls/testcase17.yaml": [
+                    "TEST interval4",
+                    "TEST interval7",
+                    "TEST interval1",
+                    "TEST interval8",
+                    "TEST interval5",
+                    "TEST interval9",
+                ]
+            },
+            "flag default": {
+                "yamls/testyamls/testcase17.yaml": [
+                    "TEST phase2",
+                    "TEST phase3",
+                    "TEST phase1",
+                    "TEST phase2",
+                    "TEST phase3",
+                    "TEST phase2",
                 ]
             },
             "complex 1": {

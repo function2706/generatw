@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import re
 from collections import defaultdict
 from dataclasses import asdict, dataclass, field
 from enum import Enum, StrEnum, auto
 from pathlib import Path
-from typing import Any, TypeAlias
+from typing import Any, Iterable, TypeAlias
 
 import yaml
 
@@ -12,29 +14,28 @@ class KeyName(StrEnum):
     """YAML設定ファイルで使用されるキー名の定数"""
 
     ignition = "ignition"
+    any = "any"
+    all = "all"
     pattern = "pattern"
     priority = "priority"
     capturegrp = "capturegrp"
     lifetime = "lifetime"
+    stable = "stable"
+    volatile = "volatile"
     ruletype = "ruletype"
     maps = "maps"
     ranges = "ranges"
     intervals = "intervals"
+    add = "add"
+    remove = "remove"
+    with_k = "with"
+    not_k = "not"
     default = "default"
     table = "table"
     positive = "positive"
     negative = "negative"
     POSITIVE = "POSITIVE"
     NEGATIVE = "NEGATIVE"
-
-
-class ValName(StrEnum):
-    """YAML設定ファイルで使用される値の定数"""
-
-    stable = "stable"
-    volatile = "volatile"
-    any = "any"
-    all = "all"
 
 
 @dataclass(frozen=True)
@@ -134,6 +135,7 @@ class TokenBlueprint:
         is_stable (bool): 安定フラグ(True の場合は次回以降も継続)
         source_path (SourcePath): ソースパス(YAML内の階層)
         period (int): 生成された世代番号
+        condition (Condition): このトークンが採用された際の条件式
     """
 
     token: Token = field(default_factory=Token)
@@ -141,6 +143,10 @@ class TokenBlueprint:
     is_stable: bool = False
     source_path: SourcePath = field(default_factory=SourcePath)
     period: int = 0
+    condition: Condition = None
+
+    def evaluate(self, active_flags: set[str]) -> bool:
+        return self.condition is None or self.condition.evaluate(active_flags)
 
     def to_promptstr(self) -> str:
         """
@@ -180,6 +186,7 @@ class PromptBlueprint:
             TypeError: 引数の型が不正な場合
         """
         if isinstance(other, TokenBlueprint):
+            # 既存のトークンから追加トークンと同じソースパスで古い世代のものを除く
             self.tokens = [
                 t
                 for t in self.tokens
@@ -247,6 +254,59 @@ class RuleType(Enum):
 
 
 @dataclass
+class Condition:
+    def evaluate(self, flags: set[str]) -> bool:
+        raise NotImplementedError
+
+
+@dataclass
+class Atom(Condition):
+    ATOM: str
+
+    def evaluate(self, flags: set[str]) -> bool:
+        return self.ATOM in flags
+
+
+@dataclass
+class NotCond(Condition):
+    NOT: Condition
+
+    def evaluate(self, flags: set[str]) -> bool:
+        return not self.NOT.evaluate(flags)
+
+
+@dataclass
+class AnyCond(Condition):
+    ANY: Iterable[Condition]
+
+    def evaluate(self, flags: set[str]) -> bool:
+        return any(t.evaluate(flags) for t in self.ANY)
+
+
+@dataclass
+class AllCond(Condition):
+    ALL: Iterable[Condition]
+
+    def evaluate(self, flags: set[str]) -> bool:
+        return all(t.evaluate(flags) for t in self.ALL)
+
+
+def parse_condition(obj: str | dict) -> Condition:
+    if isinstance(obj, str):
+        return Atom(obj)
+
+    if isinstance(obj, dict):
+        if "not" in obj:
+            return NotCond(parse_condition(obj["not"]))
+        if "any" in obj:
+            return AnyCond([parse_condition(x) for x in obj["any"]])
+        if "all" in obj:
+            return AllCond([parse_condition(x) for x in obj["all"]])
+
+    raise ValueError(f"Invalid condition: {obj}")
+
+
+@dataclass
 class Rule:
     """
     マッチ条件とプロンプトの対応関係を定義するクラス\n
@@ -261,16 +321,20 @@ class Rule:
           -> Rule(interval=(min, max), positive=TokenSet([...]), negative=TokenSet([]))
 
     Attributes:
-        matches (set[str]): マッチ対象文字列の集合
+        matches (set[str]): マッチ対象文字列の集合 (ranges の場合は複数要素となるため set)
         interval (tuple[float, float]): interval の場合の最大値と最小値
         positive (TokenSet): ポジティブプロンプトのトークン集合
         negative (TokenSet): ネガティブプロンプトのトークン集合
+        flags_pm (list[set[str]]): マッチした際にセット/アンセットするフラグの集合(非順不同)
+        condition (Condition): このルールが適用されるフラグ条件
     """
 
     matches: set[str] = field(default_factory=set)
     interval: tuple[float, float] = field(default_factory=tuple)
     positive: TokenSet = field(default_factory=TokenSet)
     negative: TokenSet = field(default_factory=TokenSet)
+    flags_pm: list[dict[str, set[str]]] = field(default_factory=list)
+    condition: Condition = None
 
     @classmethod
     def make(cls, key: str, val: str | dict | list, ruletype: RuleType):
@@ -288,50 +352,62 @@ class Rule:
         Raises:
             ValueError: 定義形式が不正な場合
         """
+        obj = cls()
+
+        if isinstance(val, dict) and KeyName.with_k in val:
+            obj.condition = parse_condition(val.get(KeyName.with_k))
+
+        if isinstance(val, dict):
+            for k, v in val.items():
+                if k == KeyName.add:
+                    obj.flags_pm.append({KeyName.add: set(v)})
+                elif k == KeyName.remove:
+                    obj.flags_pm.append({KeyName.remove: set(v)})
+
         key_str = str(key)
         if ruletype == RuleType.default:
-            matches = set()
-            interval = tuple()
+            obj.matches = set()
+            obj.interval = tuple()
             if isinstance(val, str):
-                positive = TokenSet.make(val)
-                negative = TokenSet.make()
+                obj.positive = TokenSet.make(val)
+                obj.negative = TokenSet.make()
             elif isinstance(val, dict):
-                positive = TokenSet.make(val.get(KeyName.positive))
-                negative = TokenSet.make(val.get(KeyName.negative))
+                obj.positive = TokenSet.make(val.get(KeyName.positive))
+                obj.negative = TokenSet.make(val.get(KeyName.negative))
             else:
                 raise ValueError
         elif ruletype == RuleType.maps:
-            matches = {key_str}
-            interval = tuple()
+            obj.matches = {key_str}
+            obj.interval = tuple()
             if isinstance(val, str):
                 # {'xxx': 'pos1,(pos2:1.2)'} 型
-                positive = TokenSet.make(val)
-                negative = TokenSet.make()
+                obj.positive = TokenSet.make(val)
+                obj.negative = TokenSet.make()
             elif isinstance(val, dict):
-                positive = TokenSet.make(val.get(KeyName.positive))
-                negative = TokenSet.make(val.get(KeyName.negative))
+                obj.positive = TokenSet.make(val.get(KeyName.positive))
+                obj.negative = TokenSet.make(val.get(KeyName.negative))
             else:
                 raise ValueError(
                     f"Rule '{key}' in 'maps' must be a string or dict, but {type(val).__name__}."
                 )
         elif ruletype == RuleType.ranges:
-            interval = tuple()
+            obj.interval = tuple()
             if isinstance(val, list):
                 # {'pos1,(pos2:1.2)': ['con1', 'con2']} 型
-                matches = {str(i) for i in val}
-                positive = TokenSet.make(key_str)
-                negative = TokenSet.make()
+                obj.matches = {str(i) for i in val}
+                obj.positive = TokenSet.make(key_str)
+                obj.negative = TokenSet.make()
             elif isinstance(val, dict):
                 if isinstance(val.get(KeyName.positive), list):
                     # {'pos1,(pos2:1.2)': {'positive': ['con1', 'con2'], 'negative': 'neg1'}} 型
-                    matches = {str(i) for i in val.get(KeyName.positive, [])}
-                    positive = TokenSet.make(key_str)
-                    negative = TokenSet.make(val.get(KeyName.negative))
+                    obj.matches = {str(i) for i in val.get(KeyName.positive, [])}
+                    obj.positive = TokenSet.make(key_str)
+                    obj.negative = TokenSet.make(val.get(KeyName.negative))
                 elif isinstance(val.get(KeyName.negative), list):
                     # {'pos1,(pos2:1.2)': {'positive': 'pos1', 'negative': ['con1', 'con2'], }} 型
-                    matches = {str(i) for i in val.get(KeyName.negative, [])}
-                    positive = TokenSet.make(val.get(KeyName.positive))
-                    negative = TokenSet.make(key_str)
+                    obj.matches = {str(i) for i in val.get(KeyName.negative, [])}
+                    obj.positive = TokenSet.make(val.get(KeyName.positive))
+                    obj.negative = TokenSet.make(key_str)
                 else:
                     raise ValueError(
                         f"Rule '{key}' in 'ranges' must have 'positive' or 'negative' label."
@@ -356,23 +432,23 @@ class Rule:
                     raise ValueError(f"Invalid interval: min={lst[0]} > max={lst[1]}")
                 return min, max
 
-            matches = set()
+            obj.matches = set()
             if isinstance(val, list):
                 # {'pos1,(pos2:1.2)': [min, max]} 型
                 min, max = check_list(val)
-                positive = TokenSet.make(key_str)
-                negative = TokenSet.make()
+                obj.positive = TokenSet.make(key_str)
+                obj.negative = TokenSet.make()
             elif isinstance(val, dict):
                 if isinstance(val.get(KeyName.positive), list):
                     # {'pos1,(pos2:1.2)': {'positive': [min, max], 'negative': 'neg1'}} 型
                     min, max = check_list(val.get(KeyName.positive))
-                    positive = TokenSet.make(key_str)
-                    negative = TokenSet.make(val.get(KeyName.negative))
+                    obj.positive = TokenSet.make(key_str)
+                    obj.negative = TokenSet.make(val.get(KeyName.negative))
                 elif isinstance(val.get(KeyName.negative), list):
                     # {'pos1,(pos2:1.2)': {'positive': 'pos1', 'negative': [min, max], }} 型
                     min, max = check_list(val.get(KeyName.negative))
-                    positive = TokenSet.make(val.get(KeyName.positive))
-                    negative = TokenSet.make(key_str)
+                    obj.positive = TokenSet.make(val.get(KeyName.positive))
+                    obj.negative = TokenSet.make(key_str)
                 else:
                     raise ValueError(
                         f"Rule '{key}' in 'intervals' must have 'positive' or 'negative' label."
@@ -381,9 +457,9 @@ class Rule:
                 raise ValueError(
                     f"Rule '{key}' in 'intervals' must be a list or dict, but {type(val).__name__}."
                 )
-            interval = (min, max)
+            obj.interval = (min, max)
 
-        return cls(matches=matches, interval=interval, positive=positive, negative=negative)
+        return obj
 
     def toprompt(
         self,
@@ -391,6 +467,7 @@ class Rule:
         is_stable: bool,
         source_path: SourcePath,
         period: int,
+        active_flags: set[str],
         match: str = None,
     ) -> tuple[PromptBlueprint, PromptBlueprint]:
         """
@@ -401,39 +478,52 @@ class Rule:
             is_stable (bool): 安定フラグ
             source_path (SourcePath): ソースパス
             period (int): 世代番号
+            active_flags (set[str]): 現在アクティブなフラグの集合
             match (str, optional): マッチした文字列
 
         Returns:
             tuple[PromptBlueprint, PromptBlueprint]: タプル
         """
-        if self.matches and match not in self.matches:
-            # default つまり matches が空の場合はここに入らない
+        if (self.matches and match not in self.matches) or (
+            self.interval
+            and (float(match) < self.interval[0] or float(match) > self.interval[1])
+            or (self.condition is not None and not self.condition.evaluate(active_flags))
+        ):
+            # マッチせず, もしくは(条件がある上で)フラグ条件に見合わない
+            # default つまり matches/interval が空の場合はここに入らない
             return PromptBlueprint(), PromptBlueprint()
-        elif self.interval and (float(match) < self.interval[0] or float(match) > self.interval[1]):
-            # default つまり interval が空の場合はここに入らない
-            return PromptBlueprint(), PromptBlueprint()
+
+        # アクティブなフラグの更新は採用された場合のみ行う
+        for fpm in self.flags_pm:
+            for sign, flags in fpm.items():
+                if sign == KeyName.add:
+                    active_flags |= flags
+                if sign == KeyName.remove:
+                    active_flags -= flags
 
         positive = PromptBlueprint()
         negative = PromptBlueprint()
 
         for token in self.positive.tokens:
             positive.append(
-                TokenBlueprint(
+                other=TokenBlueprint(
                     token=token,
                     priority=priority,
                     is_stable=is_stable,
                     source_path=source_path,
                     period=period,
+                    condition=self.condition,
                 )
             )
         for token in self.negative.tokens:
             negative.append(
-                TokenBlueprint(
+                other=TokenBlueprint(
                     token=token,
                     priority=priority,
                     is_stable=is_stable,
                     source_path=source_path,
                     period=period,
+                    condition=self.condition,
                 )
             )
         return positive, negative
@@ -500,7 +590,7 @@ class Field:
         if KeyName.priority in field:
             obj.priority = int(field.get(KeyName.priority))
 
-        if KeyName.lifetime in field and field.get(KeyName.lifetime) == ValName.stable:
+        if KeyName.lifetime in field and field.get(KeyName.lifetime) == KeyName.stable:
             obj.is_stable = True
 
         if KeyName.maps in field:
@@ -533,7 +623,9 @@ class Field:
 
         return obj
 
-    def toprompt(self, text: str, period: int) -> tuple[PromptBlueprint, PromptBlueprint]:
+    def toprompt(
+        self, text: str, period: int, active_flags: set[str]
+    ) -> tuple[PromptBlueprint, PromptBlueprint]:
         """
         指定の text をポジティブプロンプト・ネガティブプロンプトのタプルにする\n
         マッチしない(キャプチャ逸脱を含む)場合はデフォルトを採用する
@@ -541,6 +633,7 @@ class Field:
         Args:
             text (str): テキスト
             period (int): プロンプト化の世代
+            active_flags (set[str]): 現在アクティブなフラグの集合
 
         Returns:
             tuple[PromptBlueprint, PromptBlueprint]: タプル
@@ -568,6 +661,7 @@ class Field:
                     is_stable=self.is_stable,
                     source_path=self.source_path,
                     period=period,
+                    active_flags=active_flags,
                 )
                 positive.append(pos)
                 negative.append(neg)
@@ -579,6 +673,7 @@ class Field:
                 is_stable=self.is_stable,
                 source_path=self.source_path,
                 period=period,
+                active_flags=active_flags,
             )
             positive.append(pos)
             negative.append(neg)
@@ -670,7 +765,7 @@ class Screen:
 
                 obj.ignition = cls.Ignition(
                     patterns=[re.compile(str(p)) for p in patterns],
-                    is_all=True if type == ValName.all else False,
+                    is_all=True if type == KeyName.all else False,
                 )
             elif key == KeyName.POSITIVE and isinstance(val, str):
                 obj.common_positive = TokenSet.make(val)
@@ -731,14 +826,18 @@ class Screen:
         else:
             return any(p.search(text) for p in self.ignition.patterns)
 
-    def toprompt(self, text: str, period: int) -> tuple[PromptBlueprint, PromptBlueprint]:
+    def toprompt(
+        self, text: str, period: int, active_flags: set[str]
+    ) -> tuple[PromptBlueprint, PromptBlueprint]:
         """
         テキストからプロンプトを生成する\n
-        発火条件を満たさない場合は空のプロンプトを返す
+        発火条件を満たさない場合は空のプロンプトを返す\n
+        共通プロンプトは無条件で付与する
 
         Args:
             text (str): テキスト
             period (int): プロンプト化の世代
+            active_flags (set[str]): 現在アクティブなフラグの集合
 
         Returns:
             tuple[PromptBlueprint, PromptBlueprint]: タプル
@@ -749,7 +848,7 @@ class Screen:
         positive = PromptBlueprint()
         negative = PromptBlueprint()
         for fld in self.fields:
-            pos, neg = fld.toprompt(text, period=period)
+            pos, neg = fld.toprompt(text, period=period, active_flags=active_flags)
             positive.append(pos)
             negative.append(neg)
 
@@ -791,12 +890,14 @@ class Prompter:
         continuing_positive (PromptBlueprint): 継続ポジティブプロンプト
         continuing_negative (PromptBlueprint): 継続ネガティブプロンプト
         period (int): 現在の世代番号
+        active_flags (set[str]): アクティブなフラグの集合
     """
 
     screens: list[Screen] = field(default_factory=list)
     continuing_positive: PromptBlueprint = field(default_factory=PromptBlueprint)
     continuing_negative: PromptBlueprint = field(default_factory=PromptBlueprint)
     period: int = 0
+    active_flags: set[str] = field(default_factory=set)
 
     @classmethod
     def make(cls, yamlpath: Path):
@@ -822,40 +923,41 @@ class Prompter:
         for screen in self.screens:
             screen.sort()
 
-    def toprompt(self, text: str) -> tuple[str, str]:
+    def toprompt(self, text: str) -> tuple[str, str, list[str]]:
         """
         テキストからポジティブプロンプトとネガティブプロンプトを生成する\n
-        stable トークンは継続プロンプトとして保持され, 次回以降も使用される
+        stable トークンは継続プロンプトとして保持され, 次回以降も使用される\n
+        デバッグ用に最終的なアクティブフラグをソートして返す
 
         Args:
             text (str): テキスト
 
         Returns:
-            tuple[str, str]: (ポジティブプロンプト文字列, ネガティブプロンプト文字列) のタプル
+            tuple[str, str, list[str]]: タプル (positive/negative/active flags)
         """
         positive = PromptBlueprint()
         negative = PromptBlueprint()
 
-        # 継続分を最初に記録
+        # 継続分を最初に記録(この時点でここに入っているものはアクティブなフラグに見合うものしかない)
         positive.append(self.continuing_positive)
         negative.append(self.continuing_negative)
 
         for screen in self.screens:
-            pos, neg = screen.toprompt(text, self.period)
+            pos, neg = screen.toprompt(text, self.period, self.active_flags)
             positive.append(pos)
             negative.append(neg)
 
-        # 継続分を記録, ただし同じルール元パスのものは更新
+        # 継続分を記録(アクティブなフラグが条件に見合うもののみ), ただし同じルール元パスのものは更新
         for token in positive.tokens:
-            if token.is_stable:
+            if token.is_stable and token.evaluate(self.active_flags):
                 self.continuing_positive.append(token)
         for token in negative.tokens:
-            if token.is_stable:
+            if token.is_stable and token.evaluate(self.active_flags):
                 self.continuing_negative.append(token)
 
         self.period += 1
 
-        return positive.to_promptstr(), negative.to_promptstr()
+        return positive.to_promptstr(), negative.to_promptstr(), sorted(self.active_flags.copy())
 
     def todict(self) -> dict:
         return asdict(self)

@@ -1,0 +1,204 @@
+environment:
+  ignition:
+    any: ["environment:"]
+  location:
+    pattern: "(room|office|city)"
+    capturegrp: 1
+    lifetime: stable
+    maps:
+      room:
+        add: [indoors, private] # フラグ定義, 有効化
+        remove: [outdoors, public] # フラグ無効化
+        positive: room
+      office:
+        add: [indoors, public]
+        remove: [outdoors, private]
+        positive: office
+      city:
+        add: [outdoors] # 単一フラグもリストで指定
+        remove: [indoors]
+        positive: city
+  weather:
+    pattern: "(sunny|rainy|windy)"
+    capturegrp: 1
+    lifetime: stable
+    maps:
+      sunny:
+        with: { not: indoors } # not はフラグがない場合のみ有効, not 節は項として扱う
+        add: [hot]
+        remove: [cold, wet]
+        positive: sunny
+      rainy:
+        with: { not: indoors } # with は最初に評価
+        add: [wet]
+        positive: rainy
+      windy:
+        with: outdoors # with はフラグがある場合のみ有効, 単項の場合は常に all: [term] と解釈
+        add: [cold] # add, remove は採用された場合に, 書かれた順に実行
+        remove: [hot]
+        positive: windy
+character:
+  ignition:
+    any: ["character:"]
+  fashion:
+    pattern: "(Light|Casual|Formal)\\sStyle"
+    maps:
+      Light Style:
+        with: # static なフラグは Screen を超越する
+          all: [private, { any: [indoors, hot] }] # casual && (indoors || hot)
+        positive: light style
+      Casual Style:
+        with:
+          all: [private, { not: cold }] # private and !cold
+        positive: casual style
+      CoolBiz Style:
+        with:
+          any: [{ all: [public, hot] }, indoor] # (public && hot) || indoor
+        positive: cool-biz style
+      Formal Style:
+        with:
+          all: [public, { not: hot }] # private and !hot
+        positive: formal style
+  equip:
+    pattern: "(Umbrella|Caps)"
+    capturegrp: 1
+    maps:
+      Umbrella:
+        with:
+          all: [outdoors, { any: [wet, hot] }]
+        positive: umbrella
+      Caps:
+        with:
+          all: [private, outdoors]
+        positive: caps
+test:
+  ignition:
+    any: ["TEST"]
+  testcase:
+    pattern: "(testp|testq|testr|tests|test1|test2)"
+    capturegrp: 1
+    maps:
+      testp:
+        add: [p]
+        positive: p
+      testq:
+        add: [q]
+        positive: q
+      testr:
+        add: [r]
+        positive: r
+      tests:
+        add: [s]
+        positive: s
+      test1:
+        with:
+          any: [{ all: [p, q] }, { all: [{ not: r }, s] }]
+        positive: test1
+      test2:
+        with:
+          not: { all: [p, { not: q }] }
+        positive: test2
+  simple:
+    pattern: "(simple1|simple2)"
+    capturegrp: 1
+    maps:
+      simple1:
+        add: [sim1]
+        positive: sim1
+      simple2:
+        with: sim1
+        positive: sim2
+  circular_ref:
+    pattern: "(circ1|circ2)"
+    capturegrp: 1
+    maps:
+      circ1:
+        with: c2
+        add: [c1]
+        positive: circ1
+      circ2:
+        with: c1
+        add: [c2]
+        positive: circ2
+  self_ref:
+    pattern: "(self1|self2)"
+    capturegrp: 1
+    maps:
+      self1:
+        add: [self1]
+        with: self1
+        positive: self1
+      self2:
+        with: self2
+        add: [self2]
+        positive: self2
+  add_remove:
+    pattern: "(scene1|scene2|Scene2|scene3|Scene3|scene4)"
+    capturegrp: 1
+    maps:
+      scene1:
+        add: [s1]
+        positive: scene1
+      scene2:
+        add: [s2]
+        remove: [s1]
+        positive: scene2
+      Scene2:
+        with: s1
+        add: [s2_p]
+        remove: [s1]
+        positive: scene2_p
+      scene3:
+        add: [s3-]
+        remove: [s3-]
+        positive: scene3
+      Scene3:
+        remove: [s3]
+        add: [s3]
+        positive: scene3_p
+      scene4:
+        with: s3
+        remove: [s100]
+        positive: scene4
+  ranges:
+    pattern: "range([0-9])"
+    capturegrp: 1
+    ranges:
+      low:
+        add: [range_low]
+        positive: ["0", "1", "2"]
+      middle:
+        with: range_low
+        add: [range_middle]
+        positive: ["3", "4", "5", "6"]
+      high:
+        with: { all: [range_low, range_middle] }
+        positive: ["7", "8", "9"]
+  intervals:
+    pattern: "interval([0-9])"
+    capturegrp: 1
+    intervals:
+      low:
+        add: [interval_low]
+        positive: [0, 3]
+      middle:
+        with: interval_low
+        add: [interval_middle]
+        positive: [3, 6]
+      high:
+        with: { all: [interval_low, interval_middle] }
+        positive: [6, 9]
+  default:
+    pattern: "(phase1|phase2)"
+    capturegrp: 1
+    maps:
+      phase1:
+        add: [p1]
+        positive: p1
+      phase2:
+        with: default
+        positive: p2
+    default:
+      with: p1
+      add: [default]
+      positive: default
