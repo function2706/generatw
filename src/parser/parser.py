@@ -126,6 +126,18 @@ class Parser(ABC, Generic[Stats]):
         """
         return self.__class__.__name__.replace("Parser", "")
 
+    def reset_prompter(self, yamlpath: Path) -> None:
+        """
+        Prompter を指定の YAML で再起動する
+
+        Args:
+            yamlpath (Path): YAML パス
+        """
+        if yamlpath.exists():
+            print("Exist", str(yamlpath))
+        else:
+            print("Not exist", str(yamlpath))
+
     def pics_dir_path(self) -> Path:
         """
         画像ディレクトリパスを取得する\n

@@ -40,6 +40,7 @@ from master.events import (
     OnForward,
     OnInterruptTask,
     OnRepeatTask,
+    OnSelectYaml,
     OnSwitchBackend,
     OnUpscale,
     ParserEvent,
@@ -76,16 +77,6 @@ class Master(MasterIF):
         self.from_generator: BottleMail[GeneratorEvent] = BottleMail()
         self.from_parser: BottleMail[ParserEvent] = BottleMail()
 
-        self.frontend: FrontEnd = frontend
-        if frontend == FrontEnd.reverse:
-            self.parser = ReverseParser(self, self.from_parser)
-        elif frontend == FrontEnd.the_world:
-            self.parser = TheWorldParser(self, self.from_parser)
-        else:
-            raise ValueError
-
-        self.archiver = Archiver(self.parser.pics_dir_path(), self.from_archiver)
-
         self.crnt_configs: GUIConfigs = (
             GUIConfigs.fromjson(Consts.config_path)
             if Consts.config_path.exists()
@@ -97,6 +88,7 @@ class Master(MasterIF):
                 sd_batch_size=2,
                 sd_width=540,
                 sd_height=960,
+                yamlpath=None,
                 backend=BackEnd.a1111.value,
                 allow_edit_clipboard=False,
                 print_new_clipboard=False,
@@ -105,6 +97,19 @@ class Master(MasterIF):
                 print_event=False,
             )
         )
+
+        # TBD: init YAML の指定(存在するなら)
+        self.frontend: FrontEnd = frontend
+        if frontend == FrontEnd.reverse:
+            self.parser = ReverseParser(self, self.from_parser)
+        elif frontend == FrontEnd.the_world:
+            self.parser = TheWorldParser(self, self.from_parser)
+        else:
+            raise ValueError
+        if self.crnt_configs.yamlpath is not None:
+            self.parser.reset_prompter(Path(self.crnt_configs.yamlpath))
+
+        self.archiver = Archiver(self.parser.pics_dir_path(), self.from_archiver)
 
         self.backend: BackEnd = (
             BackEnd.a1111 if self.crnt_configs.backend == BackEnd.a1111.value else BackEnd.comfy_ui
@@ -238,6 +243,8 @@ class Master(MasterIF):
                 self.generator.reserve_interrupt()
             if isinstance(event, OnFlushTasks):
                 self.generator.clear()
+            if isinstance(event, OnSelectYaml):
+                self.parser.reset_prompter(Path(event.path))
             if isinstance(event, OnDebug):
                 if self.parser.ready_for_debug():
                     self.run_oneshot()

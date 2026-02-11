@@ -5,7 +5,8 @@ GUI 管理クラス
 from __future__ import annotations
 
 import tkinter
-from tkinter import Frame, TclError, ttk
+from pathlib import Path
+from tkinter import Frame, TclError, filedialog, ttk
 
 from archiver.dataclasses import NoImageStats, PicStats
 from common.functions import BottleMail
@@ -25,6 +26,7 @@ from master.events import (
     OnForward,
     OnInterruptTask,
     OnRepeatTask,
+    OnSelectYaml,
     OnSwitchBackend,
     OnUpscale,
 )
@@ -149,6 +151,13 @@ class MainTab:
                 command=owner.super_owner.super_owner.on_open_info_window,
             )
             self.open_info_button.grid(row=1, column=1, padx=6, pady=6, sticky="w")
+            # ボタン(YAML選択)
+            self.select_yaml_button = ttk.Button(
+                self.button_frame,
+                text="YAML選択",
+                command=owner.super_owner.super_owner.on_select_yaml,
+            )
+            self.select_yaml_button.grid(row=1, column=2, padx=6, pady=6, sticky="w")
 
     class SDInteriorConfigFrame:
         """
@@ -262,8 +271,25 @@ class MainTab:
             self.thread_sellect_frame = ttk.Frame(owner.main_frame)
             self.thread_sellect_frame.grid(row=3, column=0, sticky="w")
 
-            ttk.Label(self.thread_sellect_frame, text="バックエンド").grid(
+            # YAML 選択
+            ttk.Label(self.thread_sellect_frame, text="選択中のYAML").grid(
                 row=0, column=0, padx=6, pady=6, sticky="w"
+            )
+            self.yamlpath: Path | None = (
+                Path(init_configs.yamlpath) if init_configs.yamlpath is not None else None
+            )
+            self.yamlpath_var = tkinter.StringVar(
+                value=self.yamlpath.name
+                if self.yamlpath is not None and self.yamlpath.exists()
+                else "(未選択)"
+            )
+            ttk.Label(self.thread_sellect_frame, textvariable=self.yamlpath_var).grid(
+                row=0, column=1, padx=6, pady=6, sticky="w"
+            )
+
+            # バックエンド
+            ttk.Label(self.thread_sellect_frame, text="バックエンド").grid(
+                row=1, column=0, padx=6, pady=6, sticky="w"
             )
             self.back_options = [BackEnd.a1111.value, BackEnd.comfy_ui.value]
             self.backend_var = tkinter.StringVar(value=self.back_options[0])
@@ -279,7 +305,7 @@ class MainTab:
                 "<<ComboboxSelected>>",
                 lambda e: self.super_owner.super_owner.super_owner.on_switch_backend(),
             )
-            self.backend_combo.grid(row=0, column=1, padx=6, pady=6, sticky="w")
+            self.backend_combo.grid(row=1, column=1, padx=6, pady=6, sticky="w")
 
     def __init__(self, owner: MainWindow, init_configs: GUIConfigs):
         """
@@ -296,7 +322,7 @@ class MainTab:
         self.button_frame = self.ButtonFrame(self)
         self.sd_interior_config_frame = self.SDInteriorConfigFrame(self, init_configs)
         self.sd_exterior_config_frame = self.SDExteriorConfigFrame(self, init_configs)
-        self.thread_sellect_frame = self.SellectFrame(self, init_configs)
+        self.sellect_frame = self.SellectFrame(self, init_configs)
 
 
 class DebugTab:
@@ -336,7 +362,7 @@ class DebugTab:
                 command=self.super_owner.super_owner.super_owner.update_configs,
             ).grid(row=0, column=1, padx=6, pady=6, sticky="w")
             self.allow_edit_clipboard_check.set(init_configs.allow_edit_clipboard)
-            # ボタン(アーカイブ出力 ダンプ)
+            # ボタン(アーカイブ出力ダンプ)
             self.debug_button = ttk.Button(
                 self.exe_debug_frame,
                 text="アーカイブ出力",
@@ -467,7 +493,7 @@ class MainWindow:
         self.main_tab_obj.sd_exterior_config_frame.sd_exterior_config_frame.bind(
             "<Button-1>", clear_selection, add="+"
         )
-        self.main_tab_obj.thread_sellect_frame.thread_sellect_frame.bind(
+        self.main_tab_obj.sellect_frame.thread_sellect_frame.bind(
             "<Button-1>", clear_selection, add="+"
         )
 
@@ -606,6 +632,16 @@ class Displayer:
         self.info_window.update_taskinfo_tab(task=self.last_task)
         self.info_window.update_picinfo_tab(self.last_picstats)
 
+    def on_select_yaml(self) -> None:
+        """
+        YAML選択ボタンハンドラ
+        """
+        path = filedialog.askopenfilename(title="YAML選択", filetypes=[("YAML", "*.yaml")])
+        self.main_window.main_tab_obj.sellect_frame.yamlpath = Path(path)
+        self.main_window.main_tab_obj.sellect_frame.yamlpath_var.set(Path(path).name)
+        self.to_master.enclose(OnSelectYaml(path=path))
+        self.update_configs()
+
     def on_debug(self) -> None:
         """
         デバッグボタンハンドラ
@@ -686,7 +722,10 @@ class Displayer:
             sd_height=int(
                 self.main_window.main_tab_obj.sd_interior_config_frame.height_entry.get()
             ),
-            backend=self.main_window.main_tab_obj.thread_sellect_frame.backend_combo.get(),
+            yamlpath=str(self.main_window.main_tab_obj.sellect_frame.yamlpath)
+            if self.main_window.main_tab_obj.sellect_frame.yamlpath is not None
+            else None,
+            backend=self.main_window.main_tab_obj.sellect_frame.backend_combo.get(),
             allow_edit_clipboard=bool(
                 self.main_window.debug_tab_obj.exe_debug_frame.allow_edit_clipboard_check.get()
             ),

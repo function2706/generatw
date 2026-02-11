@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from archiver.dataclasses import NoImageStats, PicStats
 from common.functions import BackEnd
@@ -40,6 +41,11 @@ class OnInterruptTask(DisplayerEvent):
 @dataclass
 class OnFlushTasks(DisplayerEvent):
     pass
+
+
+@dataclass
+class OnSelectYaml(DisplayerEvent):
+    path: Path
 
 
 @dataclass
