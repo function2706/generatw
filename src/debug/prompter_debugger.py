@@ -69,7 +69,7 @@ CORRECT_RESULT = {
         "testcase16-5: 'go 10'": {"POS": "low,bad", "NEG": "good,high,ok", "FLAGS": []},
         "testcase16-6: 'go 75'": {"POS": "average", "NEG": "", "FLAGS": []},
     },
-    "CASE 'flag stable'": {
+    "CASE 'flag'": {
         "testcase17-1: 'environment: room, sunny'": {
             "POS": "room",
             "NEG": "",
@@ -171,6 +171,34 @@ CORRECT_RESULT = {
             "POS": "high",
             "NEG": "",
             "FLAGS": ["interval_low", "interval_middle"],
+        },
+    },
+    "CASE 'flag default'": {
+        "testcase17-1: 'TEST phase2'": {"POS": "", "NEG": "", "FLAGS": []},
+        "testcase17-2: 'TEST phase3'": {"POS": "", "NEG": "", "FLAGS": []},
+        "testcase17-3: 'TEST phase1'": {"POS": "p1", "NEG": "", "FLAGS": ["p1"]},
+        "testcase17-4: 'TEST phase2'": {"POS": "default", "NEG": "", "FLAGS": ["default", "p1"]},
+        "testcase17-5: 'TEST phase3'": {"POS": "default", "NEG": "", "FLAGS": ["default", "p1"]},
+        "testcase17-6: 'TEST phase2'": {"POS": "p2", "NEG": "", "FLAGS": ["default", "p1"]},
+    },
+    "CASE 'flag stable'": {
+        "testcase17-1: 'TEST volatile1'": {"POS": "volatile1", "NEG": "", "FLAGS": ["volatile1"]},
+        "testcase17-2: 'TEST stable2'": {"POS": "", "NEG": "", "FLAGS": ["volatile1"]},
+        "testcase17-3: 'TEST volatile1'": {"POS": "volatile1", "NEG": "", "FLAGS": ["volatile1"]},
+        "testcase17-4: 'TEST stable1'": {
+            "POS": "stable1",
+            "NEG": "",
+            "FLAGS": ["stable1", "volatile1"],
+        },
+        "testcase17-5: 'TEST volatile3'": {
+            "POS": "stable1,volatile3",
+            "NEG": "",
+            "FLAGS": ["stable1"],
+        },
+        "testcase17-6: 'TEST volatile2'": {
+            "POS": "volatile2",
+            "NEG": "",
+            "FLAGS": ["stable1", "volatile2"],
         },
     },
     "CASE 'complex 1'": {
@@ -278,7 +306,8 @@ class PrompterDebugger:
         result: dict[str, dict[str, str]] = {}
         for i, text in enumerate(texts):
             try:
-                pos, neg, active_flags = self.prompter.toprompt(text)
+                pos, neg = self.prompter.toprompt(text)
+                active_flags = sorted(self.prompter.active_flags.copy())
                 posneg = {"POS": pos, "NEG": neg, "FLAGS": active_flags}
                 result[f"{yamlname}-{i + 1}: '{text}'"] = posneg
             except Exception as e:
@@ -341,7 +370,7 @@ def debug() -> None:
                     "go 75",
                 ]
             },
-            "flag stable": {
+            "flag": {
                 "yamls/testyamls/testcase17.yaml": [
                     "environment: room, sunny",
                     "character: Light Style, Umbrella",
@@ -407,6 +436,16 @@ def debug() -> None:
                     "TEST phase2",
                     "TEST phase3",
                     "TEST phase2",
+                ]
+            },
+            "flag stable": {
+                "yamls/testyamls/testcase17.yaml": [
+                    "TEST volatile1",
+                    "TEST stable2",
+                    "TEST volatile1",
+                    "TEST stable1",
+                    "TEST volatile3",
+                    "TEST volatile2",
                 ]
             },
             "complex 1": {

@@ -354,15 +354,17 @@ class Rule:
         """
         obj = cls()
 
+        # with 節は初めにパース
         if isinstance(val, dict) and KeyName.with_k in val:
             obj.condition = parse_condition(val.get(KeyName.with_k))
 
         if isinstance(val, dict):
             for k, v in val.items():
+                lst_v = [v] if isinstance(v, str) else v
                 if k == KeyName.add:
-                    obj.flags_pm.append({KeyName.add: set(v)})
+                    obj.flags_pm.append({KeyName.add: set(lst_v)})
                 elif k == KeyName.remove:
-                    obj.flags_pm.append({KeyName.remove: set(v)})
+                    obj.flags_pm.append({KeyName.remove: set(lst_v)})
 
         key_str = str(key)
         if ruletype == RuleType.default:
@@ -484,9 +486,12 @@ class Rule:
         Returns:
             tuple[PromptBlueprint, PromptBlueprint]: タプル
         """
-        if (self.matches and match not in self.matches) or (
-            self.interval
-            and (float(match) < self.interval[0] or float(match) > self.interval[1])
+        if (
+            (self.matches and match not in self.matches)
+            or (
+                self.interval
+                and (float(match) < self.interval[0] or float(match) > self.interval[1])
+            )
             or (self.condition is not None and not self.condition.evaluate(active_flags))
         ):
             # マッチせず, もしくは(条件がある上で)フラグ条件に見合わない
@@ -923,17 +928,16 @@ class Prompter:
         for screen in self.screens:
             screen.sort()
 
-    def toprompt(self, text: str) -> tuple[str, str, list[str]]:
+    def toprompt(self, text: str) -> tuple[str, str]:
         """
         テキストからポジティブプロンプトとネガティブプロンプトを生成する\n
-        stable トークンは継続プロンプトとして保持され, 次回以降も使用される\n
-        デバッグ用に最終的なアクティブフラグをソートして返す
+        stable トークンは継続プロンプトとして保持され, 次回以降も使用される
 
         Args:
             text (str): テキスト
 
         Returns:
-            tuple[str, str, list[str]]: タプル (positive/negative/active flags)
+            tuple[str, str]: (ポジティブプロンプト文字列, ネガティブプロンプト文字列) のタプル
         """
         positive = PromptBlueprint()
         negative = PromptBlueprint()
@@ -948,6 +952,8 @@ class Prompter:
             negative.append(neg)
 
         # 継続分を記録(アクティブなフラグが条件に見合うもののみ), ただし同じルール元パスのものは更新
+        self.continuing_positive = PromptBlueprint()
+        self.continuing_negative = PromptBlueprint()
         for token in positive.tokens:
             if token.is_stable and token.evaluate(self.active_flags):
                 self.continuing_positive.append(token)
@@ -957,7 +963,7 @@ class Prompter:
 
         self.period += 1
 
-        return positive.to_promptstr(), negative.to_promptstr(), sorted(self.active_flags.copy())
+        return positive.to_promptstr(), negative.to_promptstr()
 
     def todict(self) -> dict:
         return asdict(self)
