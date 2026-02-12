@@ -201,6 +201,28 @@ CORRECT_RESULT = {
             "FLAGS": ["stable1", "volatile2"],
         },
     },
+    "CASE 'essential'": {
+        "testcase18-1: 'meta room day'": {"POS": "", "NEG": "", "FLAGS": []},
+        "testcase18-2: 'main good crying'": {"POS": "", "NEG": "", "FLAGS": []},
+        "testcase18-3: 'main name1 good'": {"POS": "", "NEG": "", "FLAGS": []},
+        "testcase18-4: 'main name1 good age:35'": {
+            "POS": "name1,adult,good",
+            "NEG": "",
+            "FLAGS": [],
+        },
+        "testcase18-5: 'meta city morning'": {
+            "POS": "name1,adult,city,morning",
+            "NEG": "",
+            "FLAGS": [],
+        },
+        "testcase18-6: 'main smile'": {"POS": "", "NEG": "", "FLAGS": []},
+        "testcase18-7: 'meta JPN morning room'": {"POS": "", "NEG": "", "FLAGS": []},
+        "testcase18-8: 'main name2 bad age:70'": {"POS": "name2,old,bad", "NEG": "", "FLAGS": []},
+        "testcase18-9: 'dummy'": {"POS": "name2,old", "NEG": "", "FLAGS": []},
+        "testcase18-10: 'meta room day'": {"POS": "name2,old,room,day", "NEG": "", "FLAGS": []},
+        "testcase18-11: 'meta UK city'": {"POS": "", "NEG": "", "FLAGS": []},
+        "testcase18-12: 'meta city night US'": {"POS": "", "NEG": "", "FLAGS": []},
+    },
     "CASE 'complex 1'": {
         "test-1: 'today: 2026/02/05, Name2 (vibe: Vibe1)'": {
             "POS": "name2,feature2,vibe1,winter,common positive",
@@ -446,6 +468,22 @@ def debug() -> None:
                     "TEST stable1",
                     "TEST volatile3",
                     "TEST volatile2",
+                ]
+            },
+            "essential": {
+                "yamls/testyamls/testcase18.yaml": [
+                    "meta room day",  # meta の essential 未達成
+                    "main good crying",  # main の essential 未達成
+                    "main name1 good",  # 同上
+                    "main name1 good age:35",  # main の essential 達成, name1 と age が次回も継続
+                    "meta city morning",  # meta の essential 達成, 前回継続分も持ち越し
+                    "main smile",  # main 未達成, 継続分抹消
+                    "meta JPN morning room",  # global essential の name がないので未達成
+                    "main name2 bad age:70",  # main 達成
+                    "dummy",  # 未点火, 継続分は持ち越し
+                    "meta room day",  # name(global) + meta 達成, 未点火を挟んでも継続分は表示される
+                    "meta UK city",  # meta 未達成
+                    "meta city night US",  # もう name(global) がないので未達成扱い
                 ]
             },
             "complex 1": {

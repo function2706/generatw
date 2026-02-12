@@ -1,0 +1,61 @@
+main:
+  ignition:
+    any: ["main"]
+  name:
+    pattern: "(name1|name2)"
+    capturegrp: 1
+    lifetime: stable
+    essential: global # global は stable がないと意味がない
+    maps:
+      name1: name1
+      name2: name2
+  age:
+    pattern: "age:([1-9]?[0-9])"
+    capturegrp: 1
+    lifetime: stable
+    essential: local
+    intervals:
+      child: [0, 10]
+      teen: [10, 20]
+      young: [20, 30]
+      adult: [30, 60]
+      old: [60, 99]
+  vibe:
+    pattern: "(good|bad)"
+    capturegrp: 1
+    essential: local # local は screen 範囲内で不可欠, global は screen を超越して不可欠
+    maps:
+      good: good
+      bad: bad
+  expression:
+    pattern: "(smile|crying)"
+    capturegrp: 1
+    maps:
+      smile: smile
+      crying: crying
+meta:
+  ignition:
+    any: ["meta"]
+  where:
+    pattern: "(room|city)"
+    capturegrp: 1
+    essential: local
+    maps:
+      room: room
+      city: city
+  when:
+    pattern: "(morning|day|night)"
+    capturegrp: 1
+    essential: global # volatile でもエラーではなく local と同じ作用
+    maps:
+      morning: morning
+      day: day
+      night: night
+  country:
+    pattern: "(JPN|US|UK|CHN)"
+    capturegrp: 1
+    maps:
+      JPN: JPN
+      US: US
+      UK: UK
+      CHN: CHN
