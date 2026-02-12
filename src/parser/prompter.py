@@ -5,7 +5,7 @@ from collections import defaultdict
 from dataclasses import asdict, dataclass, field
 from enum import Enum, StrEnum, auto
 from pathlib import Path
-from typing import Any, Iterable, TypeAlias
+from typing import Any, Iterable
 
 import yaml
 
@@ -122,7 +122,9 @@ class TokenSet:
         return cls(tokens=[Token.make(p) for p in parts])
 
 
-SourcePath: TypeAlias = tuple[str, ...]
+class RulePath(tuple[str, ...]):
+    def ruleid(self) -> str:
+        return self[-1]
 
 
 @dataclass
@@ -135,7 +137,7 @@ class TokenBlueprint:
         token (Token): トークン本体
         priority (int): 優先度(小さいほど高優先)
         is_stable (bool): 安定フラグ(True の場合は次回以降も継続)
-        source_path (SourcePath): ソースパス(YAML内の階層)
+        rule_path (RulePath): ルールパス(YAML内の階層)
         period (int): 生成された世代番号
         condition (Condition): このトークンが採用された際の条件式
     """
@@ -143,7 +145,7 @@ class TokenBlueprint:
     token: Token = field(default_factory=Token)
     priority: int = 0
     is_stable: bool = False
-    source_path: SourcePath = field(default_factory=tuple)
+    rule_path: RulePath = field(default_factory=tuple)
     period: int = 0
     condition: Condition = None
 
@@ -178,7 +180,7 @@ class PromptBlueprint:
 
     def append(self, other: Any) -> None:
         """
-        tokens に要素を追加し, 共通する SourcePath のものは削除する\n
+        tokens に要素を追加し, 共通する RulePath のものは削除する\n
         より新しい period を持つトークンで既存のトークンを上書きする
 
         Args:
@@ -188,11 +190,11 @@ class PromptBlueprint:
             TypeError: 引数の型が不正な場合
         """
         if isinstance(other, TokenBlueprint):
-            # 既存のトークンから追加トークンと同じソースパスで古い世代のものを除く
+            # 既存のトークンから追加トークンと同じルールパスで古い世代のものを除く
             self.tokens = [
                 t
                 for t in self.tokens
-                if not (other.source_path == t.source_path and other.period > t.period)
+                if not (other.rule_path == t.rule_path and other.period > t.period)
             ]
 
             self.tokens.append(other)
@@ -469,7 +471,7 @@ class Rule:
         self,
         priority: int,
         is_stable: bool,
-        source_path: SourcePath,
+        rule_path: RulePath,
         period: int,
         active_flags: set[str],
         match: str = None,
@@ -480,7 +482,7 @@ class Rule:
         Args:
             priority (int): 優先度
             is_stable (bool): 安定フラグ
-            source_path (SourcePath): ソースパス
+            rule_path (RulePath): ルールパス
             period (int): 世代番号
             active_flags (set[str]): 現在アクティブなフラグの集合
             match (str, optional): マッチした文字列
@@ -517,7 +519,7 @@ class Rule:
                     token=token,
                     priority=priority,
                     is_stable=is_stable,
-                    source_path=source_path,
+                    rule_path=rule_path,
                     period=period,
                     condition=self.condition,
                 )
@@ -528,7 +530,7 @@ class Rule:
                     token=token,
                     priority=priority,
                     is_stable=is_stable,
-                    source_path=source_path,
+                    rule_path=rule_path,
                     period=period,
                     condition=self.condition,
                 )
@@ -555,7 +557,7 @@ class Field:
         is_stable (bool): 安定フラグ(デフォルト: False)
         rules (list[Rule]): ルールのリスト
         default (Rule | None): デフォルトルール
-        source_path (SourcePath): ソースパス
+        rule_path (RulePath): ルールパス
         re_cache (re.Pattern[str]): コンパイル済み正規表現
     """
 
@@ -566,7 +568,7 @@ class Field:
     rules: list[Rule] = field(default_factory=list)
     default: Rule | None = None
 
-    source_path: SourcePath = field(default_factory=tuple)
+    rule_path: RulePath = field(default_factory=tuple)
 
     re_cache: re.Pattern[str] = field(default=None, init=False, repr=False, compare=False)
 
@@ -574,18 +576,18 @@ class Field:
     def make(
         cls,
         field: dict[str, dict],
-        source_path: SourcePath,
-        global_essentials: set[SourcePath],
-        local_essentials: set[SourcePath],
+        rule_path: RulePath,
+        global_essentials: set[RulePath],
+        local_essentials: set[RulePath],
     ):
         """
         YAML の定義から Field インスタンスを生成する
 
         Args:
             field (dict[str, dict]): フィールド定義の辞書
-            source_path (SourcePath): ソースパス
-            global_essentials (set[SourcePath]): Screen を超越して不可欠なルールの一覧
-            local_essential (set[SourcePath]): Screen 内で不可欠なルールの一覧
+            rule_path (RulePath): ルールパス
+            global_essentials (set[RulePath]): Screen を超越して不可欠なルールの一覧
+            local_essential (set[RulePath]): Screen 内で不可欠なルールの一覧
 
         Returns:
             Field: 生成されたFieldインスタンス
@@ -594,7 +596,7 @@ class Field:
             ValueError: 定義形式が不正な場合, または正規表現が不正な場合
         """
         obj = cls()
-        obj.source_path = source_path
+        obj.rule_path = rule_path
 
         if KeyName.pattern in field:
             obj.pattern = field.get(KeyName.pattern)
@@ -612,13 +614,13 @@ class Field:
 
         if KeyName.essential in field:
             if field.get(KeyName.essential) == KeyName.local:
-                local_essentials.add(source_path)
+                local_essentials.add(rule_path)
             elif field.get(KeyName.essential) == KeyName.global_k:
                 if obj.is_stable:
-                    global_essentials.add(source_path)
+                    global_essentials.add(rule_path)
                 else:
                     # volatile なルールが global に essential な場合は local
-                    local_essentials.add(source_path)
+                    local_essentials.add(rule_path)
 
         if KeyName.maps in field:
             for key, val in field.get(KeyName.maps).items():
@@ -655,7 +657,7 @@ class Field:
         text: str,
         period: int,
         active_flags: set[str],
-        achieved_essentials: set[SourcePath],
+        achieved_essentials: set[RulePath],
     ) -> tuple[PromptBlueprint, PromptBlueprint]:
         """
         指定の text をポジティブプロンプト・ネガティブプロンプトのタプルにする\n
@@ -665,7 +667,7 @@ class Field:
             text (str): テキスト
             period (int): プロンプト化の世代
             active_flags (set[str]): 現在アクティブなフラグの集合
-            achieved_essentials (set[SourcePath]): 達成したソースパス
+            achieved_essentials (set[RulePath]): 達成したルールパス
 
         Returns:
             tuple[PromptBlueprint, PromptBlueprint]: タプル
@@ -691,7 +693,7 @@ class Field:
                     match=match,
                     priority=self.priority,
                     is_stable=self.is_stable,
-                    source_path=self.source_path,
+                    rule_path=self.rule_path,
                     period=period,
                     active_flags=active_flags,
                 )
@@ -703,7 +705,7 @@ class Field:
             pos, neg = self.default.toprompt(
                 priority=self.priority,
                 is_stable=self.is_stable,
-                source_path=self.source_path,
+                rule_path=self.rule_path,
                 period=period,
                 active_flags=active_flags,
             )
@@ -711,8 +713,8 @@ class Field:
             negative.append(neg)
 
         if positive.tokens or negative.tokens:
-            # マッチした場合にソースパスをスコープごとに記録
-            achieved_essentials.add(self.source_path)
+            # マッチした場合にルールパスをスコープごとに記録
+            achieved_essentials.add(self.rule_path)
 
         return positive, negative
 
@@ -726,7 +728,7 @@ class Screen:
     Attributes:
         ignition (Ignition): 発火条件
         fields (list[Field]): フィールドのリスト
-        goal_local_essentials (set[SourcePath]): Screen 内で不可欠なルールの一覧
+        goal_local_essentials (set[RulePath]): Screen 内で不可欠なルールの一覧
         common_positive (TokenSet): 共通ポジティブプロンプト
         common_negative (TokenSet): 共通ネガティブプロンプト
     """
@@ -747,20 +749,20 @@ class Screen:
 
     ignition: Ignition = field(default_factory=Ignition)
     fields: list[Field] = field(default_factory=list)
-    goal_local_essentials: set[SourcePath] = field(default_factory=set)
+    goal_local_essentials: set[RulePath] = field(default_factory=set)
     common_positive: TokenSet = field(default_factory=TokenSet)
     common_negative: TokenSet = field(default_factory=TokenSet)
 
     def collect_fields(
-        self, node: dict, source_path: SourcePath, goal_global_essentials: set[SourcePath]
+        self, node: dict, rule_path: RulePath, goal_global_essentials: set[RulePath]
     ) -> None:
         """
         YAML のノードを再帰的に探索し, Field 定義を収集する
 
         Args:
             node (dict): 探索対象のノード
-            source_path (SourcePath): 現在のソースパス
-            goal_global_essentials (set[SourcePath]): Screen を超越して不可欠なルールの一覧
+            rule_path (RulePath): 現在のルールパス
+            goal_global_essentials (set[RulePath]): Screen を超越して不可欠なルールの一覧
         """
         if not isinstance(node, dict):
             # str や list は無視
@@ -771,21 +773,19 @@ class Screen:
         ):
             # 'pattern' キー及び 'maps'/'ranges'/'intervals'が存在することを
             # 正しい Field の条件とする
-            field = Field.make(
-                node, source_path, goal_global_essentials, self.goal_local_essentials
-            )
+            field = Field.make(node, rule_path, goal_global_essentials, self.goal_local_essentials)
             self.fields.append(field)
             return
 
         for k, v in node.items():
-            self.collect_fields(v, source_path + (k,), goal_global_essentials)
+            self.collect_fields(v, rule_path + (k,), goal_global_essentials)
 
     @classmethod
     def make(
         cls,
         screen_name: str,
         screen: dict[str, dict[str, Any]],
-        global_essentials: set[SourcePath],
+        global_essentials: set[RulePath],
     ):
         """
         YAML の定義から Screen インスタンスを生成する
@@ -793,7 +793,7 @@ class Screen:
         Args:
             screen_name (str): 画面名
             screen (dict[str, dict[str, Any]]): 画面定義の辞書
-            global_essentials (set[SourcePath]): Screen を超越して不可欠なルールの一覧
+            global_essentials (set[RulePath]): Screen を超越して不可欠なルールの一覧
 
         Returns:
             Screen: 生成されたScreenインスタンス
@@ -818,8 +818,8 @@ class Screen:
             elif key == KeyName.NEGATIVE and isinstance(val, str):
                 obj.common_negative = TokenSet.make(val)
             else:
-                source_path: SourcePath = (screen_name, key)
-                obj.collect_fields(val, source_path, global_essentials)
+                rule_path: RulePath = (screen_name, key)
+                obj.collect_fields(val, rule_path, global_essentials)
         return obj
 
     def sort(self) -> None:
@@ -877,8 +877,8 @@ class Screen:
         text: str,
         period: int,
         active_flags: set[str],
-        goal_global_essentials: set[SourcePath],
-        achieved_essentials: set[SourcePath],
+        goal_global_essentials: set[RulePath],
+        achieved_essentials: set[RulePath],
     ) -> tuple[PromptBlueprint, PromptBlueprint] | None:
         """
         テキストからプロンプトを生成する\n
@@ -889,7 +889,7 @@ class Screen:
             text (str): テキスト
             period (int): プロンプト化の世代
             active_flags (set[str]): 現在アクティブなフラグの集合
-            goal_global_essentials (set[SourcePath]): Screen を超越して不可欠なルールの一覧
+            goal_global_essentials (set[RulePath]): Screen を超越して不可欠なルールの一覧
 
         Returns:
             tuple[PromptBlueprint, PromptBlueprint] | None: タプル
@@ -937,7 +937,7 @@ class Screen:
         # 各 Screen で達成すべきはローカルとグローバルの和集合
         goal_essentials = goal_global_essentials | self.goal_local_essentials
         if not (goal_essentials <= achieved_essentials):
-            # 実際に達成した不可欠ソースパスの集合に達成すべきものの集合が含まれない場合は空で返す
+            # 実際に達成した不可欠ルールパスの集合に達成すべきものの集合が含まれない場合は空で返す
             return None
         return positive, negative
 
@@ -954,7 +954,7 @@ class Prompter:
         continuing_negative (PromptBlueprint): 継続ネガティブプロンプト
         period (int): 現在の世代番号
         active_flags (set[str]): アクティブなフラグの集合
-        goal_global_essentials (set[SourcePath]): Screen を超越して不可欠なルールの一覧
+        goal_global_essentials (set[RulePath]): Screen を超越して不可欠なルールの一覧
     """
 
     screens: list[Screen] = field(default_factory=list)
@@ -962,7 +962,7 @@ class Prompter:
     continuing_negative: PromptBlueprint = field(default_factory=PromptBlueprint)
     period: int = 0
     active_flags: set[str] = field(default_factory=set)
-    goal_global_essentials: set[SourcePath] = field(default_factory=set)
+    goal_global_essentials: set[RulePath] = field(default_factory=set)
 
     @classmethod
     def make(cls, yamlpath: Path):
@@ -1001,16 +1001,16 @@ class Prompter:
         """
         positive = PromptBlueprint()
         negative = PromptBlueprint()
-        achieved_essentials: set[SourcePath] = set()
+        achieved_essentials: set[RulePath] = set()
 
         # 継続分を最初に記録(この時点でここに入っているものはアクティブなフラグに見合うものしかない)
-        # 継続の際にそのトークンのソースパスを達成済みとしておく
+        # 継続の際にそのトークンのルールパスを達成済みとしておく
         for token in self.continuing_positive.tokens:
             positive.append(token)
-            achieved_essentials.add(token.source_path)
+            achieved_essentials.add(token.rule_path)
         for token in self.continuing_negative.tokens:
             negative.append(token)
-            achieved_essentials.add(token.source_path)
+            achieved_essentials.add(token.rule_path)
 
         exists_not_achieved_screen = False
         for screen in self.screens:
