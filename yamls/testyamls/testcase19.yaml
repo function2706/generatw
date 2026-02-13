@@ -1,0 +1,34 @@
+main:
+  ignition:
+    any: ["main"]
+  name:
+    pattern: "name:([a-z]*),"
+    capturegrp: 1
+    priority: 3
+    essential: global # meta.name が global なので global
+    maps:
+      hogemaru: hogemaru
+      fugami: fugami
+  vibe:
+    pattern: "vibe:(good|bad|normal)"
+    capturegrp: 1
+    priority: 1
+    maps:
+      good: good
+      bad: bad
+meta:
+  ignition:
+    any: ["meta"]
+  name: # main.name に則り priority = 3, global essential
+    pattern: "name:([a-z]*),"
+    capturegrp: 1
+    lifetime: stable
+    maps:
+      hogemaru: hogemaru
+      fugami: fugami
+  where:
+    pattern: "(room|city)"
+    capturegrp: 1
+    maps:
+      room: room
+      city: city

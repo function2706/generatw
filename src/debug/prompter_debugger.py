@@ -59,7 +59,8 @@ CORRECT_RESULT = {
     "CASE 'empty token'": {"testcase14-1: 'go'": {"POS": "", "NEG": "", "FLAGS": []}},
     "CASE 'another rule kill nobody'": {
         "testcase15-1: 'go a:on b:on'": {"POS": "A,B", "NEG": "", "FLAGS": []},
-        "testcase15-2: 'go a:off'": {"POS": "B", "NEG": "", "FLAGS": []},
+        "testcase15-2: 'go b:off'": {"POS": "A", "NEG": "", "FLAGS": []},
+        "testcase15-3: 'go a:off'": {"POS": "", "NEG": "", "FLAGS": []},
     },
     "CASE 'interval'": {
         "testcase16-1: 'go 20'": {"POS": "low,bad", "NEG": "good,high,ok", "FLAGS": []},
@@ -223,6 +224,18 @@ CORRECT_RESULT = {
         "testcase18-11: 'meta UK city'": {"POS": "", "NEG": "", "FLAGS": []},
         "testcase18-12: 'meta city night US'": {"POS": "", "NEG": "", "FLAGS": []},
     },
+    "CASE 'same rule id'": {
+        "testcase19-1: 'main name:hogemaru,vibe:good'": {
+            "POS": "good,hogemaru",
+            "NEG": "",
+            "FLAGS": [],
+        },
+        "testcase19-2: 'meta city'": {"POS": "hogemaru,city", "NEG": "", "FLAGS": []},
+        "testcase19-3: 'meta name:fugami,room'": {"POS": "fugami,room", "NEG": "", "FLAGS": []},
+        "testcase19-4: 'main vibe:bad'": {"POS": "fugami,bad", "NEG": "", "FLAGS": []},
+        "testcase19-5: 'main vibe:normal'": {"POS": "fugami", "NEG": "", "FLAGS": []},
+        "testcase19-6: 'meta name:foota,vibe:good'": {"POS": "", "NEG": "", "FLAGS": []},
+    },
     "CASE 'complex 1'": {
         "test-1: 'today: 2026/02/05, Name2 (vibe: Vibe1)'": {
             "POS": "name2,feature2,vibe1,winter,common positive",
@@ -293,6 +306,19 @@ CORRECT_RESULT = {
 }
 
 
+def dict_diff(result: dict, correct: dict) -> dict[str, tuple[dict, dict]]:
+    diff = {}
+    all_keys = result.keys() | correct.keys()
+
+    for k in all_keys:
+        v1 = result.get(k)
+        v2 = correct.get(k)
+        if v1 != v2:
+            diff[k] = ({"result": v1}, {"correct": v2})
+
+    return diff
+
+
 @dataclass
 class PrompterDebugger:
     yamlpath: Path = None
@@ -329,7 +355,7 @@ class PrompterDebugger:
         for i, text in enumerate(texts):
             try:
                 pos, neg = self.prompter.toprompt(text)
-                active_flags = sorted(self.prompter.active_flags.copy())
+                active_flags = sorted(self.prompter.needle.dynamic.active_flags.copy())
                 posneg = {"POS": pos, "NEG": neg, "FLAGS": active_flags}
                 result[f"{yamlname}-{i + 1}: '{text}'"] = posneg
             except Exception as e:
@@ -380,7 +406,11 @@ def debug() -> None:
             "no match, default pop": {"yamls/testyamls/testcase13.yaml": ["go v:A", "go v:B"]},
             "empty token": {"yamls/testyamls/testcase14.yaml": ["go"]},
             "another rule kill nobody": {
-                "yamls/testyamls/testcase15.yaml": ["go a:on b:on", "go a:off"]
+                "yamls/testyamls/testcase15.yaml": [
+                    "go a:on b:on",  # a, b ともにマッチ
+                    "go b:off",  # b はマッチするもルールが存在せず消去, 次回継続なし
+                    "go a:off",  # a はマッチし, ルールが存在するが空文字列なのでプロンプト化されず
+                ]
             },
             "interval": {
                 "yamls/testyamls/testcase16.yaml": [
@@ -486,6 +516,16 @@ def debug() -> None:
                     "meta city night US",  # もう name(global) がないので未達成扱い
                 ]
             },
+            "same rule id": {
+                "yamls/testyamls/testcase19.yaml": [
+                    "main name:hogemaru,vibe:good",  # name1 は stable なので引き継ぎ
+                    "meta city",  # name (global essential) が引き継がれているので達成, city は priority 未指定で最後尾 # noqa:E501
+                    "meta name:fugami,room",  # ID=name で上書き, hogemaru -> fugami
+                    "main vibe:bad",  # やはり name が引き継がれているので達成, name は stable な持ち越しなので先頭 # noqa:E501
+                    "main vibe:normal",  # マッチするもルールがないので削除
+                    "meta name:foota,vibe:good",  # name マッチせず, global essential 未達成
+                ]
+            },
             "complex 1": {
                 "yamls/testyamls/test.yaml": [
                     "today: 2026/02/05, Name2 (vibe: Vibe1)",
@@ -514,16 +554,17 @@ def debug() -> None:
         }
     )
     dump_json(result, "debug")
+    print("---------------------------------------------------------------------------")
     for key, test_result in result.items():
         correct_result = CORRECT_RESULT.get(key)
         if correct_result is None:
-            print("NEW - ", end="")
+            print(f"NEW - {key}")
         else:
             if test_result == correct_result:
-                print("OK  - ", end="")
+                print(f"OK  - {key}")
             else:
-                print("NG  - ", end="")
-        print(f"{key}")
+                print(f"NG  - {key}")
+                dump_json(dict_diff(test_result, correct_result), "diff")
 
 
 debug()

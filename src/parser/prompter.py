@@ -45,6 +45,7 @@ class Consts:
     """システム全体で使用される定数"""
 
     lowest_priority = -1
+    rule_path_root = "<root>"  # すべてのルールパスが有する原点
 
 
 @dataclass
@@ -123,7 +124,8 @@ class TokenSet:
 
 
 class RulePath(tuple[str, ...]):
-    def ruleid(self) -> str:
+    @property
+    def id(self) -> str:
         return self[-1]
 
 
@@ -145,7 +147,7 @@ class TokenBlueprint:
     token: Token = field(default_factory=Token)
     priority: int = 0
     is_stable: bool = False
-    rule_path: RulePath = field(default_factory=tuple)
+    rule_path: RulePath = RulePath((Consts.rule_path_root,))
     period: int = 0
     condition: Condition = None
 
@@ -180,7 +182,7 @@ class PromptBlueprint:
 
     def append(self, other: Any) -> None:
         """
-        tokens に要素を追加し, 共通する RulePath のものは削除する\n
+        tokens に要素を追加し, 共通する Rule ID のものは削除する\n
         より新しい period を持つトークンで既存のトークンを上書きする
 
         Args:
@@ -190,11 +192,16 @@ class PromptBlueprint:
             TypeError: 引数の型が不正な場合
         """
         if isinstance(other, TokenBlueprint):
-            # 既存のトークンから追加トークンと同じルールパスで古い世代のものを除く
+            # 同じルール ID の priority を統一する
+            for t in self.tokens:
+                if t.rule_path.id == other.rule_path.id:
+                    other.priority = min(other.priority, t.priority)
+
+            # 既存のトークンから追加トークンと同じルール ID で古い世代のものを除く
             self.tokens = [
                 t
                 for t in self.tokens
-                if not (other.rule_path == t.rule_path and other.period > t.period)
+                if not (other.rule_path.id == t.rule_path.id and other.period > t.period)
             ]
 
             self.tokens.append(other)
@@ -308,6 +315,47 @@ def parse_condition(obj: str | dict) -> Condition:
             return AllCond([parse_condition(x) for x in obj["all"]])
 
     raise ValueError(f"Invalid condition: {obj}")
+
+
+@dataclass
+class SyringeNeedle:
+    """
+    Prompter から下層のクラスまでデータを注入するためのクラス\n
+    Dynamic メンバは下層で編集されることに注意
+    """
+
+    @dataclass
+    class Static:
+        """
+        YAML 正規化の際に固定化される静的データ
+
+        Attributes:
+            stable_rules (set[str]): stable なルールの一覧
+            goal_global_essentials (set[str]): Screen を超越して不可欠なルールの一覧
+        """
+
+        stable_rules: set[str] = field(default_factory=set)
+        goal_global_essentials: set[str] = field(default_factory=set)
+
+    @dataclass
+    class Dynamic:
+        """
+        プロンプト化の際に動的に更新される動的データ
+
+        Attributes:
+            period (int): 現在の世代番号
+            active_flags (set[str]): アクティブなフラグの集合
+            achieved_essentials (set[str]): 達成済みの不可欠ルールの一覧
+            empty_tokens_rule_ids (set[str]): 空トークン判定のルール ID
+        """
+
+        period: int = 0
+        active_flags: set[str] = field(default_factory=set)
+        achieved_essentials: set[str] = field(default_factory=set)
+        empty_tokens_rule_ids: set[str] = field(default_factory=set)
+
+    static: Static = field(default_factory=Static)
+    dynamic: Dynamic = field(default_factory=Dynamic)
 
 
 @dataclass
@@ -472,10 +520,9 @@ class Rule:
         priority: int,
         is_stable: bool,
         rule_path: RulePath,
-        period: int,
-        active_flags: set[str],
+        dynamic: SyringeNeedle.Dynamic,
         match: str = None,
-    ) -> tuple[PromptBlueprint, PromptBlueprint]:
+    ) -> tuple[PromptBlueprint, PromptBlueprint, bool]:
         """
         マッチ文字列が条件を満たす場合にプロンプトを生成する
 
@@ -483,32 +530,33 @@ class Rule:
             priority (int): 優先度
             is_stable (bool): 安定フラグ
             rule_path (RulePath): ルールパス
-            period (int): 世代番号
-            active_flags (set[str]): 現在アクティブなフラグの集合
+            dynamic (SyringeNeedle.Dynamic): 上層から共有される動的データ集
             match (str, optional): マッチした文字列
 
         Returns:
-            tuple[PromptBlueprint, PromptBlueprint]: タプル
+            tuple[PromptBlueprint, PromptBlueprint, bool | None]: プロンプトと空文字列の理由のタプル
+            bool は空文字列を返す場合に, マッチしなかったことに因る場合に True
+            フラグ条件不一致に因る場合に False
+            それ以外(空文字列でない)の場合に None (使用しない)
         """
-        if (
-            (self.matches and match not in self.matches)
-            or (
-                self.interval
-                and (float(match) < self.interval[0] or float(match) > self.interval[1])
-            )
-            or (self.condition is not None and not self.condition.evaluate(active_flags))
+        if (self.matches and match not in self.matches) or (
+            self.interval and (float(match) < self.interval[0] or float(match) > self.interval[1])
         ):
-            # マッチせず, もしくは(条件がある上で)フラグ条件に見合わない
+            # マッチせず
             # default つまり matches/interval が空の場合はここに入らない
-            return PromptBlueprint(), PromptBlueprint()
+            return PromptBlueprint(), PromptBlueprint(), True
+        elif self.condition is not None and not self.condition.evaluate(dynamic.active_flags):
+            # 条件がある上でフラグ条件に見合わない
+            # default つまり matches/interval が空の場合はここに入らない
+            return PromptBlueprint(), PromptBlueprint(), False
 
         # アクティブなフラグの更新は採用された場合のみ行う
         for fpm in self.flags_pm:
             for sign, flags in fpm.items():
                 if sign == KeyName.add:
-                    active_flags |= flags
+                    dynamic.active_flags |= flags
                 if sign == KeyName.remove:
-                    active_flags -= flags
+                    dynamic.active_flags -= flags
 
         positive = PromptBlueprint()
         negative = PromptBlueprint()
@@ -520,7 +568,7 @@ class Rule:
                     priority=priority,
                     is_stable=is_stable,
                     rule_path=rule_path,
-                    period=period,
+                    period=dynamic.period,
                     condition=self.condition,
                 )
             )
@@ -531,11 +579,11 @@ class Rule:
                     priority=priority,
                     is_stable=is_stable,
                     rule_path=rule_path,
-                    period=period,
+                    period=dynamic.period,
                     condition=self.condition,
                 )
             )
-        return positive, negative
+        return positive, negative, None
 
 
 @dataclass
@@ -568,7 +616,7 @@ class Field:
     rules: list[Rule] = field(default_factory=list)
     default: Rule | None = None
 
-    rule_path: RulePath = field(default_factory=tuple)
+    rule_path: RulePath = field(default_factory=RulePath)
 
     re_cache: re.Pattern[str] = field(default=None, init=False, repr=False, compare=False)
 
@@ -577,8 +625,8 @@ class Field:
         cls,
         field: dict[str, dict],
         rule_path: RulePath,
-        global_essentials: set[RulePath],
-        local_essentials: set[RulePath],
+        static: SyringeNeedle.Static,
+        local_essentials: set[str],
     ):
         """
         YAML の定義から Field インスタンスを生成する
@@ -586,8 +634,8 @@ class Field:
         Args:
             field (dict[str, dict]): フィールド定義の辞書
             rule_path (RulePath): ルールパス
-            global_essentials (set[RulePath]): Screen を超越して不可欠なルールの一覧
-            local_essential (set[RulePath]): Screen 内で不可欠なルールの一覧
+            static (SyringeNeedle.Static): 上層から共有される静的データ集
+            local_essential (set[str]): Screen 内で不可欠なルールの一覧
 
         Returns:
             Field: 生成されたFieldインスタンス
@@ -611,16 +659,18 @@ class Field:
 
         if KeyName.lifetime in field and field.get(KeyName.lifetime) == KeyName.stable:
             obj.is_stable = True
+            # 上層で stable な同名ルールがあるものをすべて stable にする操作を行うための記録
+            static.stable_rules.add(rule_path.id)
 
         if KeyName.essential in field:
             if field.get(KeyName.essential) == KeyName.local:
-                local_essentials.add(rule_path)
+                local_essentials.add(rule_path.id)
             elif field.get(KeyName.essential) == KeyName.global_k:
                 if obj.is_stable:
-                    global_essentials.add(rule_path)
+                    static.goal_global_essentials.add(rule_path.id)
                 else:
                     # volatile なルールが global に essential な場合は local
-                    local_essentials.add(rule_path)
+                    local_essentials.add(rule_path.id)
 
         if KeyName.maps in field:
             for key, val in field.get(KeyName.maps).items():
@@ -653,11 +703,7 @@ class Field:
         return obj
 
     def toprompt(
-        self,
-        text: str,
-        period: int,
-        active_flags: set[str],
-        achieved_essentials: set[RulePath],
+        self, text: str, needle: SyringeNeedle, is_stable: int | None = None
     ) -> tuple[PromptBlueprint, PromptBlueprint]:
         """
         指定の text をポジティブプロンプト・ネガティブプロンプトのタプルにする\n
@@ -665,9 +711,8 @@ class Field:
 
         Args:
             text (str): テキスト
-            period (int): プロンプト化の世代
-            active_flags (set[str]): 現在アクティブなフラグの集合
-            achieved_essentials (set[RulePath]): 達成したルールパス
+            needle (SyringeNeedle): 上層から共有されるデータ集
+            is_stable (bool | None, Optional): 外部から is_stable を指定する場合
 
         Returns:
             tuple[PromptBlueprint, PromptBlueprint]: タプル
@@ -675,9 +720,9 @@ class Field:
         positive = PromptBlueprint()
         negative = PromptBlueprint()
 
+        # 一度でも一致があり, かつそれがキャプチャ範囲適正か
         matched_once = False
         for match_itr in self.re_cache.finditer(text):
-            matched_once = True
             try:
                 match = match_itr.group(self.capturegrp)
             except Exception:
@@ -688,33 +733,40 @@ class Field:
                 )
                 continue
 
+            matched_once = True
             for rule in self.rules:
-                pos, neg = rule.toprompt(
+                pos, neg, by_no_match = rule.toprompt(
                     match=match,
                     priority=self.priority,
-                    is_stable=self.is_stable,
+                    is_stable=is_stable if is_stable is not None else self.is_stable,
                     rule_path=self.rule_path,
-                    period=period,
-                    active_flags=active_flags,
+                    dynamic=needle.dynamic,
                 )
+
                 positive.append(pos)
                 negative.append(neg)
 
-        if matched_once and self.default and not positive.tokens and not negative.tokens:
-            # default
-            pos, neg = self.default.toprompt(
-                priority=self.priority,
-                is_stable=self.is_stable,
-                rule_path=self.rule_path,
-                period=period,
-                active_flags=active_flags,
-            )
-            positive.append(pos)
-            negative.append(neg)
+        if matched_once and not positive.tokens and not negative.tokens:
+            if self.default:
+                # default
+                pos, neg, _ = self.default.toprompt(
+                    priority=self.priority,
+                    is_stable=is_stable if is_stable is not None else self.is_stable,
+                    rule_path=self.rule_path,
+                    dynamic=needle.dynamic,
+                )
+                positive.append(pos)
+                negative.append(neg)
+            elif by_no_match:
+                # どちらも空トークン(=マッチはしたが一致するルールがない)である場合を記録
+                # これは今 period で継続中の stable トークンの削除に使用する
+                # ただし default が設定されている場合, もしくは
+                # フラグ条件不一致に因る場合は削除対象には追加しない
+                needle.dynamic.empty_tokens_rule_ids.add(self.rule_path.id)
 
         if positive.tokens or negative.tokens:
             # マッチした場合にルールパスをスコープごとに記録
-            achieved_essentials.add(self.rule_path)
+            needle.dynamic.achieved_essentials.add(self.rule_path.id)
 
         return positive, negative
 
@@ -728,7 +780,7 @@ class Screen:
     Attributes:
         ignition (Ignition): 発火条件
         fields (list[Field]): フィールドのリスト
-        goal_local_essentials (set[RulePath]): Screen 内で不可欠なルールの一覧
+        goal_local_essentials (set[str]): Screen 内で不可欠なルールの一覧
         common_positive (TokenSet): 共通ポジティブプロンプト
         common_negative (TokenSet): 共通ネガティブプロンプト
     """
@@ -749,20 +801,18 @@ class Screen:
 
     ignition: Ignition = field(default_factory=Ignition)
     fields: list[Field] = field(default_factory=list)
-    goal_local_essentials: set[RulePath] = field(default_factory=set)
+    goal_local_essentials: set[str] = field(default_factory=set)
     common_positive: TokenSet = field(default_factory=TokenSet)
     common_negative: TokenSet = field(default_factory=TokenSet)
 
-    def collect_fields(
-        self, node: dict, rule_path: RulePath, goal_global_essentials: set[RulePath]
-    ) -> None:
+    def collect_fields(self, node: dict, rule_path: RulePath, static: SyringeNeedle.Static) -> None:
         """
         YAML のノードを再帰的に探索し, Field 定義を収集する
 
         Args:
             node (dict): 探索対象のノード
             rule_path (RulePath): 現在のルールパス
-            goal_global_essentials (set[RulePath]): Screen を超越して不可欠なルールの一覧
+            static (SyringeNeedle.Static): 上層から共有される静的データ集
         """
         if not isinstance(node, dict):
             # str や list は無視
@@ -773,19 +823,16 @@ class Screen:
         ):
             # 'pattern' キー及び 'maps'/'ranges'/'intervals'が存在することを
             # 正しい Field の条件とする
-            field = Field.make(node, rule_path, goal_global_essentials, self.goal_local_essentials)
+            field = Field.make(node, rule_path, static, self.goal_local_essentials)
             self.fields.append(field)
             return
 
         for k, v in node.items():
-            self.collect_fields(v, rule_path + (k,), goal_global_essentials)
+            self.collect_fields(v, RulePath(rule_path + (k,)), static)
 
     @classmethod
     def make(
-        cls,
-        screen_name: str,
-        screen: dict[str, dict[str, Any]],
-        global_essentials: set[RulePath],
+        cls, screen_name: str, screen: dict[str, dict[str, Any]], static: SyringeNeedle.Static
     ):
         """
         YAML の定義から Screen インスタンスを生成する
@@ -793,7 +840,7 @@ class Screen:
         Args:
             screen_name (str): 画面名
             screen (dict[str, dict[str, Any]]): 画面定義の辞書
-            global_essentials (set[RulePath]): Screen を超越して不可欠なルールの一覧
+            static (SyringeNeedle.Static): 上層から共有される静的データ集
 
         Returns:
             Screen: 生成されたScreenインスタンス
@@ -818,8 +865,9 @@ class Screen:
             elif key == KeyName.NEGATIVE and isinstance(val, str):
                 obj.common_negative = TokenSet.make(val)
             else:
-                rule_path: RulePath = (screen_name, key)
-                obj.collect_fields(val, rule_path, global_essentials)
+                rule_path: RulePath = RulePath((screen_name, key))
+                obj.collect_fields(val, rule_path, static)
+
         return obj
 
     def sort(self) -> None:
@@ -873,12 +921,7 @@ class Screen:
             return any(p.search(text) for p in self.ignition.patterns)
 
     def toprompt(
-        self,
-        text: str,
-        period: int,
-        active_flags: set[str],
-        goal_global_essentials: set[RulePath],
-        achieved_essentials: set[RulePath],
+        self, text: str, needle: SyringeNeedle
     ) -> tuple[PromptBlueprint, PromptBlueprint] | None:
         """
         テキストからプロンプトを生成する\n
@@ -887,9 +930,7 @@ class Screen:
 
         Args:
             text (str): テキスト
-            period (int): プロンプト化の世代
-            active_flags (set[str]): 現在アクティブなフラグの集合
-            goal_global_essentials (set[RulePath]): Screen を超越して不可欠なルールの一覧
+            needle (SyringeNeedle): 上層から共有されるデータ集
 
         Returns:
             tuple[PromptBlueprint, PromptBlueprint] | None: タプル
@@ -900,13 +941,18 @@ class Screen:
 
         positive = PromptBlueprint()
         negative = PromptBlueprint()
+        optimized_goal_local_essentials = self.goal_local_essentials.copy()
         for fld in self.fields:
-            pos, neg = fld.toprompt(
-                text,
-                period=period,
-                active_flags=active_flags,
-                achieved_essentials=achieved_essentials,
-            )
+            is_stable = None
+            # 同名のルール ID で stable なものが存在する場合に stable として実行
+            if fld.rule_path.id in needle.static.stable_rules:
+                is_stable = True
+
+            # 同名のルール ID で global なものが存在する場合に local 指定をなくして実行
+            if fld.rule_path.id in needle.static.goal_global_essentials:
+                optimized_goal_local_essentials -= {fld.rule_path.id}
+
+            pos, neg = fld.toprompt(text, needle=needle, is_stable=is_stable)
             positive.append(pos)
             negative.append(neg)
 
@@ -919,7 +965,7 @@ class Screen:
                     if positive.tokens
                     else 1,
                     is_stable=False,
-                    period=period,
+                    period=needle.dynamic.period,
                 )
             )
         for token in self.common_negative.tokens:
@@ -930,13 +976,13 @@ class Screen:
                     if negative.tokens
                     else 1,
                     is_stable=False,
-                    period=period,
+                    period=needle.dynamic.period,
                 )
             )
 
         # 各 Screen で達成すべきはローカルとグローバルの和集合
-        goal_essentials = goal_global_essentials | self.goal_local_essentials
-        if not (goal_essentials <= achieved_essentials):
+        goal_essentials = needle.static.goal_global_essentials | optimized_goal_local_essentials
+        if not (goal_essentials <= needle.dynamic.achieved_essentials):
             # 実際に達成した不可欠ルールパスの集合に達成すべきものの集合が含まれない場合は空で返す
             return None
         return positive, negative
@@ -952,17 +998,13 @@ class Prompter:
         screens (list[Screen]): 画面のリスト
         continuing_positive (PromptBlueprint): 継続ポジティブプロンプト
         continuing_negative (PromptBlueprint): 継続ネガティブプロンプト
-        period (int): 現在の世代番号
-        active_flags (set[str]): アクティブなフラグの集合
-        goal_global_essentials (set[RulePath]): Screen を超越して不可欠なルールの一覧
+        needle (SyringeNeedle): 下層と共有するデータ集
     """
 
     screens: list[Screen] = field(default_factory=list)
     continuing_positive: PromptBlueprint = field(default_factory=PromptBlueprint)
     continuing_negative: PromptBlueprint = field(default_factory=PromptBlueprint)
-    period: int = 0
-    active_flags: set[str] = field(default_factory=set)
-    goal_global_essentials: set[RulePath] = field(default_factory=set)
+    needle: SyringeNeedle = field(default_factory=SyringeNeedle)
 
     @classmethod
     def make(cls, yamlpath: Path):
@@ -979,7 +1021,7 @@ class Prompter:
         with open(yamlpath, "r", encoding="utf-8") as f:
             yamldict: dict = yaml.safe_load(f)
         for key, val in yamldict.items():
-            obj.screens.append(Screen.make(key, val, obj.goal_global_essentials))
+            obj.screens.append(Screen.make(key, val, obj.needle.static))
         obj.renumber_priorities()
         return obj
 
@@ -1001,26 +1043,21 @@ class Prompter:
         """
         positive = PromptBlueprint()
         negative = PromptBlueprint()
-        achieved_essentials: set[RulePath] = set()
+        self.needle.dynamic.achieved_essentials = set()
+        self.needle.dynamic.empty_tokens_rule_ids = set()
 
         # 継続分を最初に記録(この時点でここに入っているものはアクティブなフラグに見合うものしかない)
         # 継続の際にそのトークンのルールパスを達成済みとしておく
         for token in self.continuing_positive.tokens:
             positive.append(token)
-            achieved_essentials.add(token.rule_path)
+            self.needle.dynamic.achieved_essentials.add(token.rule_path.id)
         for token in self.continuing_negative.tokens:
             negative.append(token)
-            achieved_essentials.add(token.rule_path)
+            self.needle.dynamic.achieved_essentials.add(token.rule_path.id)
 
         exists_not_achieved_screen = False
         for screen in self.screens:
-            result = screen.toprompt(
-                text,
-                self.period,
-                self.active_flags,
-                self.goal_global_essentials,
-                achieved_essentials,
-            )
+            result = screen.toprompt(text, self.needle)
             if result is None:
                 # 不可欠ルール条件未達成の場合
                 exists_not_achieved_screen = True
@@ -1029,6 +1066,16 @@ class Prompter:
             pos, neg = result
             positive.append(pos)
             negative.append(neg)
+
+        # マッチしなかったルール ID と同じ継続中 stable トークンは削除
+        for empty_rule_id in self.needle.dynamic.empty_tokens_rule_ids:
+            for token in self.continuing_positive.tokens:
+                if token.rule_path.id == empty_rule_id and token in positive.tokens:
+                    positive.tokens.remove(token)
+
+            for token in self.continuing_negative.tokens:
+                if token.rule_path.id == empty_rule_id and token in negative.tokens:
+                    negative.tokens.remove(token)
 
         self.continuing_positive = PromptBlueprint()
         self.continuing_negative = PromptBlueprint()
@@ -1039,13 +1086,13 @@ class Prompter:
         # 継続分を記録(アクティブなフラグが条件に見合うもののみ), ただし同じルール元パスのものは更新
         # なお stable でも達成できなかった(= not achieved_screen)場合は継続しない
         for token in positive.tokens:
-            if token.is_stable and token.evaluate(self.active_flags):
+            if token.is_stable and token.evaluate(self.needle.dynamic.active_flags):
                 self.continuing_positive.append(token)
         for token in negative.tokens:
-            if token.is_stable and token.evaluate(self.active_flags):
+            if token.is_stable and token.evaluate(self.needle.dynamic.active_flags):
                 self.continuing_negative.append(token)
 
-        self.period += 1
+        self.needle.dynamic.period += 1
 
         return positive.to_promptstr(), negative.to_promptstr()
 

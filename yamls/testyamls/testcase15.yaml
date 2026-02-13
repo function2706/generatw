@@ -1,7 +1,6 @@
 main:
   ignition:
     any: ["go"]
-
   f1:
     pattern: "a:(on|off)"
     capturegrp: 1
@@ -11,7 +10,6 @@ main:
         positive: "A"
       "off":
         positive: ""
-
   f2:
     pattern: "b:(on|off)"
     capturegrp: 1
