@@ -637,6 +637,9 @@ class Displayer:
         YAML選択ボタンハンドラ
         """
         path = filedialog.askopenfilename(title="YAML選択", filetypes=[("YAML", "*.yaml")])
+        if not path:
+            return
+
         self.main_window.main_tab_obj.sellect_frame.yamlpath = Path(path)
         self.main_window.main_tab_obj.sellect_frame.yamlpath_var.set(Path(path).name)
         self.to_master.enclose(OnSelectYaml(path=path))
