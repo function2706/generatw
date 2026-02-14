@@ -338,7 +338,6 @@ def dict_diff(result: dict, correct: dict) -> dict[str, tuple[dict, dict]]:
 
 @dataclass
 class PrompterDebugger:
-    yamlpath: Path = None
     yamldict: dict = None
     prompter: Prompter = None
 
@@ -349,16 +348,17 @@ class PrompterDebugger:
         return obj
 
     def set(self, yamlpath: Path):
-        self.yamlpath = yamlpath
         with open(yamlpath, "r", encoding="utf-8") as f:
             self.yamldict = yaml.safe_load(f)
         self.prompter = Prompter.make(yamlpath)
 
     def dump_yamldict(self) -> None:
-        dump_json(self.yamldict, self.yamlpath.name.replace(".yaml", ""))
+        dump_json(self.yamldict, self.prompter.yamlpath.name.replace(".yaml", ""))
 
     def dump_normalized_yamldict(self) -> None:
-        dump_json(self.prompter.todict(), f"normalized {self.yamlpath.name.replace('.yaml', '')}")
+        dump_json(
+            self.prompter.todict(), f"normalized {self.prompter.yamlpath.name.replace('.yaml', '')}"
+        )
 
     def debug_texts(self, texts: list[str]) -> dict[str, dict[str, str]]:
         """
@@ -367,7 +367,7 @@ class PrompterDebugger:
         Args:
             texts (list[str]): テスト用テキスト
         """
-        yamlname = self.yamlpath.name.replace(".yaml", "")
+        yamlname = self.prompter.yamlpath.name.replace(".yaml", "")
         result: dict[str, dict[str, str]] = {}
         for i, text in enumerate(texts):
             try:

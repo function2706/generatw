@@ -8,7 +8,7 @@ import tkinter
 from pathlib import Path
 from typing import Protocol
 
-from common.functions import BackEnd, FrontEnd
+from common.functions import BackEnd
 from displayer.dataclasses import GUIConfigs
 
 
@@ -21,15 +21,11 @@ class MasterIF(Protocol):
     after_id: str
 
     @property
-    def frontend_type(self) -> FrontEnd: ...
-    @property
-    def frontend_name(self) -> str: ...
-    @property
     def backend_type(self) -> BackEnd: ...
     @property
     def backend_name(self) -> str: ...
     @property
-    def pics_dir_path(self) -> Path: ...
+    def pics_yaml_dir(self) -> Path: ...
     @property
     def crnt_gui_configs(self) -> GUIConfigs: ...
     @property

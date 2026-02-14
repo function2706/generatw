@@ -1009,6 +1009,7 @@ class Prompter:
         needle (SyringeNeedle): 下層と共有するデータ集
     """
 
+    yamlpath: Path = Path()
     screens: list[Screen] = field(default_factory=list)
     continuing_positive: PromptBlueprint = field(default_factory=PromptBlueprint)
     continuing_negative: PromptBlueprint = field(default_factory=PromptBlueprint)
@@ -1026,6 +1027,7 @@ class Prompter:
             Prompter: 生成されたPrompterインスタンス
         """
         obj = cls()
+        obj.yamlpath = Path(yamlpath)
         with open(yamlpath, "r", encoding="utf-8") as f:
             yamldict: dict = yaml.safe_load(f)
         for key, val in yamldict.items():

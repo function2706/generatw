@@ -10,18 +10,16 @@ import json
 import re
 from collections import deque
 from copy import deepcopy
-from enum import Enum, auto
+from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from typing import Any, Generic, TypeVar
 
 
-class FrontEnd(Enum):
-    """
-    フロントエンド識別子
-    """
-
-    reverse = auto()
-    the_world = auto()
+@dataclass(frozen=True)
+class PathConsts:
+    # 画像保存先ディレクトリ
+    pichome_dir: Path = Path("pics")
 
 
 class BackEnd(Enum):

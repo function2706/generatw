@@ -124,5 +124,6 @@ class ParserEvent:
 
 
 @dataclass
-class NewClipStats(ParserEvent):
-    is_enough: bool
+class NewPrompts(ParserEvent):
+    positive: str
+    negative: str

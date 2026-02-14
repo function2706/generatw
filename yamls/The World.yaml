@@ -7,6 +7,7 @@ main:
       priority: 1
       capturegrp: 1
       lifetime: stable
+      essential: global
       maps:
         博麗 霊夢: hakurei reimu
         る～こと: ruukoto,green hair,short hair,blue eyes,light blue maid apron,red bowtie,tareme
@@ -196,8 +197,9 @@ main:
       priority: 5
       capturegrp: 1
       lifetime: stable
-      maps:
-        xxx: xxx
+      intervals:
+        blush: [60, 100]
+        blush,in heat: [100, 10000]
     angry:
       pattern: '怒り:\s*(！*)|怒'
       priority: 2
@@ -221,7 +223,7 @@ main:
       priority: 2
       capturegrp: 1
       lifetime: stable
-      ranges:
+      maps:
         ❤: (happy:0.9)
         ❤❤: happy
         ❤❤❤: happy

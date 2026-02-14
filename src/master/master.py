@@ -10,7 +10,7 @@ from pathlib import Path
 
 from archiver.archiver import Archiver
 from archiver.dataclasses import NoImageStats, PicStats
-from common.functions import BackEnd, BottleMail, FrontEnd, dump_json
+from common.functions import BackEnd, BottleMail, dump_json
 from displayer.dataclasses import GUIConfigs
 from displayer.displayer import Displayer
 from generator.a1111_generator import A1111Generator
@@ -27,9 +27,9 @@ from master.events import (
     ChangeTasks,
     DisplayerEvent,
     GeneratorEvent,
-    NewClipStats,
     NewPicStats,
     NewProgress,
+    NewPrompts,
     OnBackward,
     OnChangeConfig,
     OnDebug,
@@ -48,8 +48,7 @@ from master.events import (
     TaskStart,
 )
 from master.interfaces import MasterIF
-from parser.reverse_parser import ReverseParser
-from parser.theworld_parser import TheWorldParser
+from parser.parser import Parser
 
 
 @dataclass(frozen=True)
@@ -62,7 +61,7 @@ class Master(MasterIF):
     各モジュールの横断処理を統括するクラス
     """
 
-    def __init__(self, frontend: FrontEnd):
+    def __init__(self):
         """
         コンストラクタ
 
@@ -92,24 +91,17 @@ class Master(MasterIF):
                 backend=BackEnd.a1111.value,
                 allow_edit_clipboard=False,
                 print_new_clipboard=False,
-                print_new_stats=False,
+                print_new_prompt=False,
                 print_picinfo=False,
                 print_event=False,
             )
         )
 
-        # TBD: init YAML の指定(存在するなら)
-        self.frontend: FrontEnd = frontend
-        if frontend == FrontEnd.reverse:
-            self.parser = ReverseParser(self, self.from_parser)
-        elif frontend == FrontEnd.the_world:
-            self.parser = TheWorldParser(self, self.from_parser)
-        else:
-            raise ValueError
+        self.parser = Parser(self, self.from_parser)
         if self.crnt_configs.yamlpath is not None:
             self.parser.reset_prompter(Path(self.crnt_configs.yamlpath))
 
-        self.archiver = Archiver(self.parser.pics_dir_path(), self.from_archiver)
+        self.archiver = Archiver(self.from_archiver)
 
         self.backend: BackEnd = (
             BackEnd.a1111 if self.crnt_configs.backend == BackEnd.a1111.value else BackEnd.comfy_ui
@@ -246,8 +238,7 @@ class Master(MasterIF):
             if isinstance(event, OnSelectYaml):
                 self.parser.reset_prompter(Path(event.path))
             if isinstance(event, OnDebug):
-                if self.parser.ready_for_debug():
-                    self.run_oneshot()
+                self.parser.ready_for_debug()
             if isinstance(event, OnDumpArchiver):
                 dump_json(self.archiver.archive.todict(), "archiver")
             if isinstance(event, OnDumpTaskList):
@@ -319,36 +310,21 @@ class Master(MasterIF):
 
             if self.crnt_gui_configs.print_event:
                 print(
-                    f"{self.parser.__class__.__name__:20} > {event.__class__.__name__:20} > ",
+                    f"{self.parser.__class__.__name__:20} > {event.__class__.__name__:15} > ",
                     end="",
                 )
-            if isinstance(event, NewClipStats):
+            if isinstance(event, NewPrompts):
+
+                def truncate(prompt: str, n: int = 3) -> str:
+                    tokens = prompt.split(",")
+                    return ",".join(tokens[:n]) + ("..." if len(tokens) > n else "")
+
                 if self.crnt_gui_configs.print_event:
-                    print(f"enough={event.is_enough}")
-                    if event.is_enough:
-                        self.run_oneshot()
-                    else:
-                        self.archiver.drop_picstats()
-
-    @property
-    def frontend_type(self) -> FrontEnd:
-        """
-        フロントエンドタイプ
-
-        Returns:
-            FrontEnd: フロントエンドタイプ
-        """
-        return self.frontend
-
-    @property
-    def frontend_name(self) -> str:
-        """
-        フロントエンド名
-
-        Returns:
-            str: フロントエンド名
-        """
-        return self.parser.whoami()
+                    print(f"pos={truncate(event.positive)}, neg={truncate(event.negative)}")
+                if event.positive:
+                    self.run_oneshot()
+                else:
+                    self.archiver.drop_picstats()
 
     @property
     def backend_type(self) -> BackEnd:
@@ -369,17 +345,6 @@ class Master(MasterIF):
             str: バックエンド名
         """
         return self.backend.value
-
-    @property
-    def pics_dir_path(self) -> Path:
-        """
-        画像ディレクトリパスを取得する\n
-        (pics/<フロントエンド名>)
-
-        Returns:
-            Path: ディレクトリパス
-        """
-        return self.parser.pics_dir_path()
 
     @property
     def crnt_gui_configs(self) -> GUIConfigs:
@@ -420,12 +385,12 @@ class Master(MasterIF):
         ただしプロンプト生成に十分なステータスが記録されていない,\n
         すでにリストに存在する, あるいは作業中のタスクの場合は何もしない
         """
-        if not self.parser.is_stats_enough_for_prompt() or self.is_switching_backend:
+        if not self.parser.is_enough_prompt() or self.is_switching_backend:
             return
 
         self.generator.reserve_txt2img(
-            pos=self.parser.make_pos_prompt(),
-            neg=self.parser.make_neg_prompt(),
+            pos=self.parser.crnt_positive,
+            neg=self.parser.crnt_negative,
             seed=-1,
             stps=self.crnt_configs.sd_steps,
             b_size=self.crnt_configs.sd_batch_size,
@@ -446,12 +411,12 @@ class Master(MasterIF):
         if construct_window:
             self.displayer.pic_window.construct(fix_position=True)
 
-        if self.archiver.count_files_in(self.parser.get_crnt_stats_dir()) == 0:
+        if self.archiver.count_files_in(self.parser.crnt_prompt_dir) == 0:
             # 記録中ステータスに紐づくディレクトリ内に画像がない
             self.archiver.drop_picstats()
             return
 
-        self.archiver.warp_picstats(self.parser.get_crnt_stats_dir())
+        self.archiver.warp_picstats(self.parser.crnt_prompt_dir)
 
     def run_oneshot(self) -> None:
         """
@@ -476,4 +441,4 @@ class Master(MasterIF):
         except tkinter.TclError:
             return
         finally:
-            self.after_id = self.root.after(100, self.run_main)
+            self.after_id = self.root.after(10, self.run_main)

@@ -4,9 +4,8 @@
 
 from __future__ import annotations
 
-import os
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
@@ -158,101 +157,3 @@ class NoImageStats:
     """
 
     pass
-
-
-@dataclass
-class PicArchive:
-    """
-    現在の注目画像と, 画像リストのセット\n
-    画像は PicStats として保存される
-    """
-
-    rootdir: Path | None = None
-    piclist: list[dict[str, list[PicStats]]] = field(default_factory=list)
-
-    def __post_init__(self):
-        """
-        コンストラクタ後に監視対象ディレクトリのリストを作成する
-        """
-        self.refresh_piclist()
-
-    def refresh_piclist(self) -> None:
-        """
-        監視対象ディレクトリ内の画像ファイルを PicStats の形で再帰的にリスト化する
-        """
-        self.piclist = []
-        for dirpath, _, filenames in os.walk(self.rootdir):
-            picstats: list[PicStats] = []
-            for filename in filenames:
-                if filename.lower().endswith(".png"):
-                    path = Path(dirpath) / filename
-                    picstats.append(PicStats.make(path))
-            if picstats:
-                dirname = Path(dirpath).name
-                self.piclist.append({dirname: picstats})
-
-    def add(self, path: Path) -> None:
-        """
-        指定の PicStats をリストに追加する\n
-        追加先ディレクトリは PicStats の dir をもとに判断し,\n
-        そのディレクトリを持つ dict の list に追加する\n
-        もしそのディレクトリがない場合は新たに作成し, そこに追加する
-
-        Args:
-            picstats (PicStats): PicStats
-        """
-        picstats = PicStats.make(path, retry=5, cooldown=0.1)
-        dir = picstats.dir
-        for item in self.piclist:
-            if dir in item:
-                item[dir].append(picstats)
-                return
-
-        # ディレクトリが存在しない
-        self.piclist.append({dir: [picstats]})
-
-    def remove(self, path: Path) -> None:
-        """
-        指定の PicStats とパスが一致する PicStats をリストから削除する\n
-        削除の結果 list が空になった場合, その dict も削除する
-
-        Args:
-            picstats (PicStats): PicStats
-        """
-        dir = path.parent.name
-        for i, item in enumerate(self.piclist):
-            if dir not in item:
-                continue
-
-            picstats_list = item[dir]
-            for j, pstats in enumerate(picstats_list):
-                if pstats.path == path:
-                    picstats_list.pop(j)
-                    break
-
-            # もし画像リストが空になった際はその辞書ごとリストから削除
-            if not picstats_list:
-                self.piclist.pop(i)
-            break
-
-    def get_picstats_list(self, dirname: str) -> list[PicStats]:
-        """
-        監視対象ディレクトリ内で指定のディレクトリ名に紐づく PicStats リストを取得する\n
-        存在しない場合は空リストを返す
-
-        Args:
-            dirname (str): ディレクトリ名
-
-        Returns:
-            list[PicStats]: PicStats リスト
-        """
-        return next((d[dirname] for d in self.piclist if dirname in d), [])
-
-    def todict(self) -> dict[str, Any]:
-        """
-        dict への変換
-
-        Returns:
-            dict[str, Any]: dict インスタンス
-        """
-        return asdict(self)

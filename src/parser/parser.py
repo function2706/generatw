@@ -4,20 +4,19 @@
 
 from __future__ import annotations
 
-import copy
 import random
 import threading
 import time
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Generic, Mapping, Protocol, TypeVar
+from threading import Lock
 
 import pyperclip
 
-from common.functions import BottleMail, dirname_by_prompts, dump_json
-from master.events import NewClipStats, ParserEvent
+from common.functions import BottleMail, dirname_by_prompts
+from master.events import NewPrompts, ParserEvent
 from master.interfaces import MasterIF
+from parser.prompter import Prompter
 
 
 @dataclass(frozen=True)
@@ -28,10 +27,8 @@ class Consts:
 
     thread_interval_sec = 0.1
 
-    # 画像保存先ディレクトリ
-    pichome_dir: str = "pics"
-    # デバッグ用キャラクター名の部分文字列
-    charaname_substr_debug: str = "DebuggingPM"
+    # デバッグ用 YAML
+    debug_yamlpath: Path = Path("yamls/Debug.yaml")
 
 
 @dataclass
@@ -41,55 +38,30 @@ class Event:
     """
 
     shutdown: threading.Event = field(default_factory=threading.Event)  # 終了予定
+    is_debugging: threading.Event = field(default_factory=threading.Event)  # デバッグ予定
 
 
-class HasCommonMembers(Protocol):
-    """
-    Generic な Stats が 共通メンバを持つことを伝えるためのクラス
-    """
-
-    # var: int <- ここで共通メンバ変数の存在を通告することもできる
-
-    def refresh(self) -> None: ...
-    def todict(self) -> dict[str, Any]: ...
-
-
-Stats = TypeVar("Stats", bound=HasCommonMembers)
-
-
-class Parser(ABC, Generic[Stats]):
+class Parser:
     """
     クリップボード監視, ステータス記録クラス
     """
 
-    @property
-    @abstractmethod
-    def chara_tbl(self) -> Mapping[str, str]:
-        """
-        キャラクタプロンプトテーブル\n
-        キャラクタ名と対応するプロンプトの定義
-
-        Returns:
-            Mapping[str, str]: テーブル
-        """
-        raise NotImplementedError
-
-    def __init__(self, master: MasterIF, to_master: BottleMail[ParserEvent], stats: Stats):
+    def __init__(self, master: MasterIF, to_master: BottleMail[ParserEvent]):
         """
         コンストラクタ
 
         Args:
             master (MasterIF): Master インターフェース
             to_master (BottleMail[ParserEvent]): 対 Master IPC
-            stats (Stats): Stats インスタンス
-            ※TypeVar ではないインスタンスを渡さないとメソッドにアクセスできない
-              そしてその型は派生先しか知らないので, そこから渡してもらう
         """
         self.master = master
         self.to_master = to_master
 
         self.crnt_clipboard = ""
-        self.crnt_clipstats: Stats = stats
+        self.prompter: Prompter = None
+        self.prompter_lock = Lock()
+        self.crnt_positive = ""
+        self.crnt_negative = ""
 
         self.event = Event()
         self.parser_thread = threading.Thread(
@@ -117,14 +89,15 @@ class Parser(ABC, Generic[Stats]):
         """
         self.event.shutdown.set()
 
-    def whoami(self) -> str:
+    @property
+    def crnt_prompt_dir(self) -> str:
         """
-        自身のフロントエンド名を取得する
+        記録中プロンプトに適合するディレクトリ名を返す
 
         Returns:
-            str: フロントエンド名
+            str: ディレクトリ名
         """
-        return self.__class__.__name__.replace("Parser", "")
+        return dirname_by_prompts(self.crnt_positive, self.crnt_negative)
 
     def reset_prompter(self, yamlpath: Path) -> None:
         """
@@ -134,154 +107,93 @@ class Parser(ABC, Generic[Stats]):
             yamlpath (Path): YAML パス
         """
         if yamlpath.exists():
-            print("Exist", str(yamlpath))
-        else:
-            print("Not exist", str(yamlpath))
+            with self.prompter_lock:
+                self.prompter = Prompter.make(yamlpath)
 
-    def pics_dir_path(self) -> Path:
+    def is_enough_prompt(self) -> bool:
         """
-        画像ディレクトリパスを取得する\n
-        (pics/<クラス名>)
+        生成に十分なプロンプトか
 
         Returns:
-            Path: ディレクトリパス
+            bool: True: 十分, False: 不十分(空文字列)
         """
-        return Path(Consts.pichome_dir) / Path(self.whoami())
+        return self.crnt_positive or self.crnt_negative
 
-    @abstractmethod
-    def make_dummy_stats(self, name: str = None) -> Stats:
+    def report_new_prompt(self, pos: str, neg: str) -> None:
         """
-        ダミーステータスを生成する(デバッグ用)\n
-        データはモードに即して定義される
+        Master に新たなプロンプトを報告する\n
+        pos, neg の双方が空の場合は情報不十分と見なし, 何もしない
 
         Args:
-            name (str, optional): name フィールドに代入する文字列, None でない場合はこの値で初期化
-
-        Returns:
-            Stats: ダミーステータス
+            pos (str): ポジティブプロンプト
+            neg (str): ネガティブプロンプト
         """
-        pass
+        if not pos and not neg:
+            return
 
-    def ready_for_debug(self) -> bool:
-        """
-        クリップボードの編集が許可されている場合はダミークリップボードを設定する\n
-        そうでない場合はダミーステータスのみを編集し, メイン処理に委ねる
+        if self.master.crnt_gui_configs.print_new_prompt:
+            print(f'POS: "{pos}"')
+            print(f'NEG: "{neg}"')
 
-        Returns:
-            bool: メイン処理の反映が必要なら True, そうでない場合は False
+        self.crnt_positive = pos
+        self.crnt_negative = neg
+        self.to_master.enclose(NewPrompts(positive=pos, negative=neg))
+
+    def do_debug(self, text: str) -> None:
         """
+        デバッグを実行する\n
+        Prompter の更新は行わないが, 現在のプロンプトの記録は行う(ディレクトリ名のため)
+
+        Args:
+            text (str): テキスト
+        """
+        self.reset_prompter(Consts.debug_yamlpath)
+        with self.prompter_lock:
+            pos, neg = self.prompter.toprompt(text)
+
+        self.report_new_prompt(pos, neg)
+
+    def ready_for_debug(self) -> None:
+        """
+        クリップボードの編集が許可されている場合はダミーを設定する\n
+        そうでない場合はダミープロンプトをワンショットで Master へ伝える
+        """
+        dummy_input = (
+            f"debug name:{str(random.randint(1, 3))} vibe:{str(random.randint(1, 9))}"
+            f" upper:{str(random.randint(1, 9))} lower:{str(random.randint(1, 9))}"
+        )
         if self.master.crnt_gui_configs.allow_edit_clipboard:
-            pyperclip.copy(Consts.charaname_substr_debug + str(random.randint(1, 8)))
-            return False
+            # クリップボードを変更する場合はその後の工程を正規手順に委ねる
+            pyperclip.copy(dummy_input)
+            self.event.is_debugging.set()
+            return
 
-        new_stats = self.make_dummy_stats()
-        if new_stats is None or new_stats == self.crnt_clipstats:
-            return False
-
-        self.crnt_clipstats = new_stats
-        if self.master.crnt_gui_configs.print_new_stats:
-            dump_json(self.crnt_clipstats.todict(), "new_stats(debug)")
-
-        return True
-
-    def parse_clipboard(self) -> Stats | None:
-        """
-        クリップボードを監視し, 記録中文字列と異なる場合に記録した後,\n
-        クリップボード文字列をもとに各ステータスを取得する
-
-        Returns:
-            Stats: 新たなステータス, 更新がない場合やエラー時に None
-        """
-        try:
-            new_clipboard = pyperclip.paste()
-        except Exception as e:
-            print("An exception occur for watching clipboard.", e)
-            return None
-
-        if self.crnt_clipboard == new_clipboard:
-            return None
-
-        if self.master.crnt_gui_configs.print_new_clipboard:
-            print("new_clipboard:")
-            print(new_clipboard)
-
-        self.crnt_clipboard = new_clipboard
-
-        if Consts.charaname_substr_debug in self.crnt_clipboard:
-            # クリップボードの編集が許可されている場合のデバッグ経路
-            return self.make_dummy_stats(name=self.crnt_clipboard)
-
-        new_stats = copy.deepcopy(self.crnt_clipstats)
-        new_stats.refresh(self.crnt_clipboard)
-        return new_stats
-
-    def refresh_stats(self) -> bool:
-        """
-        記録中クリップボード文字列をもとにステータスを更新する\n
-        前回のステータスと同じかどうかの判断も行う
-
-        Returns:
-            bool: True: ステータス更新あり, False: 更新なし
-        """
-
-        new_stats = self.parse_clipboard()
-        if new_stats is None or new_stats == self.crnt_clipstats:
-            return False
-
-        self.crnt_clipstats = new_stats
-        if self.master.crnt_gui_configs.print_new_stats:
-            dump_json(self.crnt_clipstats.todict(), "new_stats")
-        return True
-
-    @abstractmethod
-    def is_stats_enough_for_prompt(self) -> bool:
-        """
-        記録中ステータスがプロンプト生成に際し十分な情報を有しているか
-
-        Returns:
-            bool: True: 有している, False: 有していない
-        """
-        pass
-
-    @abstractmethod
-    def make_pos_prompt(self) -> str:
-        """
-        記録中ステータスからポジティブプロンプトを生成する
-
-        Returns:
-            str: プロンプト
-        """
-        pass
-
-    @abstractmethod
-    def make_neg_prompt(self) -> str:
-        """
-        記録中ステータスからネガティブプロンプトを生成する
-
-        Returns:
-            str: プロンプト
-        """
-        pass
-
-    def get_crnt_stats_dir(self) -> str:
-        """
-        記録中ステータスに適合するディレクトリ名を返す
-
-        Returns:
-            str: ディレクトリ名
-        """
-        return dirname_by_prompts(self.make_pos_prompt(), self.make_neg_prompt())
+        # クリップボードを変更しない場合はワンショットで直接生成する
+        self.do_debug(dummy_input)
 
     def parser(self) -> None:
         """
-        クリップボード監視を行う
+        クリップボード監視を行い, プロンプトの生成と報告を行う
         """
         while not self.event.shutdown.is_set():
             time.sleep(Consts.thread_interval_sec)
             try:
-                if not self.refresh_stats():
+                new_clipboard = pyperclip.paste()
+                if self.crnt_clipboard == new_clipboard:
                     continue
-                self.to_master.enclose(NewClipStats(is_enough=self.is_stats_enough_for_prompt()))
+
+                self.crnt_clipboard = new_clipboard
+
+                if self.master.crnt_gui_configs.print_new_clipboard:
+                    print("new_clipboard:")
+                    print(new_clipboard)
+
+                if self.event.is_debugging.is_set():
+                    self.do_debug(new_clipboard)
+                    self.event.is_debugging.clear()
+                elif self.prompter is not None:
+                    with self.prompter_lock:
+                        pos, neg = self.prompter.toprompt(new_clipboard)
+                    self.report_new_prompt(pos, neg)
             except Exception as e:
-                raise
                 print(f"Any exception occurred in {threading.current_thread().name}: ", e)

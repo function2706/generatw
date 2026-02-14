@@ -402,15 +402,15 @@ class DebugTab:
                 command=self.super_owner.super_owner.super_owner.update_configs,
             ).grid(row=0, column=0, padx=6, pady=6, sticky="w")
             self.verbose_clipboard_check.set(init_configs.print_new_clipboard)
-            # ステータスの表示
-            self.verbose_stats_check = tkinter.BooleanVar()
+            # プロンプトの表示
+            self.verbose_prompt_check = tkinter.BooleanVar()
             ttk.Checkbutton(
                 self.verbose_frame,
-                text="ステータス",
-                variable=self.verbose_stats_check,
+                text="プロンプト",
+                variable=self.verbose_prompt_check,
                 command=self.super_owner.super_owner.super_owner.update_configs,
             ).grid(row=0, column=1, padx=6, pady=6, sticky="w")
-            self.verbose_stats_check.set(init_configs.print_new_stats)
+            self.verbose_prompt_check.set(init_configs.print_new_prompt)
             # PicInfo の表示
             self.verbose_picinfo_check = tkinter.BooleanVar()
             ttk.Checkbutton(
@@ -732,8 +732,8 @@ class Displayer:
             print_new_clipboard=bool(
                 self.main_window.debug_tab_obj.verbose_frame.verbose_clipboard_check.get()
             ),
-            print_new_stats=bool(
-                self.main_window.debug_tab_obj.verbose_frame.verbose_stats_check.get()
+            print_new_prompt=bool(
+                self.main_window.debug_tab_obj.verbose_frame.verbose_prompt_check.get()
             ),
             print_picinfo=bool(
                 self.main_window.debug_tab_obj.verbose_frame.verbose_picinfo_check.get()
