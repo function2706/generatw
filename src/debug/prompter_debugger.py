@@ -226,7 +226,7 @@ CORRECT_RESULT = {
     },
     "CASE 'same rule id'": {
         "testcase19-1: 'main name:hogemaru,vibe:good'": {
-            "POS": "good,hogemaru",
+            "POS": "hogemaru,good",
             "NEG": "",
             "FLAGS": [],
         },
@@ -235,6 +235,23 @@ CORRECT_RESULT = {
         "testcase19-4: 'main vibe:bad'": {"POS": "fugami,bad", "NEG": "", "FLAGS": []},
         "testcase19-5: 'main vibe:normal'": {"POS": "fugami", "NEG": "", "FLAGS": []},
         "testcase19-6: 'meta name:foota,vibe:good'": {"POS": "", "NEG": "", "FLAGS": []},
+    },
+    "CASE 'multiple match'": {
+        "testcase20-1: 'go hello world foo bar'": {
+            "POS": "hello_greeting,world_place,foo_item,bar_item",
+            "NEG": "",
+            "FLAGS": [],
+        },
+        "testcase20-2: 'go hello'": {"POS": "hello_greeting", "NEG": "", "FLAGS": []},
+        "testcase20-3: 'go hello hello'": {"POS": "hello_greeting", "NEG": "", "FLAGS": []},
+        "testcase20-4: 'go unknown'": {"POS": "", "NEG": "", "FLAGS": []},
+    },
+    "CASE 'same rule id multi'": {
+        "testcase21-1: 'main name:alice'": {"POS": "alice", "NEG": "", "FLAGS": []},
+        "testcase21-2: 'rule name:bob'": {"POS": "bob", "NEG": "", "FLAGS": []},
+        "testcase21-3: 'rule name:charlie'": {"POS": "charlie", "NEG": "", "FLAGS": []},
+        "testcase21-4: 'main name:bob'": {"POS": "bob", "NEG": "", "FLAGS": []},
+        "testcase21-5: 'main name:bad'": {"POS": "", "NEG": "", "FLAGS": []},
     },
     "CASE 'complex 1'": {
         "test-1: 'today: 2026/02/05, Name2 (vibe: Vibe1)'": {
@@ -518,12 +535,29 @@ def debug() -> None:
             },
             "same rule id": {
                 "yamls/testyamls/testcase19.yaml": [
-                    "main name:hogemaru,vibe:good",  # name1 は stable なので引き継ぎ
+                    "main name:hogemaru,vibe:good",  # name1 は stable なので引き継ぎ, priority は meta.name の 1 に統一されるので先頭 # noqa:E501
                     "meta city",  # name (global essential) が引き継がれているので達成, city は priority 未指定で最後尾 # noqa:E501
                     "meta name:fugami,room",  # ID=name で上書き, hogemaru -> fugami
                     "main vibe:bad",  # やはり name が引き継がれているので達成, name は stable な持ち越しなので先頭 # noqa:E501
                     "main vibe:normal",  # マッチするもルールがないので削除
                     "meta name:foota,vibe:good",  # name マッチせず, global essential 未達成
+                ]
+            },
+            "multiple match": {
+                "yamls/testyamls/testcase20.yaml": [
+                    "go hello world foo bar",
+                    "go hello",
+                    "go hello hello",
+                    "go unknown",
+                ]
+            },
+            "same rule id multi": {
+                "yamls/testyamls/testcase21.yaml": [
+                    "main name:alice",
+                    "rule name:bob",
+                    "rule name:charlie",
+                    "main name:bob",
+                    "main name:bad",
                 ]
             },
             "complex 1": {

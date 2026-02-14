@@ -192,11 +192,6 @@ class PromptBlueprint:
             TypeError: 引数の型が不正な場合
         """
         if isinstance(other, TokenBlueprint):
-            # 同じルール ID の priority を統一する
-            for t in self.tokens:
-                if t.rule_path.id == other.rule_path.id:
-                    other.priority = min(other.priority, t.priority)
-
             # 既存のトークンから追加トークンと同じルール ID で古い世代のものを除く
             self.tokens = [
                 t
@@ -334,6 +329,7 @@ class SyringeNeedle:
             goal_global_essentials (set[str]): Screen を超越して不可欠なルールの一覧
         """
 
+        priority_tbl: dict[str, int] = field(default_factory=dict)
         stable_rules: set[str] = field(default_factory=set)
         goal_global_essentials: set[str] = field(default_factory=set)
 
@@ -655,7 +651,12 @@ class Field:
             obj.capturegrp = int(field.get(KeyName.capturegrp))
 
         if KeyName.priority in field:
-            obj.priority = int(field.get(KeyName.priority))
+            priority = int(field.get(KeyName.priority))
+            if rule_path.id not in static.priority_tbl or priority <= static.priority_tbl.get(
+                rule_path.id
+            ):
+                static.priority_tbl[rule_path.id] = priority
+            obj.priority = priority
 
         if KeyName.lifetime in field and field.get(KeyName.lifetime) == KeyName.stable:
             obj.is_stable = True
@@ -720,6 +721,13 @@ class Field:
         positive = PromptBlueprint()
         negative = PromptBlueprint()
 
+        # 同じルール ID の
+        priority = (
+            needle.static.priority_tbl.get(self.rule_path.id)
+            if self.rule_path.id in needle.static.priority_tbl
+            else self.priority
+        )
+
         # 一度でも一致があり, かつそれがキャプチャ範囲適正か
         matched_once = False
         for match_itr in self.re_cache.finditer(text):
@@ -737,7 +745,7 @@ class Field:
             for rule in self.rules:
                 pos, neg, by_no_match = rule.toprompt(
                     match=match,
-                    priority=self.priority,
+                    priority=priority,
                     is_stable=is_stable if is_stable is not None else self.is_stable,
                     rule_path=self.rule_path,
                     dynamic=needle.dynamic,
@@ -750,7 +758,7 @@ class Field:
             if self.default:
                 # default
                 pos, neg, _ = self.default.toprompt(
-                    priority=self.priority,
+                    priority=priority,
                     is_stable=is_stable if is_stable is not None else self.is_stable,
                     rule_path=self.rule_path,
                     dynamic=needle.dynamic,
