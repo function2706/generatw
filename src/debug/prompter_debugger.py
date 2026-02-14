@@ -207,20 +207,32 @@ CORRECT_RESULT = {
         "testcase18-2: 'main good crying'": {"POS": "", "NEG": "", "FLAGS": []},
         "testcase18-3: 'main name1 good'": {"POS": "", "NEG": "", "FLAGS": []},
         "testcase18-4: 'main name1 good age:35'": {
-            "POS": "name1,adult,good",
-            "NEG": "",
+            "POS": "name1,adult,good,common main pos",
+            "NEG": "common main neg",
             "FLAGS": [],
         },
         "testcase18-5: 'meta city morning'": {
-            "POS": "name1,adult,city,morning",
-            "NEG": "",
+            "POS": "name1,adult,city,morning,common meta pos",
+            "NEG": "common meta neg",
             "FLAGS": [],
         },
         "testcase18-6: 'main smile'": {"POS": "", "NEG": "", "FLAGS": []},
         "testcase18-7: 'meta JPN morning room'": {"POS": "", "NEG": "", "FLAGS": []},
-        "testcase18-8: 'main name2 bad age:70'": {"POS": "name2,old,bad", "NEG": "", "FLAGS": []},
-        "testcase18-9: 'dummy'": {"POS": "name2,old", "NEG": "", "FLAGS": []},
-        "testcase18-10: 'meta room day'": {"POS": "name2,old,room,day", "NEG": "", "FLAGS": []},
+        "testcase18-8: 'main name2 bad age:70'": {
+            "POS": "name2,old,bad,common main pos",
+            "NEG": "common main neg",
+            "FLAGS": [],
+        },
+        "testcase18-9: 'dummy'": {
+            "POS": "name2,old,bad,common main pos",
+            "NEG": "common main neg",
+            "FLAGS": [],
+        },
+        "testcase18-10: 'meta room day'": {
+            "POS": "name2,old,room,day,common meta pos",
+            "NEG": "common meta neg",
+            "FLAGS": [],
+        },
         "testcase18-11: 'meta UK city'": {"POS": "", "NEG": "", "FLAGS": []},
         "testcase18-12: 'meta city night US'": {"POS": "", "NEG": "", "FLAGS": []},
     },
@@ -303,7 +315,11 @@ CORRECT_RESULT = {
             "NEG": "cold,main_common_n",
             "FLAGS": [],
         },
-        "test3-4: 'hello name:alice'": {"POS": "bob,winter", "NEG": "cold", "FLAGS": []},
+        "test3-4: 'hello name:alice'": {
+            "POS": "bob,(alice:1.5),winter,main_common_p",
+            "NEG": "cold,main_common_n",
+            "FLAGS": [],
+        },
         "test3-5: 'sub go mood:good'": {
             "POS": "bob,winter,good,sub_common_p",
             "NEG": "cold,sub_common_n",
@@ -519,7 +535,7 @@ def debug() -> None:
             },
             "essential": {
                 "yamls/testyamls/testcase18.yaml": [
-                    "meta room day",  # meta の essential 未達成
+                    "meta room day",  # meta の essential 未達成(共通プロンプトも非採用)
                     "main good crying",  # main の essential 未達成
                     "main name1 good",  # 同上
                     "main name1 good age:35",  # main の essential 達成, name1 と age が次回も継続

@@ -930,7 +930,7 @@ class Screen:
 
     def toprompt(
         self, text: str, needle: SyringeNeedle
-    ) -> tuple[PromptBlueprint, PromptBlueprint] | None:
+    ) -> tuple[PromptBlueprint, PromptBlueprint, bool] | None:
         """
         テキストからプロンプトを生成する\n
         発火条件を満たさない場合は空のプロンプトを返す\n
@@ -941,11 +941,12 @@ class Screen:
             needle (SyringeNeedle): 上層から共有されるデータ集
 
         Returns:
-            tuple[PromptBlueprint, PromptBlueprint] | None: タプル
+            tuple[PromptBlueprint, PromptBlueprint, bool] | None: タプル
             essential 未達成時は None
+            発火時は bool が True
         """
         if not self.check_ignition(text):
-            return PromptBlueprint(), PromptBlueprint()
+            return PromptBlueprint(), PromptBlueprint(), False
 
         positive = PromptBlueprint()
         negative = PromptBlueprint()
@@ -993,7 +994,7 @@ class Screen:
         if not (goal_essentials <= needle.dynamic.achieved_essentials):
             # 実際に達成した不可欠ルールパスの集合に達成すべきものの集合が含まれない場合は空で返す
             return None
-        return positive, negative
+        return positive, negative, True
 
 
 @dataclass
@@ -1004,6 +1005,7 @@ class Prompter:
 
     Attributes:
         screens (list[Screen]): 画面のリスト
+        last_prompt (tuple[str, str]): 最後に生成したプロンプト(未発火時に返すため)
         continuing_positive (PromptBlueprint): 継続ポジティブプロンプト
         continuing_negative (PromptBlueprint): 継続ネガティブプロンプト
         needle (SyringeNeedle): 下層と共有するデータ集
@@ -1011,6 +1013,7 @@ class Prompter:
 
     yamlpath: Path = Path()
     screens: list[Screen] = field(default_factory=list)
+    last_prompt: tuple[str, str] = ("", "")
     continuing_positive: PromptBlueprint = field(default_factory=PromptBlueprint)
     continuing_negative: PromptBlueprint = field(default_factory=PromptBlueprint)
     needle: SyringeNeedle = field(default_factory=SyringeNeedle)
@@ -1066,16 +1069,24 @@ class Prompter:
             self.needle.dynamic.achieved_essentials.add(token.rule_path.id)
 
         exists_not_achieved_screen = False
+        has_ignited = False
         for screen in self.screens:
             result = screen.toprompt(text, self.needle)
             if result is None:
                 # 不可欠ルール条件未達成の場合
+                # 発火はしている
+                has_ignited = True
                 exists_not_achieved_screen = True
                 continue
 
-            pos, neg = result
+            pos, neg, res_has_ignited = result
+            has_ignited |= res_has_ignited  # False で上書きしてはいけないので累積 OR
             positive.append(pos)
             negative.append(neg)
+
+        if not has_ignited:
+            # 全 Screen が未発火の場合は前回のプロンプトをそのまま返す
+            return self.last_prompt
 
         # マッチしなかったルール ID と同じ継続中 stable トークンは削除
         for empty_rule_id in self.needle.dynamic.empty_tokens_rule_ids:
@@ -1103,8 +1114,9 @@ class Prompter:
                 self.continuing_negative.append(token)
 
         self.needle.dynamic.period += 1
+        self.last_prompt = (positive.to_promptstr(), negative.to_promptstr())
 
-        return positive.to_promptstr(), negative.to_promptstr()
+        return self.last_prompt
 
     def todict(self) -> dict:
         return asdict(self)

@@ -33,6 +33,8 @@ main:
     maps:
       smile: smile
       crying: crying
+  POSITIVE: common main pos
+  NEGATIVE: common main neg
 meta:
   ignition:
     any: ["meta"]
@@ -59,3 +61,5 @@ meta:
       US: US
       UK: UK
       CHN: CHN
+  POSITIVE: common meta pos
+  NEGATIVE: common meta neg
