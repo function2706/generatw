@@ -131,12 +131,16 @@ class Parser:
         if not pos and not neg:
             return
 
+        if pos == self.crnt_positive and neg == self.crnt_negative:
+            return
+
+        self.crnt_positive = pos
+        self.crnt_negative = neg
+
         if self.master.crnt_gui_configs.print_new_prompt:
             print(f'POS: "{pos}"')
             print(f'NEG: "{neg}"')
 
-        self.crnt_positive = pos
-        self.crnt_negative = neg
         self.to_master.enclose(NewPrompts(positive=pos, negative=neg))
 
     def do_debug(self, text: str) -> None:
