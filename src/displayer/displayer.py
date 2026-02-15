@@ -402,20 +402,20 @@ class DebugTab:
                 command=self.super_owner.super_owner.super_owner.update_configs,
             ).grid(row=0, column=0, padx=6, pady=6, sticky="w")
             self.verbose_clipboard_check.set(init_configs.print_new_clipboard)
-            # プロンプトの表示
+            # 新プロンプトの表示
             self.verbose_prompt_check = tkinter.BooleanVar()
             ttk.Checkbutton(
                 self.verbose_frame,
-                text="プロンプト",
+                text="新プロンプト",
                 variable=self.verbose_prompt_check,
                 command=self.super_owner.super_owner.super_owner.update_configs,
             ).grid(row=0, column=1, padx=6, pady=6, sticky="w")
             self.verbose_prompt_check.set(init_configs.print_new_prompt)
-            # PicInfo の表示
+            # 画像メタデータの表示
             self.verbose_picinfo_check = tkinter.BooleanVar()
             ttk.Checkbutton(
                 self.verbose_frame,
-                text="PicInfo",
+                text="画像メタデータ",
                 variable=self.verbose_picinfo_check,
                 command=self.super_owner.super_owner.super_owner.update_configs,
             ).grid(row=1, column=0, padx=6, pady=6, sticky="w")

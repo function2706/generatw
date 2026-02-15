@@ -68,7 +68,7 @@ def json_default(obj: Any) -> str:
     raise TypeError(f"{obj.__class__.__name__} is not JSON serializable")
 
 
-def dump_json(data: dict, label: str) -> None:
+def dump_json(data: dict, label: str = None) -> None:
     """
     指定の dict を json 形式でダンプする
 
@@ -76,7 +76,8 @@ def dump_json(data: dict, label: str) -> None:
         data (dict): ダンプ対象
         label (str): 表示するラベル("label": {...})
     """
-    print(f'"{label}":')
+    if label is not None:
+        print(f'"{label}":')
     print(json.dumps(data, ensure_ascii=False, indent=2, default=json_default))
 
 

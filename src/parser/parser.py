@@ -13,7 +13,7 @@ from threading import Lock
 
 import pyperclip
 
-from common.functions import BottleMail, dirname_by_prompts
+from common.functions import BottleMail, dirname_by_prompts, dump_json
 from master.events import NewPrompts, ParserEvent
 from master.interfaces import MasterIF
 from parser.prompter import Prompter
@@ -139,8 +139,7 @@ class Parser:
         self.crnt_negative = neg
 
         if self.master.crnt_gui_configs.print_new_prompt:
-            print(f'POS: "{pos}"')
-            print(f'NEG: "{neg}"')
+            dump_json({"POS": pos, "NEG": neg}, "new_prompt")
 
         self.to_master.enclose(NewPrompts(is_enough=True))
 

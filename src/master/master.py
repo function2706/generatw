@@ -310,17 +310,12 @@ class Master(MasterIF):
 
             if self.crnt_gui_configs.print_event:
                 print(
-                    f"{self.parser.__class__.__name__:20} > {event.__class__.__name__:15} > ",
+                    f"{self.parser.__class__.__name__:20} > {event.__class__.__name__:20} > ",
                     end="",
                 )
             if isinstance(event, NewPrompts):
-
-                def truncate(prompt: str, n: int = 3) -> str:
-                    tokens = prompt.split(",")
-                    return ",".join(tokens[:n]) + ("..." if len(tokens) > n else "")
-
                 if self.crnt_gui_configs.print_event:
-                    print(f"pos={truncate(event.positive)}, neg={truncate(event.negative)}")
+                    print(f"enough={event.is_enough}")
                 if event.is_enough:
                     self.run_oneshot()
                 else:

@@ -3,6 +3,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+import pyperclip
 import yaml
 
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -376,7 +377,7 @@ class PrompterDebugger:
             self.prompter.todict(), f"normalized {self.prompter.yamlpath.name.replace('.yaml', '')}"
         )
 
-    def debug_texts(self, texts: list[str]) -> dict[str, dict[str, str]]:
+    def debug_texts(self, texts: list[str], with_texts: bool = True) -> dict[str, dict[str, str]]:
         """
         展開中 yaml について texts 内のテキストを順に適用する
 
@@ -390,7 +391,10 @@ class PrompterDebugger:
                 pos, neg = self.prompter.toprompt(text)
                 active_flags = sorted(self.prompter.needle.dynamic.active_flags.copy())
                 posneg = {"POS": pos, "NEG": neg, "FLAGS": active_flags}
-                result[f"{yamlname}-{i + 1}: '{text}'"] = posneg
+                if with_texts:
+                    result[f"{yamlname}-{i + 1}: '{text}'"] = posneg
+                else:
+                    result[f"{yamlname}-{i + 1}"] = posneg
             except Exception as e:
                 raise Exception(f"Error with '{text}'") from e
         return result
@@ -416,6 +420,13 @@ class PrompterDebugger:
                     raise Exception(f"Error on '{yamlpath}'") from e
             result[f"CASE '{id}'"] = result_by_texts
         return result
+
+    def debug_clipboard(self) -> dict[str, dict[str, str]]:
+        """
+        展開中 yaml について現在のクリップボードのテキストを適用する
+        """
+        clipboard = pyperclip.paste()
+        return self.debug_texts([clipboard], False)
 
 
 def debug() -> None:
