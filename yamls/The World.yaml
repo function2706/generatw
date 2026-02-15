@@ -6,7 +6,6 @@ main:
       pattern: '^(.+?)\s*(?:（[^）]+）)?\s*\(好感度'
       priority: 1
       capturegrp: 1
-      lifetime: stable
       essential: global
       maps:
         博麗 霊夢: hakurei reimu

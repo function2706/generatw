@@ -321,7 +321,7 @@ class Master(MasterIF):
 
                 if self.crnt_gui_configs.print_event:
                     print(f"pos={truncate(event.positive)}, neg={truncate(event.negative)}")
-                if event.positive:
+                if event.is_enough:
                     self.run_oneshot()
                 else:
                     self.archiver.drop_picstats()

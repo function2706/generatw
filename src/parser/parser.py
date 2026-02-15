@@ -25,7 +25,7 @@ class Consts:
     このクラス関連の定数
     """
 
-    thread_interval_sec = 0.1
+    thread_interval_sec = 0.01
 
     # デバッグ用 YAML
     debug_yamlpath: Path = Path("yamls/Debug.yaml")
@@ -119,7 +119,7 @@ class Parser:
         """
         return self.crnt_positive or self.crnt_negative
 
-    def report_new_prompt(self, pos: str, neg: str) -> None:
+    def inform_new_prompt(self, pos: str, neg: str) -> None:
         """
         Master に新たなプロンプトを報告する\n
         pos, neg の双方が空の場合は情報不十分と見なし, 何もしない
@@ -129,6 +129,7 @@ class Parser:
             neg (str): ネガティブプロンプト
         """
         if not pos and not neg:
+            self.to_master.enclose(NewPrompts(is_enough=False))
             return
 
         if pos == self.crnt_positive and neg == self.crnt_negative:
@@ -141,7 +142,7 @@ class Parser:
             print(f'POS: "{pos}"')
             print(f'NEG: "{neg}"')
 
-        self.to_master.enclose(NewPrompts(positive=pos, negative=neg))
+        self.to_master.enclose(NewPrompts(is_enough=True))
 
     def do_debug(self, text: str) -> None:
         """
@@ -151,11 +152,15 @@ class Parser:
         Args:
             text (str): テキスト
         """
+        with self.prompter_lock:
+            original_yamlpath = self.prompter.yamlpath
+
         self.reset_prompter(Consts.debug_yamlpath)
         with self.prompter_lock:
             pos, neg = self.prompter.toprompt(text)
 
-        self.report_new_prompt(pos, neg)
+        self.reset_prompter(original_yamlpath)
+        self.inform_new_prompt(pos, neg)
 
     def ready_for_debug(self) -> None:
         """
@@ -198,6 +203,6 @@ class Parser:
                 elif self.prompter is not None:
                     with self.prompter_lock:
                         pos, neg = self.prompter.toprompt(new_clipboard)
-                    self.report_new_prompt(pos, neg)
+                    self.inform_new_prompt(pos, neg)
             except Exception as e:
                 print(f"Any exception occurred in {threading.current_thread().name}: ", e)
