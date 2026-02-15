@@ -1,6 +1,6 @@
 main:
   ignition:
-    any: ["[春夏秋冬]の月"]
+    any: ['[春夏秋冬]の月\s[0-9]*日目']
   character:
     name:
       pattern: '^(.+?)\s*(?:（[^）]+）)?\s*\(好感度'
@@ -273,39 +273,5 @@ main:
       lifetime: stable
       maps:
         xxx: xxx
-  meta:
-    season:
-      pattern: "(sunny|rainy)"
-      priority: 2
-      maps:
-        sunny: sunny
-        rainy: rainy
-      default: cloudy
-    time:
-      pattern: "(1|2)[0-9]{3}/([0-9]{2})"
-      priority: 4
-      capturegrp: 2
-      lifetime: stable
-      ranges:
-        spring: ["03", "04", "05", "06"]
-        summer: ["07", "08"]
-        autumn: ["09", "10"]
-        winter:
-          positive: ["11", "12", "01", "02"]
-          negative: HOT
-    location:
-      pattern: "(sunny|rainy)"
-      priority: 2
-      maps:
-        sunny: sunny
-        rainy: rainy
-      default: cloudy
-    weather:
-      pattern: "(sunny|rainy)"
-      priority: 2
-      maps:
-        sunny: sunny
-        rainy: rainy
-      default: cloudy
   POSITIVE: best quality,masterpiece,absurdres,1girl,solo
   NEGATIVE: (amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm
