@@ -1,0 +1,67 @@
+parser: SAMPLE # どの Parser のための表なのかを記述する, これは Parser が予め提供する文字列とする
+main: # ここも Parser が解釈できる Screen 名
+  ignition: "(m|M)ain" # 発火条件は単項のみ
+  name: # Parser へはこのルール名と pos/neg ごとの dict[Token, Weight] を渡す(マッチしなかった場合も含めて渡す)
+    # YAML作成者は Parser が扱える(解釈できる)ルール名は予め知っておく必要がある
+    # ただし解釈できないルールは無視されるだけとする
+    pattern: '^name:\s(.+?),'
+    capturegrp: 1 # 省略可能, その場合は 0 (全体キャプチャ)
+    maps:
+      Hogemaru: hogemaru # ポジティブプロンプト単項, weight=1.0 の場合
+      Fugami: (fugami:1.2) # 重み付きトークン(この形式での記述とする理由は後述の ranges, intervals のため)
+      Foota:
+        positive: foota,(boy:1.1) # 組み合わせるとこんな感じ
+        negative: barta # positive, negative の両取りが可能
+    default: # 以上にマッチしなかった場合にこの記述があると, これをマッチ結果として渡す
+      positive: smith # maps もこれも positive, negative のみの記述が可能
+  season: # 予約語
+    pattern: 'season:\s([0-9]{2})'
+    capturegrp: 1
+    ranges:
+      spring: ["03", "04", "05"]
+      summer:
+        positive: ["07", "08", "09"]
+        negative: cold # こういう表記も可能("07" がマッチした場合 pos に "summer", neg に "cold" が採用される)
+      autumn: ["10", "11"]
+      winter: ["02"]
+      (winter:1.1),snow: ["12", "01"] # maps の値をベタ書きにするのはこういうパターンと整合性をとるため
+      scorching heat:
+        positive: cool
+        negative: ["01", "02", "03", "04", "05", "06", "09", "10", "11", "12"] # negative を範囲指定する場合
+        # ルール全体では "09" がマッチした場合, pos: (winter:1.1),snow.cool, neg: cold,scorching heat となる
+        # 順番は記述順だが, 最終プロンプトの順番は Parser に委ねる
+      default: ordinary
+  vitality: # 予約語
+    pattern: 'vitality:\s(.+?),'
+    capturegrp: 1
+    intervals: # 注意事項はほとんど ranges と同じだが, 値は str | tuple[float, float] のみ
+      low:
+        positive: [0, 50]
+        negative: good
+      high:
+        positive: bad
+        negative: [0, 70]
+      middle: [40, 60]
+      perfect:
+        positive: [95, 100]
+      ok:
+        negative: [0, 40]
+    default: average
+  global: # 必ず最後尾に付与してほしいプロンプト(予約語)
+    positive: common main positive # ここも positive のみとかにできる
+    negative: common main negative
+meta: # 予約語
+  ignition: "(m|M)eta"
+  weather: # 予約語
+    pattern: "(sunny|rainy)"
+    capturegrp: 1
+    maps:
+      sunny: sunny
+      rainy: rainy
+    default: cloudy
+  location: # 予約語
+    pattern: "(room|city)"
+    maps:
+      room: room
+      city: city
+  # global は省略可能
