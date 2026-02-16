@@ -76,7 +76,7 @@ parser: SampleParser
 以降各処理において, DSL 側では Parser が想定しているデータが完備されているかどうかは判断せず, YAML に書かれている分を愚直に処理する(判断は Parser の責務).
 
 - Parser が認知しない文字列が指定されている場合, 返せるデータがある場合はすべて返す
-- マッチしなかった等返すべきデータがない場合はデータを付帯しない
+- マッチ・ヒットしなかった等返すべきデータがない場合はデータを付帯しない
 
 ### 2.4 Parser に渡すデータ形式
 
@@ -124,9 +124,9 @@ class ScreenDeliverable:
 
 いずれの Screen の `ignition` (後述)も未発火であった場合は, 空のリストが返される.
 
-#### 2.4.2 発火したがマッチしなかった場合
+#### 2.4.2 発火したがマッチ・ヒットしなかった場合
 
-いずれの Rule もマッチしなかった, かつ `default` (後述)も未定義の場合,
+いずれの Rule もマッチ・ヒットしなかった, かつ `default` (後述)も未定義の場合,
 空のリストが category キーに付与される.
 
 ```python
@@ -138,7 +138,7 @@ class ScreenDeliverable:
 
 #### 2.4.3 備考
 
-マッチした場合 CategoryDeliverable.path は常に記述されるが, positive, negative の一方のみが空であることはあり得る.  
+ヒットした場合 CategoryDeliverable.path は常に記述されるが, positive, negative の一方のみが空であることはあり得る.  
 同じ token をもつ Token が positive, negative 内に混在していてもよいものとする(dedupe は Parser に委任).
 
 ---
@@ -274,7 +274,7 @@ default:
 ```
 
 - `pattern` に1度もマッチしなかった場合は適用されない
-- `pattern` にマッチし, かつ `maps` / `ranges` / `intervals` のいずれの Rule にも適合しなかった場合に適用される
+- `pattern` にマッチし, かつ `maps` / `ranges` / `intervals` のいずれの Rule にもヒットしなかった場合に適用される
 
 すなわち `default` は `maps` / `ranges` / `intervals` の各ルールと同じ評価パスを通る.
 
@@ -343,8 +343,8 @@ ranges:
   winter: ["12", "01", "02"]
 ```
 
-- マッチした値が `"03"` なら `spring` が `positive` に追加
-- マッチした値が `"07"` なら `summer` が `positive` に追加
+- ヒットした値が `"03"` なら `spring` が `positive` に追加
+- ヒットした値が `"07"` なら `summer` が `positive` に追加
 
 #### 5.2.2 `positive` + `negative`
 
@@ -414,9 +414,9 @@ ranges:
   bad: [0, 30]
 ```
 
-- マッチした値が `"40"` なら `normal` が `positive` に追加
-- マッチした値が `"30"` なら `normal,bad` が `positive` に追加
-- マッチした値が `"70.5"` なら `positive` には追加されない
+- ヒットした値が `"40"` なら `normal` が `positive` に追加
+- ヒットした値が `"30"` なら `normal,bad` が `positive` に追加
+- ヒットした値が `"70.5"` なら `positive` には追加されない
 
 #### 5.3.2: positive + negative
 

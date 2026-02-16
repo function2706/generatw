@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import re
+from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass, field
-from enum import Enum, StrEnum, auto
+from enum import StrEnum
 from pathlib import Path
 from typing import Any, TypeAlias
 
@@ -37,7 +38,7 @@ class Token:
     """
 
     token: str = ""
-    weight: float = 0.0
+    weight: float = 1.0
 
     @classmethod
     def make(cls, original_token: str):
@@ -118,48 +119,28 @@ class ScreenDeliverable:
     category: list[CategoryDeliverable] = field(default_factory=list)
 
 
-class RuleType(Enum):
-    maps = auto()
-    ranges = auto()
-    intervals = auto()
-    default = auto()
-
-
 @dataclass
-class Rule:
+class Rule(ABC):
     """
-    マッチ条件とプロンプトの対応関係を定義するクラス\n
-    maps/ranges/intervals 形式で定義される
-
-    例:
-        maps: {'xxx': {'positive': 'pos1,(pos2:1.2)', 'negative': 'neg1'}}\n
-          -> Rule(matches={'xxx'}, positive=list[Token]([...]), negative=list[Token]([...]))\n
-        ranges: {'pos1,(pos2:1.2)': ['con1', 'con2']}\n
-          -> Rule(matches={'con1', 'con2'}, positive=list[Token]([...]), negative=list[Token]([]))
-        interval: {'pos1,(pos2:1.2)': [min, max]}\n
-          -> Rule(interval=(min, max), positive=list[Token]([...]), negative=list[Token]([]))
+    マッチ条件とプロンプトの対応関係を定義するクラス
 
     Attributes:
-        matches (set[str]): マッチ対象文字列の集合 (ranges の場合は複数要素となるため set)
-        interval (tuple[float, float]): intervals の場合の最大値と最小値
-        positive (list[Token]): ポジティブプロンプトのトークン集合
-        negative (list[Token]): ネガティブプロンプトのトークン集合
+        positive_tokens (list[Token]): ポジティブプロンプトのトークン集合
+        negative_tokens (list[Token]): ネガティブプロンプトのトークン集合
     """
 
-    matches: set[str] = field(default_factory=set)
-    interval: tuple[float, float] = field(default_factory=tuple)
     positive_tokens: list[Token] = field(default_factory=list)
     negative_tokens: list[Token] = field(default_factory=list)
 
     @classmethod
-    def make(cls, key: str, val: str | dict | list, ruletype: RuleType):
+    @abstractmethod
+    def make(cls, key: str, val: str | dict | list):
         """
         YAML の定義から Rule インスタンスを生成する
 
         Args:
             key (str): ルールのキー
             val (str | dict | list): ルールの値
-            ruletype (RuleType): maps / ranges / interval
 
         Returns:
             Rule: 生成された Rule インスタンス
@@ -167,99 +148,20 @@ class Rule:
         Raises:
             ValueError: 定義形式が不正な場合
         """
-        obj = cls()
+        pass
 
-        key_str = str(key)
-        if ruletype == RuleType.default:
-            if isinstance(val, str):
-                obj.positive_tokens = make_tokens(val)
-                obj.negative_tokens = make_tokens()
-            elif isinstance(val, dict):
-                obj.positive_tokens = make_tokens(val.get(KeyName.positive))
-                obj.negative_tokens = make_tokens(val.get(KeyName.negative))
-            else:
-                raise ValueError("Syntax of 'default' is invalid.")
-        elif ruletype == RuleType.maps:
-            obj.matches = {key_str}
-            if isinstance(val, str):
-                # {'xxx': 'pos1,(pos2:1.2)'} 型
-                obj.positive_tokens = make_tokens(val)
-                obj.negative_tokens = make_tokens()
-            elif isinstance(val, dict):
-                obj.positive_tokens = make_tokens(val.get(KeyName.positive))
-                obj.negative_tokens = make_tokens(val.get(KeyName.negative))
-            else:
-                raise ValueError(
-                    f"Rule '{key}' in 'maps' must be a string or dict, but {type(val).__name__}."
-                )
-        elif ruletype == RuleType.ranges:
-            if isinstance(val, list):
-                # {'pos1,(pos2:1.2)': ['con1', 'con2']} 型
-                obj.matches = {str(i) for i in val}
-                obj.positive_tokens = make_tokens(key_str)
-                obj.negative_tokens = make_tokens()
-            elif isinstance(val, dict):
-                if isinstance(val.get(KeyName.positive), list):
-                    # {'pos1,(pos2:1.2)': {'positive': ['con1', 'con2'], 'negative': 'neg1'}} 型
-                    obj.matches = {str(i) for i in val.get(KeyName.positive, [])}
-                    obj.positive_tokens = make_tokens(key_str)
-                    obj.negative_tokens = make_tokens(val.get(KeyName.negative))
-                elif isinstance(val.get(KeyName.negative), list):
-                    # {'pos1,(pos2:1.2)': {'positive': 'pos1', 'negative': ['con1', 'con2'], }} 型
-                    obj.matches = {str(i) for i in val.get(KeyName.negative, [])}
-                    obj.positive_tokens = make_tokens(val.get(KeyName.positive))
-                    obj.negative_tokens = make_tokens(key_str)
-                else:
-                    raise ValueError(
-                        f"Rule '{key}' in 'ranges' must have 'positive' or 'negative' label."
-                    )
-            else:
-                raise ValueError(
-                    f"Rule '{key}' in 'ranges' must be a list or dict, but {type(val).__name__}."
-                )
-        elif ruletype == RuleType.intervals:
+    @abstractmethod
+    def check_hit(self, match: str | None) -> bool:
+        """
+        ヒット可否を判定する
 
-            def check_list(lst: list) -> tuple[float, float]:
-                if len(lst) != 2:
-                    raise ValueError(
-                        f"'interval' list must be 2-length, this is {len(lst)}-length."
-                    )
-                try:
-                    min = float(lst[0])
-                    max = float(lst[1])
-                except Exception as e:
-                    raise TypeError(f"'{lst[0]}' or '{lst[1]}' is invalid value form.") from e
-                if min > max:
-                    raise ValueError(f"Invalid interval: min={lst[0]} > max={lst[1]}")
-                return min, max
+        Args:
+            match (str): マッチした文字列
 
-            if isinstance(val, list):
-                # {'pos1,(pos2:1.2)': [min, max]} 型
-                min, max = check_list(val)
-                obj.positive_tokens = make_tokens(key_str)
-                obj.negative_tokens = make_tokens()
-            elif isinstance(val, dict):
-                if isinstance(val.get(KeyName.positive), list):
-                    # {'pos1,(pos2:1.2)': {'positive': [min, max], 'negative': 'neg1'}} 型
-                    min, max = check_list(val.get(KeyName.positive))
-                    obj.positive_tokens = make_tokens(key_str)
-                    obj.negative_tokens = make_tokens(val.get(KeyName.negative))
-                elif isinstance(val.get(KeyName.negative), list):
-                    # {'pos1,(pos2:1.2)': {'positive': 'pos1', 'negative': [min, max], }} 型
-                    min, max = check_list(val.get(KeyName.negative))
-                    obj.positive_tokens = make_tokens(val.get(KeyName.positive))
-                    obj.negative_tokens = make_tokens(key_str)
-                else:
-                    raise ValueError(
-                        f"Rule '{key}' in 'intervals' must have 'positive' or 'negative' label."
-                    )
-            else:
-                raise ValueError(
-                    f"Rule '{key}' in 'intervals' must be a list or dict, but {type(val).__name__}."
-                )
-            obj.interval = (min, max)
-
-        return obj
+        Returns:
+            bool: True: ヒット, False: ヒットせず
+        """
+        pass
 
     def to_tokenlists(self, match: str | None = None) -> tuple[list[Token], list[Token]]:
         """
@@ -271,14 +173,191 @@ class Rule:
         Returns:
             tuple[list[Token], list[Token]]: ポジティブ/ネガティブプロンプト用
         """
-        if (self.matches and match not in self.matches) or (
-            self.interval and (not (self.interval[0] <= float(match) <= self.interval[1]))
-        ):
-            # マッチせず
-            # default つまり matches/interval が空の場合はここに入らない
+        if not self.check_hit(match):
             return [], []
 
-        return self.positive_tokens, self.negative_tokens
+        return list(self.positive_tokens), list(self.negative_tokens)
+
+
+@dataclass
+class MapsRule(Rule):
+    """
+    maps 定義
+
+    maps: {'xxx': {'positive': 'pos1,(pos2:1.2)', 'negative': 'neg1'}}\n
+      -> Rule(matches={'xxx'}, positive=list[Token]([...]), negative=list[Token]([...]))
+
+    Attributes:
+        matches (set[str]): マッチ候補のセット
+    """
+
+    matches: set[str] = field(default_factory=set)
+
+    @classmethod
+    def make(cls, key: str, val: str | dict | list):
+        obj = cls()
+
+        obj.matches = {str(key)}
+        if isinstance(val, str):
+            # {'xxx': 'pos1,(pos2:1.2)'} 型
+            obj.positive_tokens = make_tokens(val)
+            obj.negative_tokens = make_tokens()
+        elif isinstance(val, dict):
+            obj.positive_tokens = make_tokens(val.get(KeyName.positive))
+            obj.negative_tokens = make_tokens(val.get(KeyName.negative))
+        else:
+            raise ValueError(
+                f"Rule '{key}' in 'maps' must be a string or dict, but {type(val).__name__}."
+            )
+
+        return obj
+
+    def check_hit(self, match: str | None) -> bool:
+        return match is not None and match in self.matches
+
+
+@dataclass
+class RangesRule(Rule):
+    """
+    ranges 定義
+
+    例:
+    ranges: {'pos1,(pos2:1.2)': ['con1', 'con2']}\n
+      -> Rule(matches={'con1', 'con2'}, positive=list[Token]([...]), negative=list[Token]([]))
+
+    Attributes:
+        matches (set[str]): マッチ候補のセット
+    """
+
+    matches: set[str] = field(default_factory=set)
+
+    @classmethod
+    def make(cls, key: str, val: str | dict | list):
+        obj = cls()
+
+        key_str = str(key)
+        if isinstance(val, list):
+            # {'pos1,(pos2:1.2)': ['con1', 'con2']} 型
+            obj.matches = {str(i) for i in val}
+            obj.positive_tokens = make_tokens(key_str)
+            obj.negative_tokens = make_tokens()
+        elif isinstance(val, dict):
+            if isinstance(val.get(KeyName.positive), list):
+                # {'pos1,(pos2:1.2)': {'positive': ['con1', 'con2'], 'negative': 'neg1'}} 型
+                obj.matches = {str(i) for i in val.get(KeyName.positive, [])}
+                obj.positive_tokens = make_tokens(key_str)
+                obj.negative_tokens = make_tokens(val.get(KeyName.negative))
+            elif isinstance(val.get(KeyName.negative), list):
+                # {'pos1,(pos2:1.2)': {'positive': 'pos1', 'negative': ['con1', 'con2'], }} 型
+                obj.matches = {str(i) for i in val.get(KeyName.negative, [])}
+                obj.positive_tokens = make_tokens(val.get(KeyName.positive))
+                obj.negative_tokens = make_tokens(key_str)
+            else:
+                raise ValueError(
+                    f"Rule '{key}' in 'ranges' must have 'positive' or 'negative' label."
+                )
+        else:
+            raise ValueError(
+                f"Rule '{key}' in 'ranges' must be a list or dict, but {type(val).__name__}."
+            )
+
+        return obj
+
+    def check_hit(self, match: str | None) -> bool:
+        return match is not None and match in self.matches
+
+
+@dataclass
+class IntervalsRule(Rule):
+    """
+    intervals 定義
+
+    interval: {'pos1,(pos2:1.2)': [min, max]}\n
+      -> Rule(interval=(min, max), positive=list[Token]([...]), negative=list[Token]([]))
+
+    Attributes:
+        interval (tuple[float, float]): マッチ候補の範囲(閉区間)
+    """
+
+    interval: tuple[float, float] = field(default_factory=tuple)
+
+    @classmethod
+    def make(cls, key: str, val: str | dict | list):
+        def check_list(lst: list) -> tuple[float, float]:
+            if len(lst) != 2:
+                raise ValueError(f"'interval' list must be 2-length, this is {len(lst)}-length.")
+            try:
+                min = float(lst[0])
+                max = float(lst[1])
+            except Exception as e:
+                raise TypeError(f"'{lst[0]}' or '{lst[1]}' is invalid value form.") from e
+            if min > max:
+                raise ValueError(f"Invalid interval: min={lst[0]} > max={lst[1]}")
+            return min, max
+
+        obj = cls()
+
+        key_str = str(key)
+        if isinstance(val, list):
+            # {'pos1,(pos2:1.2)': [min, max]} 型
+            min, max = check_list(val)
+            obj.positive_tokens = make_tokens(key_str)
+            obj.negative_tokens = make_tokens()
+        elif isinstance(val, dict):
+            if isinstance(val.get(KeyName.positive), list):
+                # {'pos1,(pos2:1.2)': {'positive': [min, max], 'negative': 'neg1'}} 型
+                min, max = check_list(val.get(KeyName.positive))
+                obj.positive_tokens = make_tokens(key_str)
+                obj.negative_tokens = make_tokens(val.get(KeyName.negative))
+            elif isinstance(val.get(KeyName.negative), list):
+                # {'pos1,(pos2:1.2)': {'positive': 'pos1', 'negative': [min, max], }} 型
+                min, max = check_list(val.get(KeyName.negative))
+                obj.positive_tokens = make_tokens(val.get(KeyName.positive))
+                obj.negative_tokens = make_tokens(key_str)
+            else:
+                raise ValueError(
+                    f"Rule '{key}' in 'intervals' must have 'positive' or 'negative' label."
+                )
+        else:
+            raise ValueError(
+                f"Rule '{key}' in 'intervals' must be a list or dict, but {type(val).__name__}."
+            )
+        obj.interval = (min, max)
+
+        return obj
+
+    def check_hit(self, match: str | None) -> bool:
+        try:
+            match_float = float(match)
+        except Exception:
+            return False
+
+        return match is not None and (self.interval[0] <= match_float <= self.interval[1])
+
+
+@dataclass
+class DefaultRule(Rule):
+    """
+    default 定義
+    """
+
+    @classmethod
+    def make(cls, key: str, val: str | dict | list):
+        obj = cls()
+
+        if isinstance(val, str):
+            obj.positive_tokens = make_tokens(val)
+            obj.negative_tokens = make_tokens()
+        elif isinstance(val, dict):
+            obj.positive_tokens = make_tokens(val.get(KeyName.positive))
+            obj.negative_tokens = make_tokens(val.get(KeyName.negative))
+        else:
+            raise ValueError("Syntax of 'default' is invalid.")
+
+        return obj
+
+    def check_hit(self, match: str | None) -> bool:
+        return True
 
 
 @dataclass
@@ -344,18 +423,18 @@ class Category:
             raise ValueError("Category must have only 1 Ruletype, maps/ranges/intervals.")
         elif KeyName.maps in category:
             for key, val in category.get(KeyName.maps).items():
-                obj.rules.append(Rule.make(key=key, val=val, ruletype=RuleType.maps))
+                obj.rules.append(MapsRule.make(key=key, val=val))
         elif KeyName.ranges in category:
             for key, val in category.get(KeyName.ranges).items():
-                obj.rules.append(Rule.make(key=key, val=val, ruletype=RuleType.ranges))
+                obj.rules.append(RangesRule.make(key=key, val=val))
         elif KeyName.intervals in category:
             for key, val in category.get(KeyName.intervals).items():
-                obj.rules.append(Rule.make(key=key, val=val, ruletype=RuleType.intervals))
+                obj.rules.append(IntervalsRule.make(key=key, val=val))
 
         if KeyName.default in category:
             val = category.get(KeyName.default)
             try:
-                obj.default = Rule.make(KeyName.default, val, RuleType.default)
+                obj.default = DefaultRule.make(KeyName.default, val)
             except Exception as e:
                 raise ValueError(f"Invalid default in field '{obj.pattern.pattern}'") from e
 
