@@ -10,7 +10,7 @@ import json
 import re
 from collections import deque
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, is_dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Any, Generic, TypeVar
@@ -52,6 +52,9 @@ def json_default(obj: Any) -> str:
     Returns:
         str: Enum.name()
     """
+    if is_dataclass(obj) and not isinstance(obj, type):
+        return asdict(obj)
+
     if isinstance(obj, Enum):
         return obj.name
     if isinstance(obj, Path):

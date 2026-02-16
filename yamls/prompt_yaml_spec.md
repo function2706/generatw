@@ -33,7 +33,7 @@ parser: <Parser ID>        # Parser が提供する紐づけのための予約�
         positive: <tokens>
         negative: <tokens>
     default: <prompt>      # オプション
-  global:                  # オプション
+  common:                  # オプション
     positive: <tokens>
     negative: <tokens>
 ```
@@ -80,19 +80,23 @@ parser: SampleParser
 
 ### 2.4 Parser に渡すデータ形式
 
-Parser には以下の形式でデータを渡す. 複数 Screen が定義されている場合はこれらの list を返す.
+Parser には以下の形式からなるデータの list を渡す (list[ScreenDeliverable]).
 Category が多層的である場合は Screen からの名前を list に格納する.
 
 ```python
 {
-  "screen": "screen1",
-  "category" ["category1", "category1.1"], # 最右が pattern をもつ実際の Category
-  "positive": [Token("pos1", 1.0)], # Token は Parser と共用するクラス
-  "negative": [], # 存在しない場合も空を付帯する
+  "screen_id": "screen1",
+  "category": [ # CategoryDeliverable のリスト
+    {
+      "path" ["category1", "category1.1"], # 最右が pattern をもつ実際の Category
+      "positive": [Token("pos1", 1.0)], # Token は Parser と共用するクラス
+      "negative": [], # 存在しない場合も空を付帯する
+    }
+  ]
 }
 ```
 
-Token の定義は以下の通り.
+Parser との共用クラスの定義は以下の通り.
 
 ```python
 @dataclass
@@ -101,11 +105,41 @@ class Token:
     weight: float = 0.0
 ```
 
-また list 自体が空である場合に, 本書ではこれを空リストと呼ぶこととする.
-仕様上, screen, category, positive, negative, すべてが空であるデータの混入はあり得ない.  
-データが付帯される場合, screen, category は常に記述されるが, positive, negative の一方のみが空であることはあり得る.
+```python
+@dataclass
+class CategoryDeliverable:
+  path: list[str]
+  positive: list[Token]
+  negative: list[Token]
 
-同じ token をもつ Token がリスト内に混在していてもよいものとする(dedupe は Parser に委任).
+@dataclass
+class ScreenDeliverable:
+  screen_id: str
+  category: list[CategoryDeliverable]
+```
+
+以降簡単のため, 本書では常に最初の形 (asdict + Token の混在)で記述する.
+
+#### 2.4.1 Screen が発火しなかった場合
+
+いずれの Screen の `ignition` (後述)も未発火であった場合は, 空のリストが返される.
+
+#### 2.4.2 発火したがマッチしなかった場合
+
+いずれの Rule もマッチしなかった, かつ `default` (後述)も未定義の場合,
+空のリストが category キーに付与される.
+
+```python
+{
+  "screen_id": "screen1",
+  "category": []
+}
+```
+
+#### 2.4.3 備考
+
+マッチした場合 CategoryDeliverable.path は常に記述されるが, positive, negative の一方のみが空であることはあり得る.  
+同じ token をもつ Token が positive, negative 内に混在していてもよいものとする(dedupe は Parser に委任).
 
 ---
 
@@ -163,10 +197,14 @@ screen1:
 
 ```python
 {
-  "screen": "screen1",
-  "category" ["category1", "category1.1", "category1.1.1"],
-  "positive": [...],
-  "negative": [...],
+  "screen_id": "screen1",
+  "category": [
+    {
+      "path" ["category1", "category1.1", "category1.1.1"],
+      "positive": [...],
+      "negative": [...],
+    }
+  ]
 }
 ```
 
@@ -418,14 +456,18 @@ positive: "pos1,pos2,pos3"
 negative: neg1,neg2
 ```
 
-列挙したプロンプトがデータとして返される場合は list 化される.
+列挙したプロンプトがデータとして返される場合は list に格納される.
 
 ```python
 {
-  "screen": "screen1",
-  "category" ["category1"],
-  "positive": [Token("pos1", 1.0), Token("pos2", 1.0), Token("pos3", 1.0)],
-  "negative": [Token("neg1", 1.0), Token("neg2", 1.0)],
+  "screen_id": "screen1",
+  "category": [
+    {
+      "path" ["category1"],
+      "positive": [Token("pos1", 1.0), Token("pos2", 1.0), Token("pos3", 1.0)],
+      "negative": [Token("neg1", 1.0), Token("neg2", 1.0)],
+    }
+  ]
 }
 ```
 
@@ -456,13 +498,13 @@ black hair,(blue eye:1.2): ["bob"]
 
 ## 7. Screen 共通プロンプト
 
-### 7.1 `global`
+### 7.1 `common`
 
 各 Screen において, すべてのマッチ結果に必ず追加したいプロンプトを指定する.  
 順番については Parser に一任するが, 基本的には末尾の Boilerplate プロンプトを想定する.
 
 ```yaml
-global:
+common:
   positive: "common positive,high quality"
   negative: "common negative,bad quality"
 ```
@@ -470,22 +512,26 @@ global:
 `maps` と同じく, 以下の記法も有効.
 
 ```yaml
-global: common negative,low quality,blurry
+common: common negative,low quality,blurry
 
-global:
+common:
   negative: bad quality
 ```
 
-また `global` は省略可能である.
+また `common` は省略可能である.
 
 返すデータの `category` キーは空の list とする.
 
 ```python
 {
-  "screen": "screen1",
-  "category" [],
-  "positive": [Token("common positive", 1.0), Token("high quality", 1.0)],
-  "negative": [Token("common negative", 1.0), Token("bad quality", 1.0)],
+  "screen_id": "screen1",
+  "category": [
+    {
+      "path" [],
+      "positive": [Token("common positive", 1.0), Token("high quality", 1.0)],
+      "negative": [Token("common negative", 1.0), Token("bad quality", 1.0)],
+    }
+  ]
 }
 ```
 
@@ -498,7 +544,7 @@ global:
 3. **パターンマッチ**: 各 Category の `pattern` でテキストを検索
 4. **値抽出**: `capturegrp` で指定されたグループの値を取得
 5. **マッピング**: `maps` / `ranges` / `intervals` で値をプロンプトに変換
-6. **共通プロンプト追加**: `global` を追加
+6. **共通プロンプト追加**: `common` を追加
 7. **出力**: リストとして返す
 
 ---
@@ -534,7 +580,7 @@ main:
       scorching heat:
         positive: cool
         negative: ["01", "02", "03", "04", "05", "06", "09", "10", "11", "12"]
-      default: ordinary
+    default: ordinary
   vitality:
     pattern: 'vitality:\s(.+?),'
     capturegrp: 1
@@ -551,7 +597,20 @@ main:
       ok:
         negative: [0, 40]
     default: average
-  global:
+  fashion:
+    upper:
+      pattern: 'upper:\s(.+?),'
+      capturegrp: 1
+      maps:
+        Shirt: shirt
+        T Shirt: t-shirt
+    lower:
+      pattern: 'lower:\s(.+?),'
+      capturegrp: 1
+      maps:
+        Pants: pants
+        Skirt: skirt
+  common:
     positive: common main positive
     negative: common main negative
 meta:
@@ -577,7 +636,7 @@ meta:
 
 ```txt
 Main
-name: Fugami, season: 11, vitality: 50,
+name: Fugami, season: 11, vitality: 50, upper: Shirt, lower: Pants,
 ```
 
 - 出力
@@ -585,28 +644,39 @@ name: Fugami, season: 11, vitality: 50,
 ```python
 [
   {
-    "screen": "main",
-    "category": ["name"],
-    "positive": [Token("fugami", 1.2)],
-    "negative": [],
-  },
-  {
-    "screen": "main",
-    "category": ["season"],
-    "positive": [Token("autumn", 1.2),Token("cool", 1.0)],
-    "negative": [Token("scorching heat", 1.0)],
-  },
-  {
-    "screen": "main",
-    "category": ["vitality"],
-    "positive": [Token("low", 1.0),Token("middle", 1.0)],
-    "negative": [Token("good", 1.0)],
-  },
-  {
-    "screen": "main",
-    "category": [],
-    "positive": [Token("common main positive", 1.0)],
-    "negative": [Token("common main negative", 1.0)],
+    "screen_id": "main",
+    "category": [
+      {
+        "path" ["name"],
+        "positive": [Token("fugami", 1.2)],
+        "negative": [],
+      },
+      {
+        "path" ["season"],
+        "positive": [Token("autumn", 1.0), Token("cool", 1.0)],
+        "negative": [Token("scorching heat", 1.0)],
+      },
+      {
+        "path" ["vitality"],
+        "positive": [Token("low", 1.0), Token("bad", 1.0), Token("middle", 1.0)],
+        "negative": [Token("good", 1.0)], Token("high", 1.0),
+      },
+      {
+        "path" ["fashion", "upper"],
+        "positive": [Token("shirt", 1.0)],
+        "negative": [],
+      },
+      {
+        "path" ["fashion", "lower"],
+        "positive": [Token("pants", 1.0)],
+        "negative": [],
+      },
+      {
+        "path" [],
+        "positive": [Token("common main positive", 1.0)],
+        "negative": [Token("common main negative", 1.0)],
+      },
+    ]
   }
 ]
 ```

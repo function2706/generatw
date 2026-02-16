@@ -30,7 +30,7 @@ main: # ここも Parser が解釈できる Screen 名
         negative: ["01", "02", "03", "04", "05", "06", "09", "10", "11", "12"] # negative を範囲指定する場合
         # ルール全体では "09" がマッチした場合, pos: (winter:1.1),snow.cool, neg: cold,scorching heat となる
         # 順番は記述順だが, 最終プロンプトの順番は Parser に委ねる
-      default: ordinary
+    default: ordinary
   vitality: # 予約語
     pattern: 'vitality:\s(.+?),'
     capturegrp: 1
@@ -47,7 +47,20 @@ main: # ここも Parser が解釈できる Screen 名
       ok:
         negative: [0, 40]
     default: average
-  global: # 必ず最後尾に付与してほしいプロンプト(予約語)
+  fashion:
+    upper: # 階層は任意
+      pattern: 'upper:\s(.+?),'
+      capturegrp: 1
+      maps:
+        Shirt: shirt
+        T Shirt: t-shirt
+    lower:
+      pattern: 'lower:\s(.+?),'
+      capturegrp: 1
+      maps:
+        Pants: pants
+        Skirt: skirt
+  common: # 必ず付与してほしいプロンプト(予約語)
     positive: common main positive # ここも positive のみとかにできる
     negative: common main negative
 meta: # 予約語
@@ -64,4 +77,4 @@ meta: # 予約語
     maps:
       room: room
       city: city
-  # global は省略可能
+  # common は省略可能

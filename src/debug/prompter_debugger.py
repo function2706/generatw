@@ -388,13 +388,11 @@ class PrompterDebugger:
         result: dict[str, dict[str, str]] = {}
         for i, text in enumerate(texts):
             try:
-                pos, neg = self.prompter.toprompt(text)
-                active_flags = sorted(self.prompter.needle.dynamic.active_flags.copy())
-                posneg = {"POS": pos, "NEG": neg, "FLAGS": active_flags}
+                deliverable = self.prompter.to_deliverable(text)
                 if with_texts:
-                    result[f"{yamlname}-{i + 1}: '{text}'"] = posneg
+                    result[f"{yamlname}-{i + 1}: '{text}'"] = deliverable
                 else:
-                    result[f"{yamlname}-{i + 1}"] = posneg
+                    result[f"{yamlname}-{i + 1}"] = deliverable
             except Exception as e:
                 raise Exception(f"Error with '{text}'") from e
         return result
