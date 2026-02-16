@@ -1,6 +1,6 @@
+parser: SampleParser
 main:
-  ignition:
-    any: ["go"]
+  ignition: "go"
   t:
     a:
       pattern: "(x)"

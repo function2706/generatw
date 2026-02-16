@@ -1,11 +1,10 @@
+parser: SampleParser
 main:
-  ignition:
-    any: ["go"]
+  ignition: "go"
   t:
     word:
       pattern: "\\b(\\w+)\\b"
       capturegrp: 1
-      priority: 1
       maps:
         hello: hello_greeting
         world: world_place

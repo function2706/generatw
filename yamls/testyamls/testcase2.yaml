@@ -1,10 +1,9 @@
+parser: SampleParser
 main:
-  ignition:
-    any: ["go"]
+  ignition: "go"
   f:
     test:
       pattern: "id:(\\d+)"
       capturegrp: 1
-      priority: 1
       maps:
         "10": ten

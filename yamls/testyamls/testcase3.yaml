@@ -1,11 +1,10 @@
+parser: SampleParser
 main:
-  ignition:
-    any: ["go"]
+  ignition: "go"
   f:
     test:
       pattern: "v:(\\w+)"
       capturegrp: 1
-      priority: 1
       maps:
         A: aaa
       default: zzz

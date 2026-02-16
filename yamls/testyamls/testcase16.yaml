@@ -1,6 +1,6 @@
+parser: SampleParser
 main:
-  ignition:
-    any: ["go"]
+  ignition: "go"
   s1:
     pattern: "(\\d+)"
     capturegrp: 1

@@ -1,10 +1,9 @@
+parser: SampleParser
 main:
-  ignition:
-    any: ["go"]
+  ignition: "go"
   t:
     a:
       pattern: "(x)"
-      priority: 1
       maps:
         x: foo
-  POSITIVE: common
+  common: common
