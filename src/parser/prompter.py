@@ -163,7 +163,7 @@ class Rule(ABC):
         """
         pass
 
-    def to_tokenlists(self, match: str | None = None) -> tuple[list[Token], list[Token]]:
+    def to_tokenlists(self, match: str | None = None) -> tuple[list[Token], list[Token]] | None:
         """
         マッチ文字列が条件を満たす場合に list[Token] を生成する
 
@@ -171,10 +171,11 @@ class Rule(ABC):
             match (str, optional): マッチした文字列
 
         Returns:
-            tuple[list[Token], list[Token]]: ポジティブ/ネガティブプロンプト用
+            tuple[list[Token], list[Token]] | None: ポジティブ/ネガティブプロンプト用
+            ヒットしなかった場合に None
         """
         if not self.check_hit(match):
-            return [], []
+            return None
 
         return list(self.positive_tokens), list(self.negative_tokens)
 
@@ -443,42 +444,48 @@ class Category:
     def to_category_deliverable(self, text: str) -> CategoryDeliverable | None:
         """
         指定の text から CategoryDeliverable を生成する\n
-        マッチしない(キャプチャ逸脱を含む)場合はデフォルトを採用する
+        マッチしたがヒットしない場合は default を採用する
 
         Args:
             text (str): テキスト
 
         Returns:
-            CategoryDeliverable | None: 未マッチかつ default 未定義の場合は None
+            CategoryDeliverable | None: ヒット時に CategoryDeliverable インスタンス
+            マッチしない, あるいは default 適用を試みたが未定義の場合に None
         """
         result = CategoryDeliverable(path=self.category_path)
 
-        # 一度でも一致があり, かつそれがキャプチャ範囲適正か
+        has_matched = False
         for match_itr in self.pattern.finditer(text):
             try:
                 match = match_itr.group(self.capturegrp)
             except Exception:
                 # キャプチャグループ不正は無視
-                print(
-                    f"Capture group {self.capturegrp} not found in pattern '{self.pattern.pattern}'"
-                    f" for text '{text}'."
-                )
                 continue
 
+            has_matched = True
             for rule in self.rules:
-                pos, neg = rule.to_tokenlists(match=match)
+                result_hit = rule.to_tokenlists(match=match)
+                if result_hit is None:
+                    continue
+
+                pos, neg = result_hit
                 result.positive.extend(pos)
                 result.negative.extend(neg)
 
-        if not result.positive and not result.negative:
-            if self.default is not None:
-                # どの Rule でもトークンが追加されなかった -> default
-                pos, neg = self.default.to_tokenlists()
-                result.positive.extend(pos)
-                result.negative.extend(neg)
-            else:
-                # default も未定義につき適用不可だった
-                return None
+        if has_matched:
+            if not result.positive and not result.negative:
+                if self.default is not None:
+                    # どの Rule でもトークンが追加されなかった -> default
+                    pos, neg = self.default.to_tokenlists()
+                    result.positive.extend(pos)
+                    result.negative.extend(neg)
+                else:
+                    # default も未定義につき適用不可だった
+                    return None
+        else:
+            # 一切マッチしなかった
+            return None
 
         return result
 
