@@ -1,12 +1,10 @@
+parser: TheWorldParser
 main:
-  ignition:
-    any: ['[春夏秋冬]の月\s[0-9]*日目']
+  ignition: '[春夏秋冬]の月\s[0-9]*日目'
   character:
     name:
       pattern: '^(.+?)\s*(?:（[^）]+）)?\s*\(好感度'
-      priority: 1
       capturegrp: 1
-      essential: global
       maps:
         博麗 霊夢: hakurei reimu
         る～こと: ruukoto,green hair,short hair,blue eyes,light blue maid apron,red bowtie,tareme
@@ -167,25 +165,19 @@ main:
         宮出口 瑞霊: miyadeguchi mizuchi,blue hair,blue eyes,ponytail,crossed bangs,hair between eyes
     vibe:
       pattern: '^.+?\s*(?:（([^）]+)）)?\s*\(好感度'
-      priority: 4
       capturegrp: 1
-      lifetime: stable
       maps:
         ご機嫌: (smile:1.1)
         フキゲン: (angry:1.1)
     affection:
       pattern: "好感度:\\s*([a-zA-Z]+)\\s*\\d+"
-      priority: 3
       capturegrp: 1
-      lifetime: stable
       ranges:
         looking at viewer: [Ex, SS, S, A]
         looking away: [F, G]
     trust:
       pattern: "信頼度:\\s*([a-zA-Z]+)\\s*\\d+"
-      priority: 3
       capturegrp: 1
-      lifetime: stable
       ranges:
         smile:
           negative: [F, G]
@@ -193,17 +185,13 @@ main:
           negative: [Ex, SS, S, A]
     frustration:
       pattern: '欲求不満度:\s*(\d+)％'
-      priority: 5
       capturegrp: 1
-      lifetime: stable
       intervals:
         blush: [60, 100]
         blush,in heat: [100, 10000]
     angry:
       pattern: '怒り:\s*(！*)|怒'
-      priority: 2
       capturegrp: 1
-      lifetime: stable
       maps:
         ！: jitome
         ！！: annoyed
@@ -213,15 +201,11 @@ main:
         怒: (angry:1.2),v-shaped eyebrows
     in_heat:
       pattern: "発情中"
-      priority: 4
-      lifetime: stable
       maps:
         発情中: blush,in heat
     mood:
       pattern: 'ムード:\s*(OverDrive!!|❤*)'
-      priority: 2
       capturegrp: 1
-      lifetime: stable
       maps:
         ❤: (happy:0.9)
         ❤❤: happy
@@ -231,9 +215,7 @@ main:
         OverDrive!!: (happy:1.2),blush,seductive smile
     reason:
       pattern: '理性:\s*(LimitBreak!!|★*)'
-      priority: 2
       capturegrp: 1
-      lifetime: stable
       maps:
         ★:
           negative: (in heat:0.9)
@@ -247,31 +229,24 @@ main:
           negative: (in heat:1.2),(blush:1.2)
     upper:
       pattern: '【上半身】\s*([^\s]*)'
-      priority: 5
       capturegrp: 1
-      lifetime: stable
       maps:
         xxx: xxx
     upper_state:
       pattern: '【上半身】\s*[^\s]*\s*([^【]*)'
-      priority: 5
       capturegrp: 1
-      lifetime: stable
       maps:
         xxx: xxx
     lower:
       pattern: '【下半身】\s*([^\s]*)'
-      priority: 5
       capturegrp: 1
-      lifetime: stable
       maps:
         xxx: xxx
     lower_state:
       pattern: '【下半身】\s*[^\s]*\s*([^【=<]*)"'
-      priority: 5
       capturegrp: 1
-      lifetime: stable
       maps:
         xxx: xxx
-  POSITIVE: best quality,masterpiece,absurdres,1girl,solo
-  NEGATIVE: (amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm
+  common:
+    positive: best quality,masterpiece,absurdres,1girl,solo
+    negative: (amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm
