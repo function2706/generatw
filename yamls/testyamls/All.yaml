@@ -4,7 +4,7 @@ main: # ここも Parser が解釈できる Screen 名
   name: # Parser へはこのルール名と pos/neg ごとの dict[Token, Weight] を渡す(マッチしなかった場合も含めて渡す)
     # YAML作成者は Parser が扱える(解釈できる)ルール名は予め知っておく必要がある
     # ただし解釈できないルールは無視されるだけとする
-    pattern: '^name:\s(.+?),'
+    pattern: 'name:\s(.+?),'
     capturegrp: 1 # 省略可能, その場合は 0 (全体キャプチャ)
     maps:
       Hogemaru: hogemaru # ポジティブプロンプト単項, weight=1.0 の場合
@@ -30,7 +30,13 @@ main: # ここも Parser が解釈できる Screen 名
         negative: ["01", "02", "03", "04", "05", "06", "09", "10", "11", "12"] # negative を範囲指定する場合
         # ルール全体では "09" がマッチした場合, pos: (winter:1.1),snow.cool, neg: cold,scorching heat となる
         # 順番は記述順だが, 最終プロンプトの順番は Parser に委ねる
-    default: ordinary
+      H1:
+        positive: ["04", "05", "06", "07", "08", "09"]
+      H2:
+        negative: ["04", "05", "06", "07", "08", "09"]
+    default:
+      positive: ordinary
+      negative: storm
   vitality: # 予約語
     pattern: 'vitality:\s(.+?),'
     capturegrp: 1
@@ -46,7 +52,8 @@ main: # ここも Parser が解釈できる Screen 名
         positive: [95, 100]
       ok:
         negative: [0, 40]
-    default: average
+    default:
+      negative: special
   fashion:
     upper: # 階層は任意
       pattern: 'upper:\s(.+?),'
@@ -66,15 +73,74 @@ main: # ここも Parser が解釈できる Screen 名
 meta: # 予約語
   ignition: "(m|M)eta"
   weather: # 予約語
-    pattern: "(sunny|rainy)"
+    pattern: 'weather:\s(.+?),'
     capturegrp: 1
     maps:
       sunny: sunny
       rainy: rainy
     default: cloudy
   location: # 予約語
-    pattern: "(room|city)"
+    pattern: 'location:\s(.+?)'
     maps:
       room: room
       city: city
+  common: common meta
+sub:
+  ignition: "(s|S)ub"
+  ability:
+    pattern: 'ability:\s(.+?),'
+    capturegrp: 1
+    maps:
+      Strong: strong
+      Intelligence: intelligence
+  like:
+    pattern: 'like:\s(.+?),'
+    capturegrp: 1
+    maps:
+      Apple: apple
+      Banana: banana
+      Melon: melon
+    default: nothing
+  grade:
+    pattern: 'grade:\s(.+?),'
+    capturegrp: 1
+    maps:
+      "1": grade 1
+      2: grade 2
+  whole:
+    pattern: "[wW]o[wW]!"
+    maps:
+      wow!: wow
+      WoW!: WoW
+  ng:
+    pattern: 'ng:\s(.+?),'
+    capturegrp: 2
+    maps:
+      dummy: Dummy
+  ranges without default:
+    pattern: 'rwd:\s(.+?),'
+    capturegrp: 1
+    ranges:
+      dummy: ["a", "b"]
+  intervals without default:
+    pattern: 'iwd:\s(.+?),'
+    capturegrp: 1
+    ranges:
+      dummy: [0, 10]
   # common は省略可能
+common1:
+  ignition: "common1"
+  common: common1
+common2:
+  ignition: "common2"
+  common:
+    positive: common2
+common3:
+  ignition: "common3"
+  common:
+    negative: common3
+common4:
+  ignition: "common4"
+  common:
+    positive: common4-pos
+    negative: common4-neg
