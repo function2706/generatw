@@ -7,16 +7,25 @@ from __future__ import annotations
 import random
 import threading
 import time
+from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
-from threading import Lock
 
 import pyperclip
+import yaml
 
 from common.functions import BottleMail, dirname_by_prompts, dump_json
 from master.events import NewPrompts, ParserEvent
 from master.interfaces import MasterIF
-from parser.prompter import Prompter
+from parser.interpreter.debug_interpreter import DebugInterpreter
+from parser.interpreter.interpreter import Interpreter, PromptSet
+from parser.interpreter.test_interpreter import TestInterpreter
+from parser.interpreter.theworld_interpreter import TheWorldInterpreter
+
+INTERPRETER_LIST: list[type[Interpreter]] = [
+    TestInterpreter,
+    TheWorldInterpreter,
+]
 
 
 @dataclass(frozen=True)
@@ -37,8 +46,8 @@ class Event:
     イベントフラグ
     """
 
+    in_debugging: threading.Event = field(default_factory=threading.Event)  # デバッグ中
     shutdown: threading.Event = field(default_factory=threading.Event)  # 終了予定
-    is_debugging: threading.Event = field(default_factory=threading.Event)  # デバッグ予定
 
 
 class Parser:
@@ -48,7 +57,8 @@ class Parser:
 
     def __init__(self, master: MasterIF, to_master: BottleMail[ParserEvent]):
         """
-        コンストラクタ
+        コンストラクタ\n
+        YAML がない場合に ValueError を投げる
 
         Args:
             master (MasterIF): Master インターフェース
@@ -57,11 +67,12 @@ class Parser:
         self.master = master
         self.to_master = to_master
 
+        self.interpreter: Interpreter = None
+        self.interpreter_cache: Interpreter = None
+        self.debug_interpreter: DebugInterpreter = DebugInterpreter(Consts.debug_yamlpath)
+
         self.crnt_clipboard = ""
-        self.prompter: Prompter = None
-        self.prompter_lock = Lock()
-        self.crnt_positive = ""
-        self.crnt_negative = ""
+        self.crnt_prompt_set: PromptSet = None
 
         self.event = Event()
         self.parser_thread = threading.Thread(
@@ -89,6 +100,42 @@ class Parser:
         """
         self.event.shutdown.set()
 
+    def switch_interpreter(self, yamlpath: Path) -> None:
+        """
+        指定の YAML に記載された "interpreter" キーに紐づく Interpreter を起動する
+
+        Args:
+            yamlpath (Path): YAML パス
+        """
+        keyword = None
+        with open(yamlpath, "r", encoding="utf-8") as f:
+            yamldict: dict = yaml.safe_load(f)
+            keyword = yamldict.get("interpreter")
+
+        for interpreter in INTERPRETER_LIST:
+            if keyword is not None and interpreter.keyword() == keyword:
+                self.interpreter = interpreter(yamlpath)
+                self.interpreter_cache = deepcopy(self.interpreter)
+
+    def make_prompt_strs(self) -> tuple[str, str]:
+        """
+        現在の Prompter 成果物からプロンプト文字列を生成する
+
+        Returns:
+            str: プロンプト文字列
+        """
+        if self.crnt_prompt_set is None:
+            return None
+
+        pos_list = [
+            token.to_str() for tokens in self.crnt_prompt_set.positive for token in tokens.tokens
+        ]
+        neg_list = [
+            token.to_str() for tokens in self.crnt_prompt_set.negative for token in tokens.tokens
+        ]
+
+        return ",".join(pos_list), ",".join(neg_list)
+
     @property
     def crnt_prompt_dir(self) -> str:
         """
@@ -97,69 +144,47 @@ class Parser:
         Returns:
             str: ディレクトリ名
         """
-        return dirname_by_prompts(self.crnt_positive, self.crnt_negative)
-
-    def reset_prompter(self, yamlpath: Path) -> None:
-        """
-        Prompter を指定の YAML で再起動する
-
-        Args:
-            yamlpath (Path): YAML パス
-        """
-        if yamlpath.exists():
-            with self.prompter_lock:
-                self.prompter = Prompter.make(yamlpath)
+        pos, neg = self.make_prompt_strs()
+        return dirname_by_prompts(pos, neg)
 
     def is_enough_prompt(self) -> bool:
         """
-        生成に十分なプロンプトか
+        記録中の PromptSet が生成に十分な情報を持っているか
 
         Returns:
             bool: True: 十分, False: 不十分(空文字列)
         """
-        return self.crnt_positive or self.crnt_negative
+        return self.interpreter.is_enough_prompt(self.crnt_prompt_set)
 
-    def inform_new_prompt(self, pos: str, neg: str) -> None:
+    def inform_new_prompt(self, prompt_set: PromptSet) -> None:
         """
         Master に新たなプロンプトを報告する\n
-        pos, neg の双方が空の場合は情報不十分と見なし, 何もしない
+        更新がない, あるいは情報が不十分な場合は何もしない
 
         Args:
-            pos (str): ポジティブプロンプト
-            neg (str): ネガティブプロンプト
+            prompt_set (PromptSet): PromptSet
         """
-        if not pos and not neg:
+        if not prompt_set.positive and not prompt_set.negative:
+            # 完全に空の場合は何もしない(想定外クリップボード文字列の検知も含む)
+            return
+
+        if prompt_set == self.crnt_prompt_set:
+            return
+        self.crnt_prompt_set = prompt_set
+
+        if self.master.crnt_gui_configs.print_new_prompt_set:
+            dump_json(prompt_set, "new_prompt_set")
+
+        if not self.is_enough_prompt():
+            # 空ではないが条件を満たさない
             self.to_master.enclose(NewPrompts(is_enough=False))
             return
 
-        if pos == self.crnt_positive and neg == self.crnt_negative:
-            return
-
-        self.crnt_positive = pos
-        self.crnt_negative = neg
-
+        pos, neg = self.make_prompt_strs()
         if self.master.crnt_gui_configs.print_new_prompt:
             dump_json({"POS": pos, "NEG": neg}, "new_prompt")
 
-        self.to_master.enclose(NewPrompts(is_enough=True))
-
-    def do_debug(self, text: str) -> None:
-        """
-        デバッグを実行する\n
-        Prompter の更新は行わないが, 現在のプロンプトの記録は行う(ディレクトリ名のため)
-
-        Args:
-            text (str): テキスト
-        """
-        with self.prompter_lock:
-            original_yamlpath = self.prompter.yamlpath
-
-        self.reset_prompter(Consts.debug_yamlpath)
-        with self.prompter_lock:
-            pos, neg = self.prompter.toprompt(text)
-
-        self.reset_prompter(original_yamlpath)
-        self.inform_new_prompt(pos, neg)
+        self.to_master.enclose(NewPrompts(is_enough=True, positive=pos, negative=neg))
 
     def ready_for_debug(self) -> None:
         """
@@ -171,13 +196,16 @@ class Parser:
             f" upper:{str(random.randint(1, 9))} lower:{str(random.randint(1, 9))}"
         )
         if self.master.crnt_gui_configs.allow_edit_clipboard:
-            # クリップボードを変更する場合はその後の工程を正規手順に委ねる
+            # スレッド上の手順に委ねる
             pyperclip.copy(dummy_input)
-            self.event.is_debugging.set()
+            self.event.in_debugging.set()
             return
 
-        # クリップボードを変更しない場合はワンショットで直接生成する
-        self.do_debug(dummy_input)
+        prompt_set = self.debug_interpreter.make_prompt_set(dummy_input)
+        if prompt_set is None:
+            return
+
+        self.inform_new_prompt(prompt_set)
 
     def parser(self) -> None:
         """
@@ -196,12 +224,16 @@ class Parser:
                     print("new_clipboard:")
                     print(new_clipboard)
 
-                if self.event.is_debugging.is_set():
-                    self.do_debug(new_clipboard)
-                    self.event.is_debugging.clear()
-                elif self.prompter is not None:
-                    with self.prompter_lock:
-                        pos, neg = self.prompter.toprompt(new_clipboard)
-                    self.inform_new_prompt(pos, neg)
+                prompt_set = None
+                if self.event.in_debugging.is_set():
+                    prompt_set = self.debug_interpreter.make_prompt_set(new_clipboard)
+                    self.event.in_debugging.clear()
+                elif self.interpreter is not None:
+                    prompt_set = self.interpreter.make_prompt_set(new_clipboard)
+
+                if prompt_set is not None:
+                    self.inform_new_prompt(prompt_set)
             except Exception as e:
-                print(f"Any exception occurred in {threading.current_thread().name}: ", e)
+                raise Exception(
+                    f"Any exception occurred in {threading.current_thread().name}: "
+                ) from e

@@ -1,4 +1,4 @@
-parser: DebugParser
+interpreter: DebugInterpreter
 main:
   ignition: "debug"
   character:

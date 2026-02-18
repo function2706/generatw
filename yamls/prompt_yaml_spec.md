@@ -7,7 +7,7 @@
 ## 目次
 
 1. [全体構造](#1-全体構造)
-2. [`parser`: Parser との紐づけ](#2-parser-parser-との紐づけ)
+2. [`interpreter`: Interpreter との紐づけ](#2-interpreter-interpreter-との紐づけ)
 3. [`ignition` (発火条件)](#3-ignition-発火条件)
 4. [Category 定義](#4-category-定義)
 5. [Rule 定義](#5-rule-定義)
@@ -22,18 +22,18 @@
 ## 1. 全体構造
 
 ```yaml
-parser: <Parser ID>        # Parser が提供する紐づけのための予約語
-<screen name>:             # Screen 名, Parser による予約語
+interpreter: <Interpreter ID> # Interpreter が提供する紐づけのための予約語
+<screen name>:                # Screen 名, Interpreter による予約語
   ignition: <regex>
-  <category name>:         # Category 名, Parser による予約語, 階層は任意
+  <category name>:            # Category 名, Interpreter による予約語, 階層は任意
     pattern: <regex>
-    capturegrp: <number>   # オプション
-    maps:                  # または ranges, intervals
-      rule:                # Rule 名, Parser による予約語
+    capturegrp: <number>      # オプション
+    maps:                     # または ranges, intervals
+      rule:                   # Rule 名, Interpreter による予約語
         positive: <tokens>
         negative: <tokens>
-    default: <prompt>      # オプション
-  common:                  # オプション
+    default: <prompt>         # オプション
+  common:                     # オプション
     positive: <tokens>
     negative: <tokens>
 ```
@@ -55,91 +55,81 @@ Category のパターンにマッチした文字列ごとの変換規則を指�
 
 ---
 
-## 2. `parser`: Parser との紐づけ
+## 2. `interpreter`: Interpreter との紐づけ
 
-どの Parser の継承クラスのための対応表なのかを指定するための文字列を指定する.  
-この文字列は Parser によって提供されるものを使用する.
+どの Interpreter の継承クラスのための対応表なのかを指定するための文字列を指定する.  
+この文字列は Interpreter によって提供されるものを使用する(通常はクラス名そのものを想定).
 
 ### 2.1 記述例
 
 ```yaml
-parser: SampleParser
+interpreter: SampleInterpreter
 ```
 
 ### 2.2 振る舞い
 
 - 指定文字列と完全一致した場合, 各 Screen の `ignition` チェックが上から順に実施される
-- Parser が認知しない文字列が指定されている場合, `ignition` のチェックは実施されず, データを付帯しない(後述の空リスト)
+- Interpreter が認知しない文字列が指定されている場合, シンタックスエラーとする
 
 ### 2.3 以降の処理
 
-以降各処理において, DSL 側では Parser が想定しているデータが完備されているかどうかは判断せず, YAML に書かれている分を愚直に処理する(判断は Parser の責務).
+以降各処理において, DSL 側では Interpreter が想定しているデータが完備されているかどうかは判断せず, YAML に書かれている分を愚直に処理する(判断は Interpreter の責務).
 
-- Parser が認知しない文字列が指定されている場合, 返せるデータがある場合はすべて返す
+ただし以下の2つの制約を加える.
+
+- Interpreter が認知しない文字列が指定されている場合, シンタックスエラーとする
 - マッチ・ヒットしなかった等返すべきデータがない場合はデータを付帯しない
 
-### 2.4 Parser に渡すデータ形式
+### 2.4 Interpreter に渡すデータ形式
 
-Parser には以下の形式からなるデータの list を渡す (list[ScreenDeliverable]).
+Interpreter には以下の形式からなるデータの list を渡す (Prompt).
 Category が多層的である場合は Screen からの名前を list に格納する.
 
 ```python
-{
-  "screen_id": "screen1",
-  "category": [ # CategoryDeliverable のリスト
-    {
-      "path" ["category1", "category1.1"], # 最右が pattern をもつ実際の Category
-      "positive": [Token("pos1", 1.0)], # Token は Parser と共用するクラス
-      "negative": [], # 存在しない場合も空を付帯する
-    }
-  ]
-}
+[ # PromptParts のリスト
+  {
+    "path" ["screen1", "category1", "category1.1"], # 最右が pattern をもつ実際の Category
+    "tokens": [{"token": "pos1", "weight": 1.0}, ...],
+    ...
+  }
+]
 ```
 
-Parser との共用クラスの定義は以下の通り.
+**`tokens` が空の場合, この dict は append されない.**
+
+Interpreter との共用クラスの定義は以下の通り.
 
 ```python
 @dataclass
 class Token:
     token: str = ""
     weight: float = 0.0
+
+@dataclass
+class PromptParts:
+  path: list[str]
+  tokens: list[Token]
+
+Prompt: TypeAlias = list[PromptParts]
 ```
+
+以降簡単のため, 本書では以下の形を `Token("pos1", 1.0)` と表すこととする.
 
 ```python
-@dataclass
-class CategoryDeliverable:
-  path: list[str]
-  positive: list[Token]
-  negative: list[Token]
-
-@dataclass
-class ScreenDeliverable:
-  screen_id: str
-  category: list[CategoryDeliverable]
+{"token": "pos1", "weight": 1.0}
 ```
-
-以降簡単のため, 本書では常に最初の形 (asdict + Token の混在)で記述する.
 
 #### 2.4.1 Screen が発火しなかった場合
 
-いずれの Screen の `ignition` (後述)も未発火であった場合は, 空のリストが返される.
+いずれの Screen の `ignition` (後述)も未発火であった場合は, 空の Prompt が返される.
 
 #### 2.4.2 発火したがマッチ・ヒットしなかった場合
 
-いずれの Rule もマッチ・ヒットしなかった, かつ `default` (後述)も未定義の場合,
-空のリストが category キーに付与される.
-
-```python
-{
-  "screen_id": "screen1",
-  "category": []
-}
-```
+いずれの Rule もマッチ・ヒットしなかった, かつ `default` (後述)も未定義の場合, 空の Prompt が返される.
 
 #### 2.4.3 備考
 
-ヒットした場合 CategoryDeliverable.path は常に記述されるが, positive, negative の一方のみが空であることはあり得る.  
-同じ token をもつ Token が positive, negative 内に混在していてもよいものとする(dedupe は Parser に委任).
+同じ token をもつ Token が tokens 内に混在していてもよいものとする(dedupe は Interpreter に委任).
 
 ---
 
@@ -150,7 +140,7 @@ class ScreenDeliverable:
 **制約:**
 
 - バックスラッシュは必ずエスケープ (AML 仕様: `\\s`, `\\d` など), もしくは `'`で囲むこと
-- 可変長後読み(`(?<=...)` で `*` や `+`)は禁止 (ython re 制限)
+- 可変長後読み(`(?<=...)` で `*` や `+`)は禁止 (python re 制限)
 - キャプチャグループ `()` の番号は左から自動採番
 
 ### 3.1 記述例
@@ -196,16 +186,12 @@ screen1:
 上記の場合, 返すデータは以下のようになる.
 
 ```python
-{
-  "screen_id": "screen1",
-  "category": [
-    {
-      "path" ["category1", "category1.1", "category1.1.1"],
-      "positive": [...],
-      "negative": [...],
-    }
-  ]
-}
+[
+  {
+    "path" ["screen1", "category1", "category1.1", "category1.1.1"],
+    "tokens": [...],
+  }
+]
 ```
 
 ### 4.2 必須プロパティ
@@ -217,7 +203,7 @@ Python `re.search` で評価される正規表現を指定する.
 **制約:**
 
 - バックスラッシュは必ずエスケープ (AML 仕様: `\\s`, `\\d` など), もしくは `'`で囲むこと
-- 可変長後読み(`(?<=...)` で `*` や `+`)は禁止 (ython re 制限)
+- 可変長後読み(`(?<=...)` で `*` や `+`)は禁止 (python re 制限)
 - キャプチャグループ `()` の番号は左から自動採番
 
 ```yaml
@@ -255,7 +241,7 @@ capturegrp: 1  # \\w+ の部分を使用
 
 ```yaml
 pattern: "(1|2)[0-9]{3}/([0-9]{2})"
-capturegrp: 2  # 2番目のグループ(月部分)を使用
+capturegrp: 2  # 2番目のグループ(2桁部分)を使用
 ```
 
 #### 4.3.2 `default`
@@ -265,9 +251,6 @@ capturegrp: 2  # 2番目のグループ(月部分)を使用
 ```yaml
 default: "unknown"
 default: (cloudy:1.3)
-```
-
-```yaml
 default:
   positive: fallback,FallBack
   negative: FALLBACK
@@ -300,8 +283,8 @@ maps:
   Rainy: rainy,wet
 ```
 
-- キャプチャした値が `"Sunny"` なら `sunny` が応答データの positive に追加
-- キャプチャした値が `"Rainy"` なら `rainy,wet` が応答データの positive に追加
+- キャプチャした値が `"Sunny"` なら `sunny` が Prompt に追加される
+- キャプチャした値が `"Rainy"` なら `rainy,wet` が Prompt に追加される
 
 #### 5.1.2 positive/negative 分離
 
@@ -328,7 +311,7 @@ ranges:
 ```
 
 - プロンプト(キー)に対して, 該当する値のリストを定義
-- 抽出した値がリストに含まれていれば, キーが `positive` もしくは `negative` として使用される
+- 抽出した値がリストに含まれていれば, キーが `tokens` として使用される
 
 複数ヒットした場合は**それらすべてを採用**する.
 
@@ -359,7 +342,7 @@ ranges:
 ```
 
 - `positive` (もしくは `negative`) に含まれていれば **キー自体が `positive` (もしくは negative) として使用**
-- キー部分(`(hoge:1.3)`, `fuga`)が `positive` (もしくは negative) プロンプト
+- キー部分(`(hoge:1.3)`, `fuga`)がプロンプト
 - 一方を **条件リスト(list)**, 他方を **補助トークン(string)** として指定
 - `positive` と `negative` の一方は必ず list でなければならず, 他方は string でなければならない
 
@@ -384,12 +367,12 @@ ranges:
 これも**キーと値の役割が逆転する**ことに注意.
 
 ```yaml
-ranges:
+intervals:
   <prompt_key>: <intervals>
 ```
 
 - **プロンプト(キー)** に対して, 該当する値の範囲(閉区間, 両端を含む)を定義
-- 抽出した値が範囲内であれば, キーが `positive` もしくは `negative` として使用される
+- 抽出した値が範囲内であれば, キーが `tokens` として使用される
 - リストの長さは 2, かつ昇順でないといけない
 - リストは数値以外の要素を含んでいてはいけない
 
@@ -414,9 +397,9 @@ ranges:
   bad: [0, 30]
 ```
 
-- ヒットした値が `"40"` なら `normal` が `positive` に追加
-- ヒットした値が `"30"` なら `normal,bad` が `positive` に追加
-- ヒットした値が `"70.5"` なら `positive` には追加されない
+- ヒットした値が `"40"` なら `normal` が Prompt に追加される
+- ヒットした値が `"30"` なら `normal,bad` が Prompt に追加される
+- ヒットした値が `"70.5"` なら Prompt には追加されない
 
 #### 5.3.2: positive + negative
 
@@ -430,8 +413,8 @@ ranges:
     negative: [60, 80]
 ```
 
-- `positive` (もしくは `negative`) に含まれていれば **キー自体が `positive` (もしくは `negative`) として使用**
-- キー部分(`(hoge:1.3)`, `fuga`)が `positive` (もしくは `negative`) プロンプト
+- `positive` (もしくは `negative`) に含まれていれば **キー自体が `tokens` として使用**
+- キー部分(`(hoge:1.3)`, `fuga`)が `tokens` プロンプト
 - `positive` と `negative` の一方は必ず list でなければならず, 他方は string でなければならない
 
 #### 5.3.3 `positive` (もしくは `negative`) のみ
@@ -441,7 +424,7 @@ ranges:
   positive: [20, 40]
 ```
 
-- キー `(hoge:1.2)` が `positive` (もしくは `negative`) として使用される
+- キー `(hoge:1.2)` が `tokens` として使用される
 
 ---
 
@@ -456,19 +439,21 @@ positive: "pos1,pos2,pos3"
 negative: neg1,neg2
 ```
 
-列挙したプロンプトがデータとして返される場合は list に格納される.
+列挙したプロンプトがデータとして返される場合は Prompt に格納される.
 
 ```python
-{
-  "screen_id": "screen1",
-  "category": [
-    {
-      "path" ["category1"],
-      "positive": [Token("pos1", 1.0), Token("pos2", 1.0), Token("pos3", 1.0)],
-      "negative": [Token("neg1", 1.0), Token("neg2", 1.0)],
-    }
-  ]
-}
+[ # positive
+  {
+    "path" ["screen1", "category1"],
+    "tokens": [Token("pos1", 1.0), Token("pos2", 1.0), Token("pos3", 1.0)],
+  }
+]
+[ # negative
+  {
+    "path" ["screen1", "category1"],
+    "tokens": [Token("neg1", 1.0), Token("neg2", 1.0)],
+  }
+]
 ```
 
 ### 6.2 重み付き記法
@@ -501,7 +486,7 @@ black hair,(blue eye:1.2): ["bob"]
 ### 7.1 `common`
 
 各 Screen において, すべてのマッチ結果に必ず追加したいプロンプトを指定する.  
-順番については Parser に一任するが, 基本的には末尾の Boilerplate プロンプトを想定する.
+順番については Interpreter に一任するが, 基本的には末尾の Boilerplate プロンプトを想定する.
 
 ```yaml
 common:
@@ -520,26 +505,28 @@ common:
 
 また `common` は省略可能である.
 
-返すデータの `category` キーは空の list とする.
+返すデータの `path` キーは Screen 名のみが指定される.
 
 ```python
-{
-  "screen_id": "screen1",
-  "category": [
-    {
-      "path" [],
-      "positive": [Token("common positive", 1.0), Token("high quality", 1.0)],
-      "negative": [Token("common negative", 1.0), Token("bad quality", 1.0)],
-    }
-  ]
-}
+[ # positive
+  {
+    "path" ["screen1"],
+    "tokens": [Token("common positive", 1.0), Token("high quality", 1.0)],
+  }
+]
+[ # negative
+  {
+    "path" ["screen1"],
+    "tokens": [Token("common negative", 1.0), Token("bad quality", 1.0)],
+  }
+]
 ```
 
 ---
 
 ## 8. 処理フロー
 
-1. **Parser 適合チェック**: Parser との紐づけ
+1. **Interpreter 適合チェック**: Interpreter との紐づけ
 2. **Ignition チェック**: `ignition` でテキストが発火条件を満たすか判定
 3. **パターンマッチ**: 各 Category の `pattern` でテキストを検索
 4. **値抽出**: `capturegrp` で指定されたグループの値を取得
@@ -552,7 +539,7 @@ common:
 ## 9. YAML の例
 
 ```yaml
-parser: SampleParser
+interpreter: SampleInterpreter
 main:
   ignition: "(m|M)ain"
   name:
@@ -627,7 +614,6 @@ meta:
     maps:
       room: room
       city: city
-
 ```
 
 ### 9.1 入力例と出力例
@@ -642,42 +628,45 @@ name: Fugami, season: 11, vitality: 50, upper: Shirt, lower: Pants,
 - 出力
 
 ```python
-[
+[ # positive
   {
-    "screen_id": "main",
-    "category": [
-      {
-        "path" ["name"],
-        "positive": [Token("fugami", 1.2)],
-        "negative": [],
-      },
-      {
-        "path" ["season"],
-        "positive": [Token("autumn", 1.0), Token("cool", 1.0)],
-        "negative": [Token("scorching heat", 1.0)],
-      },
-      {
-        "path" ["vitality"],
-        "positive": [Token("low", 1.0), Token("bad", 1.0), Token("middle", 1.0)],
-        "negative": [Token("good", 1.0)], Token("high", 1.0),
-      },
-      {
-        "path" ["fashion", "upper"],
-        "positive": [Token("shirt", 1.0)],
-        "negative": [],
-      },
-      {
-        "path" ["fashion", "lower"],
-        "positive": [Token("pants", 1.0)],
-        "negative": [],
-      },
-      {
-        "path" [],
-        "positive": [Token("common main positive", 1.0)],
-        "negative": [Token("common main negative", 1.0)],
-      },
-    ]
-  }
+    "path" ["main", "name"],
+    "tokens": [Token("fugami", 1.2)],
+  },
+  {
+    "path" ["main", "season"],
+    "tokens": [Token("autumn", 1.0), Token("cool", 1.0)],
+  },
+  {
+    "path" ["main", "vitality"],
+    "tokens": [Token("low", 1.0), Token("bad", 1.0), Token("middle", 1.0)],
+  },
+  {
+    "path" ["main", "fashion", "upper"],
+    "tokens": [Token("shirt", 1.0)],
+  },
+  {
+    "path" ["main", "fashion", "lower"],
+    "tokens": [Token("pants", 1.0)],
+  },
+  {
+    "path" ["main"],
+    "tokens": [Token("common main positive", 1.0)],
+  },
+]
+[ # negative
+  {
+    "path" ["main", "season"],
+    "tokens": [Token("scorching heat", 1.0)],
+  },
+  {
+    "path" ["main", "vitality"],
+    "tokens": [Token("good", 1.0)], Token("high", 1.0),
+  },
+  {
+    "path" ["main"],
+    "tokens": [Token("common main negative", 1.0)],
+  },
 ]
 ```
 
@@ -708,12 +697,12 @@ name: Fugami, season: 11, vitality: 50, upper: Shirt, lower: Pants,
 ### 10.4 予約語一覧
 
 本 DS では, 以下のキーは **特別な意味を持つ予約語** として定義されている.  
-Parser はこれらを遵守して Screen 名, Category 名を定義しなくてはいけない.
+Interpreter はこれらを遵守して Screen 名, Category 名を定義しなくてはいけない.
 
-| 予約語     | 禁止              |
-| ---------- | ----------------- |
-| `parser`   | Screen 名として   |
-| `ignition` | Category 名として |
+| 予約語        | 禁止              |
+| ------------- | ----------------- |
+| `interpreter` | Screen 名として   |
+| `ignition`    | Category 名として |
 
 ### 10.5 命名上の注意
 

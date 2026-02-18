@@ -97,9 +97,10 @@ class Master(MasterIF):
             )
         )
 
-        self.parser = Parser(self, self.from_parser)
+        self.parser: Parser = Parser(self, self.from_parser)
+        self.is_switching_frontend = False
         if self.crnt_configs.yamlpath is not None:
-            self.parser.reset_prompter(Path(self.crnt_configs.yamlpath))
+            self.parser.switch_interpreter(Path(self.crnt_configs.yamlpath))
 
         self.archiver = Archiver(self.from_archiver)
 
@@ -158,32 +159,23 @@ class Master(MasterIF):
         """
         self.finalize()
 
-    def operate_from_archiver(self) -> None:
+    def switch_frontend(self, new_yamlpath: Path) -> None:
         """
-        Archiver から発行されたイベントに即して作業を実施する\n
-        本関数は一度の呼び出しで, その時点までに登録されている全イベントをこなす\n
-        本関数は tkinter のメインループで呼び出すこと
-        """
-        self.archiver.process_reports()
-        while True:
-            try:
-                event = self.from_archiver.pickup()
-            except IndexError:
-                break
+        フロントエンドの切り替えを行う
 
-            if self.crnt_gui_configs.print_event:
-                print(
-                    f"{self.archiver.__class__.__name__:20} > {event.__class__.__name__:20} > ",
-                    end="",
-                )
-            if isinstance(event, NewPicStats):
-                if self.crnt_gui_configs.print_event:
-                    print("stats=", end="")
-                    if event.next_picstats is NoImageStats:
-                        print("NoImageStats")
-                    elif isinstance(event.next_picstats, PicStats):
-                        print(f"{event.next_picstats.name}")
-                self.displayer.update_pic_window(event.next_picstats)
+        Args:
+            new_yamlpath (Path): 新しい YAML パス
+        """
+        if self.is_switching_frontend:
+            return
+
+        self.is_switching_frontend = True
+
+        def worker():
+            self.parser.switch_interpreter(new_yamlpath)
+            self.is_switching_frontend = False
+
+        self.root.after(0, worker)
 
     def switch_backend(self, new_backend: BackEnd) -> None:
         """
@@ -215,6 +207,33 @@ class Master(MasterIF):
 
         self.root.after(0, worker)
 
+    def operate_from_archiver(self) -> None:
+        """
+        Archiver から発行されたイベントに即して作業を実施する\n
+        本関数は一度の呼び出しで, その時点までに登録されている全イベントをこなす\n
+        本関数は tkinter のメインループで呼び出すこと
+        """
+        self.archiver.process_reports()
+        while True:
+            try:
+                event = self.from_archiver.pickup()
+            except IndexError:
+                break
+
+            if self.crnt_gui_configs.print_event:
+                print(
+                    f"{self.archiver.__class__.__name__:20} > {event.__class__.__name__:20} > ",
+                    end="",
+                )
+            if isinstance(event, NewPicStats):
+                if self.crnt_gui_configs.print_event:
+                    print("stats=", end="")
+                    if event.next_picstats is NoImageStats:
+                        print("NoImageStats")
+                    elif isinstance(event.next_picstats, PicStats):
+                        print(f"{event.next_picstats.name}")
+                self.displayer.update_pic_window(event.next_picstats)
+
     def operate_from_displayer(self) -> None:
         """
         Displayer から発行されたイベントに即して作業を実施する\n
@@ -230,13 +249,15 @@ class Master(MasterIF):
             if self.crnt_gui_configs.print_event:
                 print(f"{self.displayer.__class__.__name__:20} > {event.__class__.__name__:20}")
             if isinstance(event, OnRepeatTask):
-                self.reserve_txt2img_task()
+                if self.parser.crnt_prompt_set:
+                    pos, neg = self.parser.make_prompt_strs()
+                    self.reserve_txt2img_task(pos, neg)
             if isinstance(event, OnInterruptTask):
                 self.generator.reserve_interrupt()
             if isinstance(event, OnFlushTasks):
                 self.generator.clear()
             if isinstance(event, OnSelectYaml):
-                self.parser.reset_prompter(Path(event.path))
+                self.switch_frontend(Path(event.path))
             if isinstance(event, OnDebug):
                 self.parser.ready_for_debug()
             if isinstance(event, OnDumpArchiver):
@@ -317,7 +338,7 @@ class Master(MasterIF):
                 if self.crnt_gui_configs.print_event:
                     print(f"enough={event.is_enough}")
                 if event.is_enough:
-                    self.run_oneshot()
+                    self.run_oneshot(event.positive, event.negative)
                 else:
                     self.archiver.drop_picstats()
 
@@ -374,18 +395,18 @@ class Master(MasterIF):
             upsclr=UpScalerName.nearest_exact if self.backend_type == BackEnd.comfy_ui else None,
         )
 
-    def reserve_txt2img_task(self) -> None:
+    def reserve_txt2img_task(self, positive: str, negative: str) -> None:
         """
         新しいタスクを生成し, タスクリストに予約する\n
         ただしプロンプト生成に十分なステータスが記録されていない,\n
         すでにリストに存在する, あるいは作業中のタスクの場合は何もしない
         """
-        if not self.parser.is_enough_prompt() or self.is_switching_backend:
+        if self.is_switching_backend:
             return
 
         self.generator.reserve_txt2img(
-            pos=self.parser.crnt_positive,
-            neg=self.parser.crnt_negative,
+            pos=positive,
+            neg=negative,
             seed=-1,
             stps=self.crnt_configs.sd_steps,
             b_size=self.crnt_configs.sd_batch_size,
@@ -403,6 +424,9 @@ class Master(MasterIF):
         現在の記録中ステータスにおいて, 表示可能な画像が存在する場合にランダムで表示する\n
         存在しない場合は NO IMAGE を表示する
         """
+        if not self.parser.is_enough_prompt():
+            return
+
         if construct_window:
             self.displayer.pic_window.construct(fix_position=True)
 
@@ -413,11 +437,11 @@ class Master(MasterIF):
 
         self.archiver.warp_picstats(self.parser.crnt_prompt_dir)
 
-    def run_oneshot(self) -> None:
+    def run_oneshot(self, positive: str, negative: str) -> None:
         """
         タスク予約とすでに存在する画像の表示を1度だけ行う
         """
-        self.reserve_txt2img_task()
+        self.reserve_txt2img_task(positive, negative)
         self.refresh_pic_randomly(construct_window=True)
 
     def run_main(self) -> None:

@@ -17,692 +17,462 @@ from common.functions import dump_json  # noqa: E402
 from parser.prompter import Prompter  # noqa: E402
 
 CORRECT_RESULT = {
-    "CASE 'empty definition'": {"Empty-1: 'go'": [{"screen_id": "main", "category": []}]},
+    "CASE 'empty definition'": {"Empty-1: 'go'": {"POS": [], "NEG": []}},
     "CASE 'ignition'": {
-        "All-1: 'foobarbaz'": [],
-        "All-2: 'main name: Hogemaru,'": [
-            {
-                "screen_id": "main",
-                "category": [
-                    {
-                        "path": ["name"],
-                        "positive": [{"token": "hogemaru", "weight": 1.0}],
-                        "negative": [],
-                    },
-                    {
-                        "path": [],
-                        "positive": [{"token": "common main positive", "weight": 1.0}],
-                        "negative": [{"token": "common main negative", "weight": 1.0}],
-                    },
-                ],
-            }
-        ],
-        "All-3: 'main meta name: Fugami,weather: sunny,'": [
-            {
-                "screen_id": "main",
-                "category": [
-                    {
-                        "path": ["name"],
-                        "positive": [{"token": "fugami", "weight": 1.2}],
-                        "negative": [],
-                    },
-                    {
-                        "path": [],
-                        "positive": [{"token": "common main positive", "weight": 1.0}],
-                        "negative": [{"token": "common main negative", "weight": 1.0}],
-                    },
-                ],
-            },
-            {
-                "screen_id": "meta",
-                "category": [
-                    {
-                        "path": ["weather"],
-                        "positive": [{"token": "sunny", "weight": 1.0}],
-                        "negative": [],
-                    },
-                    {
-                        "path": [],
-                        "positive": [{"token": "common meta", "weight": 1.0}],
-                        "negative": [],
-                    },
-                ],
-            },
-        ],
+        "All-1: 'foobarbaz'": {"POS": [], "NEG": []},
+        "All-2: 'main name: Hogemaru,'": {
+            "POS": [
+                {"path": ["main", "name"], "tokens": [{"token": "hogemaru", "weight": 1.0}]},
+                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+            ],
+            "NEG": [
+                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]}
+            ],
+        },
+        "All-3: 'main meta name: Fugami,weather: sunny,'": {
+            "POS": [
+                {"path": ["main", "name"], "tokens": [{"token": "fugami", "weight": 1.2}]},
+                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+                {"path": ["meta", "weather"], "tokens": [{"token": "sunny", "weight": 1.0}]},
+                {"path": ["meta"], "tokens": [{"token": "common meta", "weight": 1.0}]},
+            ],
+            "NEG": [
+                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]}
+            ],
+        },
     },
     "CASE 'match'": {
-        "All-1: 'main vibe: good,'": [
-            {
-                "screen_id": "main",
-                "category": [
-                    {
-                        "path": [],
-                        "positive": [{"token": "common main positive", "weight": 1.0}],
-                        "negative": [{"token": "common main negative", "weight": 1.0}],
-                    }
-                ],
-            }
-        ],
-        "All-2: 'sub vibe: good,'": [{"screen_id": "sub", "category": []}],
-        "All-3: 'main season: 02,name: Foota,'": [
-            {
-                "screen_id": "main",
-                "category": [
-                    {
-                        "path": ["name"],
-                        "positive": [
-                            {"token": "foota", "weight": 1.0},
-                            {"token": "boy", "weight": 1.1},
-                        ],
-                        "negative": [{"token": "barta", "weight": 1.0}],
-                    },
-                    {
-                        "path": ["season"],
-                        "positive": [
-                            {"token": "winter", "weight": 1.0},
-                            {"token": "cool", "weight": 1.0},
-                        ],
-                        "negative": [{"token": "scorching heat", "weight": 1.0}],
-                    },
-                    {
-                        "path": [],
-                        "positive": [{"token": "common main positive", "weight": 1.0}],
-                        "negative": [{"token": "common main negative", "weight": 1.0}],
-                    },
-                ],
-            }
-        ],
-        "All-4: 'main name: Hogemaru,name: Fugami,'": [
-            {
-                "screen_id": "main",
-                "category": [
-                    {
-                        "path": ["name"],
-                        "positive": [
-                            {"token": "hogemaru", "weight": 1.0},
-                            {"token": "fugami", "weight": 1.2},
-                        ],
-                        "negative": [],
-                    },
-                    {
-                        "path": [],
-                        "positive": [{"token": "common main positive", "weight": 1.0}],
-                        "negative": [{"token": "common main negative", "weight": 1.0}],
-                    },
-                ],
-            }
-        ],
+        "All-1: 'main vibe: good,'": {
+            "POS": [
+                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]}
+            ],
+            "NEG": [
+                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]}
+            ],
+        },
+        "All-2: 'sub vibe: good,'": {"POS": [], "NEG": []},
+        "All-3: 'main season: 02,name: Foota,'": {
+            "POS": [
+                {
+                    "path": ["main", "name"],
+                    "tokens": [{"token": "foota", "weight": 1.0}, {"token": "boy", "weight": 1.1}],
+                },
+                {
+                    "path": ["main", "season"],
+                    "tokens": [
+                        {"token": "winter", "weight": 1.0},
+                        {"token": "cool", "weight": 1.0},
+                    ],
+                },
+                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+            ],
+            "NEG": [
+                {"path": ["main", "name"], "tokens": [{"token": "barta", "weight": 1.0}]},
+                {
+                    "path": ["main", "season"],
+                    "tokens": [{"token": "scorching heat", "weight": 1.0}],
+                },
+                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+            ],
+        },
+        "All-4: 'main name: Hogemaru,name: Fugami,'": {
+            "POS": [
+                {
+                    "path": ["main", "name"],
+                    "tokens": [
+                        {"token": "hogemaru", "weight": 1.0},
+                        {"token": "fugami", "weight": 1.2},
+                    ],
+                },
+                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+            ],
+            "NEG": [
+                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]}
+            ],
+        },
     },
     "CASE 'hit'": {
-        "All-1: 'meta weather: snowy,'": [
-            {
-                "screen_id": "meta",
-                "category": [
-                    {
-                        "path": ["weather"],
-                        "positive": [{"token": "cloudy", "weight": 1.0}],
-                        "negative": [],
-                    },
-                    {
-                        "path": [],
-                        "positive": [{"token": "common meta", "weight": 1.0}],
-                        "negative": [],
-                    },
-                ],
-            }
-        ],
-        "All-2: 'meta location: office,'": [
-            {
-                "screen_id": "meta",
-                "category": [
-                    {
-                        "path": [],
-                        "positive": [{"token": "common meta", "weight": 1.0}],
-                        "negative": [],
-                    }
-                ],
-            }
-        ],
-        "All-3: 'sub like: Carrot,'": [
-            {
-                "screen_id": "sub",
-                "category": [
-                    {
-                        "path": ["like"],
-                        "positive": [{"token": "nothing", "weight": 1.0}],
-                        "negative": [],
-                    }
-                ],
-            }
-        ],
-        "All-4: 'sub ability: Toughness,'": [{"screen_id": "sub", "category": []}],
+        "All-1: 'meta weather: snowy,'": {
+            "POS": [
+                {"path": ["meta", "weather"], "tokens": [{"token": "cloudy", "weight": 1.0}]},
+                {"path": ["meta"], "tokens": [{"token": "common meta", "weight": 1.0}]},
+            ],
+            "NEG": [],
+        },
+        "All-2: 'meta location: office,'": {
+            "POS": [{"path": ["meta"], "tokens": [{"token": "common meta", "weight": 1.0}]}],
+            "NEG": [],
+        },
+        "All-3: 'sub like: Carrot,'": {
+            "POS": [{"path": ["sub", "like"], "tokens": [{"token": "nothing", "weight": 1.0}]}],
+            "NEG": [],
+        },
+        "All-4: 'sub ability: Toughness,'": {"POS": [], "NEG": []},
     },
     "CASE 'nest'": {
-        "All-1: 'main upper: T Shirt,lower: Pants,'": [
-            {
-                "screen_id": "main",
-                "category": [
-                    {
-                        "path": ["fashion", "upper"],
-                        "positive": [{"token": "t-shirt", "weight": 1.0}],
-                        "negative": [],
-                    },
-                    {
-                        "path": ["fashion", "lower"],
-                        "positive": [{"token": "pants", "weight": 1.0}],
-                        "negative": [],
-                    },
-                    {
-                        "path": [],
-                        "positive": [{"token": "common main positive", "weight": 1.0}],
-                        "negative": [{"token": "common main negative", "weight": 1.0}],
-                    },
-                ],
-            }
-        ]
+        "All-1: 'main upper: T Shirt,lower: Pants,'": {
+            "POS": [
+                {
+                    "path": ["main", "fashion", "upper"],
+                    "tokens": [{"token": "t-shirt", "weight": 1.0}],
+                },
+                {
+                    "path": ["main", "fashion", "lower"],
+                    "tokens": [{"token": "pants", "weight": 1.0}],
+                },
+                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+            ],
+            "NEG": [
+                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]}
+            ],
+        }
     },
     "CASE 'capture'": {
-        "All-1: 'sub WoW!'": [
-            {
-                "screen_id": "sub",
-                "category": [
-                    {
-                        "path": ["whole"],
-                        "positive": [{"token": "WoW", "weight": 1.0}],
-                        "negative": [],
-                    }
-                ],
-            }
-        ],
-        "All-2: 'sub ng: Dummy,'": [{"screen_id": "sub", "category": []}],
-        "All-3: 'sub grade: 1,'": [
-            {
-                "screen_id": "sub",
-                "category": [
-                    {
-                        "path": ["grade"],
-                        "positive": [{"token": "grade 1", "weight": 1.0}],
-                        "negative": [],
-                    }
-                ],
-            }
-        ],
-        "All-4: 'sub grade: 2,'": [
-            {
-                "screen_id": "sub",
-                "category": [
-                    {
-                        "path": ["grade"],
-                        "positive": [{"token": "grade 2", "weight": 1.0}],
-                        "negative": [],
-                    }
-                ],
-            }
-        ],
+        "All-1: 'sub WoW!'": {
+            "POS": [{"path": ["sub", "whole"], "tokens": [{"token": "WoW", "weight": 1.0}]}],
+            "NEG": [],
+        },
+        "All-2: 'sub ng: Dummy,'": {"POS": [], "NEG": []},
+        "All-3: 'sub grade: 1,'": {
+            "POS": [{"path": ["sub", "grade"], "tokens": [{"token": "grade 1", "weight": 1.0}]}],
+            "NEG": [],
+        },
+        "All-4: 'sub grade: 2,'": {
+            "POS": [{"path": ["sub", "grade"], "tokens": [{"token": "grade 2", "weight": 1.0}]}],
+            "NEG": [],
+        },
     },
     "CASE 'weight-tokens'": {
-        "All-1: 'main name: Foota,'": [
-            {
-                "screen_id": "main",
-                "category": [
-                    {
-                        "path": ["name"],
-                        "positive": [
-                            {"token": "foota", "weight": 1.0},
-                            {"token": "boy", "weight": 1.1},
-                        ],
-                        "negative": [{"token": "barta", "weight": 1.0}],
-                    },
-                    {
-                        "path": [],
-                        "positive": [{"token": "common main positive", "weight": 1.0}],
-                        "negative": [{"token": "common main negative", "weight": 1.0}],
-                    },
-                ],
-            }
-        ]
+        "All-1: 'main name: Foota,'": {
+            "POS": [
+                {
+                    "path": ["main", "name"],
+                    "tokens": [{"token": "foota", "weight": 1.0}, {"token": "boy", "weight": 1.1}],
+                },
+                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+            ],
+            "NEG": [
+                {"path": ["main", "name"], "tokens": [{"token": "barta", "weight": 1.0}]},
+                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+            ],
+        }
     },
     "CASE 'default'": {
-        "All-1: 'meta weather: snowy,'": [
-            {
-                "screen_id": "meta",
-                "category": [
-                    {
-                        "path": ["weather"],
-                        "positive": [{"token": "cloudy", "weight": 1.0}],
-                        "negative": [],
-                    },
-                    {
-                        "path": [],
-                        "positive": [{"token": "common meta", "weight": 1.0}],
-                        "negative": [],
-                    },
-                ],
-            }
-        ],
-        "All-2: 'main season: 13,'": [
-            {
-                "screen_id": "main",
-                "category": [
-                    {
-                        "path": ["season"],
-                        "positive": [{"token": "ordinary", "weight": 1.0}],
-                        "negative": [{"token": "storm", "weight": 1.0}],
-                    },
-                    {
-                        "path": [],
-                        "positive": [{"token": "common main positive", "weight": 1.0}],
-                        "negative": [{"token": "common main negative", "weight": 1.0}],
-                    },
-                ],
-            }
-        ],
-        "All-3: 'main name: HogetaFugao,'": [
-            {
-                "screen_id": "main",
-                "category": [
-                    {
-                        "path": ["name"],
-                        "positive": [{"token": "smith", "weight": 1.0}],
-                        "negative": [],
-                    },
-                    {
-                        "path": [],
-                        "positive": [{"token": "common main positive", "weight": 1.0}],
-                        "negative": [{"token": "common main negative", "weight": 1.0}],
-                    },
-                ],
-            }
-        ],
-        "All-4: 'main vitality: 1000,'": [
-            {
-                "screen_id": "main",
-                "category": [
-                    {
-                        "path": ["vitality"],
-                        "positive": [],
-                        "negative": [{"token": "special", "weight": 1.0}],
-                    },
-                    {
-                        "path": [],
-                        "positive": [{"token": "common main positive", "weight": 1.0}],
-                        "negative": [{"token": "common main negative", "weight": 1.0}],
-                    },
-                ],
-            }
-        ],
+        "All-1: 'meta weather: snowy,'": {
+            "POS": [
+                {"path": ["meta", "weather"], "tokens": [{"token": "cloudy", "weight": 1.0}]},
+                {"path": ["meta"], "tokens": [{"token": "common meta", "weight": 1.0}]},
+            ],
+            "NEG": [],
+        },
+        "All-2: 'main season: 13,'": {
+            "POS": [
+                {"path": ["main", "season"], "tokens": [{"token": "ordinary", "weight": 1.0}]},
+                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+            ],
+            "NEG": [
+                {"path": ["main", "season"], "tokens": [{"token": "storm", "weight": 1.0}]},
+                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+            ],
+        },
+        "All-3: 'main name: HogetaFugao,'": {
+            "POS": [
+                {"path": ["main", "name"], "tokens": [{"token": "smith", "weight": 1.0}]},
+                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+            ],
+            "NEG": [
+                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]}
+            ],
+        },
+        "All-4: 'main vitality: 1000,'": {
+            "POS": [
+                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]}
+            ],
+            "NEG": [
+                {"path": ["main", "vitality"], "tokens": [{"token": "special", "weight": 1.0}]},
+                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+            ],
+        },
     },
     "CASE 'common'": {
-        "All-1: 'common1'": [
-            {
-                "screen_id": "common1",
-                "category": [
-                    {"path": [], "positive": [{"token": "common1", "weight": 1.0}], "negative": []}
-                ],
-            }
-        ],
-        "All-2: 'common2'": [
-            {
-                "screen_id": "common2",
-                "category": [
-                    {"path": [], "positive": [{"token": "common2", "weight": 1.0}], "negative": []}
-                ],
-            }
-        ],
-        "All-3: 'common3'": [
-            {
-                "screen_id": "common3",
-                "category": [
-                    {"path": [], "positive": [], "negative": [{"token": "common3", "weight": 1.0}]}
-                ],
-            }
-        ],
-        "All-4: 'common4'": [
-            {
-                "screen_id": "common4",
-                "category": [
-                    {
-                        "path": [],
-                        "positive": [{"token": "common4-pos", "weight": 1.0}],
-                        "negative": [{"token": "common4-neg", "weight": 1.0}],
-                    }
-                ],
-            }
-        ],
+        "All-1: 'common1'": {
+            "POS": [{"path": ["common1"], "tokens": [{"token": "common1", "weight": 1.0}]}],
+            "NEG": [],
+        },
+        "All-2: 'common2'": {
+            "POS": [{"path": ["common2"], "tokens": [{"token": "common2", "weight": 1.0}]}],
+            "NEG": [],
+        },
+        "All-3: 'common3'": {
+            "POS": [],
+            "NEG": [{"path": ["common3"], "tokens": [{"token": "common3", "weight": 1.0}]}],
+        },
+        "All-4: 'common4'": {
+            "POS": [{"path": ["common4"], "tokens": [{"token": "common4-pos", "weight": 1.0}]}],
+            "NEG": [{"path": ["common4"], "tokens": [{"token": "common4-neg", "weight": 1.0}]}],
+        },
     },
     "CASE 'ranges'": {
-        "All-1: 'main season: 04'": [
-            {
-                "screen_id": "main",
-                "category": [
-                    {
-                        "path": ["season"],
-                        "positive": [
-                            {"token": "spring", "weight": 1.0},
-                            {"token": "cool", "weight": 1.0},
-                            {"token": "H1", "weight": 1.0},
-                        ],
-                        "negative": [
-                            {"token": "scorching heat", "weight": 1.0},
-                            {"token": "H2", "weight": 1.0},
-                        ],
-                    },
-                    {
-                        "path": [],
-                        "positive": [{"token": "common main positive", "weight": 1.0}],
-                        "negative": [{"token": "common main negative", "weight": 1.0}],
-                    },
-                ],
-            }
-        ],
-        "All-2: 'main season: 08'": [
-            {
-                "screen_id": "main",
-                "category": [
-                    {
-                        "path": ["season"],
-                        "positive": [
-                            {"token": "summer", "weight": 1.0},
-                            {"token": "H1", "weight": 1.0},
-                        ],
-                        "negative": [
-                            {"token": "cold", "weight": 1.0},
-                            {"token": "H2", "weight": 1.0},
-                        ],
-                    },
-                    {
-                        "path": [],
-                        "positive": [{"token": "common main positive", "weight": 1.0}],
-                        "negative": [{"token": "common main negative", "weight": 1.0}],
-                    },
-                ],
-            }
-        ],
-        "All-3: 'main season: 08'": [
-            {
-                "screen_id": "main",
-                "category": [
-                    {
-                        "path": ["season"],
-                        "positive": [
-                            {"token": "summer", "weight": 1.0},
-                            {"token": "H1", "weight": 1.0},
-                        ],
-                        "negative": [
-                            {"token": "cold", "weight": 1.0},
-                            {"token": "H2", "weight": 1.0},
-                        ],
-                    },
-                    {
-                        "path": [],
-                        "positive": [{"token": "common main positive", "weight": 1.0}],
-                        "negative": [{"token": "common main negative", "weight": 1.0}],
-                    },
-                ],
-            }
-        ],
-        "All-4: 'main season: 07'": [
-            {
-                "screen_id": "main",
-                "category": [
-                    {
-                        "path": ["season"],
-                        "positive": [
-                            {"token": "summer", "weight": 1.0},
-                            {"token": "H1", "weight": 1.0},
-                        ],
-                        "negative": [
-                            {"token": "cold", "weight": 1.0},
-                            {"token": "H2", "weight": 1.0},
-                        ],
-                    },
-                    {
-                        "path": [],
-                        "positive": [{"token": "common main positive", "weight": 1.0}],
-                        "negative": [{"token": "common main negative", "weight": 1.0}],
-                    },
-                ],
-            }
-        ],
-        "All-5: 'main season: 01'": [
-            {
-                "screen_id": "main",
-                "category": [
-                    {
-                        "path": ["season"],
-                        "positive": [
-                            {"token": "winter", "weight": 1.1},
-                            {"token": "snow", "weight": 1.0},
-                            {"token": "cool", "weight": 1.0},
-                        ],
-                        "negative": [{"token": "scorching heat", "weight": 1.0}],
-                    },
-                    {
-                        "path": [],
-                        "positive": [{"token": "common main positive", "weight": 1.0}],
-                        "negative": [{"token": "common main negative", "weight": 1.0}],
-                    },
-                ],
-            }
-        ],
-        "All-6: 'main season: 09'": [
-            {
-                "screen_id": "main",
-                "category": [
-                    {
-                        "path": ["season"],
-                        "positive": [
-                            {"token": "summer", "weight": 1.0},
-                            {"token": "cool", "weight": 1.0},
-                            {"token": "H1", "weight": 1.0},
-                        ],
-                        "negative": [
-                            {"token": "cold", "weight": 1.0},
-                            {"token": "scorching heat", "weight": 1.0},
-                            {"token": "H2", "weight": 1.0},
-                        ],
-                    },
-                    {
-                        "path": [],
-                        "positive": [{"token": "common main positive", "weight": 1.0}],
-                        "negative": [{"token": "common main negative", "weight": 1.0}],
-                    },
-                ],
-            }
-        ],
-        "All-7: 'main season: 13'": [
-            {
-                "screen_id": "main",
-                "category": [
-                    {
-                        "path": ["season"],
-                        "positive": [{"token": "ordinary", "weight": 1.0}],
-                        "negative": [{"token": "storm", "weight": 1.0}],
-                    },
-                    {
-                        "path": [],
-                        "positive": [{"token": "common main positive", "weight": 1.0}],
-                        "negative": [{"token": "common main negative", "weight": 1.0}],
-                    },
-                ],
-            }
-        ],
-        "All-8: 'sub rwd: c,'": [{"screen_id": "sub", "category": []}],
+        "All-1: 'main season: 04'": {
+            "POS": [
+                {
+                    "path": ["main", "season"],
+                    "tokens": [
+                        {"token": "spring", "weight": 1.0},
+                        {"token": "cool", "weight": 1.0},
+                        {"token": "H1", "weight": 1.0},
+                    ],
+                },
+                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+            ],
+            "NEG": [
+                {
+                    "path": ["main", "season"],
+                    "tokens": [
+                        {"token": "scorching heat", "weight": 1.0},
+                        {"token": "H2", "weight": 1.0},
+                    ],
+                },
+                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+            ],
+        },
+        "All-2: 'main season: 08'": {
+            "POS": [
+                {
+                    "path": ["main", "season"],
+                    "tokens": [{"token": "summer", "weight": 1.0}, {"token": "H1", "weight": 1.0}],
+                },
+                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+            ],
+            "NEG": [
+                {
+                    "path": ["main", "season"],
+                    "tokens": [{"token": "cold", "weight": 1.0}, {"token": "H2", "weight": 1.0}],
+                },
+                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+            ],
+        },
+        "All-3: 'main season: 08'": {
+            "POS": [
+                {
+                    "path": ["main", "season"],
+                    "tokens": [{"token": "summer", "weight": 1.0}, {"token": "H1", "weight": 1.0}],
+                },
+                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+            ],
+            "NEG": [
+                {
+                    "path": ["main", "season"],
+                    "tokens": [{"token": "cold", "weight": 1.0}, {"token": "H2", "weight": 1.0}],
+                },
+                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+            ],
+        },
+        "All-4: 'main season: 07'": {
+            "POS": [
+                {
+                    "path": ["main", "season"],
+                    "tokens": [{"token": "summer", "weight": 1.0}, {"token": "H1", "weight": 1.0}],
+                },
+                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+            ],
+            "NEG": [
+                {
+                    "path": ["main", "season"],
+                    "tokens": [{"token": "cold", "weight": 1.0}, {"token": "H2", "weight": 1.0}],
+                },
+                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+            ],
+        },
+        "All-5: 'main season: 01'": {
+            "POS": [
+                {
+                    "path": ["main", "season"],
+                    "tokens": [
+                        {"token": "winter", "weight": 1.1},
+                        {"token": "snow", "weight": 1.0},
+                        {"token": "cool", "weight": 1.0},
+                    ],
+                },
+                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+            ],
+            "NEG": [
+                {
+                    "path": ["main", "season"],
+                    "tokens": [{"token": "scorching heat", "weight": 1.0}],
+                },
+                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+            ],
+        },
+        "All-6: 'main season: 09'": {
+            "POS": [
+                {
+                    "path": ["main", "season"],
+                    "tokens": [
+                        {"token": "summer", "weight": 1.0},
+                        {"token": "cool", "weight": 1.0},
+                        {"token": "H1", "weight": 1.0},
+                    ],
+                },
+                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+            ],
+            "NEG": [
+                {
+                    "path": ["main", "season"],
+                    "tokens": [
+                        {"token": "cold", "weight": 1.0},
+                        {"token": "scorching heat", "weight": 1.0},
+                        {"token": "H2", "weight": 1.0},
+                    ],
+                },
+                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+            ],
+        },
+        "All-7: 'main season: 13'": {
+            "POS": [
+                {"path": ["main", "season"], "tokens": [{"token": "ordinary", "weight": 1.0}]},
+                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+            ],
+            "NEG": [
+                {"path": ["main", "season"], "tokens": [{"token": "storm", "weight": 1.0}]},
+                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+            ],
+        },
+        "All-8: 'sub rwd: c,'": {"POS": [], "NEG": []},
     },
     "CASE 'intervals'": {
-        "All-1: 'main vitality: 100,'": [
-            {
-                "screen_id": "main",
-                "category": [
-                    {
-                        "path": ["vitality"],
-                        "positive": [{"token": "perfect", "weight": 1.0}],
-                        "negative": [],
-                    },
-                    {
-                        "path": [],
-                        "positive": [{"token": "common main positive", "weight": 1.0}],
-                        "negative": [{"token": "common main negative", "weight": 1.0}],
-                    },
-                ],
-            }
-        ],
-        "All-2: 'main vitality: 50,'": [
-            {
-                "screen_id": "main",
-                "category": [
-                    {
-                        "path": ["vitality"],
-                        "positive": [
-                            {"token": "low", "weight": 1.0},
-                            {"token": "bad", "weight": 1.0},
-                            {"token": "middle", "weight": 1.0},
-                        ],
-                        "negative": [
-                            {"token": "good", "weight": 1.0},
-                            {"token": "high", "weight": 1.0},
-                        ],
-                    },
-                    {
-                        "path": [],
-                        "positive": [{"token": "common main positive", "weight": 1.0}],
-                        "negative": [{"token": "common main negative", "weight": 1.0}],
-                    },
-                ],
-            }
-        ],
-        "All-3: 'main vitality: 95,'": [
-            {
-                "screen_id": "main",
-                "category": [
-                    {
-                        "path": ["vitality"],
-                        "positive": [{"token": "perfect", "weight": 1.0}],
-                        "negative": [],
-                    },
-                    {
-                        "path": [],
-                        "positive": [{"token": "common main positive", "weight": 1.0}],
-                        "negative": [{"token": "common main negative", "weight": 1.0}],
-                    },
-                ],
-            }
-        ],
-        "All-4: 'main vitality: 20,'": [
-            {
-                "screen_id": "main",
-                "category": [
-                    {
-                        "path": ["vitality"],
-                        "positive": [
-                            {"token": "low", "weight": 1.0},
-                            {"token": "bad", "weight": 1.0},
-                        ],
-                        "negative": [
-                            {"token": "good", "weight": 1.0},
-                            {"token": "high", "weight": 1.0},
-                            {"token": "ok", "weight": 1.0},
-                        ],
-                    },
-                    {
-                        "path": [],
-                        "positive": [{"token": "common main positive", "weight": 1.0}],
-                        "negative": [{"token": "common main negative", "weight": 1.0}],
-                    },
-                ],
-            }
-        ],
-        "All-5: 'main vitality: 30,'": [
-            {
-                "screen_id": "main",
-                "category": [
-                    {
-                        "path": ["vitality"],
-                        "positive": [
-                            {"token": "low", "weight": 1.0},
-                            {"token": "bad", "weight": 1.0},
-                        ],
-                        "negative": [
-                            {"token": "good", "weight": 1.0},
-                            {"token": "high", "weight": 1.0},
-                            {"token": "ok", "weight": 1.0},
-                        ],
-                    },
-                    {
-                        "path": [],
-                        "positive": [{"token": "common main positive", "weight": 1.0}],
-                        "negative": [{"token": "common main negative", "weight": 1.0}],
-                    },
-                ],
-            }
-        ],
-        "All-6: 'main vitality: 20,'": [
-            {
-                "screen_id": "main",
-                "category": [
-                    {
-                        "path": ["vitality"],
-                        "positive": [
-                            {"token": "low", "weight": 1.0},
-                            {"token": "bad", "weight": 1.0},
-                        ],
-                        "negative": [
-                            {"token": "good", "weight": 1.0},
-                            {"token": "high", "weight": 1.0},
-                            {"token": "ok", "weight": 1.0},
-                        ],
-                    },
-                    {
-                        "path": [],
-                        "positive": [{"token": "common main positive", "weight": 1.0}],
-                        "negative": [{"token": "common main negative", "weight": 1.0}],
-                    },
-                ],
-            }
-        ],
-        "All-7: 'main vitality: 40,'": [
-            {
-                "screen_id": "main",
-                "category": [
-                    {
-                        "path": ["vitality"],
-                        "positive": [
-                            {"token": "low", "weight": 1.0},
-                            {"token": "bad", "weight": 1.0},
-                            {"token": "middle", "weight": 1.0},
-                        ],
-                        "negative": [
-                            {"token": "good", "weight": 1.0},
-                            {"token": "high", "weight": 1.0},
-                            {"token": "ok", "weight": 1.0},
-                        ],
-                    },
-                    {
-                        "path": [],
-                        "positive": [{"token": "common main positive", "weight": 1.0}],
-                        "negative": [{"token": "common main negative", "weight": 1.0}],
-                    },
-                ],
-            }
-        ],
-        "All-8: 'main vitality: 1000,'": [
-            {
-                "screen_id": "main",
-                "category": [
-                    {
-                        "path": ["vitality"],
-                        "positive": [],
-                        "negative": [{"token": "special", "weight": 1.0}],
-                    },
-                    {
-                        "path": [],
-                        "positive": [{"token": "common main positive", "weight": 1.0}],
-                        "negative": [{"token": "common main negative", "weight": 1.0}],
-                    },
-                ],
-            }
-        ],
-        "All-9: 'sub iwd: 100,'": [{"screen_id": "sub", "category": []}],
+        "All-1: 'main vitality: 100,'": {
+            "POS": [
+                {"path": ["main", "vitality"], "tokens": [{"token": "perfect", "weight": 1.0}]},
+                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+            ],
+            "NEG": [
+                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]}
+            ],
+        },
+        "All-2: 'main vitality: 50,'": {
+            "POS": [
+                {
+                    "path": ["main", "vitality"],
+                    "tokens": [
+                        {"token": "low", "weight": 1.0},
+                        {"token": "bad", "weight": 1.0},
+                        {"token": "middle", "weight": 1.0},
+                    ],
+                },
+                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+            ],
+            "NEG": [
+                {
+                    "path": ["main", "vitality"],
+                    "tokens": [{"token": "good", "weight": 1.0}, {"token": "high", "weight": 1.0}],
+                },
+                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+            ],
+        },
+        "All-3: 'main vitality: 95,'": {
+            "POS": [
+                {"path": ["main", "vitality"], "tokens": [{"token": "perfect", "weight": 1.0}]},
+                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+            ],
+            "NEG": [
+                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]}
+            ],
+        },
+        "All-4: 'main vitality: 20,'": {
+            "POS": [
+                {
+                    "path": ["main", "vitality"],
+                    "tokens": [{"token": "low", "weight": 1.0}, {"token": "bad", "weight": 1.0}],
+                },
+                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+            ],
+            "NEG": [
+                {
+                    "path": ["main", "vitality"],
+                    "tokens": [
+                        {"token": "good", "weight": 1.0},
+                        {"token": "high", "weight": 1.0},
+                        {"token": "ok", "weight": 1.0},
+                    ],
+                },
+                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+            ],
+        },
+        "All-5: 'main vitality: 30,'": {
+            "POS": [
+                {
+                    "path": ["main", "vitality"],
+                    "tokens": [{"token": "low", "weight": 1.0}, {"token": "bad", "weight": 1.0}],
+                },
+                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+            ],
+            "NEG": [
+                {
+                    "path": ["main", "vitality"],
+                    "tokens": [
+                        {"token": "good", "weight": 1.0},
+                        {"token": "high", "weight": 1.0},
+                        {"token": "ok", "weight": 1.0},
+                    ],
+                },
+                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+            ],
+        },
+        "All-6: 'main vitality: 20,'": {
+            "POS": [
+                {
+                    "path": ["main", "vitality"],
+                    "tokens": [{"token": "low", "weight": 1.0}, {"token": "bad", "weight": 1.0}],
+                },
+                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+            ],
+            "NEG": [
+                {
+                    "path": ["main", "vitality"],
+                    "tokens": [
+                        {"token": "good", "weight": 1.0},
+                        {"token": "high", "weight": 1.0},
+                        {"token": "ok", "weight": 1.0},
+                    ],
+                },
+                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+            ],
+        },
+        "All-7: 'main vitality: 40,'": {
+            "POS": [
+                {
+                    "path": ["main", "vitality"],
+                    "tokens": [
+                        {"token": "low", "weight": 1.0},
+                        {"token": "bad", "weight": 1.0},
+                        {"token": "middle", "weight": 1.0},
+                    ],
+                },
+                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+            ],
+            "NEG": [
+                {
+                    "path": ["main", "vitality"],
+                    "tokens": [
+                        {"token": "good", "weight": 1.0},
+                        {"token": "high", "weight": 1.0},
+                        {"token": "ok", "weight": 1.0},
+                    ],
+                },
+                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+            ],
+        },
+        "All-8: 'main vitality: 1000,'": {
+            "POS": [
+                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]}
+            ],
+            "NEG": [
+                {"path": ["main", "vitality"], "tokens": [{"token": "special", "weight": 1.0}]},
+                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+            ],
+        },
+        "All-9: 'sub iwd: 100,'": {"POS": [], "NEG": []},
     },
 }
 
@@ -755,11 +525,12 @@ class PrompterDebugger:
         result: dict[str, dict[str, Any]] = {}
         for i, text in enumerate(texts):
             try:
-                deliverable = self.prompter.to_deliverable(text)
+                pos, neg = self.prompter.to_prompt(text)
+                posneg = {"POS": pos, "NEG": neg}
                 if with_texts:
-                    result[f"{yamlname}-{i + 1}: '{text}'"] = deliverable
+                    result[f"{yamlname}-{i + 1}: '{text}'"] = posneg
                 else:
-                    result[f"{yamlname}-{i + 1}"] = deliverable
+                    result[f"{yamlname}-{i + 1}"] = posneg
             except Exception as e:
                 raise Exception(f"Error with '{text}'") from e
         return result
@@ -772,7 +543,7 @@ class PrompterDebugger:
         最も外側の str はパス重複解決のためのラベル
 
         Args:
-            testcases (dict[str, dict[Path, list[str]]]): テストケース
+            testcases (dict[str, dict[Path | str, list[str]]]): テストケース
         """
         result: dict[str, dict[str, dict[str, Any]]] = {}
         for id, texts_n_paths in cases.items():
@@ -810,7 +581,7 @@ def normalize(obj):
     return obj
 
 
-def debug() -> None:
+def debug_prompter() -> None:
     debugger = PrompterDebugger()
     result = debugger.debug_cases(
         {
@@ -916,4 +687,4 @@ def debug() -> None:
                 dump_json(dict_diff(normalized_test_result, correct_result), "diff")
 
 
-debug()
+debug_prompter()
