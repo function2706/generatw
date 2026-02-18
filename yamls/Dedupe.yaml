@@ -1,0 +1,29 @@
+parser: SampleParser
+main:
+  ignition: "go"
+  map1:
+    pattern: "(x)"
+    maps:
+      x:
+        positive: MAP1
+        negative: map1
+  map2:
+    pattern: "(x)"
+    maps:
+      x:
+        positive: (foo:1.5),MAP2,
+        negative: (foo:0.3),map2,
+sub:
+  ignition: "go"
+  map1:
+    pattern: "(x)"
+    maps:
+      x:
+        positive: (foo:2.1),SUB1
+        negative: sub1
+  map2:
+    pattern: "(x)"
+    maps:
+      x:
+        positive: SUB2
+        negative: (foo:0.5),sub2

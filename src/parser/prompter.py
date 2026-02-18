@@ -68,6 +68,15 @@ class Token:
 
         return cls(token=token, weight=weight)
 
+    def to_str(self) -> str:
+        """
+        プロンプト文字列に変換する
+
+        Returns:
+            str: プロンプト文字列('token' または '(token:weight)' 形式)
+        """
+        return f"({self.token}:{self.weight})" if self.weight != 1.0 else self.token
+
 
 def make_tokens(text: str | None = None) -> list[Token]:
     """
@@ -116,7 +125,7 @@ class ScreenDeliverable:
     """
 
     screen_id: str = ""
-    category: list[CategoryDeliverable] = field(default_factory=list)
+    categories: list[CategoryDeliverable] = field(default_factory=list)
 
 
 @dataclass
@@ -584,21 +593,24 @@ class Screen:
         for category in self.categories:
             cat_deliverable = category.to_category_deliverable(text)
             if cat_deliverable is not None:
-                result.category.append(cat_deliverable)
+                result.categories.append(cat_deliverable)
 
         if self.common_positive or self.common_negative:
             common = CategoryDeliverable()
             common.positive.extend(self.common_positive)
             common.negative.extend(self.common_negative)
-            result.category.append(common)
+            result.categories.append(common)
 
         return result
+
+
+PromptBase: TypeAlias = list[ScreenDeliverable]
 
 
 @dataclass
 class Prompter:
     """
-    複数の Screen を管理し, テキストから list[ScreenDeliverable] を生成するメインクラス
+    複数の Screen を管理し, テキストから PromptBase を生成するメインクラス
 
     Attributes:
         yamlpath (Path): YAML パス
@@ -634,9 +646,9 @@ class Prompter:
 
         return obj
 
-    def to_deliverable(self, text: str) -> list[ScreenDeliverable]:
+    def to_prompt_base(self, text: str) -> PromptBase:
         """
-        テキストから list[ScreenDeliverable] を生成する
+        テキストから PromptBase を生成する
 
         Args:
             text (str): テキスト
@@ -644,7 +656,7 @@ class Prompter:
         Returns:
             tuple[str, str]: (ポジティブプロンプト文字列, ネガティブプロンプト文字列) のタプル
         """
-        result: list[ScreenDeliverable] = []
+        result: PromptBase = []
 
         for screen in self.screens:
             screen_deliverable = screen.to_screen_deliverable(text)

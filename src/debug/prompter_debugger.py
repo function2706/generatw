@@ -15,6 +15,7 @@ if parent_dir not in sys.path:
 
 from common.functions import dump_json  # noqa: E402
 from parser.prompter import Prompter  # noqa: E402
+from parser.test_parser import TestParser  # noqa: E402
 
 CORRECT_RESULT = {
     "CASE 'empty definition'": {"Empty-1: 'go'": [{"screen_id": "main", "category": []}]},
@@ -755,7 +756,7 @@ class PrompterDebugger:
         result: dict[str, dict[str, Any]] = {}
         for i, text in enumerate(texts):
             try:
-                deliverable = self.prompter.to_deliverable(text)
+                deliverable = self.prompter.to_prompt_base(text)
                 if with_texts:
                     result[f"{yamlname}-{i + 1}: '{text}'"] = deliverable
                 else:
@@ -810,7 +811,7 @@ def normalize(obj):
     return obj
 
 
-def debug() -> None:
+def debug_prompter() -> None:
     debugger = PrompterDebugger()
     result = debugger.debug_cases(
         {
@@ -916,4 +917,17 @@ def debug() -> None:
                 dump_json(dict_diff(normalized_test_result, correct_result), "diff")
 
 
-debug()
+def debug_parser() -> None:
+    parser = TestParser(
+        None,
+        None,
+    )
+    parser.prompter = Prompter.make("yamls/Dedupe.yaml")
+    parser.crnt_prompt_set = parser.make_prompt_set("go xxx")
+    pos, neg = parser.make_prompt_strs()
+    print(pos)
+    print(neg)
+
+
+# debug_prompter()
+debug_parser()
