@@ -210,7 +210,7 @@ class Parser(ABC):
         return sorted(prompt, key=lambda c: order_index.get(c.path, float("inf")))
 
     @abstractmethod
-    def edit(self, prompt_base: PromptBase) -> PromptBase:
+    def edit(self, prompt_base: PromptSet) -> PromptSet:
         """
         dedupe, sort 以外の処理を行う
 
@@ -249,6 +249,8 @@ class Parser(ABC):
         Returns:
             str: プロンプト文字列
         """
+        if self.crnt_prompt_set is None:
+            return None
 
         pos_list = [
             token.to_str() for tokens in self.crnt_prompt_set.positive for token in tokens.tokens
@@ -289,19 +291,22 @@ class Parser(ABC):
         Args:
             prompt_set (PromptSet): PromptSet
         """
-        if self.is_enough_prompt():
+        if prompt_set is None:
+            return None
+
+        if not self.is_enough_prompt():
             self.to_master.enclose(NewPrompts(is_enough=False))
-            return
+            return None
 
         if prompt_set == self.crnt_prompt_set:
             return
-        self.crnt_prompt = prompt_set
+        self.crnt_prompt_set = prompt_set
 
         pos, neg = self.make_prompt_strs()
         if self.master.crnt_gui_configs.print_new_prompt:
             dump_json({"POS": pos, "NEG": neg}, "new_prompt")
 
-        self.to_master.enclose(NewPrompts(is_enough=True, positive=pos, negative=neg))
+        self.to_master.enclose(NewPrompts(is_enough=True))
 
     def do_debug(self, text: str) -> None:
         """
@@ -356,4 +361,6 @@ class Parser(ABC):
                 if prompt_set is not None:
                     self.inform_new_prompt(prompt_set)
             except Exception as e:
-                print(f"Any exception occurred in {threading.current_thread().name}: ", e)
+                raise Exception(
+                    f"Any exception occurred in {threading.current_thread().name}: "
+                ) from e

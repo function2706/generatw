@@ -8,6 +8,8 @@ import tkinter
 from dataclasses import dataclass
 from pathlib import Path
 
+import yaml
+
 from archiver.archiver import Archiver
 from archiver.dataclasses import NoImageStats, PicStats
 from common.functions import BackEnd, BottleMail, dump_json
@@ -49,6 +51,13 @@ from master.events import (
 )
 from master.interfaces import MasterIF
 from parser.parser import Parser
+from parser.test_parser import KEYWORD_TEST_PARSER, TestParser
+from parser.theworld_parser import KEYWORD_THE_WORLD_PARSER, TheWorldParser
+
+PARSER_KEYWORD_TBL = {
+    KEYWORD_TEST_PARSER: TestParser,
+    KEYWORD_THE_WORLD_PARSER: TheWorldParser,
+}
 
 
 @dataclass(frozen=True)
@@ -97,9 +106,10 @@ class Master(MasterIF):
             )
         )
 
-        self.parser = Parser(self, self.from_parser)
+        self.parser: Parser | None = None
+        self.is_switching_frontend = False
         if self.crnt_configs.yamlpath is not None:
-            self.parser.reset_prompter(Path(self.crnt_configs.yamlpath))
+            self.switch_frontend(Path(self.crnt_configs.yamlpath))
 
         self.archiver = Archiver(self.from_archiver)
 
@@ -116,7 +126,6 @@ class Master(MasterIF):
 
         self.displayer = Displayer(self, self.from_displayer, self.crnt_configs)
 
-        self.parser.start()
         self.generator.start()
 
     def start(self) -> None:
@@ -138,11 +147,13 @@ class Master(MasterIF):
             self.after_id = ""
 
         self.generator.finalize()
-        self.parser.finalize()
+        if self.parser is not None:
+            self.parser.finalize()
 
         def worker():
             self.generator.join()
-            self.parser.join()
+            if self.parser is not None:
+                self.parser.join()
             self.displayer.destroy()
             self.archiver.finalize()
 
@@ -184,6 +195,52 @@ class Master(MasterIF):
                     elif isinstance(event.next_picstats, PicStats):
                         print(f"{event.next_picstats.name}")
                 self.displayer.update_pic_window(event.next_picstats)
+
+    def search_parser_with_keyword(self, keyword: str) -> type[Parser] | None:
+        if keyword is None:
+            return None
+
+        for kwd, parser in PARSER_KEYWORD_TBL.items():
+            if kwd == keyword:
+                return parser
+
+        return None
+
+    def switch_frontend(self, new_yamlpath: Path) -> None:
+        """
+        フロントエンドの切り替えを行う
+
+        Args:
+            new_yamlpath (Path): 新しい YAML パス
+        """
+        if self.is_switching_frontend:
+            return
+
+        self.is_switching_frontend = True
+
+        keyword = None
+        with open(new_yamlpath, "r", encoding="utf-8") as f:
+            yamldict: dict = yaml.safe_load(f)
+            keyword = yamldict.get("parser")
+
+        old = None
+        if self.parser is not None:
+            old = self.parser
+            old.finalize()
+
+        def worker():
+            if old is not None:
+                old.join()
+
+            parser_cls = self.search_parser_with_keyword(keyword)
+            if parser_cls is not None:
+                self.parser = parser_cls(self, self.from_parser)
+                self.parser.reset_prompter(new_yamlpath)
+                self.parser.start()
+
+            self.is_switching_frontend = False
+
+        self.root.after(0, worker)
 
     def switch_backend(self, new_backend: BackEnd) -> None:
         """
@@ -236,9 +293,10 @@ class Master(MasterIF):
             if isinstance(event, OnFlushTasks):
                 self.generator.clear()
             if isinstance(event, OnSelectYaml):
-                self.parser.reset_prompter(Path(event.path))
+                self.switch_frontend(Path(event.path))
             if isinstance(event, OnDebug):
-                self.parser.ready_for_debug()
+                if self.parser is not None:
+                    self.parser.ready_for_debug()
             if isinstance(event, OnDumpArchiver):
                 dump_json(self.archiver.archive.todict(), "archiver")
             if isinstance(event, OnDumpTaskList):
@@ -308,7 +366,7 @@ class Master(MasterIF):
             except IndexError:
                 break
 
-            if self.crnt_gui_configs.print_event:
+            if self.crnt_gui_configs.print_event and self.parser is not None:
                 print(
                     f"{self.parser.__class__.__name__:20} > {event.__class__.__name__:20} > ",
                     end="",
@@ -380,12 +438,13 @@ class Master(MasterIF):
         ただしプロンプト生成に十分なステータスが記録されていない,\n
         すでにリストに存在する, あるいは作業中のタスクの場合は何もしない
         """
-        if not self.parser.is_enough_prompt() or self.is_switching_backend:
+        if self.parser is None or not self.parser.is_enough_prompt() or self.is_switching_backend:
             return
 
+        pos, neg = self.parser.make_prompt_strs()
         self.generator.reserve_txt2img(
-            pos=self.parser.crnt_positive,
-            neg=self.parser.crnt_negative,
+            pos=pos,
+            neg=neg,
             seed=-1,
             stps=self.crnt_configs.sd_steps,
             b_size=self.crnt_configs.sd_batch_size,
@@ -403,6 +462,9 @@ class Master(MasterIF):
         現在の記録中ステータスにおいて, 表示可能な画像が存在する場合にランダムで表示する\n
         存在しない場合は NO IMAGE を表示する
         """
+        if self.parser is None:
+            return
+
         if construct_window:
             self.displayer.pic_window.construct(fix_position=True)
 

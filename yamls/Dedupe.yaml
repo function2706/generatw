@@ -1,4 +1,4 @@
-parser: SampleParser
+parser: TestParser
 main:
   ignition: "go"
   map1:
