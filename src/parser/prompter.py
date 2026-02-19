@@ -101,31 +101,20 @@ CategoryPath: TypeAlias = tuple[str, ...]
 
 
 @dataclass
-class CategoryDeliverable:
+class PromptParts:
     """
-    Parser に共有する成果物の部品\n
-    トークン本体に加えて, Screen 名や Category のパスを付帯する
+    Cartegory パスごとにまとめられたトークン
 
     Attributes:
         path (CategoryPath): Category パス
-        positive (list[Token]): ポジティブプロンプト
-        negative (list[Token]): ネガティブプロンプト
+        tokens (list[Token]): プロンプト
     """
 
     path: CategoryPath = field(default_factory=tuple)
-    positive: list[Token] = field(default_factory=list)
-    negative: list[Token] = field(default_factory=list)
+    tokens: list[Token] = field(default_factory=list)
 
 
-@dataclass
-class ScreenDeliverable:
-    """
-    Parser に共有する成果物\n
-    発火した Screen の Category に関するデータを付帯する
-    """
-
-    screen_id: str = ""
-    categories: list[CategoryDeliverable] = field(default_factory=list)
+Prompt: TypeAlias = list[PromptParts]
 
 
 @dataclass
@@ -450,19 +439,22 @@ class Category:
 
         return obj
 
-    def to_category_deliverable(self, text: str) -> CategoryDeliverable | None:
+    def to_prompts(self, text: str) -> tuple[PromptParts, PromptParts] | None:
         """
-        指定の text から CategoryDeliverable を生成する\n
+        指定の text から PromptParts を生成する\n
         マッチしたがヒットしない場合は default を採用する
 
         Args:
             text (str): テキスト
 
         Returns:
-            CategoryDeliverable | None: ヒット時に CategoryDeliverable インスタンス
-            マッチしない, あるいは default 適用を試みたが未定義の場合に None
+            tuple[PromptParts, PromptParts] | None:
+            ヒット時に PromptParts のタプル(ポジティブ/ネガティブ)\n
+            マッチしない, あるいはマッチしたがヒットせず default 適用を試みるも未定義の場合に None\n
+            tuple の片方が空の tokens である場合があることに注意
         """
-        result = CategoryDeliverable(path=self.category_path)
+        positive = PromptParts(path=self.category_path)
+        negative = PromptParts(path=self.category_path)
 
         has_matched = False
         for match_itr in self.pattern.finditer(text):
@@ -479,16 +471,17 @@ class Category:
                     continue
 
                 pos, neg = result_hit
-                result.positive.extend(pos)
-                result.negative.extend(neg)
+                positive.tokens.extend(pos)
+                negative.tokens.extend(neg)
 
         if has_matched:
-            if not result.positive and not result.negative:
+            if not positive.tokens and not negative.tokens:
                 if self.default is not None:
-                    # どの Rule でもトークンが追加されなかった -> default
+                    # 未ヒット = どの Rule でもポジティブ/ネガティブともにトークンが追加されなかった
+                    #   -> default
                     pos, neg = self.default.to_tokenlists()
-                    result.positive.extend(pos)
-                    result.negative.extend(neg)
+                    positive.tokens.extend(pos)
+                    negative.tokens.extend(neg)
                 else:
                     # default も未定義につき適用不可だった
                     return None
@@ -496,7 +489,7 @@ class Category:
             # 一切マッチしなかった
             return None
 
-        return result
+        return positive, negative
 
 
 @dataclass
@@ -575,36 +568,47 @@ class Screen:
 
         return obj
 
-    def to_screen_deliverable(self, text: str) -> ScreenDeliverable | None:
+    def to_prompts(self, text: str) -> tuple[Prompt, Prompt] | None:
         """
-        テキストから ScreenDeliverable を生成する
+        テキストから Prompt を生成する\n
+        PromptParts の tokens が空の場合は追加しない
 
         Args:
             text (str): テキスト
 
         Returns:
-            tuple[PromptBlueprint, PromptBlueprint, bool] | None: タプル, 未発火時は None
+            tuple[Prompt, Prompt] | None:
+            Prompt のタプル(ポジティブ/ネガティブ), 未発火時は None
+            tuple の片方が空の list である場合があることに注意
         """
         if self.ignition.search(text) is None:
             # 発火しなかった場合は None
             return None
 
-        result = ScreenDeliverable(screen_id=self.screen_id)
+        positive = Prompt()
+        negative = Prompt()
         for category in self.categories:
-            cat_deliverable = category.to_category_deliverable(text)
-            if cat_deliverable is not None:
-                result.categories.append(cat_deliverable)
+            result = category.to_prompts(text)
+            if result is not None:
+                pos_parts, neg_parts = result
+                # tokens が空の場合は追加しない
+                if pos_parts.tokens:
+                    pos_parts.path = (self.screen_id,) + pos_parts.path
+                    positive.append(pos_parts)
+                if neg_parts.tokens:
+                    neg_parts.path = (self.screen_id,) + neg_parts.path
+                    negative.append(neg_parts)
 
-        if self.common_positive or self.common_negative:
-            common = CategoryDeliverable()
-            common.positive.extend(self.common_positive)
-            common.negative.extend(self.common_negative)
-            result.categories.append(common)
+        if self.common_positive:
+            common_pos = PromptParts(path=(self.screen_id,))
+            common_pos.tokens.extend(self.common_positive)
+            positive.append(common_pos)
+        if self.common_negative:
+            common_neg = PromptParts(path=(self.screen_id,))
+            common_neg.tokens.extend(self.common_negative)
+            negative.append(common_neg)
 
-        return result
-
-
-PromptBase: TypeAlias = list[ScreenDeliverable]
+        return positive, negative
 
 
 @dataclass
@@ -646,27 +650,34 @@ class Prompter:
 
         return obj
 
-    def to_prompt_base(self, text: str) -> PromptBase:
+    def to_prompt(self, text: str) -> tuple[Prompt, Prompt]:
         """
-        テキストから PromptBase を生成する
+        テキストから Prompt を生成する\n
+        Prompt が空の list の場合は追加しない
 
         Args:
             text (str): テキスト
 
         Returns:
-            tuple[str, str]: (ポジティブプロンプト文字列, ネガティブプロンプト文字列) のタプル
+            tuple[Prompt, Prompt]: Prompt のタプル(ポジティブ/ネガティブ)
         """
-        result: PromptBase = []
+        positive: Prompt = []
+        negative: Prompt = []
 
         for screen in self.screens:
-            screen_deliverable = screen.to_screen_deliverable(text)
-            if screen_deliverable is None:
+            result = screen.to_prompts(text)
+            if result is None:
                 # 未発火
                 continue
 
-            result.append(screen_deliverable)
+            pos, neg = result
+            # 空の list は追加しない
+            if pos:
+                positive.append(pos)
+            if neg:
+                negative.append(neg)
 
-        return result
+        return positive, negative
 
     def todict(self) -> dict:
         return asdict(self)
