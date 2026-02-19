@@ -673,9 +673,9 @@ class Prompter:
             pos, neg = result
             # 空の list は追加しない
             if pos:
-                positive.append(pos)
+                positive.extend(pos)
             if neg:
-                negative.append(neg)
+                negative.extend(neg)
 
         return positive, negative
 

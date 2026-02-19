@@ -5,25 +5,28 @@ main:
     pattern: "(x)"
     maps:
       x:
-        positive: MAP1
-        negative: map1
+        positive: main_MAP1
+        negative: main_map1
   map2:
     pattern: "(x)"
     maps:
       x:
-        positive: (foo:1.5),MAP2,
-        negative: (foo:0.3),map2,
+        positive: (foo:1.5),main_MAP2,
+        negative: (foo:0.3),main_map2,
+  common:
+    positive: common_pos
+    negative: common_neg
 sub:
   ignition: "go"
   map1:
     pattern: "(x)"
     maps:
       x:
-        positive: (foo:2.1),SUB1
-        negative: sub1
+        positive: (foo:2.1),sub_MAP1
+        negative: sub_map1
   map2:
     pattern: "(x)"
     maps:
       x:
-        positive: SUB2
-        negative: (foo:0.5),sub2
+        positive: sub_MAP2
+        negative: (foo:0.5),sub_map2

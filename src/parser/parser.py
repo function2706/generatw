@@ -11,7 +11,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
 from threading import Lock
-from typing import TypeAlias
 
 import pyperclip
 
@@ -20,8 +19,9 @@ from master.events import NewPrompts, ParserEvent
 from master.interfaces import MasterIF
 from parser.prompter import (
     CategoryPath,
-    PromptBase,
+    Prompt,
     Prompter,
+    PromptParts,
     Token,
 )
 
@@ -45,15 +45,6 @@ class Event:
     """
 
     shutdown: threading.Event = field(default_factory=threading.Event)  # 終了予定
-
-
-@dataclass
-class CategorizedTokens:
-    tokens: list[Token] = field(default_factory=list)
-    path: CategoryPath = field(default_factory=CategoryPath)
-
-
-Prompt: TypeAlias = list[CategorizedTokens]
 
 
 @dataclass
@@ -130,23 +121,24 @@ class Parser(ABC):
                 if prompter.parser_keyword == self.keyword:
                     self.prompter = prompter
 
-    def dedupe(self, prompt_base: PromptBase) -> PromptSet:
+    def dedupe(self, prompt: Prompt) -> Prompt:
         """
-        PromptBase から PromptSet を得る\n
-        同じ token を持つ Token のうち, |weight - 1| が最大のものを残す\n
+        Prompt において同じ token を持つ Token のうち, |weight - 1| が最大のものを残す\n
         順序は同じ token を持つ CategoryPath において,\n
-        priority で指定されている内の最も早いものに統一する
+        priority で指定されている内の最も早いものに統一する\n
+        本関数は非破壊的である
 
         Args:
-            prompt_base (PromptBase): PromptBase
+            prompt (PromptBase): PromptBase
 
         Returns:
-            PromptSet: PromptSet
+            Prompt: Prompt
         """
 
         def update_best(
             best: dict[str, tuple[Token, set[CategoryPath]]], token: Token, path: CategoryPath
         ) -> None:
+            """最も weight が 1 に近いトークンと, 収集元の CategoryPath をすべて記録する"""
             score = abs(token.weight - 1.0)
             current = best.get(token.token)
             if current is None:
@@ -156,46 +148,30 @@ class Parser(ABC):
                 crnt_paths = current[1] | {path}
                 best[token.token] = (crnt_token, crnt_paths)
 
-        best_pos: dict[str, tuple[Token, set[CategoryPath]]] = {}
-        best_neg: dict[str, tuple[Token, set[CategoryPath]]] = {}
+        best: dict[str, tuple[Token, set[CategoryPath]]] = {}
+        for prompt_parts in prompt:
+            for token in prompt_parts.tokens:
+                update_best(best, token, prompt_parts.path)
 
-        for screen in prompt_base:
-            for cat in screen.categories:
-                for token in cat.positive:
-                    update_best(best_pos, token, (screen.screen_id,) + cat.path)
-                for token in cat.negative:
-                    update_best(best_neg, token, (screen.screen_id,) + cat.path)
-
-        def _filter(
-            tokens: list[Token], best: dict[str, tuple[Token, set[CategoryPath]]]
-        ) -> tuple[list[Token], CategoryPath]:
-            result_tokens = []
-            result_path = None
-            for token in tokens:
+        def filter(
+            prompt_parts: PromptParts, best: dict[str, tuple[Token, set[CategoryPath]]]
+        ) -> PromptParts:
+            result = PromptParts()
+            for token in prompt_parts.tokens:
                 if best.get(token.token) is not None and best.get(token.token)[0] is token:
-                    result_tokens.append(token)
-                    if result_path is None:
-                        result_path = next(
+                    result.tokens.append(token)
+                    if not result.path:
+                        result.path = next(
                             (p for p in self.priority if p in best[token.token][1]), None
                         )
                     best.pop(token.token)
-            return result_tokens, result_path
+            return result
 
-        positive: Prompt = []
-        negative: Prompt = []
-        for screen in prompt_base:
-            new_categorized_tokens_list = []
-            for category in screen.categories:
-                tokens, path = _filter(category.positive, best_pos)
-                new_categorized_tokens_list.append(CategorizedTokens(tokens=tokens, path=path))
-            positive.extend(new_categorized_tokens_list)
-            new_categorized_tokens_list = []
-            for category in screen.categories:
-                tokens, path = _filter(category.negative, best_neg)
-                new_categorized_tokens_list.append(CategorizedTokens(tokens=tokens, path=path))
-            negative.extend(new_categorized_tokens_list)
+        new_prompt: Prompt = []
+        for prompt_parts in prompt:
+            new_prompt.append(filter(prompt_parts, best))
 
-        return PromptSet(positive=positive, negative=negative)
+        return new_prompt
 
     def sort(self, prompt: Prompt) -> Prompt:
         """
@@ -209,18 +185,17 @@ class Parser(ABC):
 
         return sorted(prompt, key=lambda c: order_index.get(c.path, float("inf")))
 
-    @abstractmethod
-    def edit(self, prompt_base: PromptSet) -> PromptSet:
+    def edit(self, prompt: Prompt) -> Prompt:
         """
-        dedupe, sort 以外の処理を行う
+        非破壊的に prompt を編集, 記録する
 
         Args:
-            prompt_base (PromptBase): PromptBase
+            prompt (Prompt): Prompt
 
         Returns:
-            PromptBase: PromptBase
+            Prompt: Prompt
         """
-        pass
+        return self.sort(self.dedupe(prompt))
 
     def make_prompt_set(self, text: str) -> PromptSet | None:
         """
@@ -238,9 +213,9 @@ class Parser(ABC):
             return None
 
         with self.prompter_lock:
-            prompt_set = self.dedupe(self.prompter.to_prompt_base(text))
+            positive, negative = self.prompter.to_prompt(text)
 
-        return self.edit(PromptSet(self.sort(prompt_set.positive), self.sort(prompt_set.negative)))
+        return PromptSet(positive=self.edit(positive), negative=self.edit(negative))
 
     def make_prompt_strs(self) -> tuple[str, str]:
         """
@@ -283,7 +258,7 @@ class Parser(ABC):
         """
         return
 
-    def inform_new_prompt(self, prompt_set: PromptSet) -> None:
+    def inform_new_prompt(self, prompt_set: Prompt) -> None:
         """
         Master に新たなプロンプトを報告する\n
         更新がない, あるいは情報が不十分な場合は何もしない
