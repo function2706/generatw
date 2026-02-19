@@ -7,7 +7,7 @@ from __future__ import annotations
 from common.functions import BottleMail
 from master.events import ParserEvent
 from master.interfaces import MasterIF
-from parser.parser import Parser, Prompt, PromptSet
+from parser.parser import Parser, Prompt
 from parser.prompter import CategoryPath
 
 KEYWORD_THE_WORLD_PARSER = "TheWorldParser"
@@ -43,22 +43,14 @@ class TheWorldParser(Parser):
     def edit(self, prompt: Prompt) -> Prompt:
         return super().edit(prompt)
 
-    def is_enough_prompt(self, prompt_set: PromptSet | None = None) -> bool:
+    def is_enough_prompt(self) -> bool:
         """
         The World における十分性判定の基準
         1. main Screen
         1.1 ポジティブプロンプトに character > name Category が存在すること
-
-        Args:
-            prompt_set (PromptSet | None, optional): PromptSet. Defaults to None.
-
-        Returns:
-            bool: True: 十分, False: 不十分(空文字列)
         """
-        prmpt_set = prompt_set if prompt_set is not None else self.crnt_prompt_set
-
         has_name = False
-        for prompt_parts in prmpt_set.positive:
+        for prompt_parts in self.crnt_prompt_set.positive:
             if len(prompt_parts.path) <= 1:
                 # common
                 continue
@@ -68,4 +60,4 @@ class TheWorldParser(Parser):
                 if prompt_parts.path[1:] == ("character", "name"):
                     has_name = True
 
-        return super().is_enough_prompt(prmpt_set) and has_name
+        return super().is_enough_prompt() and has_name

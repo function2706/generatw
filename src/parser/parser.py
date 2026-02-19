@@ -7,7 +7,6 @@ from __future__ import annotations
 import random
 import threading
 import time
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
 from threading import Lock
@@ -53,7 +52,7 @@ class PromptSet:
     negative: Prompt = field(default_factory=Prompt)
 
 
-class Parser(ABC):
+class Parser:
     """
     クリップボード監視, ステータス記録クラス
     """
@@ -269,21 +268,18 @@ class Parser(ABC):
         pos, neg = self.make_prompt_strs()
         return dirname_by_prompts(pos, neg)
 
-    @abstractmethod
-    def is_enough_prompt(self, prompt_set: PromptSet | None = None) -> bool:
+    def is_enough_prompt(self) -> bool:
         """
         生成に十分なプロンプトか\n
-        判定対象は指定のものか, 現在記憶中の最新プロンプトか\n
+        判定対象は現在記憶中の最新プロンプト\n
         各派生クラスはこの関数をオーバーライドすべきである(この関数自体を実行するのは構わない)
-
-        Args:
-            prompt_set (PromptSet | None, optional): PromptSet. Defaults to None.
 
         Returns:
             bool: True: 十分, False: 不十分(空文字列)
         """
-        prmpt_set = prompt_set if prompt_set is not None else self.crnt_prompt_set
-        return prmpt_set is not None and (prmpt_set.positive or prmpt_set.negative)
+        return self.crnt_prompt_set is not None and (
+            self.crnt_prompt_set.positive or self.crnt_prompt_set.negative
+        )
 
     def inform_new_prompt(self, prompt_set: PromptSet) -> None:
         """
@@ -304,7 +300,7 @@ class Parser(ABC):
         if self.master.crnt_gui_configs.print_new_prompt_set:
             dump_json(prompt_set, "new_prompt_set")
 
-        if not self.is_enough_prompt(prompt_set):
+        if not self.is_enough_prompt():
             # 空ではないが条件を満たさない
             self.to_master.enclose(NewPrompts(is_enough=False))
             return None
