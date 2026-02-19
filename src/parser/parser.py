@@ -181,7 +181,8 @@ class Parser(ABC):
                     result.tokens.append(token)
                     if not result.path:
                         result.path = next(
-                            (p for p in self.priority if p in best[token.token][1]), None
+                            (p for p in self.priority if p in best[token.token][1]),
+                            prompt_parts.path,
                         )
                     best.pop(token.token)
             return result
@@ -269,17 +270,20 @@ class Parser(ABC):
         return dirname_by_prompts(pos, neg)
 
     @abstractmethod
-    def is_enough_prompt(self) -> bool:
+    def is_enough_prompt(self, prompt_set: PromptSet | None = None) -> bool:
         """
         生成に十分なプロンプトか\n
+        判定対象は指定のものか, 現在記憶中の最新プロンプトか\n
         各派生クラスはこの関数をオーバーライドすべきである(この関数自体を実行するのは構わない)
+
+        Args:
+            prompt_set (PromptSet | None, optional): PromptSet. Defaults to None.
 
         Returns:
             bool: True: 十分, False: 不十分(空文字列)
         """
-        return self.crnt_prompt_set and (
-            self.crnt_prompt_set.positive or self.crnt_prompt_set.negative
-        )
+        prmpt_set = prompt_set if prompt_set is not None else self.crnt_prompt_set
+        return prmpt_set is not None and (prmpt_set.positive or prmpt_set.negative)
 
     def inform_new_prompt(self, prompt_set: PromptSet) -> None:
         """
@@ -290,12 +294,17 @@ class Parser(ABC):
             prompt_set (PromptSet): PromptSet
         """
         if not prompt_set.positive and not prompt_set.negative:
-            self.to_master.enclose(NewPrompts(is_enough=False))
-            return None
+            # 完全に空の場合は何もしない(想定外クリップボード文字列の検知も含む)
+            return
 
         if prompt_set == self.crnt_prompt_set:
             return
         self.crnt_prompt_set = prompt_set
+
+        if not self.is_enough_prompt(prompt_set):
+            # 空ではないが条件を満たさない
+            self.to_master.enclose(NewPrompts(is_enough=False))
+            return None
 
         pos, neg = self.make_prompt_strs()
         if self.master.crnt_gui_configs.print_new_prompt:
