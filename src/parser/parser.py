@@ -301,6 +301,9 @@ class Parser(ABC):
             return
         self.crnt_prompt_set = prompt_set
 
+        if self.master.crnt_gui_configs.print_new_prompt_set:
+            dump_json(prompt_set, "new_prompt_set")
+
         if not self.is_enough_prompt(prompt_set):
             # 空ではないが条件を満たさない
             self.to_master.enclose(NewPrompts(is_enough=False))

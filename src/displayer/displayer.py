@@ -402,14 +402,23 @@ class DebugTab:
                 command=self.super_owner.super_owner.super_owner.update_configs,
             ).grid(row=0, column=0, padx=6, pady=6, sticky="w")
             self.verbose_clipboard_check.set(init_configs.print_new_clipboard)
-            # 新プロンプトの表示
+            # プロンプト(データ)の表示
+            self.verbose_prompt_set_check = tkinter.BooleanVar()
+            ttk.Checkbutton(
+                self.verbose_frame,
+                text="プロンプト(データ)",
+                variable=self.verbose_prompt_set_check,
+                command=self.super_owner.super_owner.super_owner.update_configs,
+            ).grid(row=0, column=1, padx=6, pady=6, sticky="w")
+            self.verbose_prompt_set_check.set(init_configs.print_new_prompt_set)
+            # プロンプト(文字列)の表示
             self.verbose_prompt_check = tkinter.BooleanVar()
             ttk.Checkbutton(
                 self.verbose_frame,
-                text="新プロンプト",
+                text="プロンプト(文字列)",
                 variable=self.verbose_prompt_check,
                 command=self.super_owner.super_owner.super_owner.update_configs,
-            ).grid(row=0, column=1, padx=6, pady=6, sticky="w")
+            ).grid(row=1, column=0, padx=6, pady=6, sticky="w")
             self.verbose_prompt_check.set(init_configs.print_new_prompt)
             # 画像メタデータの表示
             self.verbose_picinfo_check = tkinter.BooleanVar()
@@ -418,7 +427,7 @@ class DebugTab:
                 text="画像メタデータ",
                 variable=self.verbose_picinfo_check,
                 command=self.super_owner.super_owner.super_owner.update_configs,
-            ).grid(row=1, column=0, padx=6, pady=6, sticky="w")
+            ).grid(row=1, column=1, padx=6, pady=6, sticky="w")
             self.verbose_picinfo_check.set(init_configs.print_picinfo)
             # イベントの表示
             self.verbose_event_check = tkinter.BooleanVar()
@@ -427,7 +436,7 @@ class DebugTab:
                 text="イベント",
                 variable=self.verbose_event_check,
                 command=self.super_owner.super_owner.super_owner.update_configs,
-            ).grid(row=1, column=1, padx=6, pady=6, sticky="w")
+            ).grid(row=2, column=0, padx=6, pady=6, sticky="w")
             self.verbose_event_check.set(init_configs.print_event)
 
     def __init__(self, owner: MainWindow, init_configs: GUIConfigs):
@@ -734,6 +743,9 @@ class Displayer:
             ),
             print_new_clipboard=bool(
                 self.main_window.debug_tab_obj.verbose_frame.verbose_clipboard_check.get()
+            ),
+            print_new_prompt_set=bool(
+                self.main_window.debug_tab_obj.verbose_frame.verbose_prompt_set_check.get()
             ),
             print_new_prompt=bool(
                 self.main_window.debug_tab_obj.verbose_frame.verbose_prompt_check.get()
