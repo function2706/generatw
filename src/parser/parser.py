@@ -121,6 +121,25 @@ class Parser(ABC):
                 if prompter.parser_keyword == self.keyword:
                     self.prompter = prompter
 
+    def strip(self, prompt: Prompt) -> Prompt:
+        """
+        priority に存在しない PromptParts を削ぎ落とす\n
+        ただし common は除外する(必ず結果に含める)\n
+        本関数は非破壊的である
+
+        Args:
+            prompt (Prompt): Prompt
+
+        Returns:
+            Prompt: Prompt
+        """
+        result: Prompt = []
+        for prompt_parts in prompt:
+            if len(prompt_parts.path) >= 2 and prompt_parts.path not in self.priority:
+                continue
+            result.append(prompt_parts)
+        return result
+
     def dedupe(self, prompt: Prompt) -> Prompt:
         """
         Prompt において同じ token を持つ Token のうち, |weight - 1| が最大のものを残す\n
@@ -129,7 +148,7 @@ class Parser(ABC):
         本関数は非破壊的である
 
         Args:
-            prompt (PromptBase): PromptBase
+            prompt (Prompt): Prompt
 
         Returns:
             Prompt: Prompt
@@ -179,7 +198,8 @@ class Parser(ABC):
         ソートルールは priority 内の CategoryPath の順序に従う\n
         priority 内にない CategoryPath は順に最後尾に置き換えられ,\n
         priority 内の存在しない CategoryPath は無視される\n
-        また(通常は誤って)同じ CategoryPath が priority 内に存在する場合, 最も後ろの位置となる
+        また(通常は誤って)同じ CategoryPath が priority 内に存在する場合, 比べて後ろの位置となる\n
+        本関数は非破壊的である
         """
         order_index: dict[CategoryPath, int] = {path: i for i, path in enumerate(self.priority)}
 
@@ -187,7 +207,8 @@ class Parser(ABC):
 
     def edit(self, prompt: Prompt) -> Prompt:
         """
-        非破壊的に prompt を編集, 記録する
+        非破壊的に prompt を編集, 記録する\n
+        各派生クラスはこの関数をオーバーライドすべきである(この関数自体を実行するのは構わない)
 
         Args:
             prompt (Prompt): Prompt
@@ -195,7 +216,7 @@ class Parser(ABC):
         Returns:
             Prompt: Prompt
         """
-        return self.sort(self.dedupe(prompt))
+        return self.sort(self.dedupe(self.strip(prompt)))
 
     def make_prompt_set(self, text: str) -> PromptSet | None:
         """
