@@ -287,7 +287,9 @@ class Master(MasterIF):
             if self.crnt_gui_configs.print_event:
                 print(f"{self.displayer.__class__.__name__:20} > {event.__class__.__name__:20}")
             if isinstance(event, OnRepeatTask):
-                self.reserve_txt2img_task()
+                if self.parser and self.parser.crnt_prompt_set:
+                    pos, neg = self.parser.make_prompt_strs()
+                    self.reserve_txt2img_task(pos, neg)
             if isinstance(event, OnInterruptTask):
                 self.generator.reserve_interrupt()
             if isinstance(event, OnFlushTasks):
@@ -375,7 +377,7 @@ class Master(MasterIF):
                 if self.crnt_gui_configs.print_event:
                     print(f"enough={event.is_enough}")
                 if event.is_enough:
-                    self.run_oneshot()
+                    self.run_oneshot(event.positive, event.negative)
                 else:
                     self.archiver.drop_picstats()
 
@@ -432,19 +434,18 @@ class Master(MasterIF):
             upsclr=UpScalerName.nearest_exact if self.backend_type == BackEnd.comfy_ui else None,
         )
 
-    def reserve_txt2img_task(self) -> None:
+    def reserve_txt2img_task(self, positive: str, negative: str) -> None:
         """
         新しいタスクを生成し, タスクリストに予約する\n
         ただしプロンプト生成に十分なステータスが記録されていない,\n
         すでにリストに存在する, あるいは作業中のタスクの場合は何もしない
         """
-        if self.parser is None or not self.parser.is_enough_prompt() or self.is_switching_backend:
+        if self.is_switching_backend:
             return
 
-        pos, neg = self.parser.make_prompt_strs()
         self.generator.reserve_txt2img(
-            pos=pos,
-            neg=neg,
+            pos=positive,
+            neg=negative,
             seed=-1,
             stps=self.crnt_configs.sd_steps,
             b_size=self.crnt_configs.sd_batch_size,
@@ -462,7 +463,7 @@ class Master(MasterIF):
         現在の記録中ステータスにおいて, 表示可能な画像が存在する場合にランダムで表示する\n
         存在しない場合は NO IMAGE を表示する
         """
-        if self.parser is None:
+        if self.parser is None or not self.parser.is_enough_prompt():
             return
 
         if construct_window:
@@ -475,11 +476,11 @@ class Master(MasterIF):
 
         self.archiver.warp_picstats(self.parser.crnt_prompt_dir)
 
-    def run_oneshot(self) -> None:
+    def run_oneshot(self, positive: str, negative: str) -> None:
         """
         タスク予約とすでに存在する画像の表示を1度だけ行う
         """
-        self.reserve_txt2img_task()
+        self.reserve_txt2img_task(positive, negative)
         self.refresh_pic_randomly(construct_window=True)
 
     def run_main(self) -> None:

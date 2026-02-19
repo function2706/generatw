@@ -272,14 +272,16 @@ class Parser(ABC):
     def is_enough_prompt(self) -> bool:
         """
         生成に十分なプロンプトか\n
-        判定基準は各派生クラスに依存
+        各派生クラスはこの関数をオーバーライドすべきである(この関数自体を実行するのは構わない)
 
         Returns:
             bool: True: 十分, False: 不十分(空文字列)
         """
-        return
+        return self.crnt_prompt_set and (
+            self.crnt_prompt_set.positive or self.crnt_prompt_set.negative
+        )
 
-    def inform_new_prompt(self, prompt_set: Prompt) -> None:
+    def inform_new_prompt(self, prompt_set: PromptSet) -> None:
         """
         Master に新たなプロンプトを報告する\n
         更新がない, あるいは情報が不十分な場合は何もしない
@@ -287,10 +289,7 @@ class Parser(ABC):
         Args:
             prompt_set (PromptSet): PromptSet
         """
-        if prompt_set is None:
-            return None
-
-        if not self.is_enough_prompt():
+        if not prompt_set.positive and not prompt_set.negative:
             self.to_master.enclose(NewPrompts(is_enough=False))
             return None
 
@@ -302,7 +301,7 @@ class Parser(ABC):
         if self.master.crnt_gui_configs.print_new_prompt:
             dump_json({"POS": pos, "NEG": neg}, "new_prompt")
 
-        self.to_master.enclose(NewPrompts(is_enough=True))
+        self.to_master.enclose(NewPrompts(is_enough=True, positive=pos, negative=neg))
 
     def do_debug(self, text: str) -> None:
         """

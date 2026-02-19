@@ -44,4 +44,4 @@ class TheWorldParser(Parser):
         return super().edit(prompt)
 
     def is_enough_prompt(self):
-        return self.crnt_prompt_set.positive or self.crnt_prompt_set.negative
+        return super().is_enough_prompt()

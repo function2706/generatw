@@ -126,3 +126,5 @@ class ParserEvent:
 @dataclass
 class NewPrompts(ParserEvent):
     is_enough: bool = False
+    positive: str = ""
+    negative: str = ""

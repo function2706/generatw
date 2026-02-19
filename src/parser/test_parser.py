@@ -34,4 +34,4 @@ class TestParser(Parser):
         return super().edit(prompt)
 
     def is_enough_prompt(self):
-        return True
+        return super().is_enough_prompt()
