@@ -1,4 +1,4 @@
-parser: SampleParser
+interpreter: SampleInterpreter
 main:
   ignition: "go"
   common: ""

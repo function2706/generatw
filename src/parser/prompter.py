@@ -13,7 +13,7 @@ import yaml
 class KeyName(StrEnum):
     """YAML設定ファイルで使用されるキー名の定数"""
 
-    parser = "parser"
+    interpreter = "interpreter"
     ignition = "ignition"
     pattern = "pattern"
     capturegrp = "capturegrp"
@@ -622,7 +622,7 @@ class Prompter:
     """
 
     yamlpath: Path = Path()
-    parser_keyword: str = ""
+    interpreter_keyword: str = ""
     screens: list[Screen] = field(default_factory=list)
 
     @classmethod
@@ -643,8 +643,8 @@ class Prompter:
             yamldict: dict = yaml.safe_load(f)
 
         for key, val in yamldict.items():
-            if key == KeyName.parser:
-                obj.parser_keyword = val
+            if key == KeyName.interpreter:
+                obj.interpreter_keyword = val
             else:
                 obj.screens.append(Screen.make(key, val))
 

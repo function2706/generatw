@@ -7,7 +7,7 @@
 ## 目次
 
 1. [全体構造](#1-全体構造)
-2. [`parser`: Parser との紐づけ](#2-parser-parser-との紐づけ)
+2. [`interpreter`: Interpreter との紐づけ](#2-interpreter-interpreter-との紐づけ)
 3. [`ignition` (発火条件)](#3-ignition-発火条件)
 4. [Category 定義](#4-category-定義)
 5. [Rule 定義](#5-rule-定義)
@@ -22,18 +22,18 @@
 ## 1. 全体構造
 
 ```yaml
-parser: <Parser ID>        # Parser が提供する紐づけのための予約語
-<screen name>:             # Screen 名, Parser による予約語
+interpreter: <Interpreter ID> # Interpreter が提供する紐づけのための予約語
+<screen name>:                # Screen 名, Interpreter による予約語
   ignition: <regex>
-  <category name>:         # Category 名, Parser による予約語, 階層は任意
+  <category name>:            # Category 名, Interpreter による予約語, 階層は任意
     pattern: <regex>
-    capturegrp: <number>   # オプション
-    maps:                  # または ranges, intervals
-      rule:                # Rule 名, Parser による予約語
+    capturegrp: <number>      # オプション
+    maps:                     # または ranges, intervals
+      rule:                   # Rule 名, Interpreter による予約語
         positive: <tokens>
         negative: <tokens>
-    default: <prompt>      # オプション
-  common:                  # オプション
+    default: <prompt>         # オプション
+  common:                     # オプション
     positive: <tokens>
     negative: <tokens>
 ```
@@ -55,32 +55,32 @@ Category のパターンにマッチした文字列ごとの変換規則を指�
 
 ---
 
-## 2. `parser`: Parser との紐づけ
+## 2. `interpreter`: Interpreter との紐づけ
 
-どの Parser の継承クラスのための対応表なのかを指定するための文字列を指定する.  
-この文字列は Parser によって提供されるものを使用する.
+どの Interpreter の継承クラスのための対応表なのかを指定するための文字列を指定する.  
+この文字列は Interpreter によって提供されるものを使用する.
 
 ### 2.1 記述例
 
 ```yaml
-parser: SampleParser
+interpreter: SampleInterpreter
 ```
 
 ### 2.2 振る舞い
 
 - 指定文字列と完全一致した場合, 各 Screen の `ignition` チェックが上から順に実施される
-- Parser が認知しない文字列が指定されている場合, `ignition` のチェックは実施されず, データを付帯しない(後述の空リスト)
+- Interpreter が認知しない文字列が指定されている場合, `ignition` のチェックは実施されず, データを付帯しない(後述の空リスト)
 
 ### 2.3 以降の処理
 
-以降各処理において, DSL 側では Parser が想定しているデータが完備されているかどうかは判断せず, YAML に書かれている分を愚直に処理する(判断は Parser の責務).
+以降各処理において, DSL 側では Interpreter が想定しているデータが完備されているかどうかは判断せず, YAML に書かれている分を愚直に処理する(判断は Interpreter の責務).
 
-- Parser が認知しない文字列が指定されている場合, 返せるデータがある場合はすべて返す
+- Interpreter が認知しない文字列が指定されている場合, 返せるデータがある場合はすべて返す
 - マッチ・ヒットしなかった等返すべきデータがない場合はデータを付帯しない
 
-### 2.4 Parser に渡すデータ形式
+### 2.4 Interpreter に渡すデータ形式
 
-Parser には以下の形式からなるデータの list を渡す (list[ScreenDeliverable]).
+Interpreter には以下の形式からなるデータの list を渡す (list[ScreenDeliverable]).
 Category が多層的である場合は Screen からの名前を list に格納する.
 
 ```python
@@ -89,14 +89,14 @@ Category が多層的である場合は Screen からの名前を list に格納
   "category": [ # CategoryDeliverable のリスト
     {
       "path" ["category1", "category1.1"], # 最右が pattern をもつ実際の Category
-      "positive": [Token("pos1", 1.0)], # Token は Parser と共用するクラス
+      "positive": [Token("pos1", 1.0)], # Token は Interpreter と共用するクラス
       "negative": [], # 存在しない場合も空を付帯する
     }
   ]
 }
 ```
 
-Parser との共用クラスの定義は以下の通り.
+Interpreter との共用クラスの定義は以下の通り.
 
 ```python
 @dataclass
@@ -139,7 +139,7 @@ class ScreenDeliverable:
 #### 2.4.3 備考
 
 ヒットした場合 CategoryDeliverable.path は常に記述されるが, positive, negative の一方のみが空であることはあり得る.  
-同じ token をもつ Token が positive, negative 内に混在していてもよいものとする(dedupe は Parser に委任).
+同じ token をもつ Token が positive, negative 内に混在していてもよいものとする(dedupe は Interpreter に委任).
 
 ---
 
@@ -501,7 +501,7 @@ black hair,(blue eye:1.2): ["bob"]
 ### 7.1 `common`
 
 各 Screen において, すべてのマッチ結果に必ず追加したいプロンプトを指定する.  
-順番については Parser に一任するが, 基本的には末尾の Boilerplate プロンプトを想定する.
+順番については Interpreter に一任するが, 基本的には末尾の Boilerplate プロンプトを想定する.
 
 ```yaml
 common:
@@ -539,7 +539,7 @@ common:
 
 ## 8. 処理フロー
 
-1. **Parser 適合チェック**: Parser との紐づけ
+1. **Interpreter 適合チェック**: Interpreter との紐づけ
 2. **Ignition チェック**: `ignition` でテキストが発火条件を満たすか判定
 3. **パターンマッチ**: 各 Category の `pattern` でテキストを検索
 4. **値抽出**: `capturegrp` で指定されたグループの値を取得
@@ -552,7 +552,7 @@ common:
 ## 9. YAML の例
 
 ```yaml
-parser: SampleParser
+interpreter: SampleInterpreter
 main:
   ignition: "(m|M)ain"
   name:
@@ -708,12 +708,12 @@ name: Fugami, season: 11, vitality: 50, upper: Shirt, lower: Pants,
 ### 10.4 予約語一覧
 
 本 DS では, 以下のキーは **特別な意味を持つ予約語** として定義されている.  
-Parser はこれらを遵守して Screen 名, Category 名を定義しなくてはいけない.
+Interpreter はこれらを遵守して Screen 名, Category 名を定義しなくてはいけない.
 
-| 予約語     | 禁止              |
-| ---------- | ----------------- |
-| `parser`   | Screen 名として   |
-| `ignition` | Category 名として |
+| 予約語        | 禁止              |
+| ------------- | ----------------- |
+| `interpreter` | Screen 名として   |
+| `ignition`    | Category 名として |
 
 ### 10.5 命名上の注意
 
