@@ -15,7 +15,6 @@ if parent_dir not in sys.path:
 
 from common.functions import dump_json  # noqa: E402
 from parser.prompter import Prompter  # noqa: E402
-from parser.test_parser import TestParser  # noqa: E402
 
 CORRECT_RESULT = {
     "CASE 'empty definition'": {"Empty-1: 'go'": {"POS": [], "NEG": []}},
@@ -544,7 +543,7 @@ class PrompterDebugger:
         最も外側の str はパス重複解決のためのラベル
 
         Args:
-            testcases (dict[str, dict[Path, list[str]]]): テストケース
+            testcases (dict[str, dict[Path | str, list[str]]]): テストケース
         """
         result: dict[str, dict[str, dict[str, Any]]] = {}
         for id, texts_n_paths in cases.items():
@@ -688,17 +687,4 @@ def debug_prompter() -> None:
                 dump_json(dict_diff(normalized_test_result, correct_result), "diff")
 
 
-def debug_parser() -> None:
-    parser = TestParser(
-        None,
-        None,
-    )
-    parser.prompter = Prompter.make("yamls/Dedupe.yaml")
-    parser.crnt_prompt_set = parser.make_prompt_set("go xxx")
-    pos, neg = parser.make_prompt_strs()
-    print(pos)
-    print(neg)
-
-
 debug_prompter()
-debug_parser()
