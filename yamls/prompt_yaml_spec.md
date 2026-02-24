@@ -83,16 +83,26 @@ interpreter: SampleInterpreter
 ### 2.4 Interpreter に渡すデータ形式
 
 Interpreter には以下の形式からなるデータの list を渡す (Prompt).
-Category が多層的である場合は Screen からの名前を list に格納する.
+Category が多層的である場合は Screen 直下からの名前を list に格納する.
 
 ```python
-[ # PromptParts のリスト
-  {
-    "path" ["screen1", "category1", "category1.1"], # 最右が pattern をもつ実際の Category
-    "tokens": [{"token": "pos1", "weight": 1.0}, ...],
+{
+  "screen_id": "screen1",
+  "positive": [
+    {
+      "path": ["category1", "category1.1"], # 最右が pattern をもつ実際の Category
+      "tokens": [{"token": "pos1", "weight": 1.0}, ...],
+    },
     ...
-  }
-]
+  ],
+  "negative": [
+    {
+      "path": ["category1", "category1.1"],
+      "tokens": [{"token": "neg1", "weight": 1.2}, ...],
+    },
+    ...
+  ],
+}
 ```
 
 **`tokens` が空の場合, この dict は append されない.**
@@ -110,7 +120,11 @@ class PromptParts:
   path: list[str]
   tokens: list[Token]
 
-Prompt: TypeAlias = list[PromptParts]
+@dataclass
+class Prompt:
+  screen_id: str
+  positive: list[PromptParts]
+  negative: list[PromptParts]
 ```
 
 以降簡単のため, 本書では以下の形を `Token("pos1", 1.0)` と表すこととする.
@@ -121,11 +135,27 @@ Prompt: TypeAlias = list[PromptParts]
 
 #### 2.4.1 Screen が発火しなかった場合
 
-いずれの Screen の `ignition` (後述)も未発火であった場合は, 空の Prompt が返される.
+いずれの Screen の `ignition` (後述)も未発火であった場合は, `screen_id` が `None` の Prompt が返される.
+
+```python
+{
+  "screen_id": None,
+  "positive": [],
+  "negative": []
+}
+```
 
 #### 2.4.2 発火したがマッチ・ヒットしなかった場合
 
-いずれの Rule もマッチ・ヒットしなかった, かつ `default` (後述)も未定義の場合, 空の Prompt が返される.
+いずれの Rule もマッチ・ヒットしなかった, かつ `default` (後述)も未定義の場合, 発火した `screen_id` のみが書かれた Prompt が返される.
+
+```python
+{
+  "screen_id": "screen1",
+  "positive": [],
+  "negative": []
+}
+```
 
 #### 2.4.3 備考
 
@@ -153,7 +183,7 @@ ignition: "Test:"
 
 ### 3.2 振る舞い
 
-- マッチした場合, 各 Category の処理が上から順に実行され, データを付帯する
+- 各 Category のうち, 初めてマッチしたもののみのデータを付帯する (Screen は混在しない)
 - マッチしない Screen についてはデータを付帯しない
 
 ---
@@ -186,12 +216,20 @@ screen1:
 上記の場合, 返すデータは以下のようになる.
 
 ```python
-[
-  {
-    "path" ["screen1", "category1", "category1.1", "category1.1.1"],
-    "tokens": [...],
-  }
-]
+{
+  "screen_id": "screen1",
+  "positive": [
+    {
+      "path": ["category1", "category1.1", "category1.1.1"],
+      "tokens": [...],
+    }
+    ...
+  ],
+  "negative": [
+    # positive と同様
+    ...
+  ]
+}
 ```
 
 ### 4.2 必須プロパティ
@@ -364,7 +402,7 @@ ranges:
 
 ### 5.3 `intervals` - 区間マッピング
 
-これも**キーと値の役割が逆転する**ことに注意.
+**キーと値の役割が逆転する**ことに注意.
 
 ```yaml
 intervals:
@@ -442,18 +480,21 @@ negative: neg1,neg2
 列挙したプロンプトがデータとして返される場合は Prompt に格納される.
 
 ```python
-[ # positive
-  {
-    "path" ["screen1", "category1"],
-    "tokens": [Token("pos1", 1.0), Token("pos2", 1.0), Token("pos3", 1.0)],
-  }
-]
-[ # negative
-  {
-    "path" ["screen1", "category1"],
-    "tokens": [Token("neg1", 1.0), Token("neg2", 1.0)],
-  }
-]
+{
+  "screen_id": "screen1",
+  "positive": [
+    {
+      "path": ["category1"],
+      "tokens": [Token("pos1", 1.0), Token("pos2", 1.0), Token("pos3", 1.0)],
+    }
+  ],
+  "negative": [
+    {
+      "path": ["category1"],
+      "tokens": [Token("neg1", 1.0), Token("neg2", 1.0)],
+    }
+  ],
+}
 ```
 
 ### 6.2 重み付き記法
@@ -505,18 +546,20 @@ common:
 
 また `common` は省略可能である.
 
-返すデータの `path` キーは Screen 名のみが指定される.
+返すデータの `path` キーは 空リストとなる.
 
 ```python
 [ # positive
+  ...,
   {
-    "path" ["screen1"],
+    "path": [],
     "tokens": [Token("common positive", 1.0), Token("high quality", 1.0)],
   }
 ]
 [ # negative
+  ...,
   {
-    "path" ["screen1"],
+    "path": [],
     "tokens": [Token("common negative", 1.0), Token("bad quality", 1.0)],
   }
 ]
@@ -628,46 +671,49 @@ name: Fugami, season: 11, vitality: 50, upper: Shirt, lower: Pants,
 - 出力
 
 ```python
-[ # positive
-  {
-    "path" ["main", "name"],
-    "tokens": [Token("fugami", 1.2)],
-  },
-  {
-    "path" ["main", "season"],
-    "tokens": [Token("autumn", 1.0), Token("cool", 1.0)],
-  },
-  {
-    "path" ["main", "vitality"],
-    "tokens": [Token("low", 1.0), Token("bad", 1.0), Token("middle", 1.0)],
-  },
-  {
-    "path" ["main", "fashion", "upper"],
-    "tokens": [Token("shirt", 1.0)],
-  },
-  {
-    "path" ["main", "fashion", "lower"],
-    "tokens": [Token("pants", 1.0)],
-  },
-  {
-    "path" ["main"],
-    "tokens": [Token("common main positive", 1.0)],
-  },
-]
-[ # negative
-  {
-    "path" ["main", "season"],
-    "tokens": [Token("scorching heat", 1.0)],
-  },
-  {
-    "path" ["main", "vitality"],
-    "tokens": [Token("good", 1.0)], Token("high", 1.0),
-  },
-  {
-    "path" ["main"],
-    "tokens": [Token("common main negative", 1.0)],
-  },
-]
+{
+  "screen_id": "main",
+  "positive": [
+    {
+      "path": ["name"],
+      "tokens": [Token("fugami", 1.2)],
+    },
+    {
+      "path": ["season"],
+      "tokens": [Token("autumn", 1.0), Token("cool", 1.0)],
+    },
+    {
+      "path": ["vitality"],
+      "tokens": [Token("low", 1.0), Token("bad", 1.0), Token("middle", 1.0)],
+    },
+    {
+      "path": ["fashion", "upper"],
+      "tokens": [Token("shirt", 1.0)],
+    },
+    {
+      "path": ["fashion", "lower"],
+      "tokens": [Token("pants", 1.0)],
+    },
+    {
+      "path": [],
+      "tokens": [Token("common main positive", 1.0)],
+    }
+  ],
+  "negative": [
+    {
+      "path": ["season"],
+      "tokens": [Token("scorching heat", 1.0)],
+    },
+    {
+      "path": ["vitality"],
+      "tokens": [Token("good", 1.0)], Token("high", 1.0),
+    },
+    {
+      "path": [],
+      "tokens": [Token("common main negative", 1.0)],
+    },
+  ],
+}
 ```
 
 ---

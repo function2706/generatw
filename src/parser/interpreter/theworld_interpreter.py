@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from parser.interpreter.interpreter import Interpreter, PromptSet
+from parser.interpreter.interpreter import Interpreter
 from parser.prompter import CategoryPath, Prompt
 
 
@@ -19,21 +19,26 @@ class TheWorldInterpreter(Interpreter):
         super().__init__(yamlpath)
 
     @property
-    def category_list(self) -> list[CategoryPath]:
+    def category_list(self) -> list[tuple[str, list[CategoryPath]]]:
         return [
-            ("main", "character", "name"),
-            ("main", "character", "vibe"),
-            ("main", "character", "affection"),
-            ("main", "character", "trust"),
-            ("main", "character", "frustration"),
-            ("main", "character", "angry"),
-            ("main", "character", "in_heat"),
-            ("main", "character", "mood"),
-            ("main", "character", "reason"),
-            ("main", "character", "upper"),
-            ("main", "character", "upper_state"),
-            ("main", "character", "lower"),
-            ("main", "character", "lower_state"),
+            (
+                "main",
+                [
+                    ("character", "name"),
+                    ("character", "vibe"),
+                    ("character", "affection"),
+                    ("character", "trust"),
+                    ("character", "frustration"),
+                    ("character", "angry"),
+                    ("character", "in_heat"),
+                    ("character", "mood"),
+                    ("character", "reason"),
+                    ("character", "upper"),
+                    ("character", "upper_state"),
+                    ("character", "lower"),
+                    ("character", "lower_state"),
+                ],
+            )
         ]
 
     def edit(self, prompt: Prompt) -> Prompt:
@@ -41,21 +46,20 @@ class TheWorldInterpreter(Interpreter):
         return super().edit(prompt)
 
     @staticmethod
-    def is_enough_prompt(prompt_set: PromptSet) -> bool:
+    def is_enough_prompt(prompt: Prompt) -> bool:
         """
         The World における十分性判定の基準
         1. main Screen
         1.1 ポジティブプロンプトに character > name Category が存在すること
         """
         has_name = False
-        for prompt_parts in prompt_set.positive:
-            if len(prompt_parts.path) <= 1:
-                # common
-                continue
+        if prompt.screen_id == "main":
+            for prompt_parts in prompt.positive:
+                if len(prompt_parts.path) == 0:
+                    # common
+                    continue
 
-            screen_id = prompt_parts.path[0]
-            if screen_id == "main":
-                if prompt_parts.path[1:] == ("character", "name"):
+                if prompt_parts.path[0:] == ("character", "name"):
                     has_name = True
 
-        return Interpreter.is_enough_prompt(prompt_set) and has_name
+        return Interpreter.is_enough_prompt(prompt) and has_name

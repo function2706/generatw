@@ -19,10 +19,15 @@ class DebugInterpreter(Interpreter):
         super().__init__(yamlpath)
 
     @property
-    def category_list(self) -> list[CategoryPath]:
+    def category_list(self) -> list[tuple[str, list[CategoryPath]]]:
         return [
-            ("main", "character", "name"),
-            ("main", "character", "vibe"),
-            ("main", "character", "upper"),
-            ("main", "character", "lower"),
+            (
+                "main",
+                [
+                    ("character", "name"),
+                    ("character", "vibe"),
+                    ("character", "upper"),
+                    ("character", "lower"),
+                ],
+            )
         ]

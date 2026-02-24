@@ -5,8 +5,8 @@ Prompt 解釈クラス
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TypeAlias
 
 import yaml
 
@@ -17,12 +17,6 @@ from parser.prompter import (
     PromptParts,
     Token,
 )
-
-
-@dataclass
-class PromptSet:
-    positive: Prompt = field(default_factory=Prompt)
-    negative: Prompt = field(default_factory=Prompt)
 
 
 class Interpreter(ABC):
@@ -55,15 +49,31 @@ class Interpreter(ABC):
 
     @property
     @abstractmethod
-    def category_list(self) -> list[CategoryPath]:
+    def category_list(self) -> list[tuple[str, list[CategoryPath]]]:
         """
         カテゴリーリストを取得する\n
-        リストの順序はプロンプト化における優先順位を表す
+        Screen ID ごとの list[CategoryPath] の順序はプロンプト化における優先順位を表す
 
         Returns:
-            list[CategoryPath]: カテゴリーリスト
+            tuple[str, list[CategoryPath]]: カテゴリーリスト((Screen ID, CategoryPath))
         """
         pass
+
+    def category_paths_on(self, screen_id: str) -> list[CategoryPath] | None:
+        """
+        カテゴリーリストから指定の Screen ID とペアの CategoryPath のリストを取得する\n
+        指定の Screen ID にあたるものが存在しない場合は None を返す
+
+        Args:
+            screen_id (str): Screen ID
+
+        Returns:
+            list[CategoryPath] | None: CategoryPath のリスト
+        """
+        for sid, paths in self.category_list:
+            if sid == screen_id:
+                return paths
+        return None
 
     def switch_prompter(self, yamlpath: Path) -> None:
         """
@@ -81,107 +91,200 @@ class Interpreter(ABC):
             if keyword == self.keyword():
                 self.prompter = Prompter.make(yamlpath)
 
-    def strip(self, prompt: Prompt) -> Prompt:
+    def strip(self, prompt: Prompt | None) -> Prompt | None:
         """
         カテゴリーリストに存在しない PromptParts を削ぎ落とす\n
-        ただし common は除外する(必ず結果に含める)\n
+        ただし common は必ず結果に含める\n
+        None についてはそのまま None を返す\n
         本関数は非破壊的である
 
         Args:
-            prompt (Prompt): Prompt
+            prompt (Prompt | None): Prompt
 
         Returns:
-            Prompt: Prompt
+            Prompt | None: Prompt
         """
-        result: Prompt = []
-        for prompt_parts in prompt:
-            if len(prompt_parts.path) >= 2 and prompt_parts.path not in self.category_list:
-                continue
-            result.append(prompt_parts)
-        return result
+        if prompt is None:
+            return None
 
-    def dedupe(self, prompt: Prompt) -> Prompt:
-        """
-        Prompt において同じ token を持つ Token のうち, |weight - 1| が最大のものを残す\n
-        順序は同じ token を持つ CategoryPath において,\n
-        カテゴリーリストで指定されている内の最も早いものに統一する\n
-        本関数は非破壊的である
+        paths = self.category_paths_on(prompt.screen_id)
+        if paths is None:
+            return None
 
-        Args:
-            prompt (Prompt): Prompt
+        def strip_(parts_list: list[PromptParts]) -> list[PromptParts]:
+            result: list[PromptParts] = []
+            for parts in parts_list:
+                if len(parts.path) == 0:
+                    # common は必ず追加
+                    result.append(parts)
+                    continue
 
-        Returns:
-            Prompt: Prompt
-        """
-
-        def update_best(
-            best: dict[str, tuple[Token, set[CategoryPath]]], token: Token, path: CategoryPath
-        ) -> None:
-            """最も weight が 1 に近いトークンと, 収集元の CategoryPath をすべて記録する"""
-            score = abs(token.weight - 1.0)
-            current = best.get(token.token)
-            if current is None:
-                best[token.token] = (token, {path})
-            else:
-                crnt_token = token if score > abs(current[0].weight - 1.0) else current[0]
-                crnt_paths = current[1] | {path}
-                best[token.token] = (crnt_token, crnt_paths)
-
-        best: dict[str, tuple[Token, set[CategoryPath]]] = {}
-        for prompt_parts in prompt:
-            for token in prompt_parts.tokens:
-                update_best(best, token, prompt_parts.path)
-
-        def filter(
-            prompt_parts: PromptParts, best: dict[str, tuple[Token, set[CategoryPath]]]
-        ) -> PromptParts:
-            result = PromptParts()
-            for token in prompt_parts.tokens:
-                if best.get(token.token) is not None and best.get(token.token)[0] is token:
-                    result.tokens.append(token)
-                    if not result.path:
-                        result.path = next(
-                            (p for p in self.category_list if p in best[token.token][1]),
-                            prompt_parts.path,
-                        )
-                    best.pop(token.token)
+                if parts.path in paths:
+                    # CategoryPath がリスト内にある
+                    result.append(parts)
             return result
 
-        new_prompt: Prompt = []
-        for prompt_parts in prompt:
-            new_prompt.append(filter(prompt_parts, best))
+        result = Prompt(screen_id=prompt.screen_id)
+        result.positive = strip_(prompt.positive)
+        result.negative = strip_(prompt.negative)
 
-        return new_prompt
+        return result
 
-    def sort(self, prompt: Prompt) -> Prompt:
+    def dedupe(self, prompt: Prompt | None) -> Prompt | None:
+        """
+        Prompt 内の重複トークンを排除し, 単一の正規トークンに統合する\n
+        同一の token 文字列を持つ Token が複数の PromptParts にまたがって存在する場合,
+        以下のルールに従って一つに絞り込む：\n
+        **採用するトークン (weight の選択)**:
+            |weight - 1| が最大のもの, すなわち強調・減衰度合いが最も強いものを採用する
+            同点の場合は後から出現したものが優先される（dict 上書き動作による）\n
+        **配置先の CategoryPath (位置の選択)**:
+            重複するトークンを含む CategoryPath 群のうち, `category_list` において
+            最も早く登場するものに統一する
+            ただし common (path が空) は配置先候補から除外され, 常に他の明示的な Path が優先される\n
+        **出現順序の保持**:
+            配置先 Path が決定した後, 元の PromptParts 内での出現インデックス (idx) を
+            基準として昇順に並べ直すことで, 元の順序感を可能な限り維持する\n
+        本関数は非破壊的である\n
+        prompt が None の場合はそのまま None を返す
+
+        Args:
+            prompt (Prompt | None): 重複排除対象の Prompt
+
+        Returns:
+            Prompt | None: 重複排除済みの新しい Prompt
+        """
+        if prompt is None:
+            return None
+
+        category_paths = self.category_paths_on(prompt.screen_id)
+        if category_paths is None:
+            return None
+        category_paths.append(CategoryPath())  # common 用に末尾に空の Path を追加
+
+        Best: TypeAlias = dict[str, tuple[Token, set[tuple[CategoryPath, int]]]]
+
+        def make_best_(parts_list: list[PromptParts]) -> Best:
+            """
+            最も weight が 1 から遠いトークンと, 収集元の CategoryPath をすべて記録する
+            """
+            best: Best = {}
+            for parts in parts_list:
+                for token in parts.tokens:
+                    score = abs(token.weight - 1.0)
+                    current = best.get(token.token)
+                    idx = parts.tokens.index(token)
+                    if current is None:
+                        best[token.token] = (token, {(parts.path, idx)})
+                    else:
+                        crnt_token = token if score > abs(current[0].weight - 1.0) else current[0]
+                        # common (= path が空)は最優先候補になり得ないので Path 候補から除外
+                        crnt_paths = current[1] | {(parts.path, idx)} if parts.path else current[1]
+                        best[token.token] = (crnt_token, crnt_paths)
+            return best
+
+        def make_new_parts_(best: Best) -> list[PromptParts]:
+            """
+            Best から重複排除済みの PromptParts リストを再構築する
+
+            1. best の各トークンについて, category_paths の順序に従って最優先の Path を決定
+            2. 元の出現順序 (idx) を保持しながら PromptParts を生成
+            3. 同じ Path を持つトークンを集約して最終的な parts リストを構築
+            """
+            new_parts_n_idxs: list[tuple[PromptParts, int]] = []
+            appended: set[str] = set()
+            for token_key, (best_token, best_paths_idxs) in best.items():
+                for path in category_paths:
+                    for best_path, best_idx in best_paths_idxs:
+                        if token_key in appended or path != best_path:
+                            # Path 候補が複数ある場合の対策
+                            continue
+
+                        # 初めてひっかかった, つまり最優先のカテゴリーパスのみ採用
+                        new_parts_n_idxs.append(
+                            (PromptParts(path=best_path, tokens=[best_token]), best_idx)
+                        )
+                        appended.add(token_key)
+
+            # idx (= tuple[1]) について昇順にソート
+            sorted_list = sorted(new_parts_n_idxs, key=lambda t: t[1])
+
+            new_parts_list: list[PromptParts] = []
+            for parts, _ in sorted_list:
+                # ソート 済みなので順に加えていけば idx について昇順
+                for member_parts in new_parts_list:
+                    if parts.path == member_parts.path:
+                        member_parts.tokens.extend(parts.tokens)
+                        break
+                else:
+                    new_parts_list.append(parts)
+
+            return new_parts_list
+
+        return Prompt(
+            screen_id=prompt.screen_id,
+            positive=make_new_parts_(make_best_(prompt.positive)),
+            negative=make_new_parts_(make_best_(prompt.negative)),
+        )
+
+    def sort(self, prompt: Prompt | None) -> Prompt | None:
         """
         PromptBase を適切にソートする\n
         ソートルールはカテゴリーリスト内の CategoryPath の順序に従う\n
         リスト内にない CategoryPath は順に最後尾に置き換えられ,\n
         リスト内の存在しない CategoryPath は無視される\n
         また(通常は誤って)同じ CategoryPath がリスト内に存在する場合, 比べて後ろの位置となる\n
+        None についてはそのまま None を返す\n
         本関数は非破壊的である
+
+        Args:
+            prompt (Prompt | None): ソート対象の Prompt
+
+        Returns:
+            Prompt | None: ソート済みの新しい Prompt
         """
-        order_index: dict[CategoryPath, int] = {
-            path: i for i, path in enumerate(self.category_list)
-        }
+        if prompt is None:
+            return None
 
-        return sorted(prompt, key=lambda c: order_index.get(c.path, float("inf")))
+        category_paths = self.category_paths_on(prompt.screen_id)
+        if category_paths is None:
+            return None
 
-    def edit(self, prompt: Prompt) -> Prompt:
+        def sort_(parts_list: list[PromptParts]) -> list[PromptParts]:
+            order_index: dict[CategoryPath, int] = {}
+            i = 0
+            for _, paths in self.category_list:
+                for path in paths:
+                    order_index[path] = i
+                    i += 1
+            return sorted(parts_list, key=lambda c: order_index.get(c.path, float("inf")))
+
+        new_prompt = Prompt(
+            screen_id=prompt.screen_id,
+            positive=sort_(prompt.positive),
+            negative=sort_(prompt.negative),
+        )
+
+        return new_prompt
+
+    def edit(self, prompt: Prompt | None) -> Prompt | None:
         """
         非破壊的に prompt を編集, 記録する\n
+        None についてはそのまま None を返す\n
         各派生クラスはこの関数をオーバーライドすべきである(この関数自体を実行するのは構わない)
 
         Args:
-            prompt (Prompt): Prompt
+            prompt (Prompt | None): Prompt
 
         Returns:
-            Prompt: Prompt
+            Prompt | None: Prompt
         """
+        if prompt is None:
+            return None
+
         return self.sort(self.dedupe(self.strip(prompt)))
 
-    def make_prompt_set(self, text: str) -> PromptSet | None:
+    def make_prompt(self, text: str) -> Prompt | None:
         """
         テキストをもとに Prompter によって PromptSet を得る\n
         PromptSet は dedupe かつ sort 済み, 加えて edit も実施済みである\n
@@ -196,11 +299,10 @@ class Interpreter(ABC):
         if self.prompter is None:
             return None
 
-        positive, negative = self.prompter.to_prompt(text)
-        return PromptSet(positive=self.edit(positive), negative=self.edit(negative))
+        return self.edit(self.prompter.to_prompt(text))
 
     @staticmethod
-    def is_enough_prompt(prompt_set: PromptSet) -> bool:
+    def is_enough_prompt(prompt: Prompt) -> bool:
         """
         指定の PromptSet が生成に十分な情報を持っているか\n
         各派生クラスはこの関数をオーバーライドすべきである(この関数自体を実行するのは構わない)\n
@@ -212,4 +314,4 @@ class Interpreter(ABC):
         Returns:
             bool: True: 十分, False: 不十分(空文字列)
         """
-        return prompt_set is not None and (prompt_set.positive or prompt_set.negative)
+        return prompt is not None and (prompt.positive or prompt.negative)

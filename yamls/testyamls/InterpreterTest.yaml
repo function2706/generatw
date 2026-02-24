@@ -1,0 +1,100 @@
+interpreter: TestInterpreter
+strip:
+  ignition: "strip"
+  ng1:
+    pattern: "(x)"
+    maps:
+      x:
+        positive: NG1
+        negative: ng1
+  ok1:
+    pattern: "(x)"
+    maps:
+      x:
+        positive: OK1
+        negative: ok1
+  ng2:
+    pattern: "(x)"
+    maps:
+      x:
+        positive: NG2
+        negative: ng2
+  ok2:
+    pattern: "(x)"
+    maps:
+      x:
+        positive: OK2
+        negative: ok2
+  ng3:
+    pattern: "(x)"
+    maps:
+      x:
+        positive: NG3
+        negative: ng3
+  common:
+    positive: strip_common_pos
+    negative: strip_common_neg
+dedupe:
+  ignition: "dedupe"
+  map1:
+    pattern: "(x)"
+    maps:
+      x:
+        positive: MAP1
+        negative: dedupe,map1
+  map2:
+    pattern: "(x)"
+    maps:
+      x:
+        positive: (dedupe:2.1),MAP2,
+        negative: map2,
+  map3:
+    pattern: "(x)"
+    maps:
+      x:
+        positive: MAP3',(dedupe:1.5),MAP3
+        negative: (dedupe:0.15),map3
+  map4:
+    pattern: "(x)"
+    maps:
+      x:
+        positive: MAP4
+        negative: (dedupe:0.5),map4
+  map5:
+    pattern: "(x)"
+    maps:
+      x:
+        positive: MAP5
+        negative: map5,dedupe,map5'
+  common:
+    positive: dedupe_common_pos,(dedupe:2.5)
+    negative: dedupe_common_neg
+sort:
+  ignition: "sort"
+  map1:
+    pattern: "(x)"
+    maps:
+      x:
+        positive: MAP1
+        negative: map1
+  map2:
+    pattern: "(x)"
+    maps:
+      x:
+        positive: MAP2
+        negative: map2
+  map3:
+    pattern: "(x)"
+    maps:
+      x:
+        positive: MAP3
+        negative: map3
+  map4:
+    pattern: "(x)"
+    maps:
+      x:
+        positive: MAP4
+        negative: map4
+  common:
+    positive: sort_common_pos
+    negative: sort_common_neg

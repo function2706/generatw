@@ -107,14 +107,27 @@ class PromptParts:
 
     Attributes:
         path (CategoryPath): Category パス
-        tokens (list[Token]): プロンプト
+        tokens (list[Token]): トークンのリスト
     """
 
     path: CategoryPath = field(default_factory=tuple)
     tokens: list[Token] = field(default_factory=list)
 
 
-Prompt: TypeAlias = list[PromptParts]
+@dataclass
+class Prompt:
+    """
+    Screen ごとにまとめられた PromptParts
+
+    Attributes:
+        screen_id (str): Screen ID
+        positive (list[PromptParts]): ポジティブプロンプト
+        negative (list[PromptParts]): ネガティブプロンプト
+    """
+
+    screen_id: str | None = None
+    positive: list[PromptParts] = field(default_factory=list)
+    negative: list[PromptParts] = field(default_factory=list)
 
 
 @dataclass
@@ -568,7 +581,7 @@ class Screen:
 
         return obj
 
-    def to_prompts(self, text: str) -> tuple[Prompt, Prompt] | None:
+    def to_prompts(self, text: str) -> Prompt | None:
         """
         テキストから Prompt を生成する\n
         PromptParts の tokens が空の場合は追加しない
@@ -577,38 +590,31 @@ class Screen:
             text (str): テキスト
 
         Returns:
-            tuple[Prompt, Prompt] | None:
-            Prompt のタプル(ポジティブ/ネガティブ), 未発火時は None
-            tuple の片方が空の list である場合があることに注意
+            tuple[Prompt, Prompt] | None: Prompt, 未発火時は None
         """
         if self.ignition.search(text) is None:
             # 発火しなかった場合は None
             return None
 
-        positive = Prompt()
-        negative = Prompt()
+        prompt = Prompt(screen_id=self.screen_id)
         for category in self.categories:
             result = category.to_prompts(text)
-            if result is not None:
-                pos_parts, neg_parts = result
+            if result is None:
                 # tokens が空の場合は追加しない
-                if pos_parts.tokens:
-                    pos_parts.path = (self.screen_id,) + pos_parts.path
-                    positive.append(pos_parts)
-                if neg_parts.tokens:
-                    neg_parts.path = (self.screen_id,) + neg_parts.path
-                    negative.append(neg_parts)
+                continue
+
+            pos_parts, neg_parts = result
+            if pos_parts.tokens:
+                prompt.positive.append(pos_parts)
+            if neg_parts.tokens:
+                prompt.negative.append(neg_parts)
 
         if self.common_positive:
-            common_pos = PromptParts(path=(self.screen_id,))
-            common_pos.tokens.extend(self.common_positive)
-            positive.append(common_pos)
+            prompt.positive.append(PromptParts(tokens=self.common_positive))
         if self.common_negative:
-            common_neg = PromptParts(path=(self.screen_id,))
-            common_neg.tokens.extend(self.common_negative)
-            negative.append(common_neg)
+            prompt.negative.append(PromptParts(tokens=self.common_negative))
 
-        return positive, negative
+        return prompt
 
 
 @dataclass
@@ -650,34 +656,26 @@ class Prompter:
 
         return obj
 
-    def to_prompt(self, text: str) -> tuple[Prompt, Prompt]:
+    def to_prompt(self, text: str) -> Prompt:
         """
         テキストから Prompt を生成する\n
-        Prompt が空の list の場合は追加しない
+        Prompt が空の list の場合は追加しない\n
+        発火した Screen がなかった場合も空の Prompt を返す (Screen ID = None)
 
         Args:
             text (str): テキスト
 
         Returns:
-            tuple[Prompt, Prompt]: Prompt のタプル(ポジティブ/ネガティブ)
+            Prompt: Prompt
         """
-        positive: Prompt = []
-        negative: Prompt = []
-
+        prompt: Prompt = None
         for screen in self.screens:
-            result = screen.to_prompts(text)
-            if result is None:
-                # 未発火
-                continue
+            prompt = screen.to_prompts(text)
+            if prompt is not None:
+                # 初めて発火した Screen のみを付帯
+                break
 
-            pos, neg = result
-            # 空の list は追加しない
-            if pos:
-                positive.extend(pos)
-            if neg:
-                negative.extend(neg)
-
-        return positive, negative
+        return prompt if prompt is not None else Prompt()
 
     def todict(self) -> dict:
         return asdict(self)

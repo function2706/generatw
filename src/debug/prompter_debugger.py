@@ -17,462 +17,462 @@ from common.functions import dump_json  # noqa: E402
 from parser.prompter import Prompter  # noqa: E402
 
 CORRECT_RESULT = {
-    "CASE 'empty definition'": {"Empty-1: 'go'": {"POS": [], "NEG": []}},
+    "CASE 'empty definition'": {"Empty-1: 'go'": {"SID": "main", "POS": [], "NEG": []}},
     "CASE 'ignition'": {
-        "All-1: 'foobarbaz'": {"POS": [], "NEG": []},
-        "All-2: 'main name: Hogemaru,'": {
+        "PrompterTest-1: 'foobarbaz'": {"SID": None, "POS": [], "NEG": []},
+        "PrompterTest-2: 'main name: Hogemaru,'": {
+            "SID": "main",
             "POS": [
-                {"path": ["main", "name"], "tokens": [{"token": "hogemaru", "weight": 1.0}]},
-                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+                {"path": ["name"], "tokens": [{"token": "hogemaru", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]},
             ],
-            "NEG": [
-                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]}
-            ],
+            "NEG": [{"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]}],
         },
-        "All-3: 'main meta name: Fugami,weather: sunny,'": {
+        "PrompterTest-3: 'main meta name: Fugami,weather: sunny,'": {
+            "SID": "main",
             "POS": [
-                {"path": ["main", "name"], "tokens": [{"token": "fugami", "weight": 1.2}]},
-                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
-                {"path": ["meta", "weather"], "tokens": [{"token": "sunny", "weight": 1.0}]},
-                {"path": ["meta"], "tokens": [{"token": "common meta", "weight": 1.0}]},
+                {"path": ["name"], "tokens": [{"token": "fugami", "weight": 1.2}]},
+                {"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]},
             ],
-            "NEG": [
-                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]}
-            ],
+            "NEG": [{"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]}],
         },
     },
     "CASE 'match'": {
-        "All-1: 'main vibe: good,'": {
-            "POS": [
-                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]}
-            ],
-            "NEG": [
-                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]}
-            ],
+        "PrompterTest-1: 'main vibe: good,'": {
+            "SID": "main",
+            "POS": [{"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]}],
+            "NEG": [{"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]}],
         },
-        "All-2: 'sub vibe: good,'": {"POS": [], "NEG": []},
-        "All-3: 'main season: 02,name: Foota,'": {
+        "PrompterTest-2: 'sub vibe: good,'": {"SID": "sub", "POS": [], "NEG": []},
+        "PrompterTest-3: 'main season: 02,name: Foota,'": {
+            "SID": "main",
             "POS": [
                 {
-                    "path": ["main", "name"],
+                    "path": ["name"],
                     "tokens": [{"token": "foota", "weight": 1.0}, {"token": "boy", "weight": 1.1}],
                 },
                 {
-                    "path": ["main", "season"],
+                    "path": ["season"],
                     "tokens": [
                         {"token": "winter", "weight": 1.0},
                         {"token": "cool", "weight": 1.0},
                     ],
                 },
-                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]},
             ],
             "NEG": [
-                {"path": ["main", "name"], "tokens": [{"token": "barta", "weight": 1.0}]},
-                {
-                    "path": ["main", "season"],
-                    "tokens": [{"token": "scorching heat", "weight": 1.0}],
-                },
-                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+                {"path": ["name"], "tokens": [{"token": "barta", "weight": 1.0}]},
+                {"path": ["season"], "tokens": [{"token": "scorching heat", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
         },
-        "All-4: 'main name: Hogemaru,name: Fugami,'": {
+        "PrompterTest-4: 'main name: Hogemaru,name: Fugami,'": {
+            "SID": "main",
             "POS": [
                 {
-                    "path": ["main", "name"],
+                    "path": ["name"],
                     "tokens": [
                         {"token": "hogemaru", "weight": 1.0},
                         {"token": "fugami", "weight": 1.2},
                     ],
                 },
-                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]},
             ],
-            "NEG": [
-                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]}
-            ],
+            "NEG": [{"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]}],
         },
     },
     "CASE 'hit'": {
-        "All-1: 'meta weather: snowy,'": {
+        "PrompterTest-1: 'meta weather: snowy,'": {
+            "SID": "meta",
             "POS": [
-                {"path": ["meta", "weather"], "tokens": [{"token": "cloudy", "weight": 1.0}]},
-                {"path": ["meta"], "tokens": [{"token": "common meta", "weight": 1.0}]},
+                {"path": ["weather"], "tokens": [{"token": "cloudy", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common meta", "weight": 1.0}]},
             ],
             "NEG": [],
         },
-        "All-2: 'meta location: office,'": {
-            "POS": [{"path": ["meta"], "tokens": [{"token": "common meta", "weight": 1.0}]}],
+        "PrompterTest-2: 'meta location: office,'": {
+            "SID": "meta",
+            "POS": [{"path": [], "tokens": [{"token": "common meta", "weight": 1.0}]}],
             "NEG": [],
         },
-        "All-3: 'sub like: Carrot,'": {
-            "POS": [{"path": ["sub", "like"], "tokens": [{"token": "nothing", "weight": 1.0}]}],
+        "PrompterTest-3: 'sub like: Carrot,'": {
+            "SID": "sub",
+            "POS": [{"path": ["like"], "tokens": [{"token": "nothing", "weight": 1.0}]}],
             "NEG": [],
         },
-        "All-4: 'sub ability: Toughness,'": {"POS": [], "NEG": []},
+        "PrompterTest-4: 'sub ability: Toughness,'": {"SID": "sub", "POS": [], "NEG": []},
     },
     "CASE 'nest'": {
-        "All-1: 'main upper: T Shirt,lower: Pants,'": {
+        "PrompterTest-1: 'main upper: T Shirt,lower: Pants,'": {
+            "SID": "main",
             "POS": [
-                {
-                    "path": ["main", "fashion", "upper"],
-                    "tokens": [{"token": "t-shirt", "weight": 1.0}],
-                },
-                {
-                    "path": ["main", "fashion", "lower"],
-                    "tokens": [{"token": "pants", "weight": 1.0}],
-                },
-                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+                {"path": ["fashion", "upper"], "tokens": [{"token": "t-shirt", "weight": 1.0}]},
+                {"path": ["fashion", "lower"], "tokens": [{"token": "pants", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]},
             ],
-            "NEG": [
-                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]}
-            ],
+            "NEG": [{"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]}],
         }
     },
     "CASE 'capture'": {
-        "All-1: 'sub WoW!'": {
-            "POS": [{"path": ["sub", "whole"], "tokens": [{"token": "WoW", "weight": 1.0}]}],
+        "PrompterTest-1: 'sub WoW!'": {
+            "SID": "sub",
+            "POS": [{"path": ["whole"], "tokens": [{"token": "WoW", "weight": 1.0}]}],
             "NEG": [],
         },
-        "All-2: 'sub ng: Dummy,'": {"POS": [], "NEG": []},
-        "All-3: 'sub grade: 1,'": {
-            "POS": [{"path": ["sub", "grade"], "tokens": [{"token": "grade 1", "weight": 1.0}]}],
+        "PrompterTest-2: 'sub ng: Dummy,'": {"SID": "sub", "POS": [], "NEG": []},
+        "PrompterTest-3: 'sub grade: 1,'": {
+            "SID": "sub",
+            "POS": [{"path": ["grade"], "tokens": [{"token": "grade 1", "weight": 1.0}]}],
             "NEG": [],
         },
-        "All-4: 'sub grade: 2,'": {
-            "POS": [{"path": ["sub", "grade"], "tokens": [{"token": "grade 2", "weight": 1.0}]}],
+        "PrompterTest-4: 'sub grade: 2,'": {
+            "SID": "sub",
+            "POS": [{"path": ["grade"], "tokens": [{"token": "grade 2", "weight": 1.0}]}],
             "NEG": [],
         },
     },
     "CASE 'weight-tokens'": {
-        "All-1: 'main name: Foota,'": {
+        "PrompterTest-1: 'main name: Foota,'": {
+            "SID": "main",
             "POS": [
                 {
-                    "path": ["main", "name"],
+                    "path": ["name"],
                     "tokens": [{"token": "foota", "weight": 1.0}, {"token": "boy", "weight": 1.1}],
                 },
-                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]},
             ],
             "NEG": [
-                {"path": ["main", "name"], "tokens": [{"token": "barta", "weight": 1.0}]},
-                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+                {"path": ["name"], "tokens": [{"token": "barta", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
         }
     },
     "CASE 'default'": {
-        "All-1: 'meta weather: snowy,'": {
+        "PrompterTest-1: 'meta weather: snowy,'": {
+            "SID": "meta",
             "POS": [
-                {"path": ["meta", "weather"], "tokens": [{"token": "cloudy", "weight": 1.0}]},
-                {"path": ["meta"], "tokens": [{"token": "common meta", "weight": 1.0}]},
+                {"path": ["weather"], "tokens": [{"token": "cloudy", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common meta", "weight": 1.0}]},
             ],
             "NEG": [],
         },
-        "All-2: 'main season: 13,'": {
+        "PrompterTest-2: 'main season: 13,'": {
+            "SID": "main",
             "POS": [
-                {"path": ["main", "season"], "tokens": [{"token": "ordinary", "weight": 1.0}]},
-                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+                {"path": ["season"], "tokens": [{"token": "ordinary", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]},
             ],
             "NEG": [
-                {"path": ["main", "season"], "tokens": [{"token": "storm", "weight": 1.0}]},
-                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+                {"path": ["season"], "tokens": [{"token": "storm", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
         },
-        "All-3: 'main name: HogetaFugao,'": {
+        "PrompterTest-3: 'main name: HogetaFugao,'": {
+            "SID": "main",
             "POS": [
-                {"path": ["main", "name"], "tokens": [{"token": "smith", "weight": 1.0}]},
-                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+                {"path": ["name"], "tokens": [{"token": "smith", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]},
             ],
-            "NEG": [
-                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]}
-            ],
+            "NEG": [{"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]}],
         },
-        "All-4: 'main vitality: 1000,'": {
-            "POS": [
-                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]}
-            ],
+        "PrompterTest-4: 'main vitality: 1000,'": {
+            "SID": "main",
+            "POS": [{"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]}],
             "NEG": [
-                {"path": ["main", "vitality"], "tokens": [{"token": "special", "weight": 1.0}]},
-                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+                {"path": ["vitality"], "tokens": [{"token": "special", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
         },
     },
     "CASE 'common'": {
-        "All-1: 'common1'": {
-            "POS": [{"path": ["common1"], "tokens": [{"token": "common1", "weight": 1.0}]}],
+        "PrompterTest-1: 'common1'": {
+            "SID": "common1",
+            "POS": [{"path": [], "tokens": [{"token": "common1", "weight": 1.0}]}],
             "NEG": [],
         },
-        "All-2: 'common2'": {
-            "POS": [{"path": ["common2"], "tokens": [{"token": "common2", "weight": 1.0}]}],
+        "PrompterTest-2: 'common2'": {
+            "SID": "common2",
+            "POS": [{"path": [], "tokens": [{"token": "common2", "weight": 1.0}]}],
             "NEG": [],
         },
-        "All-3: 'common3'": {
+        "PrompterTest-3: 'common3'": {
+            "SID": "common3",
             "POS": [],
-            "NEG": [{"path": ["common3"], "tokens": [{"token": "common3", "weight": 1.0}]}],
+            "NEG": [{"path": [], "tokens": [{"token": "common3", "weight": 1.0}]}],
         },
-        "All-4: 'common4'": {
-            "POS": [{"path": ["common4"], "tokens": [{"token": "common4-pos", "weight": 1.0}]}],
-            "NEG": [{"path": ["common4"], "tokens": [{"token": "common4-neg", "weight": 1.0}]}],
+        "PrompterTest-4: 'common4'": {
+            "SID": "common4",
+            "POS": [{"path": [], "tokens": [{"token": "common4-pos", "weight": 1.0}]}],
+            "NEG": [{"path": [], "tokens": [{"token": "common4-neg", "weight": 1.0}]}],
         },
     },
     "CASE 'ranges'": {
-        "All-1: 'main season: 04'": {
+        "PrompterTest-1: 'main season: 04'": {
+            "SID": "main",
             "POS": [
                 {
-                    "path": ["main", "season"],
+                    "path": ["season"],
                     "tokens": [
                         {"token": "spring", "weight": 1.0},
                         {"token": "cool", "weight": 1.0},
                         {"token": "H1", "weight": 1.0},
                     ],
                 },
-                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]},
             ],
             "NEG": [
                 {
-                    "path": ["main", "season"],
+                    "path": ["season"],
                     "tokens": [
                         {"token": "scorching heat", "weight": 1.0},
                         {"token": "H2", "weight": 1.0},
                     ],
                 },
-                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
         },
-        "All-2: 'main season: 08'": {
+        "PrompterTest-2: 'main season: 08'": {
+            "SID": "main",
             "POS": [
                 {
-                    "path": ["main", "season"],
+                    "path": ["season"],
                     "tokens": [{"token": "summer", "weight": 1.0}, {"token": "H1", "weight": 1.0}],
                 },
-                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]},
             ],
             "NEG": [
                 {
-                    "path": ["main", "season"],
+                    "path": ["season"],
                     "tokens": [{"token": "cold", "weight": 1.0}, {"token": "H2", "weight": 1.0}],
                 },
-                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
         },
-        "All-3: 'main season: 08'": {
+        "PrompterTest-3: 'main season: 08'": {
+            "SID": "main",
             "POS": [
                 {
-                    "path": ["main", "season"],
+                    "path": ["season"],
                     "tokens": [{"token": "summer", "weight": 1.0}, {"token": "H1", "weight": 1.0}],
                 },
-                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]},
             ],
             "NEG": [
                 {
-                    "path": ["main", "season"],
+                    "path": ["season"],
                     "tokens": [{"token": "cold", "weight": 1.0}, {"token": "H2", "weight": 1.0}],
                 },
-                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
         },
-        "All-4: 'main season: 07'": {
+        "PrompterTest-4: 'main season: 07'": {
+            "SID": "main",
             "POS": [
                 {
-                    "path": ["main", "season"],
+                    "path": ["season"],
                     "tokens": [{"token": "summer", "weight": 1.0}, {"token": "H1", "weight": 1.0}],
                 },
-                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]},
             ],
             "NEG": [
                 {
-                    "path": ["main", "season"],
+                    "path": ["season"],
                     "tokens": [{"token": "cold", "weight": 1.0}, {"token": "H2", "weight": 1.0}],
                 },
-                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
         },
-        "All-5: 'main season: 01'": {
+        "PrompterTest-5: 'main season: 01'": {
+            "SID": "main",
             "POS": [
                 {
-                    "path": ["main", "season"],
+                    "path": ["season"],
                     "tokens": [
                         {"token": "winter", "weight": 1.1},
                         {"token": "snow", "weight": 1.0},
                         {"token": "cool", "weight": 1.0},
                     ],
                 },
-                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]},
             ],
             "NEG": [
-                {
-                    "path": ["main", "season"],
-                    "tokens": [{"token": "scorching heat", "weight": 1.0}],
-                },
-                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+                {"path": ["season"], "tokens": [{"token": "scorching heat", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
         },
-        "All-6: 'main season: 09'": {
+        "PrompterTest-6: 'main season: 09'": {
+            "SID": "main",
             "POS": [
                 {
-                    "path": ["main", "season"],
+                    "path": ["season"],
                     "tokens": [
                         {"token": "summer", "weight": 1.0},
                         {"token": "cool", "weight": 1.0},
                         {"token": "H1", "weight": 1.0},
                     ],
                 },
-                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]},
             ],
             "NEG": [
                 {
-                    "path": ["main", "season"],
+                    "path": ["season"],
                     "tokens": [
                         {"token": "cold", "weight": 1.0},
                         {"token": "scorching heat", "weight": 1.0},
                         {"token": "H2", "weight": 1.0},
                     ],
                 },
-                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
         },
-        "All-7: 'main season: 13'": {
+        "PrompterTest-7: 'main season: 13'": {
+            "SID": "main",
             "POS": [
-                {"path": ["main", "season"], "tokens": [{"token": "ordinary", "weight": 1.0}]},
-                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+                {"path": ["season"], "tokens": [{"token": "ordinary", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]},
             ],
             "NEG": [
-                {"path": ["main", "season"], "tokens": [{"token": "storm", "weight": 1.0}]},
-                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+                {"path": ["season"], "tokens": [{"token": "storm", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
         },
-        "All-8: 'sub rwd: c,'": {"POS": [], "NEG": []},
+        "PrompterTest-8: 'sub rwd: c,'": {"SID": "sub", "POS": [], "NEG": []},
     },
     "CASE 'intervals'": {
-        "All-1: 'main vitality: 100,'": {
+        "PrompterTest-1: 'main vitality: 100,'": {
+            "SID": "main",
             "POS": [
-                {"path": ["main", "vitality"], "tokens": [{"token": "perfect", "weight": 1.0}]},
-                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+                {"path": ["vitality"], "tokens": [{"token": "perfect", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]},
             ],
-            "NEG": [
-                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]}
-            ],
+            "NEG": [{"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]}],
         },
-        "All-2: 'main vitality: 50,'": {
+        "PrompterTest-2: 'main vitality: 50,'": {
+            "SID": "main",
             "POS": [
                 {
-                    "path": ["main", "vitality"],
+                    "path": ["vitality"],
                     "tokens": [
                         {"token": "low", "weight": 1.0},
                         {"token": "bad", "weight": 1.0},
                         {"token": "middle", "weight": 1.0},
                     ],
                 },
-                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]},
             ],
             "NEG": [
                 {
-                    "path": ["main", "vitality"],
+                    "path": ["vitality"],
                     "tokens": [{"token": "good", "weight": 1.0}, {"token": "high", "weight": 1.0}],
                 },
-                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
         },
-        "All-3: 'main vitality: 95,'": {
+        "PrompterTest-3: 'main vitality: 95,'": {
+            "SID": "main",
             "POS": [
-                {"path": ["main", "vitality"], "tokens": [{"token": "perfect", "weight": 1.0}]},
-                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+                {"path": ["vitality"], "tokens": [{"token": "perfect", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]},
             ],
-            "NEG": [
-                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]}
-            ],
+            "NEG": [{"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]}],
         },
-        "All-4: 'main vitality: 20,'": {
+        "PrompterTest-4: 'main vitality: 20,'": {
+            "SID": "main",
             "POS": [
                 {
-                    "path": ["main", "vitality"],
+                    "path": ["vitality"],
                     "tokens": [{"token": "low", "weight": 1.0}, {"token": "bad", "weight": 1.0}],
                 },
-                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]},
             ],
             "NEG": [
                 {
-                    "path": ["main", "vitality"],
+                    "path": ["vitality"],
                     "tokens": [
                         {"token": "good", "weight": 1.0},
                         {"token": "high", "weight": 1.0},
                         {"token": "ok", "weight": 1.0},
                     ],
                 },
-                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
         },
-        "All-5: 'main vitality: 30,'": {
+        "PrompterTest-5: 'main vitality: 30,'": {
+            "SID": "main",
             "POS": [
                 {
-                    "path": ["main", "vitality"],
+                    "path": ["vitality"],
                     "tokens": [{"token": "low", "weight": 1.0}, {"token": "bad", "weight": 1.0}],
                 },
-                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]},
             ],
             "NEG": [
                 {
-                    "path": ["main", "vitality"],
+                    "path": ["vitality"],
                     "tokens": [
                         {"token": "good", "weight": 1.0},
                         {"token": "high", "weight": 1.0},
                         {"token": "ok", "weight": 1.0},
                     ],
                 },
-                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
         },
-        "All-6: 'main vitality: 20,'": {
+        "PrompterTest-6: 'main vitality: 20,'": {
+            "SID": "main",
             "POS": [
                 {
-                    "path": ["main", "vitality"],
+                    "path": ["vitality"],
                     "tokens": [{"token": "low", "weight": 1.0}, {"token": "bad", "weight": 1.0}],
                 },
-                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]},
             ],
             "NEG": [
                 {
-                    "path": ["main", "vitality"],
+                    "path": ["vitality"],
                     "tokens": [
                         {"token": "good", "weight": 1.0},
                         {"token": "high", "weight": 1.0},
                         {"token": "ok", "weight": 1.0},
                     ],
                 },
-                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
         },
-        "All-7: 'main vitality: 40,'": {
+        "PrompterTest-7: 'main vitality: 40,'": {
+            "SID": "main",
             "POS": [
                 {
-                    "path": ["main", "vitality"],
+                    "path": ["vitality"],
                     "tokens": [
                         {"token": "low", "weight": 1.0},
                         {"token": "bad", "weight": 1.0},
                         {"token": "middle", "weight": 1.0},
                     ],
                 },
-                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]},
             ],
             "NEG": [
                 {
-                    "path": ["main", "vitality"],
+                    "path": ["vitality"],
                     "tokens": [
                         {"token": "good", "weight": 1.0},
                         {"token": "high", "weight": 1.0},
                         {"token": "ok", "weight": 1.0},
                     ],
                 },
-                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
         },
-        "All-8: 'main vitality: 1000,'": {
-            "POS": [
-                {"path": ["main"], "tokens": [{"token": "common main positive", "weight": 1.0}]}
-            ],
+        "PrompterTest-8: 'main vitality: 1000,'": {
+            "SID": "main",
+            "POS": [{"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]}],
             "NEG": [
-                {"path": ["main", "vitality"], "tokens": [{"token": "special", "weight": 1.0}]},
-                {"path": ["main"], "tokens": [{"token": "common main negative", "weight": 1.0}]},
+                {"path": ["vitality"], "tokens": [{"token": "special", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
         },
-        "All-9: 'sub iwd: 100,'": {"POS": [], "NEG": []},
+        "PrompterTest-9: 'sub iwd: 100,'": {"SID": "sub", "POS": [], "NEG": []},
     },
 }
 
@@ -525,8 +525,8 @@ class PrompterDebugger:
         result: dict[str, dict[str, Any]] = {}
         for i, text in enumerate(texts):
             try:
-                pos, neg = self.prompter.to_prompt(text)
-                posneg = {"POS": pos, "NEG": neg}
+                prompt = self.prompter.to_prompt(text)
+                posneg = {"SID": prompt.screen_id, "POS": prompt.positive, "NEG": prompt.negative}
                 if with_texts:
                     result[f"{yamlname}-{i + 1}: '{text}'"] = posneg
                 else:
@@ -589,14 +589,14 @@ def debug_prompter() -> None:
                 "yamls/testyamls/Empty.yaml": ["go"]  # 空定義
             },
             "ignition": {
-                "yamls/testyamls/All.yaml": [
+                "yamls/testyamls/PrompterTest.yaml": [
                     "foobarbaz",  # Screen 発火なし
                     "main name: Hogemaru,",  # Screen 発火
                     "main meta name: Fugami,weather: sunny,",  # 複数 Screen 発火
                 ]
             },
             "match": {
-                "yamls/testyamls/All.yaml": [
+                "yamls/testyamls/PrompterTest.yaml": [
                     "main vibe: good,",  # マッチなし, common あり
                     "sub vibe: good,",  # マッチなし, common なし
                     "main season: 02,name: Foota,",  # マッチ順序
@@ -604,7 +604,7 @@ def debug_prompter() -> None:
                 ]
             },
             "hit": {
-                "yamls/testyamls/All.yaml": [
+                "yamls/testyamls/PrompterTest.yaml": [
                     "meta weather: snowy,",  # ヒットせず, default あり, common あり
                     "meta location: office,",  # ヒットせず, default なし, common あり
                     "sub like: Carrot,",  # ヒットせず, default あり, common なし
@@ -612,12 +612,12 @@ def debug_prompter() -> None:
                 ]
             },
             "nest": {
-                "yamls/testyamls/All.yaml": [
+                "yamls/testyamls/PrompterTest.yaml": [
                     "main upper: T Shirt,lower: Pants,",  # 多階層 Rule
                 ]
             },
             "capture": {
-                "yamls/testyamls/All.yaml": [
+                "yamls/testyamls/PrompterTest.yaml": [
                     "sub WoW!",  # 全体キャプチャ
                     "sub ng: Dummy,",  # キャプチャ範囲逸脱
                     "sub grade: 1,",  # キーが文字列の数値
@@ -625,12 +625,12 @@ def debug_prompter() -> None:
                 ]
             },
             "weight-tokens": {
-                "yamls/testyamls/All.yaml": [
+                "yamls/testyamls/PrompterTest.yaml": [
                     "main name: Foota,",  # 重み付き複数トークン
                 ]
             },
             "default": {
-                "yamls/testyamls/All.yaml": [
+                "yamls/testyamls/PrompterTest.yaml": [
                     "meta weather: snowy,",  # 省略形
                     "main season: 13,",  # 両方記述
                     "main name: HogetaFugao,",  # positive のみ
@@ -638,7 +638,7 @@ def debug_prompter() -> None:
                 ]
             },
             "common": {
-                "yamls/testyamls/All.yaml": [
+                "yamls/testyamls/PrompterTest.yaml": [
                     "common1",  # 省略形
                     "common2",  # positive のみ
                     "common3",  # negative のみ
@@ -646,7 +646,7 @@ def debug_prompter() -> None:
                 ]
             },
             "ranges": {
-                "yamls/testyamls/All.yaml": [
+                "yamls/testyamls/PrompterTest.yaml": [
                     "main season: 04",  # 省略形
                     "main season: 08",  # positive のみ
                     "main season: 08",  # negative のみ
@@ -658,7 +658,7 @@ def debug_prompter() -> None:
                 ]
             },
             "intervals": {
-                "yamls/testyamls/All.yaml": [
+                "yamls/testyamls/PrompterTest.yaml": [
                     "main vitality: 100,",  # 境界値
                     "main vitality: 50,",  # 省略形
                     "main vitality: 95,",  # positive のみ

@@ -249,7 +249,7 @@ class Master(MasterIF):
             if self.crnt_gui_configs.print_event:
                 print(f"{self.displayer.__class__.__name__:20} > {event.__class__.__name__:20}")
             if isinstance(event, OnRepeatTask):
-                if self.parser.crnt_prompt_set:
+                if self.parser.crnt_prompt:
                     pos, neg = self.parser.make_prompt_strs()
                     self.reserve_txt2img_task(pos, neg)
             if isinstance(event, OnInterruptTask):

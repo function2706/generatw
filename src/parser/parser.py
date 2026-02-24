@@ -18,9 +18,10 @@ from common.functions import BottleMail, dirname_by_prompts, dump_json
 from master.events import NewPrompts, ParserEvent
 from master.interfaces import MasterIF
 from parser.interpreter.debug_interpreter import DebugInterpreter
-from parser.interpreter.interpreter import Interpreter, PromptSet
+from parser.interpreter.interpreter import Interpreter
 from parser.interpreter.test_interpreter import TestInterpreter
 from parser.interpreter.theworld_interpreter import TheWorldInterpreter
+from parser.prompter import Prompt
 
 INTERPRETER_LIST: list[type[Interpreter]] = [
     TestInterpreter,
@@ -72,7 +73,7 @@ class Parser:
         self.debug_interpreter: DebugInterpreter = DebugInterpreter(Consts.debug_yamlpath)
 
         self.crnt_clipboard = ""
-        self.crnt_prompt_set: PromptSet = None
+        self.crnt_prompt: Prompt = None
 
         self.event = Event()
         self.parser_thread = threading.Thread(
@@ -124,14 +125,14 @@ class Parser:
         Returns:
             str: プロンプト文字列
         """
-        if self.crnt_prompt_set is None:
+        if self.crnt_prompt is None:
             return None
 
         pos_list = [
-            token.to_str() for tokens in self.crnt_prompt_set.positive for token in tokens.tokens
+            token.to_str() for tokens in self.crnt_prompt.positive for token in tokens.tokens
         ]
         neg_list = [
-            token.to_str() for tokens in self.crnt_prompt_set.negative for token in tokens.tokens
+            token.to_str() for tokens in self.crnt_prompt.negative for token in tokens.tokens
         ]
 
         return ",".join(pos_list), ",".join(neg_list)
@@ -154,9 +155,12 @@ class Parser:
         Returns:
             bool: True: 十分, False: 不十分(空文字列)
         """
-        return self.interpreter.is_enough_prompt(self.crnt_prompt_set)
+        if self.event.in_debugging.is_set():
+            return self.debug_interpreter.is_enough_prompt(self.crnt_prompt)
+        else:
+            return self.interpreter.is_enough_prompt(self.crnt_prompt)
 
-    def inform_new_prompt(self, prompt_set: PromptSet) -> None:
+    def inform_new_prompt(self, prompt: Prompt) -> None:
         """
         Master に新たなプロンプトを報告する\n
         更新がない, あるいは情報が不十分な場合は何もしない
@@ -164,27 +168,30 @@ class Parser:
         Args:
             prompt_set (PromptSet): PromptSet
         """
-        if not prompt_set.positive and not prompt_set.negative:
-            # 完全に空の場合は何もしない(想定外クリップボード文字列の検知も含む)
-            return
+        try:
+            if not prompt.positive and not prompt.negative:
+                # 完全に空の場合は何もしない(想定外クリップボード文字列の検知も含む)
+                return
 
-        if prompt_set == self.crnt_prompt_set:
-            return
-        self.crnt_prompt_set = prompt_set
+            if prompt == self.crnt_prompt:
+                return
+            self.crnt_prompt = prompt
 
-        if self.master.crnt_gui_configs.print_new_prompt_set:
-            dump_json(prompt_set, "new_prompt_set")
+            if self.master.crnt_gui_configs.print_new_prompt_set:
+                dump_json(prompt, "new_prompt_set")
 
-        if not self.is_enough_prompt():
-            # 空ではないが条件を満たさない
-            self.to_master.enclose(NewPrompts(is_enough=False))
-            return
+            if not self.is_enough_prompt():
+                # 空ではないが条件を満たさない
+                self.to_master.enclose(NewPrompts(is_enough=False))
+                return
 
-        pos, neg = self.make_prompt_strs()
-        if self.master.crnt_gui_configs.print_new_prompt:
-            dump_json({"POS": pos, "NEG": neg}, "new_prompt")
+            pos, neg = self.make_prompt_strs()
+            if self.master.crnt_gui_configs.print_new_prompt:
+                dump_json({"POS": pos, "NEG": neg}, "new_prompt")
 
-        self.to_master.enclose(NewPrompts(is_enough=True, positive=pos, negative=neg))
+            self.to_master.enclose(NewPrompts(is_enough=True, positive=pos, negative=neg))
+        finally:
+            self.event.in_debugging.clear()
 
     def ready_for_debug(self) -> None:
         """
@@ -195,13 +202,13 @@ class Parser:
             f"debug name:{str(random.randint(1, 3))} vibe:{str(random.randint(1, 9))}"
             f" upper:{str(random.randint(1, 9))} lower:{str(random.randint(1, 9))}"
         )
+        self.event.in_debugging.set()
         if self.master.crnt_gui_configs.allow_edit_clipboard:
             # スレッド上の手順に委ねる
             pyperclip.copy(dummy_input)
-            self.event.in_debugging.set()
             return
 
-        prompt_set = self.debug_interpreter.make_prompt_set(dummy_input)
+        prompt_set = self.debug_interpreter.make_prompt(dummy_input)
         if prompt_set is None:
             return
 
@@ -224,15 +231,14 @@ class Parser:
                     print("new_clipboard:")
                     print(new_clipboard)
 
-                prompt_set = None
+                prompt = None
                 if self.event.in_debugging.is_set():
-                    prompt_set = self.debug_interpreter.make_prompt_set(new_clipboard)
-                    self.event.in_debugging.clear()
+                    prompt = self.debug_interpreter.make_prompt(new_clipboard)
                 elif self.interpreter is not None:
-                    prompt_set = self.interpreter.make_prompt_set(new_clipboard)
+                    prompt = self.interpreter.make_prompt(new_clipboard)
 
-                if prompt_set is not None:
-                    self.inform_new_prompt(prompt_set)
+                if prompt is not None:
+                    self.inform_new_prompt(prompt)
             except Exception as e:
                 raise Exception(
                     f"Any exception occurred in {threading.current_thread().name}: "

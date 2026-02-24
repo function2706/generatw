@@ -17,9 +17,9 @@ class TestInterpreter(Interpreter):
 
     def __init__(self, yamlpath: Path):
         super().__init__(yamlpath)
-        self.category_list_v = []
+        self.category_list_v: list[tuple[str, list[CategoryPath]]] = []
 
-    def restore_category_list(self, new_list: list[CategoryPath]) -> None:
+    def restore_category_list(self, new_list: list[tuple[str, list[CategoryPath]]]) -> None:
         """
         カテゴリーリストを更新する
 
@@ -29,5 +29,5 @@ class TestInterpreter(Interpreter):
         self.category_list_v = new_list
 
     @property
-    def category_list(self) -> list[CategoryPath]:
+    def category_list(self) -> list[tuple[str, list[CategoryPath]]]:
         return self.category_list_v

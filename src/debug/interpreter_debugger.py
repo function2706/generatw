@@ -18,53 +18,226 @@ from parser.parser import Parser  # noqa: E402
 from parser.prompter import CategoryPath  # noqa: E402
 
 CORRECT_RESULT = {
-    "CASE 'dedupe'": {
-        "Dedupe-1: 'go xxx'": {
-            "set": [
+    "CASE 'strip'": {
+        "InterpreterTest-1: 'strip xxx'": {
+            "dataclass": [
                 {
+                    "screen_id": "strip",
                     "positive": [
-                        {"path": ["sub", "map2"], "tokens": [{"token": "sub_MAP2", "weight": 1.0}]},
-                        {
-                            "path": ["main", "map1"],
-                            "tokens": [{"token": "main_MAP1", "weight": 1.0}],
-                        },
-                        {
-                            "path": ["sub", "map1"],
-                            "tokens": [
-                                {"token": "foo", "weight": 2.1},
-                                {"token": "sub_MAP1", "weight": 1.0},
-                            ],
-                        },
-                        {
-                            "path": ["main", "map2"],
-                            "tokens": [{"token": "main_MAP2", "weight": 1.0}],
-                        },
-                        {"path": ["main"], "tokens": [{"token": "common_pos", "weight": 1.0}]},
+                        {"path": ["ok1"], "tokens": [{"token": "OK1", "weight": 1.0}]},
+                        {"path": ["ok2"], "tokens": [{"token": "OK2", "weight": 1.0}]},
+                        {"path": [], "tokens": [{"token": "strip_common_pos", "weight": 1.0}]},
                     ],
                     "negative": [
-                        {
-                            "path": ["sub", "map2"],
-                            "tokens": [
-                                {"token": "foo", "weight": 0.3},
-                                {"token": "main_map2", "weight": 1.0},
-                            ],
-                        },
-                        {"path": ["sub", "map2"], "tokens": [{"token": "sub_map2", "weight": 1.0}]},
-                        {
-                            "path": ["main", "map1"],
-                            "tokens": [{"token": "main_map1", "weight": 1.0}],
-                        },
-                        {"path": ["sub", "map1"], "tokens": [{"token": "sub_map1", "weight": 1.0}]},
-                        {"path": ["main"], "tokens": [{"token": "common_neg", "weight": 1.0}]},
+                        {"path": ["ok1"], "tokens": [{"token": "ok1", "weight": 1.0}]},
+                        {"path": ["ok2"], "tokens": [{"token": "ok2", "weight": 1.0}]},
+                        {"path": [], "tokens": [{"token": "strip_common_neg", "weight": 1.0}]},
                     ],
                 }
             ],
-            "prompts": {
-                "POS": "sub_MAP2,main_MAP1,(foo:2.1),sub_MAP1,main_MAP2,common_pos",
-                "NEG": "(foo:0.3),main_map2,sub_map2,main_map1,sub_map1,common_neg",
+            "string": {"POS": "OK1,OK2,strip_common_pos", "NEG": "ok1,ok2,strip_common_neg"},
+        }
+    },
+    "CASE 'dedupe'": {
+        "InterpreterTest-1: 'dedupe xxx'": {
+            "dataclass": [
+                {
+                    "screen_id": "dedupe",
+                    "positive": [
+                        {"path": ["map1"], "tokens": [{"token": "MAP1", "weight": 1.0}]},
+                        {
+                            "path": ["map2"],
+                            "tokens": [
+                                {"token": "dedupe", "weight": 2.5},
+                                {"token": "MAP2", "weight": 1.0},
+                            ],
+                        },
+                        {
+                            "path": ["map3"],
+                            "tokens": [
+                                {"token": "MAP3'", "weight": 1.0},
+                                {"token": "MAP3", "weight": 1.0},
+                            ],
+                        },
+                        {"path": ["map4"], "tokens": [{"token": "MAP4", "weight": 1.0}]},
+                        {"path": [], "tokens": [{"token": "dedupe_common_pos", "weight": 1.0}]},
+                    ],
+                    "negative": [
+                        {
+                            "path": ["map1"],
+                            "tokens": [
+                                {"token": "dedupe", "weight": 0.15},
+                                {"token": "map1", "weight": 1.0},
+                            ],
+                        },
+                        {"path": ["map2"], "tokens": [{"token": "map2", "weight": 1.0}]},
+                        {"path": ["map3"], "tokens": [{"token": "map3", "weight": 1.0}]},
+                        {"path": ["map4"], "tokens": [{"token": "map4", "weight": 1.0}]},
+                        {"path": [], "tokens": [{"token": "dedupe_common_neg", "weight": 1.0}]},
+                    ],
+                }
+            ],
+            "string": {
+                "POS": "MAP1,(dedupe:2.5),MAP2,MAP3',MAP3,MAP4,dedupe_common_pos",
+                "NEG": "(dedupe:0.15),map1,map2,map3,map4,dedupe_common_neg",
             },
         }
-    }
+    },
+    "CASE 'dedupe2'": {
+        "InterpreterTest-1: 'dedupe xxx'": {
+            "dataclass": [
+                {
+                    "screen_id": "dedupe",
+                    "positive": [
+                        {"path": ["map5"], "tokens": [{"token": "MAP5", "weight": 1.0}]},
+                        {"path": ["map1"], "tokens": [{"token": "MAP1", "weight": 1.0}]},
+                        {
+                            "path": ["map2"],
+                            "tokens": [
+                                {"token": "dedupe", "weight": 2.5},
+                                {"token": "MAP2", "weight": 1.0},
+                            ],
+                        },
+                        {
+                            "path": ["map3"],
+                            "tokens": [
+                                {"token": "MAP3'", "weight": 1.0},
+                                {"token": "MAP3", "weight": 1.0},
+                            ],
+                        },
+                        {"path": ["map4"], "tokens": [{"token": "MAP4", "weight": 1.0}]},
+                        {"path": [], "tokens": [{"token": "dedupe_common_pos", "weight": 1.0}]},
+                    ],
+                    "negative": [
+                        {
+                            "path": ["map5"],
+                            "tokens": [
+                                {"token": "map5", "weight": 1.0},
+                                {"token": "dedupe", "weight": 0.15},
+                                {"token": "map5'", "weight": 1.0},
+                            ],
+                        },
+                        {"path": ["map1"], "tokens": [{"token": "map1", "weight": 1.0}]},
+                        {"path": ["map2"], "tokens": [{"token": "map2", "weight": 1.0}]},
+                        {"path": ["map3"], "tokens": [{"token": "map3", "weight": 1.0}]},
+                        {"path": ["map4"], "tokens": [{"token": "map4", "weight": 1.0}]},
+                        {"path": [], "tokens": [{"token": "dedupe_common_neg", "weight": 1.0}]},
+                    ],
+                }
+            ],
+            "string": {
+                "POS": "MAP5,MAP1,(dedupe:2.5),MAP2,MAP3',MAP3,MAP4,dedupe_common_pos",
+                "NEG": "map5,(dedupe:0.15),map5',map1,map2,map3,map4,dedupe_common_neg",
+            },
+        }
+    },
+    "CASE 'dedupe3'": {
+        "InterpreterTest-1: 'dedupe xxx'": {
+            "dataclass": [
+                {
+                    "screen_id": "dedupe",
+                    "positive": [
+                        {"path": ["map5"], "tokens": [{"token": "MAP5", "weight": 1.0}]},
+                        {"path": ["map1"], "tokens": [{"token": "MAP1", "weight": 1.0}]},
+                        {
+                            "path": ["map2"],
+                            "tokens": [
+                                {"token": "dedupe", "weight": 2.5},
+                                {"token": "MAP2", "weight": 1.0},
+                            ],
+                        },
+                        {"path": ["map4"], "tokens": [{"token": "MAP4", "weight": 1.0}]},
+                        {"path": [], "tokens": [{"token": "dedupe_common_pos", "weight": 1.0}]},
+                    ],
+                    "negative": [
+                        {
+                            "path": ["map5"],
+                            "tokens": [
+                                {"token": "map5", "weight": 1.0},
+                                {"token": "dedupe", "weight": 0.5},
+                                {"token": "map5'", "weight": 1.0},
+                            ],
+                        },
+                        {"path": ["map1"], "tokens": [{"token": "map1", "weight": 1.0}]},
+                        {"path": ["map2"], "tokens": [{"token": "map2", "weight": 1.0}]},
+                        {"path": ["map4"], "tokens": [{"token": "map4", "weight": 1.0}]},
+                        {"path": [], "tokens": [{"token": "dedupe_common_neg", "weight": 1.0}]},
+                    ],
+                }
+            ],
+            "string": {
+                "POS": "MAP5,MAP1,(dedupe:2.5),MAP2,MAP4,dedupe_common_pos",
+                "NEG": "map5,(dedupe:0.5),map5',map1,map2,map4,dedupe_common_neg",
+            },
+        }
+    },
+    "CASE 'dedupe4'": {
+        "InterpreterTest-1: 'dedupe xxx'": {
+            "dataclass": [
+                {
+                    "screen_id": "dedupe",
+                    "positive": [
+                        {"path": ["map5"], "tokens": [{"token": "MAP5", "weight": 1.0}]},
+                        {"path": ["map1"], "tokens": [{"token": "MAP1", "weight": 1.0}]},
+                        {
+                            "path": ["map2"],
+                            "tokens": [
+                                {"token": "dedupe", "weight": 2.5},
+                                {"token": "MAP2", "weight": 1.0},
+                            ],
+                        },
+                        {"path": ["map4"], "tokens": [{"token": "MAP4", "weight": 1.0}]},
+                        {"path": [], "tokens": [{"token": "dedupe_common_pos", "weight": 1.0}]},
+                    ],
+                    "negative": [
+                        {
+                            "path": ["map5"],
+                            "tokens": [
+                                {"token": "map5", "weight": 1.0},
+                                {"token": "dedupe", "weight": 0.5},
+                                {"token": "map5'", "weight": 1.0},
+                            ],
+                        },
+                        {"path": ["map1"], "tokens": [{"token": "map1", "weight": 1.0}]},
+                        {"path": ["map2"], "tokens": [{"token": "map2", "weight": 1.0}]},
+                        {"path": ["map4"], "tokens": [{"token": "map4", "weight": 1.0}]},
+                        {"path": [], "tokens": [{"token": "dedupe_common_neg", "weight": 1.0}]},
+                    ],
+                }
+            ],
+            "string": {
+                "POS": "MAP5,MAP1,(dedupe:2.5),MAP2,MAP4,dedupe_common_pos",
+                "NEG": "map5,(dedupe:0.5),map5',map1,map2,map4,dedupe_common_neg",
+            },
+        }
+    },
+    "CASE 'sort'": {
+        "InterpreterTest-1: 'sort xxx'": {
+            "dataclass": [
+                {
+                    "screen_id": "sort",
+                    "positive": [
+                        {"path": ["map3"], "tokens": [{"token": "MAP3", "weight": 1.0}]},
+                        {"path": ["map2"], "tokens": [{"token": "MAP2", "weight": 1.0}]},
+                        {"path": ["map4"], "tokens": [{"token": "MAP4", "weight": 1.0}]},
+                        {"path": ["map1"], "tokens": [{"token": "MAP1", "weight": 1.0}]},
+                        {"path": [], "tokens": [{"token": "sort_common_pos", "weight": 1.0}]},
+                    ],
+                    "negative": [
+                        {"path": ["map3"], "tokens": [{"token": "map3", "weight": 1.0}]},
+                        {"path": ["map2"], "tokens": [{"token": "map2", "weight": 1.0}]},
+                        {"path": ["map4"], "tokens": [{"token": "map4", "weight": 1.0}]},
+                        {"path": ["map1"], "tokens": [{"token": "map1", "weight": 1.0}]},
+                        {"path": [], "tokens": [{"token": "sort_common_neg", "weight": 1.0}]},
+                    ],
+                }
+            ],
+            "string": {
+                "POS": "MAP3,MAP2,MAP4,MAP1,sort_common_pos",
+                "NEG": "map3,map2,map4,map1,sort_common_neg",
+            },
+        }
+    },
 }
 
 
@@ -104,12 +277,17 @@ class InterpreterDebugger(Parser):
             try:
                 if isinstance(self.interpreter, TestInterpreter):
                     self.interpreter.restore_category_list(category_list)
-                self.crnt_prompt_set = self.interpreter.make_prompt_set(text)
+                self.crnt_prompt = self.interpreter.make_prompt(text)
                 major = f"{yamlname}-{i + 1}: '{text}'" if with_texts else f"{yamlname}-{i + 1}"
-                pos, neg = self.make_prompt_strs()
+                posneg = self.make_prompt_strs()
+                if posneg is None:
+                    pos = ""
+                    neg = ""
+                else:
+                    pos, neg = posneg
                 result[major] = {
-                    "set": (self.crnt_prompt_set,),
-                    "prompts": {"POS": pos, "NEG": neg},
+                    "dataclass": (self.crnt_prompt,),
+                    "string": {"POS": pos, "NEG": neg},
                 }
             except Exception as e:
                 raise Exception(f"Error with '{text}'") from e
@@ -154,20 +332,19 @@ class InterpreterDebugger(Parser):
 def normalize(obj):
     if is_dataclass(obj):
         return normalize(asdict(obj))
-
     if isinstance(obj, dict):
         return {k: normalize(v) for k, v in obj.items()}
-
     if isinstance(obj, list):
         return [normalize(i) for i in obj]
-
     if isinstance(obj, tuple):
         return [normalize(i) for i in obj]
 
     return obj
 
 
-def make_testcase(yamlpath: Path, inputs: list[str], category_list: list[CategoryPath]):
+def make_testcase(
+    yamlpath: Path, inputs: list[str], category_list: list[tuple[str, list[CategoryPath]]]
+):
     return {yamlpath: inputs, "category_list": category_list}
 
 
@@ -175,11 +352,36 @@ def debug_interpreter() -> None:
     debugger = InterpreterDebugger()
     result = debugger.debug_cases(
         {
+            "strip": make_testcase(
+                "yamls/testyamls/InterpreterTest.yaml",
+                ["strip xxx"],
+                [("strip", [("ok1",), ("ok2",)])],
+            ),
             "dedupe": make_testcase(
-                "yamls/testyamls/Dedupe.yaml",
-                ["go xxx"],  # dedupe
-                [("sub", "map2"), ("main", "map1"), ("sub", "map1"), ("main", "map2")],
-            )
+                "yamls/testyamls/InterpreterTest.yaml",
+                ["dedupe xxx"],
+                [("dedupe", [("map1",), ("map2",), ("map3",), ("map4",)])],
+            ),
+            "dedupe2": make_testcase(
+                "yamls/testyamls/InterpreterTest.yaml",
+                ["dedupe xxx"],
+                [("dedupe", [("map5",), ("map1",), ("map2",), ("map3",), ("map4",)])],
+            ),
+            "dedupe3": make_testcase(
+                "yamls/testyamls/InterpreterTest.yaml",
+                ["dedupe xxx"],
+                [("dedupe", [("map5",), ("map1",), ("map2",), ("map4",)])],
+            ),
+            "dedupe4": make_testcase(
+                "yamls/testyamls/InterpreterTest.yaml",
+                ["dedupe xxx"],
+                [("dedupe", [("map5",), ("map1",), ("dummy"), ("map2",), ("map4",)])],
+            ),
+            "sort": make_testcase(
+                "yamls/testyamls/InterpreterTest.yaml",
+                ["sort xxx"],
+                [("sort", [("map3",), ("map2",), ("map4",), ("map1",)])],
+            ),
         }
     )
     dump_json(result, "debug")
@@ -193,7 +395,7 @@ def debug_interpreter() -> None:
             if normalized_test_result == correct_result:
                 print(f"OK  - {key}")
                 for key, val in test_result.items():
-                    dump_json(val.get("prompts"), key)
+                    dump_json(val.get("string"), key)
             else:
                 print(f"NG  - {key}")
                 dump_json(dict_diff(normalized_test_result, correct_result))
