@@ -16,7 +16,7 @@ from parser.prompter import CategoryPath, Prompt
 
 class ScreenName(StrEnum):
     main = "main"
-    fashion = "fashion"
+    status = "status"
 
 
 class CategoryName(StrEnum):
@@ -79,6 +79,7 @@ class TheWorldInterpreter(Interpreter):
 
     @property
     def category_list(self) -> list[tuple[str, list[CategoryPath]]]:
+        # 単項タプルの ',' を忘れないように!!
         return [
             (
                 ScreenName.main,
@@ -110,9 +111,11 @@ class TheWorldInterpreter(Interpreter):
                 ],
             ),
             (
-                ScreenName.fashion,
+                ScreenName.status,
                 [
                     (CategoryName.name_n,),
+                    (CategoryName.affection,),
+                    (CategoryName.trust,),
                     (CategoryName.caps,),
                     (CategoryName.dresses,),
                     (CategoryName.outers,),
@@ -132,7 +135,7 @@ class TheWorldInterpreter(Interpreter):
         """
         Screen を貫通するデータを記憶する\n
         1. main Screen の name
-        2. fashion Screen の各 Category
+        2. status Screen の各 Category
 
         Args:
             prompt (Prompt): プロンプト
@@ -148,7 +151,7 @@ class TheWorldInterpreter(Interpreter):
                     self.name_on_main = entry
                     break
 
-        if prompt.screen_id == ScreenName.fashion:
+        if prompt.screen_id == ScreenName.status:
             new_fashion_set = FashionSet()
             for entry in memory.entries:
                 if len(entry.path) > 0 and hasattr(new_fashion_set, entry.path[0]):
@@ -206,7 +209,7 @@ class TheWorldInterpreter(Interpreter):
         The World における十分性判定の基準
         1. main Screen
         1.1 ポジティブプロンプトに character > name Category が存在すること
-        2. fashion Screen
+        2. status Screen
         2.1 ポジティブプロンプトに name Category が存在すること
         """
         has_name = False
@@ -218,7 +221,7 @@ class TheWorldInterpreter(Interpreter):
 
                 if prompt_parts.path[0:] == (CategoryName.character, CategoryName.name_n):
                     has_name = True
-        elif prompt.screen_id == ScreenName.fashion:
+        elif prompt.screen_id == ScreenName.status:
             for prompt_parts in prompt.positive:
                 if len(prompt_parts.path) == 0:
                     # common

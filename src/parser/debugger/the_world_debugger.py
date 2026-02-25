@@ -28,7 +28,6 @@ CORRECT_RESULT = {
                             "path": ["character", "affection"],
                             "tokens": [{"token": "looking at viewer", "weight": 1.0}],
                         },
-                        {"path": ["character", "trust"], "tokens": []},
                         {
                             "path": ["character", "frustration"],
                             "tokens": [{"token": "blush", "weight": 1.0}],
@@ -37,7 +36,6 @@ CORRECT_RESULT = {
                             "path": ["character", "angry"],
                             "tokens": [{"token": "jitome", "weight": 1.0}],
                         },
-                        {"path": ["character", "reason"], "tokens": []},
                         {
                             "path": [],
                             "tokens": [
@@ -50,14 +48,10 @@ CORRECT_RESULT = {
                         },
                     ],
                     "negative": [
-                        {"path": ["character", "name"], "tokens": []},
-                        {"path": ["character", "affection"], "tokens": []},
                         {
                             "path": ["character", "trust"],
                             "tokens": [{"token": "disgusting", "weight": 1.0}],
                         },
-                        {"path": ["character", "frustration"], "tokens": []},
-                        {"path": ["character", "angry"], "tokens": []},
                         {
                             "path": ["character", "reason"],
                             "tokens": [{"token": "in heat", "weight": 0.9}],
@@ -118,9 +112,13 @@ CORRECT_RESULT = {
         "The World-1": {
             "dataclass": [
                 {
-                    "screen_id": "fashion",
+                    "screen_id": "status",
                     "positive": [
                         {"path": ["name"], "tokens": [{"token": "chen", "weight": 1.0}]},
+                        {
+                            "path": ["affection"],
+                            "tokens": [{"token": "looking at viewer", "weight": 1.0}],
+                        },
                         {"path": ["upper_cloths"], "tokens": [{"token": "blouse", "weight": 1.0}]},
                         {"path": ["lower_cloths"], "tokens": [{"token": "skirt", "weight": 1.0}]},
                         {"path": ["socks"], "tokens": [{"token": "socks", "weight": 1.0}]},
@@ -137,11 +135,7 @@ CORRECT_RESULT = {
                         },
                     ],
                     "negative": [
-                        {"path": ["name"], "tokens": []},
-                        {"path": ["upper_cloths"], "tokens": []},
-                        {"path": ["lower_cloths"], "tokens": []},
-                        {"path": ["socks"], "tokens": []},
-                        {"path": ["shoes"], "tokens": []},
+                        {"path": ["trust"], "tokens": [{"token": "disgusting", "weight": 1.0}]},
                         {
                             "path": [],
                             "tokens": [
@@ -189,16 +183,20 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {
-                "POS": "chen,blouse,skirt,socks,shoes,best quality,masterpiece,absurdres,1girl,solo",  # noqa: E501
-                "NEG": "(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
+                "POS": "chen,looking at viewer,blouse,skirt,socks,shoes,best quality,masterpiece,absurdres,1girl,solo",  # noqa: E501
+                "NEG": "disgusting,(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
             },
         },
         "The World-2": {
             "dataclass": [
                 {
-                    "screen_id": "fashion",
+                    "screen_id": "status",
                     "positive": [
                         {"path": ["name"], "tokens": [{"token": "izayoi sakuya", "weight": 1.0}]},
+                        {
+                            "path": ["affection"],
+                            "tokens": [{"token": "looking at viewer", "weight": 1.0}],
+                        },
                         {"path": ["caps"], "tokens": [{"token": "maid headdress", "weight": 1.0}]},
                         {"path": ["dresses"], "tokens": [{"token": "maid apron", "weight": 1.0}]},
                         {"path": ["socks"], "tokens": [{"token": "garter straps", "weight": 1.0}]},
@@ -215,11 +213,7 @@ CORRECT_RESULT = {
                         },
                     ],
                     "negative": [
-                        {"path": ["name"], "tokens": []},
-                        {"path": ["caps"], "tokens": []},
-                        {"path": ["dresses"], "tokens": []},
-                        {"path": ["socks"], "tokens": []},
-                        {"path": ["shoes"], "tokens": []},
+                        {"path": ["trust"], "tokens": [{"token": "disgusting", "weight": 1.0}]},
                         {
                             "path": [],
                             "tokens": [
@@ -267,8 +261,8 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {
-                "POS": "izayoi sakuya,maid headdress,maid apron,garter straps,shoes,best quality,masterpiece,absurdres,1girl,solo",  # noqa: E501
-                "NEG": "(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
+                "POS": "izayoi sakuya,looking at viewer,maid headdress,maid apron,garter straps,shoes,best quality,masterpiece,absurdres,1girl,solo",  # noqa: E501
+                "NEG": "disgusting,(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
             },
         },
         "The World-3": {
@@ -284,7 +278,6 @@ CORRECT_RESULT = {
                             "path": ["character", "affection"],
                             "tokens": [{"token": "looking at viewer", "weight": 1.0}],
                         },
-                        {"path": ["character", "trust"], "tokens": []},
                         {
                             "path": ["character", "frustration"],
                             "tokens": [{"token": "blush", "weight": 1.0}],
@@ -293,7 +286,6 @@ CORRECT_RESULT = {
                             "path": ["character", "angry"],
                             "tokens": [{"token": "jitome", "weight": 1.0}],
                         },
-                        {"path": ["character", "reason"], "tokens": []},
                         {"path": ["upper_cloths"], "tokens": [{"token": "blouse", "weight": 1.0}]},
                         {"path": ["lower_cloths"], "tokens": [{"token": "skirt", "weight": 1.0}]},
                         {"path": ["socks"], "tokens": [{"token": "socks", "weight": 1.0}]},
@@ -310,22 +302,14 @@ CORRECT_RESULT = {
                         },
                     ],
                     "negative": [
-                        {"path": ["character", "name"], "tokens": []},
-                        {"path": ["character", "affection"], "tokens": []},
                         {
                             "path": ["character", "trust"],
                             "tokens": [{"token": "disgusting", "weight": 1.0}],
                         },
-                        {"path": ["character", "frustration"], "tokens": []},
-                        {"path": ["character", "angry"], "tokens": []},
                         {
                             "path": ["character", "reason"],
                             "tokens": [{"token": "in heat", "weight": 0.9}],
                         },
-                        {"path": ["upper_cloths"], "tokens": []},
-                        {"path": ["lower_cloths"], "tokens": []},
-                        {"path": ["socks"], "tokens": []},
-                        {"path": ["shoes"], "tokens": []},
                         {
                             "path": [],
                             "tokens": [
@@ -390,7 +374,6 @@ CORRECT_RESULT = {
                             "path": ["character", "affection"],
                             "tokens": [{"token": "looking at viewer", "weight": 1.0}],
                         },
-                        {"path": ["character", "trust"], "tokens": []},
                         {
                             "path": ["character", "frustration"],
                             "tokens": [{"token": "blush", "weight": 1.0}],
@@ -399,7 +382,6 @@ CORRECT_RESULT = {
                             "path": ["character", "angry"],
                             "tokens": [{"token": "jitome", "weight": 1.0}],
                         },
-                        {"path": ["character", "reason"], "tokens": []},
                         {"path": ["caps"], "tokens": [{"token": "maid headdress", "weight": 1.0}]},
                         {"path": ["dresses"], "tokens": [{"token": "maid apron", "weight": 1.0}]},
                         {"path": ["socks"], "tokens": [{"token": "garter straps", "weight": 1.0}]},
@@ -416,22 +398,14 @@ CORRECT_RESULT = {
                         },
                     ],
                     "negative": [
-                        {"path": ["character", "name"], "tokens": []},
-                        {"path": ["character", "affection"], "tokens": []},
                         {
                             "path": ["character", "trust"],
                             "tokens": [{"token": "disgusting", "weight": 1.0}],
                         },
-                        {"path": ["character", "frustration"], "tokens": []},
-                        {"path": ["character", "angry"], "tokens": []},
                         {
                             "path": ["character", "reason"],
                             "tokens": [{"token": "in heat", "weight": 0.9}],
                         },
-                        {"path": ["caps"], "tokens": []},
-                        {"path": ["dresses"], "tokens": []},
-                        {"path": ["socks"], "tokens": []},
-                        {"path": ["shoes"], "tokens": []},
                         {
                             "path": [],
                             "tokens": [

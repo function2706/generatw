@@ -41,8 +41,10 @@ class Memory:
     def to_prompt(self, screen_id: str) -> Prompt:
         prompt_set = Prompt(screen_id=screen_id)
         for entry in self.entries:
-            prompt_set.positive.append(PromptParts(path=entry.path, tokens=entry.pos_tokens))
-            prompt_set.negative.append(PromptParts(path=entry.path, tokens=entry.neg_tokens))
+            if entry.pos_tokens:
+                prompt_set.positive.append(PromptParts(path=entry.path, tokens=entry.pos_tokens))
+            if entry.neg_tokens:
+                prompt_set.negative.append(PromptParts(path=entry.path, tokens=entry.neg_tokens))
 
         return prompt_set
 
