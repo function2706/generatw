@@ -336,3 +336,52 @@ status:
       ネクタイ: necktie
       ショルダーバッグ: (shoulder bag:0.7)
   common: [main]
+fashion:
+  ignition: "お着替え中"
+  caps:
+    pattern: '装備:頭\s*\[(.+?)\]'
+    capturegrp: 1
+    import: [status, caps]
+  dresses:
+    pattern: '装備:全身服\s*\[(.+?)\]'
+    capturegrp: 1
+    import: [status, dresses]
+  outers:
+    pattern: '装備:外衣\s*\[(.+?)\]'
+    capturegrp: 1
+    import: [status, outers]
+  upper_cloths:
+    pattern: '装備:上衣\s*\[(.+?)\]'
+    capturegrp: 1
+    import: [status, upper_cloths]
+  lower_cloths:
+    pattern: '装備:下衣\s*\[(.+?)\]'
+    capturegrp: 1
+    import: [status, lower_cloths]
+  lingeries:
+    pattern: '装備:下着\s*\[(.+?)\]'
+    capturegrp: 1
+    import: [status, lingeries]
+  upper_lingeries:
+    pattern: '装備:下着(上)\s*\[(.+?)\]'
+    capturegrp: 1
+    import: [status, upper_lingeries]
+  lower_lingeries:
+    pattern: '装備:下着(下)\s*\[(.+?)\]'
+    capturegrp: 1
+    import: [status, lower_lingeries]
+  socks:
+    pattern: '装備:靴下\s*\[(.+?)\]'
+    capturegrp: 1
+    import: [status, socks]
+  shoes:
+    pattern: '装備:靴\s*\[(.+?)\]'
+    capturegrp: 1
+    import: [status, shoes]
+  equipments:
+    pattern: '装備:付属\s*\[(.+?)\]'
+    capturegrp: 1
+    import: [status, equipments]
+  common:
+    positive: full body,white simple background,contrapposto,light smile,best quality,masterpiece,absurdres,1girl,solo
+    negative: (amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm

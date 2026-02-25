@@ -22,6 +22,10 @@ from parser.prompter import (
 
 @dataclass
 class MemoryEntry:
+    """
+    ポジティブ・ネガティブを CategoryPath でまとめて記憶するためのデータ定義
+    """
+
     path: CategoryPath = field(default_factory=CategoryPath)
     pos_tokens: list[Token] = field(default_factory=list)
     neg_tokens: list[Token] = field(default_factory=list)
@@ -283,7 +287,9 @@ class Interpreter(ABC):
         def sort_(parts_list: list[PromptParts]) -> list[PromptParts]:
             order_index: dict[CategoryPath, int] = {}
             i = 0
-            for _, paths in self.category_list:
+            for screen_id, paths in self.category_list:
+                if screen_id != prompt.screen_id:
+                    continue
                 for path in paths:
                     order_index[path] = i
                     i += 1

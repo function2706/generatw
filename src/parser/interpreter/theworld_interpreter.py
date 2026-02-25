@@ -17,6 +17,7 @@ from parser.prompter import CategoryPath, Prompt
 class ScreenName(StrEnum):
     main = "main"
     status = "status"
+    fashion = "fashion"
 
 
 class CategoryName(StrEnum):
@@ -129,13 +130,30 @@ class TheWorldInterpreter(Interpreter):
                     (CategoryName.equipments,),
                 ],
             ),
+            (
+                ScreenName.fashion,
+                [
+                    (CategoryName.character, CategoryName.name_n),
+                    (CategoryName.caps,),
+                    (CategoryName.dresses,),
+                    (CategoryName.outers,),
+                    (CategoryName.upper_cloths,),
+                    (CategoryName.lower_cloths,),
+                    (CategoryName.lingeries,),
+                    (CategoryName.upper_lingeries,),
+                    (CategoryName.lower_lingeries,),
+                    (CategoryName.socks,),
+                    (CategoryName.shoes,),
+                    (CategoryName.equipments,),
+                ],
+            ),
         ]
 
     def memorize(self, prompt: Prompt) -> None:
         """
         Screen を貫通するデータを記憶する\n
         1. main Screen の name
-        2. status Screen の各 Category
+        2. fashion Screen の各 Category + 記憶中の main Screen の name
 
         Args:
             prompt (Prompt): プロンプト
@@ -150,9 +168,8 @@ class TheWorldInterpreter(Interpreter):
                 if entry.path == (CategoryName.character, CategoryName.name_n):
                     self.name_on_main = entry
                     break
-
-        if prompt.screen_id == ScreenName.status:
-            new_fashion_set = FashionSet()
+        if prompt.screen_id == ScreenName.fashion:
+            new_fashion_set = FashionSet(name=self.name_on_main)
             for entry in memory.entries:
                 if len(entry.path) > 0 and hasattr(new_fashion_set, entry.path[0]):
                     # common 以外の全 Category を記録
@@ -172,6 +189,7 @@ class TheWorldInterpreter(Interpreter):
         """
         Screen を貫通するデータを呼び起こす\n
         1. main Screen にて, 注目中の character に紐づく FashionSet を付帯
+        2. fashion Screen にて, 記憶中の name を付帯
 
         Args:
             prompt (Prompt): プロンプト
@@ -195,13 +213,15 @@ class TheWorldInterpreter(Interpreter):
                         fashion: MemoryEntry = getattr(fashion_set, field_name)
                         if fashion.pos_tokens or fashion.neg_tokens:
                             recalled.entries.append(fashion)
+        if prompt.screen_id == ScreenName.fashion:
+            recalled.entries.append(self.name_on_main)
 
         return recalled.to_prompt(prompt.screen_id)
 
     def edit(self, prompt: Prompt) -> Prompt:
         edited_prompt = super().edit(prompt)
         self.memorize(edited_prompt)
-        return self.sort(self.recall(prompt))
+        return self.sort(self.recall(edited_prompt))
 
     @staticmethod
     def is_enough_prompt(prompt: Prompt) -> bool:
@@ -211,6 +231,8 @@ class TheWorldInterpreter(Interpreter):
         1.1 ポジティブプロンプトに character > name Category が存在すること
         2. status Screen
         2.1 ポジティブプロンプトに name Category が存在すること
+        3. fashion Screen
+        3.1 ポジティブプロンプトに name Category が存在すること
         """
         has_name = False
         if prompt.screen_id == ScreenName.main:
@@ -218,7 +240,6 @@ class TheWorldInterpreter(Interpreter):
                 if len(prompt_parts.path) == 0:
                     # common
                     continue
-
                 if prompt_parts.path[0:] == (CategoryName.character, CategoryName.name_n):
                     has_name = True
         elif prompt.screen_id == ScreenName.status:
@@ -226,8 +247,14 @@ class TheWorldInterpreter(Interpreter):
                 if len(prompt_parts.path) == 0:
                     # common
                     continue
-
                 if prompt_parts.path[0:] == (CategoryName.name_n,):
+                    has_name = True
+        elif prompt.screen_id == ScreenName.fashion:
+            for prompt_parts in prompt.positive:
+                if len(prompt_parts.path) == 0:
+                    # common
+                    continue
+                if prompt_parts.path[0:] == (CategoryName.character, CategoryName.name_n):
                     has_name = True
 
         return Interpreter.is_enough_prompt(prompt) and has_name
