@@ -171,7 +171,7 @@ class Interpreter(ABC):
         以下のルールに従って一つに絞り込む：\n
         **採用するトークン (weight の選択)**:
             |weight - 1| が最大のもの, すなわち強調・減衰度合いが最も強いものを採用する
-            同点の場合は後から出現したものが優先される（dict 上書き動作による）\n
+            同点の場合は前に出現したものが優先される\n
         **配置先の CategoryPath (位置の選択)**:
             重複するトークンを含む CategoryPath 群のうち, `category_list` において
             最も早く登場するものに統一する
@@ -191,7 +191,7 @@ class Interpreter(ABC):
         if prompt is None:
             return None
 
-        category_paths = self.category_paths_on(prompt.screen_id)
+        category_paths = list(self.category_paths_on(prompt.screen_id))
         if category_paths is None:
             return None
         category_paths.append(CategoryPath())  # common 用に末尾に空の Path を追加
