@@ -36,7 +36,9 @@ class CategoryName(StrEnum):
     lower_n = "lower"
     lower_state = "lower_state"
     caps = "caps"
+    hands = "hands"
     dresses = "dresses"
+    kimonos = "kimonos"
     outers = "outers"
     upper_cloths = "upper_cloths"
     lower_cloths = "lower_cloths"
@@ -99,7 +101,9 @@ class TheWorldInterpreter(Interpreter):
                     (CategoryName.character, CategoryName.lower_n),
                     (CategoryName.character, CategoryName.lower_state),
                     (CategoryName.caps,),
+                    (CategoryName.hands,),
                     (CategoryName.dresses,),
+                    (CategoryName.kimonos,),
                     (CategoryName.outers,),
                     (CategoryName.upper_cloths,),
                     (CategoryName.lower_cloths,),
@@ -118,7 +122,9 @@ class TheWorldInterpreter(Interpreter):
                     (CategoryName.affection,),
                     (CategoryName.trust,),
                     (CategoryName.caps,),
+                    (CategoryName.hands,),
                     (CategoryName.dresses,),
+                    (CategoryName.kimonos,),
                     (CategoryName.outers,),
                     (CategoryName.upper_cloths,),
                     (CategoryName.lower_cloths,),
@@ -135,7 +141,9 @@ class TheWorldInterpreter(Interpreter):
                 [
                     (CategoryName.character, CategoryName.name_n),
                     (CategoryName.caps,),
+                    (CategoryName.hands,),
                     (CategoryName.dresses,),
+                    (CategoryName.kimonos,),
                     (CategoryName.outers,),
                     (CategoryName.upper_cloths,),
                     (CategoryName.lower_cloths,),

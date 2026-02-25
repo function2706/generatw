@@ -271,6 +271,12 @@ status:
       帽子: hat
       キャスケット: newsboy cap
       ホワイトブリム: maid headdress
+      髪飾り: hair ornament
+  hands:
+    pattern: '装備:腕\s*\[(.+?)\]'
+    capturegrp: 1
+    maps:
+      シルクグローブ: white gloves
   dresses:
     pattern: '装備:全身服\s*\[(.+?)\]'
     capturegrp: 1
@@ -281,11 +287,18 @@ status:
         negative: patterned clothing
       ネグリジェ: long negligee
       ベビードール: babydoll
+  kimonos:
+    pattern: '装備:着物\s*\[(.+?)\]'
+    capturegrp: 1
+    maps:
+      着物: kimono
   outers:
     pattern: '装備:外衣\s*\[(.+?)\]'
     capturegrp: 1
     maps:
       スーツジャケット: suit jacket
+      ジャケット: suit jacket
+      割烹着: kappougi
   upper_cloths:
     pattern: '装備:上衣\s*\[(.+?)\]'
     capturegrp: 1
@@ -293,6 +306,7 @@ status:
       上着: jacket
       ブラウス: blouse
       ワイシャツ: shirt
+      シャツ: shirt
   lower_cloths:
     pattern: '装備:下衣\s*\[(.+?)\]'
     capturegrp: 1
@@ -301,6 +315,7 @@ status:
       ハーフパンツ: shorts
       スカート: skirt
       ロングスカート: long skirt
+      スラックス: black pants
   lingeries:
     pattern: '装備:下着\s*\[(.+?)\]'
     capturegrp: 1
@@ -342,10 +357,18 @@ fashion:
     pattern: '装備:頭\s*\[(.+?)\]'
     capturegrp: 1
     import: [status, caps]
+  hands:
+    pattern: '装備:腕\s*\[(.+?)\]'
+    capturegrp: 1
+    import: [status, hands]
   dresses:
     pattern: '装備:全身服\s*\[(.+?)\]'
     capturegrp: 1
     import: [status, dresses]
+  kimonos:
+    pattern: '装備:着物\s*\[(.+?)\]'
+    capturegrp: 1
+    import: [status, kimonos]
   outers:
     pattern: '装備:外衣\s*\[(.+?)\]'
     capturegrp: 1
