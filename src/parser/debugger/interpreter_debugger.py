@@ -6,7 +6,7 @@ from typing import Any
 
 import pyperclip
 
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
@@ -294,7 +294,9 @@ class InterpreterDebugger(Parser):
         return result
 
     def debug_cases(
-        self, cases: dict[str, dict[Path | str, list[str | CategoryPath]]]
+        self,
+        cases: dict[str, dict[Path | str, list[str | CategoryPath]]],
+        with_texts: bool = True,
     ) -> dict[str, dict[str, dict[str, Any]]]:
         """
         cases の Path の yaml を毎度展開し, それに紐づくテキストを順に適用する\n
@@ -315,7 +317,9 @@ class InterpreterDebugger(Parser):
                     inputs = val
             try:
                 self.switch_interpreter(Path(yamlpath))
-                result_by_texts = self.debug_texts(texts=inputs, category_list=category_list)
+                result_by_texts = self.debug_texts(
+                    texts=inputs, category_list=category_list, with_texts=with_texts
+                )
             except Exception as e:
                 raise Exception(f"Error on '{key}'") from e
             result[f"CASE '{id}'"] = result_by_texts
@@ -343,9 +347,29 @@ def normalize(obj):
 
 
 def make_testcase(
-    yamlpath: Path, inputs: list[str], category_list: list[tuple[str, list[CategoryPath]]]
+    yamlpath: Path, inputs: list[str], category_list: list[tuple[str, list[CategoryPath]]] = None
 ):
-    return {yamlpath: inputs, "category_list": category_list}
+    return {yamlpath: inputs, "category_list": category_list if category_list is not None else []}
+
+
+def print_result(
+    result: dict[str, dict[str, dict[str, Any]]], correct: dict[str, dict[str, dict[str, Any]]]
+) -> None:
+    dump_json(result, "debug")
+    print("---------------------------------------------------------------------------")
+    for key, test_result in result.items():
+        correct_result = correct.get(key)
+        if correct_result is None:
+            print(f"NEW - {key}")
+        else:
+            normalized_test_result = normalize(test_result)
+            if normalized_test_result == correct_result:
+                print(f"OK  - {key}")
+                for key, val in test_result.items():
+                    dump_json(val.get("string"), key)
+            else:
+                print(f"NG  - {key}")
+                dump_json(dict_diff(normalized_test_result, correct_result))
 
 
 def debug_interpreter() -> None:
@@ -384,21 +408,4 @@ def debug_interpreter() -> None:
             ),
         }
     )
-    dump_json(result, "debug")
-    print("---------------------------------------------------------------------------")
-    for key, test_result in result.items():
-        correct_result = CORRECT_RESULT.get(key)
-        if correct_result is None:
-            print(f"NEW - {key}")
-        else:
-            normalized_test_result = normalize(test_result)
-            if normalized_test_result == correct_result:
-                print(f"OK  - {key}")
-                for key, val in test_result.items():
-                    dump_json(val.get("string"), key)
-            else:
-                print(f"NG  - {key}")
-                dump_json(dict_diff(normalized_test_result, correct_result))
-
-
-debug_interpreter()
+    print_result(result, CORRECT_RESULT)

@@ -5,6 +5,7 @@ Prompt 解釈クラス
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TypeAlias
 
@@ -17,6 +18,33 @@ from parser.prompter import (
     PromptParts,
     Token,
 )
+
+
+@dataclass
+class MemoryEntry:
+    path: CategoryPath = field(default_factory=CategoryPath)
+    pos_tokens: list[Token] = field(default_factory=list)
+    neg_tokens: list[Token] = field(default_factory=list)
+
+    def __eq__(self, other: MemoryEntry):
+        return self.pos_tokens == other.pos_tokens and self.neg_tokens == other.neg_tokens
+
+
+@dataclass
+class Memory:
+    """
+    ポジティブプロンプトとネガティブプロンプトを CategoryPath ごとに束ねたデータ
+    """
+
+    entries: list[MemoryEntry] = field(default_factory=list)
+
+    def to_prompt(self, screen_id: str) -> Prompt:
+        prompt_set = Prompt(screen_id=screen_id)
+        for entry in self.entries:
+            prompt_set.positive.append(PromptParts(path=entry.path, tokens=entry.pos_tokens))
+            prompt_set.negative.append(PromptParts(path=entry.path, tokens=entry.neg_tokens))
+
+        return prompt_set
 
 
 class Interpreter(ABC):
@@ -315,3 +343,37 @@ class Interpreter(ABC):
             bool: True: 十分, False: 不十分(空文字列)
         """
         return prompt is not None and (prompt.positive or prompt.negative)
+
+    @staticmethod
+    def prompt_to_memory(prompt: Prompt | None) -> Memory | None:
+        """
+        指定の Prompt から Memory を得る\n
+        None についてはそのまま None を返す
+
+        Args:
+            prompt (Prompt | None): Prompt
+
+        Returns:
+            Memory | None: Memory
+        """
+        if prompt is None:
+            return None
+
+        memory = Memory()
+        for parts in prompt.positive:
+            memory.entries.append(MemoryEntry(path=parts.path, pos_tokens=parts.tokens))
+        for parts in prompt.negative:
+            exists = False
+            for entry in memory.entries:
+                if parts.path != entry.path:
+                    continue
+
+                # dedupe されている場合は代入と変わらない
+                entry.neg_tokens.extend(parts.tokens)
+                exists = True
+
+            if not exists:
+                # ポジティブ側になかった場合は単独で登録
+                memory.entries.append(MemoryEntry(parts.path, neg_tokens=parts.tokens))
+
+        return memory

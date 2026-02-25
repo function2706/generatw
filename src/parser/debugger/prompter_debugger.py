@@ -7,7 +7,7 @@ from typing import Any
 import pyperclip
 import yaml
 
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
@@ -685,6 +685,3 @@ def debug_prompter() -> None:
             else:
                 print(f"NG  - {key}")
                 dump_json(dict_diff(normalized_test_result, correct_result), "diff")
-
-
-debug_prompter()
