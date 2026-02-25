@@ -474,6 +474,56 @@ CORRECT_RESULT = {
         },
         "PrompterTest-9: 'sub iwd: 100,'": {"SID": "sub", "POS": [], "NEG": []},
     },
+    "CASE 'import'": {
+        "PrompterTest-1: 'import_src NAME:Hogemaru'": {
+            "SID": "import_src",
+            "POS": [
+                {"path": ["partner", "name"], "tokens": [{"token": "hogemaru", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "import common pos", "weight": 1.0}]},
+            ],
+            "NEG": [{"path": [], "tokens": [{"token": "import common neg", "weight": 1.0}]}],
+        },
+        "PrompterTest-2: 'import_src NAME:HogeFuga'": {
+            "SID": "import_src",
+            "POS": [
+                {"path": ["partner", "name"], "tokens": [{"token": "zero", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "import common pos", "weight": 1.0}]},
+            ],
+            "NEG": [{"path": [], "tokens": [{"token": "import common neg", "weight": 1.0}]}],
+        },
+        "PrompterTest-3: 'import_dst1 NAME-Fugami'": {
+            "SID": "import_dst1",
+            "POS": [
+                {"path": ["name"], "tokens": [{"token": "fugami", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "import common pos", "weight": 1.0}]},
+            ],
+            "NEG": [{"path": [], "tokens": [{"token": "import common neg", "weight": 1.0}]}],
+        },
+        "PrompterTest-4: 'import_dst1 NAME-HogeFuga'": {
+            "SID": "import_dst1",
+            "POS": [
+                {"path": ["name"], "tokens": [{"token": "alice", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "import common pos", "weight": 1.0}]},
+            ],
+            "NEG": [{"path": [], "tokens": [{"token": "import common neg", "weight": 1.0}]}],
+        },
+        "PrompterTest-5: 'import_dst2 Name>Hogemaru'": {
+            "SID": "import_dst2",
+            "POS": [
+                {"path": ["name"], "tokens": [{"token": "hogemaru", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "import common pos", "weight": 1.0}]},
+            ],
+            "NEG": [{"path": [], "tokens": [{"token": "import common neg", "weight": 1.0}]}],
+        },
+        "PrompterTest-6: 'import_dst2 Name>HogeFuga'": {
+            "SID": "import_dst2",
+            "POS": [
+                {"path": ["name"], "tokens": [{"token": "bob", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "import common pos", "weight": 1.0}]},
+            ],
+            "NEG": [{"path": [], "tokens": [{"token": "import common neg", "weight": 1.0}]}],
+        },
+    },
 }
 
 
@@ -668,6 +718,16 @@ def debug_prompter() -> None:
                     "main vitality: 40,",  # 複数ヒット
                     "main vitality: 1000,",  # ヒットせず, defaultあり
                     "sub iwd: 100,",  # ヒットせず, default なし
+                ]
+            },
+            "import": {
+                "yamls/testyamls/PrompterTest.yaml": [
+                    "import_src NAME:Hogemaru",  # 同一 Screen 内のインポート
+                    "import_src NAME:HogeFuga",  # 同一 Screen 内のインポート (default)
+                    "import_dst1 NAME-Fugami",  # 異なる Screen のインポート
+                    "import_dst1 NAME-HogeFuga",  # 異なる Screen のインポート (default)
+                    "import_dst2 Name>Hogemaru",  # 多段インポート
+                    "import_dst2 Name>HogeFuga",  # 多段インポート (default)
                 ]
             },
         }

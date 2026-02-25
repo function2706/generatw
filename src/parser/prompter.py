@@ -20,6 +20,7 @@ class KeyName(StrEnum):
     maps = "maps"
     ranges = "ranges"
     intervals = "intervals"
+    import_k = "import"
     default = "default"
     common = "common"
     positive = "positive"
@@ -400,13 +401,21 @@ class Category:
     default: Rule | None = None
 
     @classmethod
-    def make(cls, category: dict[str, dict], category_path: CategoryPath):
+    def make(
+        cls,
+        category: dict[str, int | str | dict | list],
+        screen_id: str,
+        category_path: CategoryPath,
+        rules_dict: dict[CategoryPath, list[Rule]],
+    ):
         """
         YAML の定義から Category インスタンスを生成する
 
         Args:
-            field (dict[str, dict]): Category 定義の辞書
+            category (dict[str, dict]): Category 定義の辞書
+            screen_id (str): Screen ID
             category_path (CategoryPath): Category パス
+            rules_dict (dict[CategoryPath, list[Rule]]): CategoryPath ごとの Rule リスト
 
         Returns:
             Category: 生成された Category インスタンス
@@ -431,8 +440,14 @@ class Category:
         if KeyName.capturegrp in category:
             obj.capturegrp = int(category.get(KeyName.capturegrp))
 
-        if sum(k in category for k in (KeyName.maps, KeyName.ranges, KeyName.intervals)) != 1:
-            raise ValueError("Category must have only 1 Ruletype, maps/ranges/intervals.")
+        if (
+            sum(
+                k in category
+                for k in (KeyName.maps, KeyName.ranges, KeyName.intervals, KeyName.import_k)
+            )
+            != 1
+        ):
+            raise ValueError("Category must have only 1 Ruletype, maps/ranges/intervals or import.")
         elif KeyName.maps in category:
             for key, val in category.get(KeyName.maps).items():
                 obj.rules.append(MapsRule.make(key=key, val=val))
@@ -442,6 +457,12 @@ class Category:
         elif KeyName.intervals in category:
             for key, val in category.get(KeyName.intervals).items():
                 obj.rules.append(IntervalsRule.make(key=key, val=val))
+        elif KeyName.import_k in category:
+            target_path = category.get(KeyName.import_k)
+            if not isinstance(target_path, list):
+                raise ValueError("Type of value for 'import' must be list.")
+            obj.rules.extend(rules_dict.get(tuple(target_path)))
+        rules_dict[(screen_id,) + category_path] = obj.rules
 
         if KeyName.default in category:
             val = category.get(KeyName.default)
@@ -524,13 +545,16 @@ class Screen:
     common_positive: list[Token] = field(default_factory=list)
     common_negative: list[Token] = field(default_factory=list)
 
-    def collect_fields(self, node: dict, category_path: CategoryPath) -> None:
+    def collect_fields(
+        self, node: dict, category_path: CategoryPath, rules_dict: dict[CategoryPath, list[Rule]]
+    ) -> None:
         """
         YAML のノードを再帰的に探索し, Category 定義を収集する
 
         Args:
             node (dict): 探索対象のノード
             category_path (CategoryPath): 現在の Category パス
+            rules_dict (dict[CategoryPath, list[Rule]]): CategoryPath ごとの Rule リスト
         """
         if not isinstance(node, dict):
             # str や list は無視
@@ -538,21 +562,29 @@ class Screen:
 
         if KeyName.pattern in node:
             # 最下層の Category = 'pattern' キーが存在する
-            category = Category.make(node, category_path)
+            category = Category.make(node, self.screen_id, category_path, rules_dict)
             self.categories.append(category)
             return
 
         for k, v in node.items():
-            self.collect_fields(v, (category_path + (k,)))
+            self.collect_fields(v, (category_path + (k,)), rules_dict)
 
     @classmethod
-    def make(cls, screen_id: str, screen: dict[str, dict[str, Any]]):
+    def make(
+        cls,
+        screen_id: str,
+        screen: dict[str, dict[str, Any] | list[str]],
+        common_dict: dict[str, tuple[list[Token], list[Token]]],
+        rules_dict: dict[CategoryPath, list[Rule]],
+    ):
         """
         YAML の定義から Screen インスタンスを生成する
 
         Args:
             screen_id (str): Screen 名
             screen (dict[str, dict[str, Any]]): Screen 定義の辞書
+            common_dict (dict[str, tuple[list[Token], list[Token]]]): Screen ごとの common 領域
+            rules_dict (dict[CategoryPath, list[Rule]]): CategoryPath ごとの Rule リスト
 
         Returns:
             Screen: 生成されたScreenインスタンス
@@ -573,11 +605,25 @@ class Screen:
                 elif isinstance(val, dict):
                     obj.common_positive = make_tokens(val.get(KeyName.positive))
                     obj.common_negative = make_tokens(val.get(KeyName.negative))
+                elif isinstance(val, list):
+                    # import
+                    src_screen_id = val[0]
+                    for sid, commons in common_dict.items():
+                        if sid != src_screen_id:
+                            continue
+                        obj.common_positive = commons[0]
+                        obj.common_negative = commons[1]
+                        break
+                    else:
+                        raise ValueError(
+                            f"No such Screen ID ('{src_screen_id}') for importing commons."
+                        )
                 else:
-                    raise ValueError("Syntax of 'default' is invalid.")
+                    raise ValueError("Syntax of 'common' is invalid.")
+                common_dict[screen_id] = (obj.common_positive, obj.common_negative)
             else:
                 rule_path = CategoryPath((key,))
-                obj.collect_fields(val, rule_path)
+                obj.collect_fields(val, rule_path, rules_dict)
 
         return obj
 
@@ -648,11 +694,13 @@ class Prompter:
         with open(yamlpath, "r", encoding="utf-8") as f:
             yamldict: dict = yaml.safe_load(f)
 
+        rules_dict: dict[CategoryPath, list[Rule]] = {}
+        common_dict: dict[str, tuple[list[Token], list[Token]]] = {}
         for key, val in yamldict.items():
             if key == KeyName.interpreter:
                 obj.interpreter_keyword = val
             else:
-                obj.screens.append(Screen.make(key, val))
+                obj.screens.append(Screen.make(key, val, common_dict, rules_dict))
 
         return obj
 

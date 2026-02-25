@@ -144,3 +144,38 @@ common4:
   common:
     positive: common4-pos
     negative: common4-neg
+import_src:
+  ignition: "import_src"
+  character:
+    name:
+      pattern: "name:(.+)"
+      capturegrp: 1
+      maps:
+        Hogemaru: hogemaru
+        Fugami: fugami
+      default: smith
+  partner:
+    name:
+      pattern: "NAME:(.+)"
+      capturegrp: 1
+      import: [import_src, character, name]
+      default: zero
+  common:
+    positive: import common pos
+    negative: import common neg
+import_dst1:
+  ignition: "import_dst1"
+  name:
+    pattern: "NAME-(.+)"
+    capturegrp: 1
+    import: [import_src, character, name]
+    default: alice
+  common: [import_src]
+import_dst2:
+  ignition: "import_dst2"
+  name:
+    pattern: "Name>(.+)"
+    capturegrp: 1
+    import: [import_dst1, name]
+    default: bob
+  common: [import_dst1]

@@ -299,6 +299,39 @@ default:
 
 すなわち `default` は `maps` / `ranges` / `intervals` の各ルールと同じ評価パスを通る.
 
+#### 4.3.3 `import`
+
+YAML 内にすでに記述されている Rule を再度記述する場合に用いる.
+
+`import` の引数にはリストによって, Screen ID 及び Category のパスを記述する(下記参照).
+また, 指定できるパスは同一ファイル内のものに限られる.
+
+```yaml
+import_src:
+  ignition: "src"
+  character:
+    name:
+      pattern: name:(.+?)
+      capturegrp: 1
+      maps:
+        Hogemaru: hogemaru
+        Fugami: fugami
+      default: smith # ここは対象外
+import_dst:
+  ignition: "dst"
+  name:
+    pattern: NAME-(.+?) # パターンは再定義
+    capturegrp: 1
+    import: [import_src, character, name]
+    default: bob
+```
+
+- インポートする Rule は `import` の記述箇所よりも上部に定義されていなければならない(シンタックスエラー)
+- `pattern` 及び `capturegrp` は引き継がれないので必ず再定義すること
+- インポート対象は `maps` / `ranges` / `intervals` のみ, **`default` はインポート対象外**
+- Screen ID 及び Category のパスはインポートした側の記述に従う(上記の場合は `import_dst,name`)
+- 多段インポート(すでにインポートしている Rule をインポートすること)は合法である
+
 ---
 
 ## 5. Rule 定義
@@ -565,6 +598,32 @@ common:
 ]
 ```
 
+### 7.2 `common` のインポート
+
+YAML 内にすでに記述されている `common` を再度記述する場合に用いる.
+
+`import` の引数には**リストで** Screen ID を記述する(下記参照).
+指定できるパスは同一ファイル内のものに限られる.
+
+```yaml
+import_src:
+  ignition: "src"
+  character:
+    ...
+  common:
+    positive: common pos
+    negative: common neg
+import_dst:
+  ignition: "dst"
+  name:
+    ...
+  common: [import_src] # 必ずリスト
+```
+
+- インポートする `common` は記述箇所よりも上部に定義されていなければならない(シンタックスエラー)
+- Screen ID はインポートした側の記述に従う(上記の場合は `import_dst`)
+- 多段インポート(すでにインポートしている `common` をインポートすること)は合法である
+
 ---
 
 ## 8. 処理フロー
@@ -645,6 +704,12 @@ main:
     negative: common main negative
 meta:
   ignition: "(m|M)eta"
+  name:
+    pattern: '^name:\s(.+?),'
+    capturegrp: 1
+    import: [main, name]
+    default:
+      positive: smith
   weather:
     pattern: "(sunny|rainy)"
     capturegrp: 1
@@ -657,6 +722,7 @@ meta:
     maps:
       room: room
       city: city
+  common: [main]
 ```
 
 ### 9.1 入力例と出力例
