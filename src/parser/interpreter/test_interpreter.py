@@ -6,8 +6,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from parser.interpreter.interpreter import Interpreter
-from parser.prompter import CategoryPath
+from parser.interpreter.interpreter import CategoryList, Interpreter
 
 
 class TestInterpreter(Interpreter):
@@ -17,9 +16,9 @@ class TestInterpreter(Interpreter):
 
     def __init__(self, yamlpath: Path):
         super().__init__(yamlpath)
-        self.category_list_v: list[tuple[str, list[CategoryPath]]] = []
+        self.category_list_v: CategoryList = {}
 
-    def restore_category_list(self, new_list: list[tuple[str, list[CategoryPath]]]) -> None:
+    def restore_category_list(self, new_list: CategoryList) -> None:
         """
         カテゴリーリストを更新する
 
@@ -29,5 +28,5 @@ class TestInterpreter(Interpreter):
         self.category_list_v = new_list
 
     @property
-    def category_list(self) -> list[tuple[str, list[CategoryPath]]]:
+    def category_list(self) -> CategoryList:
         return self.category_list_v

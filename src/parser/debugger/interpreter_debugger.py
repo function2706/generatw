@@ -13,7 +13,7 @@ if parent_dir not in sys.path:
 
 
 from common.functions import dump_json  # noqa: E402
-from parser.interpreter.test_interpreter import TestInterpreter  # noqa: E402
+from parser.interpreter.test_interpreter import CategoryList, TestInterpreter  # noqa: E402
 from parser.parser import Parser  # noqa: E402
 from parser.prompter import CategoryPath  # noqa: E402
 
@@ -259,7 +259,7 @@ class InterpreterDebugger(Parser):
         super().__init__(None, None)
 
     def debug_texts(
-        self, texts: list[str], with_texts: bool = True, category_list: list[CategoryPath] = None
+        self, texts: list[str], with_texts: bool = True, category_list: CategoryList = None
     ) -> dict[str, dict[str, Any]]:
         """
         展開中 yaml について texts 内のテキストを順に適用する\n
@@ -346,9 +346,7 @@ def normalize(obj):
     return obj
 
 
-def make_testcase(
-    yamlpath: Path, inputs: list[str], category_list: list[tuple[str, list[CategoryPath]]] = None
-):
+def make_testcase(yamlpath: Path, inputs: list[str], category_list: CategoryList = None):
     return {yamlpath: inputs, "category_list": category_list if category_list is not None else []}
 
 
@@ -379,32 +377,32 @@ def debug_interpreter() -> None:
             "strip": make_testcase(
                 "yamls/testyamls/InterpreterTest.yaml",
                 ["strip xxx"],
-                [("strip", [("ok1",), ("ok2",)])],
+                {"strip": [("ok1",), ("ok2",)]},
             ),
             "dedupe": make_testcase(
                 "yamls/testyamls/InterpreterTest.yaml",
                 ["dedupe xxx"],
-                [("dedupe", [("map1",), ("map2",), ("map3",), ("map4",)])],
+                {"dedupe": [("map1",), ("map2",), ("map3",), ("map4",)]},
             ),
             "dedupe2": make_testcase(
                 "yamls/testyamls/InterpreterTest.yaml",
                 ["dedupe xxx"],
-                [("dedupe", [("map5",), ("map1",), ("map2",), ("map3",), ("map4",)])],
+                {"dedupe": [("map5",), ("map1",), ("map2",), ("map3",), ("map4",)]},
             ),
             "dedupe3": make_testcase(
                 "yamls/testyamls/InterpreterTest.yaml",
                 ["dedupe xxx"],
-                [("dedupe", [("map5",), ("map1",), ("map2",), ("map4",)])],
+                {"dedupe": [("map5",), ("map1",), ("map2",), ("map4",)]},
             ),
             "dedupe4": make_testcase(
                 "yamls/testyamls/InterpreterTest.yaml",
                 ["dedupe xxx"],
-                [("dedupe", [("map5",), ("map1",), ("dummy"), ("map2",), ("map4",)])],
+                {"dedupe": [("map5",), ("map1",), ("dummy"), ("map2",), ("map4",)]},
             ),
             "sort": make_testcase(
                 "yamls/testyamls/InterpreterTest.yaml",
                 ["sort xxx"],
-                [("sort", [("map3",), ("map2",), ("map4",), ("map1",)])],
+                {"sort": [("map3",), ("map2",), ("map4",), ("map1",)]},
             ),
         }
     )

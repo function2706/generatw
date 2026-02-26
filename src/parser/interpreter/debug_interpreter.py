@@ -6,8 +6,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from parser.interpreter.interpreter import Interpreter
-from parser.prompter import CategoryPath
+from parser.interpreter.interpreter import CategoryList, Interpreter
 
 
 class DebugInterpreter(Interpreter):
@@ -19,15 +18,12 @@ class DebugInterpreter(Interpreter):
         super().__init__(yamlpath)
 
     @property
-    def category_list(self) -> list[tuple[str, list[CategoryPath]]]:
-        return [
-            (
-                "main",
-                [
-                    ("character", "name"),
-                    ("character", "vibe"),
-                    ("character", "upper"),
-                    ("character", "lower"),
-                ],
-            )
-        ]
+    def category_list(self) -> CategoryList:
+        return {
+            "main": [
+                ("character", "name"),
+                ("character", "vibe"),
+                ("character", "upper"),
+                ("character", "lower"),
+            ]
+        }

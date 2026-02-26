@@ -19,6 +19,8 @@ from parser.prompter import (
     Token,
 )
 
+CategoryList: TypeAlias = dict[str, list[CategoryPath]]
+
 
 @dataclass
 class MemoryEntry:
@@ -83,13 +85,13 @@ class Interpreter(ABC):
 
     @property
     @abstractmethod
-    def category_list(self) -> list[tuple[str, list[CategoryPath]]]:
+    def category_list(self) -> CategoryList:
         """
         カテゴリーリストを取得する\n
         Screen ID ごとの list[CategoryPath] の順序はプロンプト化における優先順位を表す
 
         Returns:
-            tuple[str, list[CategoryPath]]: カテゴリーリスト((Screen ID, CategoryPath))
+            CategoryList: カテゴリーリスト((Screen ID, CategoryPath))
         """
         pass
 
@@ -104,7 +106,7 @@ class Interpreter(ABC):
         Returns:
             list[CategoryPath] | None: CategoryPath のリスト
         """
-        for sid, paths in self.category_list:
+        for sid, paths in self.category_list.items():
             if sid == screen_id:
                 return paths
         return None
@@ -287,7 +289,7 @@ class Interpreter(ABC):
         def sort_(parts_list: list[PromptParts]) -> list[PromptParts]:
             order_index: dict[CategoryPath, int] = {}
             i = 0
-            for screen_id, paths in self.category_list:
+            for screen_id, paths in self.category_list.items():
                 if screen_id != prompt.screen_id:
                     continue
                 for path in paths:

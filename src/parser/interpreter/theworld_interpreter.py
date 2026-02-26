@@ -10,8 +10,8 @@ from enum import StrEnum
 from pathlib import Path
 from typing import TypeAlias
 
-from parser.interpreter.interpreter import Interpreter, MemoryEntry
-from parser.prompter import CategoryPath, Prompt
+from parser.interpreter.interpreter import CategoryList, Interpreter, MemoryEntry
+from parser.prompter import Prompt
 
 
 class ScreenName(StrEnum):
@@ -81,81 +81,72 @@ class TheWorldInterpreter(Interpreter):
         self.fashion_list = FashionList()
 
     @property
-    def category_list(self) -> list[tuple[str, list[CategoryPath]]]:
+    def category_list(self) -> CategoryList:
         # 単項タプルの ',' を忘れないように!!
-        return [
-            (
-                ScreenName.main,
-                [
-                    (CategoryName.character, CategoryName.name_n),
-                    (CategoryName.character, CategoryName.vibe),
-                    (CategoryName.character, CategoryName.affection),
-                    (CategoryName.character, CategoryName.trust),
-                    (CategoryName.character, CategoryName.frustration),
-                    (CategoryName.character, CategoryName.angry),
-                    (CategoryName.character, CategoryName.in_heat),
-                    (CategoryName.character, CategoryName.mood),
-                    (CategoryName.character, CategoryName.reason),
-                    (CategoryName.character, CategoryName.upper_n),
-                    (CategoryName.character, CategoryName.upper_state),
-                    (CategoryName.character, CategoryName.lower_n),
-                    (CategoryName.character, CategoryName.lower_state),
-                    (CategoryName.caps,),
-                    (CategoryName.hands,),
-                    (CategoryName.dresses,),
-                    (CategoryName.kimonos,),
-                    (CategoryName.outers,),
-                    (CategoryName.upper_cloths,),
-                    (CategoryName.lower_cloths,),
-                    (CategoryName.lingeries,),
-                    (CategoryName.upper_lingeries,),
-                    (CategoryName.lower_lingeries,),
-                    (CategoryName.socks,),
-                    (CategoryName.shoes,),
-                    (CategoryName.equipments,),
-                ],
-            ),
-            (
-                ScreenName.status,
-                [
-                    (CategoryName.name_n,),
-                    (CategoryName.affection,),
-                    (CategoryName.trust,),
-                    (CategoryName.caps,),
-                    (CategoryName.hands,),
-                    (CategoryName.dresses,),
-                    (CategoryName.kimonos,),
-                    (CategoryName.outers,),
-                    (CategoryName.upper_cloths,),
-                    (CategoryName.lower_cloths,),
-                    (CategoryName.lingeries,),
-                    (CategoryName.upper_lingeries,),
-                    (CategoryName.lower_lingeries,),
-                    (CategoryName.socks,),
-                    (CategoryName.shoes,),
-                    (CategoryName.equipments,),
-                ],
-            ),
-            (
-                ScreenName.fashion,
-                [
-                    (CategoryName.character, CategoryName.name_n),
-                    (CategoryName.caps,),
-                    (CategoryName.hands,),
-                    (CategoryName.dresses,),
-                    (CategoryName.kimonos,),
-                    (CategoryName.outers,),
-                    (CategoryName.upper_cloths,),
-                    (CategoryName.lower_cloths,),
-                    (CategoryName.lingeries,),
-                    (CategoryName.upper_lingeries,),
-                    (CategoryName.lower_lingeries,),
-                    (CategoryName.socks,),
-                    (CategoryName.shoes,),
-                    (CategoryName.equipments,),
-                ],
-            ),
-        ]
+        return {
+            ScreenName.main: [
+                (CategoryName.character, CategoryName.name_n),
+                (CategoryName.character, CategoryName.vibe),
+                (CategoryName.character, CategoryName.affection),
+                (CategoryName.character, CategoryName.trust),
+                (CategoryName.character, CategoryName.frustration),
+                (CategoryName.character, CategoryName.angry),
+                (CategoryName.character, CategoryName.in_heat),
+                (CategoryName.character, CategoryName.mood),
+                (CategoryName.character, CategoryName.reason),
+                (CategoryName.character, CategoryName.upper_n),
+                (CategoryName.character, CategoryName.upper_state),
+                (CategoryName.character, CategoryName.lower_n),
+                (CategoryName.character, CategoryName.lower_state),
+                (CategoryName.caps,),
+                (CategoryName.hands,),
+                (CategoryName.dresses,),
+                (CategoryName.kimonos,),
+                (CategoryName.outers,),
+                (CategoryName.upper_cloths,),
+                (CategoryName.lower_cloths,),
+                (CategoryName.lingeries,),
+                (CategoryName.upper_lingeries,),
+                (CategoryName.lower_lingeries,),
+                (CategoryName.socks,),
+                (CategoryName.shoes,),
+                (CategoryName.equipments,),
+            ],
+            ScreenName.status: [
+                (CategoryName.name_n,),
+                (CategoryName.affection,),
+                (CategoryName.trust,),
+                (CategoryName.caps,),
+                (CategoryName.hands,),
+                (CategoryName.dresses,),
+                (CategoryName.kimonos,),
+                (CategoryName.outers,),
+                (CategoryName.upper_cloths,),
+                (CategoryName.lower_cloths,),
+                (CategoryName.lingeries,),
+                (CategoryName.upper_lingeries,),
+                (CategoryName.lower_lingeries,),
+                (CategoryName.socks,),
+                (CategoryName.shoes,),
+                (CategoryName.equipments,),
+            ],
+            ScreenName.fashion: [
+                (CategoryName.character, CategoryName.name_n),
+                (CategoryName.caps,),
+                (CategoryName.hands,),
+                (CategoryName.dresses,),
+                (CategoryName.kimonos,),
+                (CategoryName.outers,),
+                (CategoryName.upper_cloths,),
+                (CategoryName.lower_cloths,),
+                (CategoryName.lingeries,),
+                (CategoryName.upper_lingeries,),
+                (CategoryName.lower_lingeries,),
+                (CategoryName.socks,),
+                (CategoryName.shoes,),
+                (CategoryName.equipments,),
+            ],
+        }
 
     def memorize(self, prompt: Prompt) -> None:
         """
