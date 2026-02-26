@@ -54,7 +54,9 @@ class CategoryName(StrEnum):
 class FashionSet:
     name: MemoryEntry = field(default_factory=MemoryEntry)
     caps: MemoryEntry = field(default_factory=MemoryEntry)
+    hands: MemoryEntry = field(default_factory=MemoryEntry)
     dresses: MemoryEntry = field(default_factory=MemoryEntry)
+    kimonos: MemoryEntry = field(default_factory=MemoryEntry)
     outers: MemoryEntry = field(default_factory=MemoryEntry)
     upper_cloths: MemoryEntry = field(default_factory=MemoryEntry)
     lower_cloths: MemoryEntry = field(default_factory=MemoryEntry)

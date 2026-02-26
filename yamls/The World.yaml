@@ -272,6 +272,7 @@ status:
       キャスケット: newsboy cap
       ホワイトブリム: maid headdress
       髪飾り: hair ornament
+      手ぬぐい: white bandana
   hands:
     pattern: '装備:腕\s*\[(.+?)\]'
     capturegrp: 1
@@ -299,6 +300,7 @@ status:
       スーツジャケット: suit jacket
       ジャケット: suit jacket
       割烹着: kappougi
+      ケープマント: cape
   upper_cloths:
     pattern: '装備:上衣\s*\[(.+?)\]'
     capturegrp: 1
@@ -307,6 +309,10 @@ status:
       ブラウス: blouse
       ワイシャツ: shirt
       シャツ: shirt
+      白小袖: miko cloth
+      作務衣（上）: blue samue
+      道着: dougi
+      長着: yukata
   lower_cloths:
     pattern: '装備:下衣\s*\[(.+?)\]'
     capturegrp: 1
@@ -316,6 +322,8 @@ status:
       スカート: skirt
       ロングスカート: long skirt
       スラックス: black pants
+      袴: hakama
+      作務衣（下）: blue pants
   lingeries:
     pattern: '装備:下着\s*\[(.+?)\]'
     capturegrp: 1
@@ -327,6 +335,7 @@ status:
     maps:
       ブラジャー: bra
       サラシ: sarashi
+      カラーシャツ: shirt
   lower_lingeries:
     pattern: '装備:下着(下)\s*\[(.+?)\]'
     capturegrp: 1
@@ -338,18 +347,23 @@ status:
     maps:
       靴下: socks
       ガーターストッキング: garter straps
+      足袋: tabi
   shoes:
     pattern: '装備:靴\s*\[(.+?)\]'
     capturegrp: 1
     maps:
       靴: shoes
-      パンプス: pumps
+      パンプス:
+        positive: pumps
+        negative: high heels
+      雪駄: zouri
+      ブーツ: boots
   equipments:
     pattern: '装備:付属\s*\[(.+?)\]'
     capturegrp: 1
     maps:
       ネクタイ: necktie
-      ショルダーバッグ: (shoulder bag:0.7)
+      帯: obijime
   common: [main]
 fashion:
   ignition: "お着替え中"
