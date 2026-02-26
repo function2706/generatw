@@ -14,7 +14,7 @@ if parent_dir not in sys.path:
 
 
 from common.functions import dump_json  # noqa: E402
-from parser.interpreter.test_interpreter import CategoryList, TestInterpreter  # noqa: E402
+from parser.interpreter.test_interpreter import EnhancedCategory, TestInterpreter  # noqa: E402
 from parser.parser import Parser  # noqa: E402
 
 CORRECT_RESULT = {
@@ -258,7 +258,7 @@ class KeyName(StrEnum):
     yamlpath = "yamlpath"
     texts = "texts"
     screen_id = "screen_id"
-    category_list = "category_list"
+    enhanced_category_list = "enhanced_category_list"
 
 
 class InterpreterDebugger(Parser):
@@ -269,7 +269,7 @@ class InterpreterDebugger(Parser):
         self,
         texts: list[str],
         screen_id: str = None,
-        category_list: CategoryList = None,
+        encats: list[EnhancedCategory] = None,
         with_texts: bool = True,
     ) -> dict[str, dict[str, Any]]:
         """
@@ -286,9 +286,9 @@ class InterpreterDebugger(Parser):
                 if (
                     isinstance(self.interpreter, TestInterpreter)
                     and screen_id is not None
-                    and category_list is not None
+                    and encats is not None
                 ):
-                    self.interpreter.restore_category_list(screen_id, category_list)
+                    self.interpreter.restore_enhanced_category_list(screen_id, encats)
                 self.crnt_prompt = self.interpreter.make_prompt(text)
                 major = f"{yamlname}-{i + 1}: '{text}'" if with_texts else f"{yamlname}-{i + 1}"
                 posneg = self.make_prompt_strs()
@@ -319,7 +319,7 @@ class InterpreterDebugger(Parser):
             result_by_texts = {}
             texts = []
             screen_id = None
-            category_list = None
+            encats = None
             for key, val in testcase.items():
                 if key == KeyName.yamlpath:
                     yamlpath = val
@@ -327,14 +327,14 @@ class InterpreterDebugger(Parser):
                     texts = val
                 elif key == KeyName.screen_id:
                     screen_id = val
-                elif key == KeyName.category_list:
-                    category_list = val
+                elif key == KeyName.enhanced_category_list:
+                    encats = val
             try:
                 self.switch_interpreter(Path(yamlpath))
                 result_by_texts = self.debug_texts(
                     texts=texts,
                     screen_id=screen_id,
-                    category_list=category_list,
+                    encats=encats,
                     with_texts=with_texts,
                 )
             except Exception as e:
@@ -363,12 +363,12 @@ def normalize(obj):
     return obj
 
 
-def make_testcase(yamlpath: Path, texts: list[str], screen_id: str, category_list: CategoryList):
+def make_testcase(yamlpath: Path, texts: list[str], screen_id: str, encats: list[EnhancedCategory]):
     return {
         KeyName.yamlpath: yamlpath,
         KeyName.texts: texts,
         KeyName.screen_id: screen_id,
-        KeyName.category_list: category_list,
+        KeyName.enhanced_category_list: encats,
     }
 
 
@@ -400,37 +400,64 @@ def debug_interpreter() -> None:
                 "yamls/testyamls/InterpreterTest.yaml",
                 ["strip xxx"],
                 "strip",
-                [("ok1",), ("ok2",)],
+                [(("ok1",), None, False), (("ok2",), None, False)],
             ),
             "dedupe": make_testcase(
                 "yamls/testyamls/InterpreterTest.yaml",
                 ["dedupe xxx"],
                 "dedupe",
-                [("map1",), ("map2",), ("map3",), ("map4",)],
+                [
+                    (("map1",), None, False),
+                    (("map2",), None, False),
+                    (("map3",), None, False),
+                    (("map4",), None, False),
+                ],
             ),
             "dedupe2": make_testcase(
                 "yamls/testyamls/InterpreterTest.yaml",
                 ["dedupe xxx"],
                 "dedupe",
-                [("map5",), ("map1",), ("map2",), ("map3",), ("map4",)],
+                [
+                    (("map5",), None, False),
+                    (("map1",), None, False),
+                    (("map2",), None, False),
+                    (("map3",), None, False),
+                    (("map4",), None, False),
+                ],
             ),
             "dedupe3": make_testcase(
                 "yamls/testyamls/InterpreterTest.yaml",
                 ["dedupe xxx"],
                 "dedupe",
-                [("map5",), ("map1",), ("map2",), ("map4",)],
+                [
+                    (("map5",), None, False),
+                    (("map1",), None, False),
+                    (("map2",), None, False),
+                    (("map4",), None, False),
+                ],
             ),
             "dedupe4": make_testcase(
                 "yamls/testyamls/InterpreterTest.yaml",
                 ["dedupe xxx"],
                 "dedupe",
-                [("map5",), ("map1",), ("dummy"), ("map2",), ("map4",)],
+                [
+                    (("map5",), None, False),
+                    (("map1",), None, False),
+                    (("dummy"), None, False),
+                    (("map2",), None, False),
+                    (("map4",), None, False),
+                ],
             ),
             "sort": make_testcase(
                 "yamls/testyamls/InterpreterTest.yaml",
                 ["sort xxx"],
                 "sort",
-                [("map3",), ("map2",), ("map4",), ("map1",)],
+                [
+                    (("map3",), None, False),
+                    (("map2",), None, False),
+                    (("map4",), None, False),
+                    (("map1",), None, False),
+                ],
             ),
         }
     )

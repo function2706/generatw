@@ -5,6 +5,8 @@
 - main 画面の upper/lower も fashion_list に記録しておき, ここが変わった = 衣装もリセットとする機構
 - 終了時の fashion_list の保存
 - クリップボードパース失敗時のログ(パースできなかった文字列と正規表現のペアで残しておく)
+- CategoryList に Essential bool を追加し, is_enough を簡略化
+- フラグを追加, チェッカーも登録？
 
 ## Generaor
 

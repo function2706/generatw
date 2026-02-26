@@ -7,7 +7,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, TypeAlias
+from typing import Callable, Set, TypeAlias
 
 import yaml
 
@@ -53,9 +53,76 @@ class Memory:
         return prompt_set
 
 
-CategoryList: TypeAlias = list[CategoryPath]
+class Expr(ABC):
+    @abstractmethod
+    def eval(self, s: Set[CategoryPath]) -> bool:
+        raise NotImplementedError
+
+    def __and__(self, other: Expr) -> Expr:
+        return And(self, other)
+
+    def __or__(self, other: Expr) -> Expr:
+        return Or(self, other)
+
+    def __invert__(self) -> Expr:
+        return Not(self)
+
+
+@dataclass(frozen=True)
+class Has(Expr):
+    path: CategoryPath
+
+    def eval(self, s: Set[CategoryPath]) -> bool:
+        return self.path in s
+
+
+@dataclass(frozen=True)
+class And(Expr):
+    left: Expr
+    right: Expr
+
+    def eval(self, s: Set[CategoryPath]) -> bool:
+        return self.left.eval(s) and self.right.eval(s)
+
+
+@dataclass(frozen=True)
+class Or(Expr):
+    left: Expr
+    right: Expr
+
+    def eval(self, s: Set[CategoryPath]) -> bool:
+        return self.left.eval(s) or self.right.eval(s)
+
+
+@dataclass(frozen=True)
+class Not(Expr):
+    expr: Expr
+
+    def eval(self, s: Set[CategoryPath]) -> bool:
+        return not self.expr.eval(s)
+
+
+@dataclass(frozen=True)
+class TrueExpr(Expr):
+    def eval(self, s: set[str]) -> bool:
+        return True
+
+
+@dataclass(frozen=True)
+class FalseExpr(Expr):
+    def eval(self, s: set[str]) -> bool:
+        return False
+
+
 MemorySyncer: TypeAlias = Callable[[Memory], Memory]
-ScreenTable: TypeAlias = dict[str, tuple[CategoryList, MemorySyncer | None]]
+EnhancedCategory: TypeAlias = tuple[CategoryPath, Expr | None, bool]
+ScreenTable: TypeAlias = dict[
+    str,
+    tuple[
+        list[EnhancedCategory],
+        MemorySyncer | None,
+    ],
+]
 
 
 class Interpreter(ABC):
@@ -107,27 +174,67 @@ class Interpreter(ABC):
     def screen_table(self) -> ScreenTable:
         """
         ScreenTable を取得する\n
-        Screen ID ごとの CategoryList の順序はプロンプト化における優先順位を表す
+        Screen ID ごとの list[CategoryPath] の順序はプロンプト化における優先順位を表す
 
         Returns:
             ScreenTable: ScreenTable
         """
         pass
 
-    def category_list_on(self, screen_id: str) -> CategoryList | None:
+    def category_list_on(self, screen_id: str) -> list[CategoryPath] | None:
         """
-        ScreenTable から指定の Screen ID とペアの CategoryList を取得する\n
+        ScreenTable から指定の Screen ID とペアの list[CategoryPath] を取得する\n
         指定の Screen ID にあたるものが存在しない場合は None を返す
 
         Args:
             screen_id (str): Screen ID
 
         Returns:
-            CategoryList | None: CategoryList
+            list[CategoryPath] | None: list[CategoryPath]
         """
-        for sid, (paths, _) in self.screen_table.items():
+        for sid, (encats, _) in self.screen_table.items():
             if sid == screen_id:
-                return paths
+                return [t[0] for t in encats]
+        return None
+
+    def expr_of(self, screen_id: str, category_path: CategoryPath) -> Expr | None:
+        """
+        ScreenTable から指定の Screen ID, CategoryPath とペアの Expr を取得する\n
+        指定の Screen ID, CategoryPath にあたるものが存在しない場合は None を返す
+
+        Args:
+            screen_id (str): Screen ID
+            category_path (CategoryPath): CategoryPath
+
+        Returns:
+            Expr | None: Expr
+        """
+        for sid, (encats, _) in self.screen_table.items():
+            if sid != screen_id:
+                continue
+            for encat in encats:
+                if encat[0] == category_path:
+                    return encat[1]
+        return None
+
+    def essential_of(self, screen_id: str, category_path: CategoryPath) -> bool:
+        """
+        ScreenTable から指定の Screen ID, CategoryPath とペアの Expr を取得する\n
+        指定の Screen ID, CategoryPath にあたるものが存在しない場合は None を返す
+
+        Args:
+            screen_id (str): Screen ID
+            category_path (CategoryPath): CategoryPath
+
+        Returns:
+            Expr | None: Expr
+        """
+        for sid, (encats, _) in self.screen_table.items():
+            if sid != screen_id:
+                continue
+            for encat in encats:
+                if encat[0] == category_path:
+                    return encat[2]
         return None
 
     def sync(self, prompt: Prompt) -> Prompt | None:
@@ -317,12 +424,9 @@ class Interpreter(ABC):
         def sort_(parts_list: list[PromptParts]) -> list[PromptParts]:
             order_index: dict[CategoryPath, int] = {}
             i = 0
-            for screen_id, (category_list, _) in self.screen_table.items():
-                if screen_id != prompt.screen_id:
-                    continue
-                for path in category_list:
-                    order_index[path] = i
-                    i += 1
+            for path in category_list:
+                order_index[path] = i
+                i += 1
             return sorted(parts_list, key=lambda c: order_index.get(c.path, float("inf")))
 
         new_prompt = Prompt(

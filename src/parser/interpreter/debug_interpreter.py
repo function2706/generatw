@@ -22,10 +22,10 @@ class DebugInterpreter(Interpreter):
         return {
             "main": (
                 [
-                    ("character", "name"),
-                    ("character", "vibe"),
-                    ("character", "upper"),
-                    ("character", "lower"),
+                    (("character", "name"), None, False),
+                    (("character", "vibe"), None, False),
+                    (("character", "upper"), None, False),
+                    (("character", "lower"), None, False),
                 ],
                 None,
             )
