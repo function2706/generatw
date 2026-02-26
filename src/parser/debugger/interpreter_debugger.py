@@ -1,6 +1,7 @@
 import os
 import sys
 from dataclasses import asdict, is_dataclass
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -15,7 +16,6 @@ if parent_dir not in sys.path:
 from common.functions import dump_json  # noqa: E402
 from parser.interpreter.test_interpreter import CategoryList, TestInterpreter  # noqa: E402
 from parser.parser import Parser  # noqa: E402
-from parser.prompter import CategoryPath  # noqa: E402
 
 CORRECT_RESULT = {
     "CASE 'strip'": {
@@ -254,19 +254,27 @@ def dict_diff(result: dict, correct: dict) -> dict[str, tuple[dict, dict]]:
     return diff
 
 
+class KeyName(StrEnum):
+    yamlpath = "yamlpath"
+    texts = "texts"
+    screen_id = "screen_id"
+    category_list = "category_list"
+
+
 class InterpreterDebugger(Parser):
     def __init__(self):
         super().__init__(None, None)
 
     def debug_texts(
-        self, texts: list[str], with_texts: bool = True, category_list: CategoryList = None
+        self,
+        texts: list[str],
+        screen_id: str = None,
+        category_list: CategoryList = None,
+        with_texts: bool = True,
     ) -> dict[str, dict[str, Any]]:
         """
         展開中 yaml について texts 内のテキストを順に適用する\n
         TestInterpreter と紐づく YAML を展開中の場合に限りカテゴリーリストの指定を行える
-
-        Args:
-            texts (list[str]): テスト用テキスト
         """
         if self.interpreter is None:
             raise Exception("Member 'interpreter' is None.")
@@ -275,8 +283,12 @@ class InterpreterDebugger(Parser):
         result: dict[str, dict[str, Any] | str] = {}
         for i, text in enumerate(texts):
             try:
-                if isinstance(self.interpreter, TestInterpreter):
-                    self.interpreter.restore_category_list(category_list)
+                if (
+                    isinstance(self.interpreter, TestInterpreter)
+                    and screen_id is not None
+                    and category_list is not None
+                ):
+                    self.interpreter.restore_category_list(screen_id, category_list)
                 self.crnt_prompt = self.interpreter.make_prompt(text)
                 major = f"{yamlname}-{i + 1}: '{text}'" if with_texts else f"{yamlname}-{i + 1}"
                 posneg = self.make_prompt_strs()
@@ -295,30 +307,35 @@ class InterpreterDebugger(Parser):
 
     def debug_cases(
         self,
-        cases: dict[str, dict[Path | str, list[str | CategoryPath]]],
+        testcases: dict[str, dict[str, str | list]],
         with_texts: bool = True,
     ) -> dict[str, dict[str, dict[str, Any]]]:
         """
         cases の Path の yaml を毎度展開し, それに紐づくテキストを順に適用する\n
         最も外側の str はパス重複解決のためのラベル
-
-        Args:
-            testcases (dict[str, dict[Path | str, list[str | CategoryPath]]]): テストケース
         """
         result: dict[str, dict[str, dict[str, Any]]] = {}
-        for id, texts_n_paths in cases.items():
+        for id, testcase in testcases.items():
             result_by_texts = {}
-            category_list = []
-            for key, val in texts_n_paths.items():
-                if key == "category_list":
+            texts = []
+            screen_id = None
+            category_list = None
+            for key, val in testcase.items():
+                if key == KeyName.yamlpath:
+                    yamlpath = val
+                elif key == KeyName.texts:
+                    texts = val
+                elif key == KeyName.screen_id:
+                    screen_id = val
+                elif key == KeyName.category_list:
                     category_list = val
-                else:
-                    yamlpath = key
-                    inputs = val
             try:
                 self.switch_interpreter(Path(yamlpath))
                 result_by_texts = self.debug_texts(
-                    texts=inputs, category_list=category_list, with_texts=with_texts
+                    texts=texts,
+                    screen_id=screen_id,
+                    category_list=category_list,
+                    with_texts=with_texts,
                 )
             except Exception as e:
                 raise Exception(f"Error on '{key}'") from e
@@ -346,8 +363,13 @@ def normalize(obj):
     return obj
 
 
-def make_testcase(yamlpath: Path, inputs: list[str], category_list: CategoryList = None):
-    return {yamlpath: inputs, "category_list": category_list if category_list is not None else []}
+def make_testcase(yamlpath: Path, texts: list[str], screen_id: str, category_list: CategoryList):
+    return {
+        KeyName.yamlpath: yamlpath,
+        KeyName.texts: texts,
+        KeyName.screen_id: screen_id,
+        KeyName.category_list: category_list,
+    }
 
 
 def print_result(
@@ -377,32 +399,38 @@ def debug_interpreter() -> None:
             "strip": make_testcase(
                 "yamls/testyamls/InterpreterTest.yaml",
                 ["strip xxx"],
-                {"strip": [("ok1",), ("ok2",)]},
+                "strip",
+                [("ok1",), ("ok2",)],
             ),
             "dedupe": make_testcase(
                 "yamls/testyamls/InterpreterTest.yaml",
                 ["dedupe xxx"],
-                {"dedupe": [("map1",), ("map2",), ("map3",), ("map4",)]},
+                "dedupe",
+                [("map1",), ("map2",), ("map3",), ("map4",)],
             ),
             "dedupe2": make_testcase(
                 "yamls/testyamls/InterpreterTest.yaml",
                 ["dedupe xxx"],
-                {"dedupe": [("map5",), ("map1",), ("map2",), ("map3",), ("map4",)]},
+                "dedupe",
+                [("map5",), ("map1",), ("map2",), ("map3",), ("map4",)],
             ),
             "dedupe3": make_testcase(
                 "yamls/testyamls/InterpreterTest.yaml",
                 ["dedupe xxx"],
-                {"dedupe": [("map5",), ("map1",), ("map2",), ("map4",)]},
+                "dedupe",
+                [("map5",), ("map1",), ("map2",), ("map4",)],
             ),
             "dedupe4": make_testcase(
                 "yamls/testyamls/InterpreterTest.yaml",
                 ["dedupe xxx"],
-                {"dedupe": [("map5",), ("map1",), ("dummy"), ("map2",), ("map4",)]},
+                "dedupe",
+                [("map5",), ("map1",), ("dummy"), ("map2",), ("map4",)],
             ),
             "sort": make_testcase(
                 "yamls/testyamls/InterpreterTest.yaml",
                 ["sort xxx"],
-                {"sort": [("map3",), ("map2",), ("map4",), ("map1",)]},
+                "sort",
+                [("map3",), ("map2",), ("map4",), ("map1",)],
             ),
         }
     )

@@ -9,7 +9,7 @@ if parent_dir not in sys.path:
 
 from parser.debugger.interpreter_debugger import (  # noqa: E402
     InterpreterDebugger,
-    make_testcase,
+    KeyName,
     print_result,
 )
 
@@ -729,18 +729,20 @@ CORRECT_RESULT = {
 }
 
 
+def make_testcase(texts: list[str]):
+    return {KeyName.yamlpath: "yamls/The World.yaml", KeyName.texts: texts}
+
+
 def debug_tw_interpreter() -> None:
     debugger = InterpreterDebugger()
     result = debugger.debug_cases(
         {
             "main": make_testcase(
-                "yamls/The World.yaml",
                 [
                     "夏の月 6日目(月)11時05分 ― 快晴 ― ☀　気温14.5℃　<食事可>\n橙(好感度:Ex 114482, 信頼度:SS 13538,　欲求不満度:87％,)　怒り:！\nムード:             理性:★            危険日前日"  # noqa E501
                 ],
             ),
             "status": make_testcase(
-                "yamls/The World.yaml",
                 [
                     "■橙(好感度: S 27235 信頼度: S 4994)\n　装備:上衣　　[ブラウス]\n　装備:下衣　　[スカート]\n　装備:下着　　[？？？？？]\n　装備:靴下　　[靴下]\n　装備:靴　　　[靴]",  # noqa E501
                     "■十六夜 咲夜(好感度: A 5326 信頼度: A 1397)\n　装備:頭　　　[ホワイトブリム]\n装備:全身服　[エプロンドレス]\n装備:下着　　[？？？？？]\n装備:付属　　[リボン]\n装備:靴下　　[ガーターストッキング]\n装備:靴　　　[靴]",  # noqa E501
@@ -749,7 +751,6 @@ def debug_tw_interpreter() -> None:
                 ],
             ),
             "fashion": make_testcase(
-                "yamls/The World.yaml",
                 [
                     "夏の月 7日目(火)七夕21時33分 ― 快晴 ― ☪　気温20.0℃　<食事可>\nレミリア スカーレット(好感度: S 27183, 信頼度: S 4962,　欲求不満度:68％,)　怒り:  　　　　　\nムード:             理性:★★★★★    ？？？ ",  # noqa E501
                     "　装備:頭　　　[帽子]\n　装備:上衣　　[ブラウス]\n　装備:下衣　　[ロングスカート]\n　装備:下着　　[？？？？？]\n　装備:靴下　　[靴下]\n　装備:靴　　　[靴]\nレミリアのお着替え中",  # noqa E501

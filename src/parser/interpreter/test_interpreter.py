@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from parser.interpreter.interpreter import CategoryList, Interpreter
+from parser.interpreter.interpreter import CategoryList, Interpreter, ScreenTable
 
 
 class TestInterpreter(Interpreter):
@@ -16,17 +16,17 @@ class TestInterpreter(Interpreter):
 
     def __init__(self, yamlpath: Path):
         super().__init__(yamlpath)
-        self.category_list_v: CategoryList = {}
+        self.screen_table_v: ScreenTable = {}
 
-    def restore_category_list(self, new_list: CategoryList) -> None:
+    def restore_category_list(self, screen_id: str, cat_list: CategoryList) -> None:
         """
-        カテゴリーリストを更新する
+        指定の Screen ID の CategoryList を更新する
 
         Args:
-            new_list (list[CategoryPath]): カテゴリーリスト
+            cat_list (CategoryList): CategoryList
         """
-        self.category_list_v = new_list
+        self.screen_table[screen_id] = (cat_list, None)
 
     @property
-    def category_list(self) -> CategoryList:
-        return self.category_list_v
+    def screen_table(self) -> ScreenTable:
+        return self.screen_table_v

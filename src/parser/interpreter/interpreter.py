@@ -7,7 +7,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TypeAlias
+from typing import Callable, TypeAlias
 
 import yaml
 
@@ -18,8 +18,6 @@ from parser.prompter import (
     PromptParts,
     Token,
 )
-
-CategoryList: TypeAlias = dict[str, list[CategoryPath]]
 
 
 @dataclass
@@ -55,6 +53,11 @@ class Memory:
         return prompt_set
 
 
+CategoryList: TypeAlias = list[CategoryPath]
+MemorySyncer: TypeAlias = Callable[[Memory], Memory]
+ScreenTable: TypeAlias = dict[str, tuple[CategoryList, MemorySyncer | None]]
+
+
 class Interpreter(ABC):
     """
     クリップボード監視, ステータス記録クラス
@@ -83,34 +86,6 @@ class Interpreter(ABC):
         """
         return cls.__name__
 
-    @property
-    @abstractmethod
-    def category_list(self) -> CategoryList:
-        """
-        カテゴリーリストを取得する\n
-        Screen ID ごとの list[CategoryPath] の順序はプロンプト化における優先順位を表す
-
-        Returns:
-            CategoryList: カテゴリーリスト((Screen ID, CategoryPath))
-        """
-        pass
-
-    def category_paths_on(self, screen_id: str) -> list[CategoryPath] | None:
-        """
-        カテゴリーリストから指定の Screen ID とペアの CategoryPath のリストを取得する\n
-        指定の Screen ID にあたるものが存在しない場合は None を返す
-
-        Args:
-            screen_id (str): Screen ID
-
-        Returns:
-            list[CategoryPath] | None: CategoryPath のリスト
-        """
-        for sid, paths in self.category_list.items():
-            if sid == screen_id:
-                return paths
-        return None
-
     def switch_prompter(self, yamlpath: Path) -> None:
         """
         指定の YAML を Prompter として設定する\n
@@ -126,6 +101,59 @@ class Interpreter(ABC):
                 keyword = yamldict.get("interpreter")
             if keyword == self.keyword():
                 self.prompter = Prompter.make(yamlpath)
+
+    @property
+    @abstractmethod
+    def screen_table(self) -> ScreenTable:
+        """
+        ScreenTable を取得する\n
+        Screen ID ごとの CategoryList の順序はプロンプト化における優先順位を表す
+
+        Returns:
+            ScreenTable: ScreenTable
+        """
+        pass
+
+    def category_list_on(self, screen_id: str) -> CategoryList | None:
+        """
+        ScreenTable から指定の Screen ID とペアの CategoryList を取得する\n
+        指定の Screen ID にあたるものが存在しない場合は None を返す
+
+        Args:
+            screen_id (str): Screen ID
+
+        Returns:
+            CategoryList | None: CategoryList
+        """
+        for sid, (paths, _) in self.screen_table.items():
+            if sid == screen_id:
+                return paths
+        return None
+
+    def sync(self, prompt: Prompt) -> Prompt | None:
+        """
+        Screen を貫通して記憶するデータと, 記憶中のデータの同期を行う\n
+        各派生クラスで定義された Screen ID ごとの処理を実施\n
+        定義されていない(None)場合は何もしない\n
+        初めて一致した Screen ID についてのみ実施\n
+        None についてはそのまま None を返す\n
+        本関数は非破壊的である
+
+        Args:
+            prompt (Prompt): プロンプト
+        """
+        if prompt is None:
+            return None
+
+        for sid, (_, sync_) in self.screen_table.items():
+            if sid == prompt.screen_id:
+                if sync_ is None:
+                    return prompt
+
+                memory = self.prompt_to_memory(prompt)
+                if memory is None:
+                    return None
+                return sync_(memory).to_prompt(sid)
 
     def strip(self, prompt: Prompt | None) -> Prompt | None:
         """
@@ -143,8 +171,8 @@ class Interpreter(ABC):
         if prompt is None:
             return None
 
-        paths = self.category_paths_on(prompt.screen_id)
-        if paths is None:
+        category_list = self.category_list_on(prompt.screen_id)
+        if category_list is None:
             return None
 
         def strip_(parts_list: list[PromptParts]) -> list[PromptParts]:
@@ -155,7 +183,7 @@ class Interpreter(ABC):
                     result.append(parts)
                     continue
 
-                if parts.path in paths:
+                if parts.path in category_list:
                     # CategoryPath がリスト内にある
                     result.append(parts)
             return result
@@ -193,10 +221,10 @@ class Interpreter(ABC):
         if prompt is None:
             return None
 
-        category_paths = list(self.category_paths_on(prompt.screen_id))
-        if category_paths is None:
+        category_list = list(self.category_list_on(prompt.screen_id))
+        if category_list is None:
             return None
-        category_paths.append(CategoryPath())  # common 用に末尾に空の Path を追加
+        category_list.append(CategoryPath())  # common 用に末尾に空の Path を追加
 
         Best: TypeAlias = dict[str, tuple[Token, set[tuple[CategoryPath, int]]]]
 
@@ -230,7 +258,7 @@ class Interpreter(ABC):
             new_parts_n_idxs: list[tuple[PromptParts, int]] = []
             appended: set[str] = set()
             for token_key, (best_token, best_paths_idxs) in best.items():
-                for path in category_paths:
+                for path in category_list:
                     for best_path, best_idx in best_paths_idxs:
                         if token_key in appended or path != best_path:
                             # Path 候補が複数ある場合の対策
@@ -282,17 +310,17 @@ class Interpreter(ABC):
         if prompt is None:
             return None
 
-        category_paths = self.category_paths_on(prompt.screen_id)
-        if category_paths is None:
+        category_list = self.category_list_on(prompt.screen_id)
+        if category_list is None:
             return None
 
         def sort_(parts_list: list[PromptParts]) -> list[PromptParts]:
             order_index: dict[CategoryPath, int] = {}
             i = 0
-            for screen_id, paths in self.category_list.items():
+            for screen_id, (category_list, _) in self.screen_table.items():
                 if screen_id != prompt.screen_id:
                     continue
-                for path in paths:
+                for path in category_list:
                     order_index[path] = i
                     i += 1
             return sorted(parts_list, key=lambda c: order_index.get(c.path, float("inf")))
@@ -320,7 +348,7 @@ class Interpreter(ABC):
         if prompt is None:
             return None
 
-        return self.sort(self.dedupe(self.strip(prompt)))
+        return self.sort(self.sync(self.dedupe(self.strip(prompt))))
 
     def make_prompt(self, text: str) -> Prompt | None:
         """

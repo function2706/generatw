@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from parser.interpreter.interpreter import CategoryList, Interpreter
+from parser.interpreter.interpreter import Interpreter, ScreenTable
 
 
 class DebugInterpreter(Interpreter):
@@ -18,12 +18,15 @@ class DebugInterpreter(Interpreter):
         super().__init__(yamlpath)
 
     @property
-    def category_list(self) -> CategoryList:
+    def screen_table(self) -> ScreenTable:
         return {
-            "main": [
-                ("character", "name"),
-                ("character", "vibe"),
-                ("character", "upper"),
-                ("character", "lower"),
-            ]
+            "main": (
+                [
+                    ("character", "name"),
+                    ("character", "vibe"),
+                    ("character", "upper"),
+                    ("character", "lower"),
+                ],
+                None,
+            )
         }
