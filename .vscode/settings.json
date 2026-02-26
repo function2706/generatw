@@ -30,7 +30,13 @@
             "magicFunction": "#e2c691", // __init__ など
             "parameter": "#9a9a9a", // 関数引数
             "property": "#93ace4", // メンバ変数
-            "variable": "#9cdcfe", // ローカル変数
+            "variable": "#9cdcfe", // 変数
+            "variable.declaration": {
+                "foreground": "#9cdcfe",
+                "fontStyle": "italic"
+            }, // 宣言された変数
+            "variable.callable": "#e2c691", // Callable な変数
+            "variable.classMember": "#93ace4", // メンバ変数
             "module": "#f38faa", // from (namespace)
             "builtinConstant": "#3ab7fa" // True, False, None
         }
