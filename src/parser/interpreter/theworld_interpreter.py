@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import TypeAlias
 
 from parser.interpreter.interpreter import Interpreter, Memory, MemoryEntry, ScreenTable
-from parser.prompter import Prompt
 
 
 class ScreenName(StrEnum):
@@ -119,7 +118,7 @@ class TheWorldInterpreter(Interpreter):
             ),
             ScreenName.status: (
                 [
-                    ((CategoryName.name_n,), None, False),
+                    ((CategoryName.name_n,), None, True),
                     ((CategoryName.affection,), None, False),
                     ((CategoryName.trust,), None, False),
                     ((CategoryName.caps,), None, False),
@@ -140,7 +139,7 @@ class TheWorldInterpreter(Interpreter):
             ),
             ScreenName.fashion: (
                 [
-                    ((CategoryName.character, CategoryName.name_n), None, False),
+                    ((CategoryName.character, CategoryName.name_n), None, True),
                     ((CategoryName.caps,), None, False),
                     ((CategoryName.hands,), None, False),
                     ((CategoryName.dresses,), None, False),
@@ -170,7 +169,7 @@ class TheWorldInterpreter(Interpreter):
             memory (Memory): 同期する Memory
 
         Returns:
-            Prompt: 同期済み Prompt
+            Memory: 同期済み Memory
         """
         # Save
         for entry in memory.entries:
@@ -206,7 +205,7 @@ class TheWorldInterpreter(Interpreter):
             memory (Memory): 同期する Memory
 
         Returns:
-            Prompt: 同期済み Prompt
+            Memory: 同期済み Memory
         """
         # Save
         new_fashion_set = FashionSet(name=self.name_on_main)
@@ -229,39 +228,3 @@ class TheWorldInterpreter(Interpreter):
         recalled = deepcopy(memory)
         recalled.entries.append(self.name_on_main)
         return recalled
-
-    @staticmethod
-    def is_enough_prompt(prompt: Prompt) -> bool:
-        """
-        The World における十分性判定の基準
-        1. main Screen
-        1.1 ポジティブプロンプトに character > name Category が存在すること
-        2. status Screen
-        2.1 ポジティブプロンプトに name Category が存在すること
-        3. fashion Screen
-        3.1 ポジティブプロンプトに name Category が存在すること
-        """
-        has_name = False
-        if prompt.screen_id == ScreenName.main:
-            for prompt_parts in prompt.positive:
-                if len(prompt_parts.path) == 0:
-                    # common
-                    continue
-                if prompt_parts.path[0:] == (CategoryName.character, CategoryName.name_n):
-                    has_name = True
-        elif prompt.screen_id == ScreenName.status:
-            for prompt_parts in prompt.positive:
-                if len(prompt_parts.path) == 0:
-                    # common
-                    continue
-                if prompt_parts.path[0:] == (CategoryName.name_n,):
-                    has_name = True
-        elif prompt.screen_id == ScreenName.fashion:
-            for prompt_parts in prompt.positive:
-                if len(prompt_parts.path) == 0:
-                    # common
-                    continue
-                if prompt_parts.path[0:] == (CategoryName.character, CategoryName.name_n):
-                    has_name = True
-
-        return Interpreter.is_enough_prompt(prompt) and has_name

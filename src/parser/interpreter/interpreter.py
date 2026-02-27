@@ -53,6 +53,34 @@ class Memory:
         return prompt_set
 
 
+def prompt_to_memory(prompt: Prompt | None) -> Memory | None:
+    """
+    指定の Prompt から Memory を得る\n
+    None についてはそのまま None を返す
+    Args:
+        prompt (Prompt | None): Prompt
+    Returns:
+        Memory | None: Memory
+    """
+    if prompt is None:
+        return None
+    memory = Memory()
+    for parts in prompt.positive:
+        memory.entries.append(MemoryEntry(path=parts.path, pos_tokens=parts.tokens))
+    for parts in prompt.negative:
+        exists = False
+        for entry in memory.entries:
+            if parts.path != entry.path:
+                continue
+            # dedupe されている場合は代入と変わらない
+            entry.neg_tokens.extend(parts.tokens)
+            exists = True
+        if not exists:
+            # ポジティブ側になかった場合は単独で登録
+            memory.entries.append(MemoryEntry(parts.path, neg_tokens=parts.tokens))
+    return memory
+
+
 class Expr(ABC):
     @abstractmethod
     def eval(self, s: Set[CategoryPath]) -> bool:
@@ -217,24 +245,26 @@ class Interpreter(ABC):
                     return encat[1]
         return None
 
-    def essential_of(self, screen_id: str, category_path: CategoryPath) -> bool:
+    def essentials_of(self, screen_id: str) -> list[CategoryPath] | None:
         """
-        ScreenTable から指定の Screen ID, CategoryPath とペアの Expr を取得する\n
-        指定の Screen ID, CategoryPath にあたるものが存在しない場合は None を返す
+        ScreenTable から指定の Screen ID の Essential CategoryPath のリストを取得する\n
+        指定の Screen ID にあたるものが存在しない場合は None を返す
 
         Args:
             screen_id (str): Screen ID
-            category_path (CategoryPath): CategoryPath
 
         Returns:
-            Expr | None: Expr
+            list[CategoryPath] | None: Essential CategoryPath のリスト
         """
         for sid, (encats, _) in self.screen_table.items():
             if sid != screen_id:
                 continue
+
+            result = []
             for encat in encats:
-                if encat[0] == category_path:
-                    return encat[2]
+                if encat[2]:  # essential = True
+                    result.append(encat[0])
+            return result
         return None
 
     def sync(self, prompt: Prompt) -> Prompt | None:
@@ -257,7 +287,7 @@ class Interpreter(ABC):
                 if sync_ is None:
                     return prompt
 
-                memory = self.prompt_to_memory(prompt)
+                memory = prompt_to_memory(prompt)
                 if memory is None:
                     return None
                 return sync_(memory).to_prompt(sid)
@@ -456,66 +486,42 @@ class Interpreter(ABC):
 
     def make_prompt(self, text: str) -> Prompt | None:
         """
-        テキストをもとに Prompter によって PromptSet を得る\n
-        PromptSet は dedupe かつ sort 済み, 加えて edit も実施済みである\n
+        テキストをもとに Prompter によって Prompt を得る\n
+        Prompt は dedupe かつ sort 済み, 加えて edit も実施済みである\n
         Prompter 未指定の場合は None を返す
 
         Args:
             text (str): テキスト
 
         Returns:
-            PromptSet | None: PromptSet, Prompter 未指定の場合に None
+            Prompt | None: Prompt, Prompter 未指定の場合に None
         """
         if self.prompter is None:
             return None
 
         return self.edit(self.prompter.to_prompt(text))
 
-    @staticmethod
-    def is_enough_prompt(prompt: Prompt) -> bool:
+    def check_essentiality_of(self, prompt: Prompt) -> bool:
         """
-        指定の PromptSet が生成に十分な情報を持っているか\n
-        各派生クラスはこの関数をオーバーライドすべきである(この関数自体を実行するのは構わない)\n
-        基底クラスにおいては空かどうかだけを判定する
+        指定の Prompt が生成に十分な情報を持っているか\n
+        EnhancedCategoryPath 上で指定された不可欠 CategoryPath をすべて持っているかを確認する\n
+        指定の CategoryPath はポジティブ・ネガティブプロンプトの一方に存在すればよいものとする\n
+        None であったり, 両プロンプトが空である場合は False\n
+        本関数は make_prompt() にて得られた Prompt を対象とすることを想定している(特に strip())
 
         Args:
-            prompt_set (PromptSet): PromptSet
+            prompt (Prompt): Prompt
 
         Returns:
             bool: True: 十分, False: 不十分(空文字列)
         """
-        return prompt is not None and (prompt.positive or prompt.negative)
+        if prompt is None or (not prompt.positive and not prompt.negative):
+            return False
 
-    @staticmethod
-    def prompt_to_memory(prompt: Prompt | None) -> Memory | None:
-        """
-        指定の Prompt から Memory を得る\n
-        None についてはそのまま None を返す
-
-        Args:
-            prompt (Prompt | None): Prompt
-
-        Returns:
-            Memory | None: Memory
-        """
-        if prompt is None:
-            return None
-
-        memory = Memory()
+        existing_paths: set[CategoryPath] = set()
         for parts in prompt.positive:
-            memory.entries.append(MemoryEntry(path=parts.path, pos_tokens=parts.tokens))
+            existing_paths.add(parts.path)
         for parts in prompt.negative:
-            exists = False
-            for entry in memory.entries:
-                if parts.path != entry.path:
-                    continue
+            existing_paths.add(parts.path)
 
-                # dedupe されている場合は代入と変わらない
-                entry.neg_tokens.extend(parts.tokens)
-                exists = True
-
-            if not exists:
-                # ポジティブ側になかった場合は単独で登録
-                memory.entries.append(MemoryEntry(parts.path, neg_tokens=parts.tokens))
-
-        return memory
+        return set(self.essentials_of(prompt.screen_id)) <= existing_paths

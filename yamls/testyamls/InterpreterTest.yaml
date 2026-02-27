@@ -98,3 +98,38 @@ sort:
   common:
     positive: sort_common_pos
     negative: sort_common_neg
+essential:
+  ignition: "essential"
+  need1:
+    pattern: "(A)"
+    maps:
+      A:
+        positive: NEED1
+        negative: need1
+  notneed1:
+    pattern: "(B)"
+    maps:
+      B:
+        positive: NOTNEED1
+        negative: notneed1
+  need2:
+    pattern: "(C)"
+    maps:
+      C:
+        positive: NEED2
+        negative: need2
+  notneed2:
+    pattern: "(D)"
+    maps:
+      D:
+        positive: NOTNEED2
+        negative: notneed2
+  need3:
+    pattern: "(E)"
+    maps:
+      E:
+        positive: NEED3
+        negative: need3
+  common:
+    positive: essential_common_pos
+    negative: essential_common_neg

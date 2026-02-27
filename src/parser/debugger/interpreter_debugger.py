@@ -36,6 +36,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "OK1,OK2,strip_common_pos", "NEG": "ok1,ok2,strip_common_neg"},
+            "essentiality": True,
         }
     },
     "CASE 'dedupe'": {
@@ -81,6 +82,7 @@ CORRECT_RESULT = {
                 "POS": "MAP1,(dedupe:2.5),MAP2,MAP3',MAP3,MAP4,dedupe_common_pos",
                 "NEG": "(dedupe:0.15),map1,map2,map3,map4,dedupe_common_neg",
             },
+            "essentiality": True,
         }
     },
     "CASE 'dedupe2'": {
@@ -129,6 +131,7 @@ CORRECT_RESULT = {
                 "POS": "MAP5,MAP1,(dedupe:2.5),MAP2,MAP3',MAP3,MAP4,dedupe_common_pos",
                 "NEG": "map5,(dedupe:0.15),map5',map1,map2,map3,map4,dedupe_common_neg",
             },
+            "essentiality": True,
         }
     },
     "CASE 'dedupe3'": {
@@ -169,6 +172,7 @@ CORRECT_RESULT = {
                 "POS": "MAP5,MAP1,(dedupe:2.5),MAP2,MAP4,dedupe_common_pos",
                 "NEG": "map5,(dedupe:0.5),map5',map1,map2,map4,dedupe_common_neg",
             },
+            "essentiality": True,
         }
     },
     "CASE 'dedupe4'": {
@@ -209,6 +213,7 @@ CORRECT_RESULT = {
                 "POS": "MAP5,MAP1,(dedupe:2.5),MAP2,MAP4,dedupe_common_pos",
                 "NEG": "map5,(dedupe:0.5),map5',map1,map2,map4,dedupe_common_neg",
             },
+            "essentiality": True,
         }
     },
     "CASE 'sort'": {
@@ -236,7 +241,132 @@ CORRECT_RESULT = {
                 "POS": "MAP3,MAP2,MAP4,MAP1,sort_common_pos",
                 "NEG": "map3,map2,map4,map1,sort_common_neg",
             },
+            "essentiality": True,
         }
+    },
+    "CASE 'essential'": {
+        "InterpreterTest-1: 'essential BD'": {
+            "dataclass": [
+                {
+                    "screen_id": "essential",
+                    "positive": [
+                        {"path": ["notneed1"], "tokens": [{"token": "NOTNEED1", "weight": 1.0}]},
+                        {"path": ["notneed2"], "tokens": [{"token": "NOTNEED2", "weight": 1.0}]},
+                        {"path": [], "tokens": [{"token": "essential_common_pos", "weight": 1.0}]},
+                    ],
+                    "negative": [
+                        {"path": ["notneed1"], "tokens": [{"token": "notneed1", "weight": 1.0}]},
+                        {"path": ["notneed2"], "tokens": [{"token": "notneed2", "weight": 1.0}]},
+                        {"path": [], "tokens": [{"token": "essential_common_neg", "weight": 1.0}]},
+                    ],
+                }
+            ],
+            "string": {
+                "POS": "NOTNEED1,NOTNEED2,essential_common_pos",
+                "NEG": "notneed1,notneed2,essential_common_neg",
+            },
+            "essentiality": False,
+        },
+        "InterpreterTest-2: 'essential ABD'": {
+            "dataclass": [
+                {
+                    "screen_id": "essential",
+                    "positive": [
+                        {"path": ["need1"], "tokens": [{"token": "NEED1", "weight": 1.0}]},
+                        {"path": ["notneed1"], "tokens": [{"token": "NOTNEED1", "weight": 1.0}]},
+                        {"path": ["notneed2"], "tokens": [{"token": "NOTNEED2", "weight": 1.0}]},
+                        {"path": [], "tokens": [{"token": "essential_common_pos", "weight": 1.0}]},
+                    ],
+                    "negative": [
+                        {"path": ["need1"], "tokens": [{"token": "need1", "weight": 1.0}]},
+                        {"path": ["notneed1"], "tokens": [{"token": "notneed1", "weight": 1.0}]},
+                        {"path": ["notneed2"], "tokens": [{"token": "notneed2", "weight": 1.0}]},
+                        {"path": [], "tokens": [{"token": "essential_common_neg", "weight": 1.0}]},
+                    ],
+                }
+            ],
+            "string": {
+                "POS": "NEED1,NOTNEED1,NOTNEED2,essential_common_pos",
+                "NEG": "need1,notneed1,notneed2,essential_common_neg",
+            },
+            "essentiality": False,
+        },
+        "InterpreterTest-3: 'essential BCD'": {
+            "dataclass": [
+                {
+                    "screen_id": "essential",
+                    "positive": [
+                        {"path": ["need2"], "tokens": [{"token": "NEED2", "weight": 1.0}]},
+                        {"path": ["notneed1"], "tokens": [{"token": "NOTNEED1", "weight": 1.0}]},
+                        {"path": ["notneed2"], "tokens": [{"token": "NOTNEED2", "weight": 1.0}]},
+                        {"path": [], "tokens": [{"token": "essential_common_pos", "weight": 1.0}]},
+                    ],
+                    "negative": [
+                        {"path": ["need2"], "tokens": [{"token": "need2", "weight": 1.0}]},
+                        {"path": ["notneed1"], "tokens": [{"token": "notneed1", "weight": 1.0}]},
+                        {"path": ["notneed2"], "tokens": [{"token": "notneed2", "weight": 1.0}]},
+                        {"path": [], "tokens": [{"token": "essential_common_neg", "weight": 1.0}]},
+                    ],
+                }
+            ],
+            "string": {
+                "POS": "NEED2,NOTNEED1,NOTNEED2,essential_common_pos",
+                "NEG": "need2,notneed1,notneed2,essential_common_neg",
+            },
+            "essentiality": False,
+        },
+        "InterpreterTest-4: 'essential BDE'": {
+            "dataclass": [
+                {
+                    "screen_id": "essential",
+                    "positive": [
+                        {"path": ["need3"], "tokens": [{"token": "NEED3", "weight": 1.0}]},
+                        {"path": ["notneed1"], "tokens": [{"token": "NOTNEED1", "weight": 1.0}]},
+                        {"path": ["notneed2"], "tokens": [{"token": "NOTNEED2", "weight": 1.0}]},
+                        {"path": [], "tokens": [{"token": "essential_common_pos", "weight": 1.0}]},
+                    ],
+                    "negative": [
+                        {"path": ["need3"], "tokens": [{"token": "need3", "weight": 1.0}]},
+                        {"path": ["notneed1"], "tokens": [{"token": "notneed1", "weight": 1.0}]},
+                        {"path": ["notneed2"], "tokens": [{"token": "notneed2", "weight": 1.0}]},
+                        {"path": [], "tokens": [{"token": "essential_common_neg", "weight": 1.0}]},
+                    ],
+                }
+            ],
+            "string": {
+                "POS": "NEED3,NOTNEED1,NOTNEED2,essential_common_pos",
+                "NEG": "need3,notneed1,notneed2,essential_common_neg",
+            },
+            "essentiality": False,
+        },
+        "InterpreterTest-5: 'essential ABCDE'": {
+            "dataclass": [
+                {
+                    "screen_id": "essential",
+                    "positive": [
+                        {"path": ["need1"], "tokens": [{"token": "NEED1", "weight": 1.0}]},
+                        {"path": ["need2"], "tokens": [{"token": "NEED2", "weight": 1.0}]},
+                        {"path": ["need3"], "tokens": [{"token": "NEED3", "weight": 1.0}]},
+                        {"path": ["notneed1"], "tokens": [{"token": "NOTNEED1", "weight": 1.0}]},
+                        {"path": ["notneed2"], "tokens": [{"token": "NOTNEED2", "weight": 1.0}]},
+                        {"path": [], "tokens": [{"token": "essential_common_pos", "weight": 1.0}]},
+                    ],
+                    "negative": [
+                        {"path": ["need1"], "tokens": [{"token": "need1", "weight": 1.0}]},
+                        {"path": ["need2"], "tokens": [{"token": "need2", "weight": 1.0}]},
+                        {"path": ["need3"], "tokens": [{"token": "need3", "weight": 1.0}]},
+                        {"path": ["notneed1"], "tokens": [{"token": "notneed1", "weight": 1.0}]},
+                        {"path": ["notneed2"], "tokens": [{"token": "notneed2", "weight": 1.0}]},
+                        {"path": [], "tokens": [{"token": "essential_common_neg", "weight": 1.0}]},
+                    ],
+                }
+            ],
+            "string": {
+                "POS": "NEED1,NEED2,NEED3,NOTNEED1,NOTNEED2,essential_common_pos",
+                "NEG": "need1,need2,need3,notneed1,notneed2,essential_common_neg",
+            },
+            "essentiality": True,
+        },
     },
 }
 
@@ -300,6 +430,7 @@ class InterpreterDebugger(Parser):
                 result[major] = {
                     "dataclass": (self.crnt_prompt,),
                     "string": {"POS": pos, "NEG": neg},
+                    "essentiality": self.interpreter.check_essentiality_of(self.crnt_prompt),
                 }
             except Exception as e:
                 raise Exception(f"Error with '{text}'") from e
@@ -457,6 +588,24 @@ def debug_interpreter() -> None:
                     (("map2",), None, False),
                     (("map4",), None, False),
                     (("map1",), None, False),
+                ],
+            ),
+            "essential": make_testcase(
+                "yamls/testyamls/InterpreterTest.yaml",
+                [
+                    "essential BD",
+                    "essential ABD",
+                    "essential BCD",
+                    "essential BDE",
+                    "essential ABCDE",
+                ],
+                "essential",
+                [
+                    (("need1",), None, True),
+                    (("need2",), None, True),
+                    (("need3",), None, True),
+                    (("notneed1",), None, False),
+                    (("notneed2",), None, False),
                 ],
             ),
         }

@@ -150,15 +150,15 @@ class Parser:
 
     def is_enough_prompt(self) -> bool:
         """
-        記録中の PromptSet が生成に十分な情報を持っているか
+        記録中の Prompt が生成に十分な情報を持っているか
 
         Returns:
             bool: True: 十分, False: 不十分(空文字列)
         """
         if self.event.in_debugging.is_set():
-            return self.debug_interpreter.is_enough_prompt(self.crnt_prompt)
+            return self.debug_interpreter.check_essentiality_of(self.crnt_prompt)
         else:
-            return self.interpreter.is_enough_prompt(self.crnt_prompt)
+            return self.interpreter.check_essentiality_of(self.crnt_prompt)
 
     def inform_new_prompt(self, prompt: Prompt) -> None:
         """
@@ -166,7 +166,7 @@ class Parser:
         更新がない, あるいは情報が不十分な場合は何もしない
 
         Args:
-            prompt_set (PromptSet): PromptSet
+            prompt_set (Prompt): Prompt
         """
         try:
             if not prompt.positive and not prompt.negative:
