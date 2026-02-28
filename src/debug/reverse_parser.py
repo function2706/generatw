@@ -11,8 +11,8 @@ from enum import Enum, auto
 from types import MappingProxyType
 from typing import Any, Mapping
 
+import master.events
 from common.functions import BottleMail, search_regex
-from master.events import ParserEvent
 from master.interfaces import MasterIF
 from parser.parser import Consts, Parser
 
@@ -284,7 +284,7 @@ class ReverseParser(Parser[ReverseStats]):
             }
         )
 
-    def __init__(self, master: MasterIF, to_master: BottleMail[ParserEvent]):
+    def __init__(self, master: MasterIF, to_master: BottleMail[master.events.ParserEvent]):
         super().__init__(master, to_master, ReverseStats())
 
     def make_dummy_stats(self, name: str = None) -> ReverseStats:

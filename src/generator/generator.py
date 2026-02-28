@@ -17,6 +17,7 @@ from typing import Any, Generic, Iterable, Mapping, Protocol, TypeVar
 
 from PIL import ImageFile
 
+import master.events
 from archiver.dataclasses import PicInfo, PicStats
 from common.functions import BackEnd, BottleMail, PathConsts, dirname_by_prompts, dump_json
 from common.multideque import multideque
@@ -28,7 +29,6 @@ from generator.dataclasses import (
     TaskBlueprintTxt2Img,
     UpScalerName,
 )
-from master.events import ChangeTasks, GeneratorEvent, NewProgress, TaskComplete, TaskStart
 from master.interfaces import MasterIF
 
 
@@ -212,7 +212,7 @@ class Generator(ABC, Generic[TaskProgress]):
     タスク設計図をもとにサーバへ非同期にポストし, ファイル保存をする
     """
 
-    def __init__(self, master: MasterIF, to_master: BottleMail[GeneratorEvent]):
+    def __init__(self, master: MasterIF, to_master: BottleMail[master.events.GeneratorEvent]):
         """
         コンストラクタ
 
@@ -325,7 +325,9 @@ class Generator(ABC, Generic[TaskProgress]):
                     return
                 self.tasks.push(new_task)
                 nexts = len(self.tasks)
-                self.to_master.enclose(ChangeTasks(nexts if self.crnt_task is None else nexts + 1))
+                self.to_master.enclose(
+                    master.events.ChangeTasks(nexts if self.crnt_task is None else nexts + 1)
+                )
 
     def reserve_img2img(
         self,
@@ -386,7 +388,9 @@ class Generator(ABC, Generic[TaskProgress]):
                     return
                 self.tasks.push(new_task)
                 nexts = len(self.tasks)
-                self.to_master.enclose(ChangeTasks(nexts if self.crnt_task is None else nexts + 1))
+                self.to_master.enclose(
+                    master.events.ChangeTasks(nexts if self.crnt_task is None else nexts + 1)
+                )
 
     def clear(self) -> None:
         """
@@ -394,7 +398,7 @@ class Generator(ABC, Generic[TaskProgress]):
         """
         with self.tasks_lock:
             self.tasks.clear()
-            self.to_master.enclose(ChangeTasks(0 if self.crnt_task is None else 1))
+            self.to_master.enclose(master.events.ChangeTasks(0 if self.crnt_task is None else 1))
 
     def is_crnt_task_none(self) -> bool:
         """
@@ -538,7 +542,7 @@ class Generator(ABC, Generic[TaskProgress]):
                         continue
 
                     self.crnt_task = self.tasks.pop()
-                    self.to_master.enclose(TaskStart(self.crnt_task))
+                    self.to_master.enclose(master.events.TaskStart(self.crnt_task))
 
             try:
                 if isinstance(self.crnt_task, TaskBlueprintTxt2Img):
@@ -554,8 +558,8 @@ class Generator(ABC, Generic[TaskProgress]):
             finally:
                 with self.crnt_task_lock:
                     if self.crnt_task is not None:
-                        self.to_master.enclose(TaskComplete())
-                        self.to_master.enclose(NewProgress(0))
+                        self.to_master.enclose(master.events.TaskComplete())
+                        self.to_master.enclose(master.events.NewProgress(0))
                     self.crnt_task = None
 
     def instructor(self) -> None:
@@ -583,6 +587,6 @@ class Generator(ABC, Generic[TaskProgress]):
             try:
                 response = self.request_progress()
                 if response is not None:
-                    self.to_master.enclose(NewProgress(response.progress))
+                    self.to_master.enclose(master.events.NewProgress(response.progress))
             except Exception as e:
                 print(f"Any exception occurred in {threading.current_thread().name}: ", e)

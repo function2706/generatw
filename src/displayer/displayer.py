@@ -8,28 +8,13 @@ import tkinter
 from pathlib import Path
 from tkinter import Frame, TclError, filedialog, ttk
 
+import master.events
 from archiver.dataclasses import NoImageStats, PicStats
 from common.functions import BottleMail
 from displayer.dataclasses import GUIConfigs
 from displayer.info_window import InfoWindow
 from displayer.pic_window import PicWindow
 from generator.dataclasses import TaskBlueprint
-from master.events import (
-    DisplayerEvent,
-    OnBackward,
-    OnChangeConfig,
-    OnDebug,
-    OnDelete,
-    OnDumpArchiver,
-    OnDumpTaskList,
-    OnFlushTasks,
-    OnForward,
-    OnInterruptTask,
-    OnRepeatTask,
-    OnSelectYaml,
-    OnSwitchBackend,
-    OnUpscale,
-)
 from master.interfaces import BackEnd, MasterIF
 
 
@@ -513,7 +498,10 @@ class Displayer:
     """
 
     def __init__(
-        self, master: MasterIF, to_master: BottleMail[DisplayerEvent], init_configs: GUIConfigs
+        self,
+        master: MasterIF,
+        to_master: BottleMail[master.events.DisplayerEvent],
+        init_configs: GUIConfigs,
     ):
         """
         コンストラクタ
@@ -599,19 +587,19 @@ class Displayer:
         """
         再実行ボタンハンドラ
         """
-        self.to_master.enclose(OnRepeatTask())
+        self.to_master.enclose(master.events.OnRepeatTask())
 
     def on_interrput_task(self) -> None:
         """
         中断ボタンハンドラ
         """
-        self.to_master.enclose(OnInterruptTask())
+        self.to_master.enclose(master.events.OnInterruptTask())
 
     def on_flush_tasks(self) -> None:
         """
         タスククリアボタンハンドラ
         """
-        self.to_master.enclose(OnFlushTasks())
+        self.to_master.enclose(master.events.OnFlushTasks())
 
     def on_open_pic_window(self) -> None:
         """
@@ -651,50 +639,50 @@ class Displayer:
 
         self.main_window.main_tab_obj.sellect_frame.yamlpath = Path(path)
         self.main_window.main_tab_obj.sellect_frame.yamlpath_var.set(Path(path).name)
-        self.to_master.enclose(OnSelectYaml(path=path))
+        self.to_master.enclose(master.events.OnSelectYaml(path=path))
         self.update_configs()
 
     def on_debug(self) -> None:
         """
         デバッグボタンハンドラ
         """
-        self.to_master.enclose(OnDebug())
+        self.to_master.enclose(master.events.OnDebug())
 
     def on_dump_archiver(self) -> None:
         """
         Archiver ダンプボタンハンドラ
         """
-        self.to_master.enclose(OnDumpArchiver())
+        self.to_master.enclose(master.events.OnDumpArchiver())
 
     def on_dump_tasklist(self) -> None:
         """
         タスクリストダンプボタンハンドラ
         """
-        self.to_master.enclose(OnDumpTaskList())
+        self.to_master.enclose(master.events.OnDumpTaskList())
 
     def on_backward(self) -> None:
         """
         < ボタンハンドラ
         """
-        self.to_master.enclose(OnBackward())
+        self.to_master.enclose(master.events.OnBackward())
 
     def on_forward(self) -> None:
         """
         > ボタンハンドラ
         """
-        self.to_master.enclose(OnForward())
+        self.to_master.enclose(master.events.OnForward())
 
     def on_upscale(self) -> None:
         """
         アップスケール予約ボタンハンドラ
         """
-        self.to_master.enclose(OnUpscale())
+        self.to_master.enclose(master.events.OnUpscale())
 
     def on_delete(self) -> None:
         """
         削除ボタンハンドラ
         """
-        self.to_master.enclose(OnDelete())
+        self.to_master.enclose(master.events.OnDelete())
 
     def on_switch_backend(self) -> None:
         """
@@ -702,7 +690,7 @@ class Displayer:
         """
         self.update_configs()
         self.to_master.enclose(
-            OnSwitchBackend(
+            master.events.OnSwitchBackend(
                 new_backend=BackEnd.a1111
                 if self.crnt_configs.backend == BackEnd.a1111.value
                 else BackEnd.comfy_ui
@@ -713,7 +701,7 @@ class Displayer:
         """
         GUI 上の設定値を Master に通知する
         """
-        self.to_master.enclose(OnChangeConfig(new_config=self.crnt_configs))
+        self.to_master.enclose(master.events.OnChangeConfig(new_config=self.crnt_configs))
 
     @property
     def crnt_configs(self) -> GUIConfigs:

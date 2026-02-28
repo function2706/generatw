@@ -14,8 +14,8 @@ from pathlib import Path
 import pyperclip
 import yaml
 
+import master.events
 from common.functions import BottleMail, dirname_by_prompts, dump_json
-from master.events import NewPrompts, ParserEvent
 from master.interfaces import MasterIF
 from parser.interpreter.debug_interpreter import DebugInterpreter
 from parser.interpreter.interpreter import Interpreter
@@ -56,7 +56,7 @@ class Parser:
     クリップボード監視, ステータス記録クラス
     """
 
-    def __init__(self, master: MasterIF, to_master: BottleMail[ParserEvent]):
+    def __init__(self, master: MasterIF, to_master: BottleMail[master.events.ParserEvent]):
         """
         コンストラクタ\n
         YAML がない場合に ValueError を投げる
@@ -182,14 +182,16 @@ class Parser:
 
             if not self.is_enough_prompt():
                 # 空ではないが条件を満たさない
-                self.to_master.enclose(NewPrompts(is_enough=False))
+                self.to_master.enclose(master.events.NewPrompts(is_enough=False))
                 return
 
             pos, neg = self.make_prompt_strs()
             if self.master.crnt_gui_configs.print_new_prompt:
                 dump_json({"POS": pos, "NEG": neg}, "new_prompt")
 
-            self.to_master.enclose(NewPrompts(is_enough=True, positive=pos, negative=neg))
+            self.to_master.enclose(
+                master.events.NewPrompts(is_enough=True, positive=pos, negative=neg)
+            )
         finally:
             self.event.in_debugging.clear()
 

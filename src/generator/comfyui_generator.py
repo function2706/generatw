@@ -16,12 +16,12 @@ import requests
 import websocket
 from PIL import Image, ImageFile
 
+import master.events
 from archiver.dataclasses import PicInfo
 from common.functions import BottleMail
 from generator.comfyui_workflow import Img2ImgWorkFlow, Txt2ImgWorkFlow
 from generator.dataclasses import TaskBlueprint, TaskBlueprintImg2Img, TaskBlueprintTxt2Img
 from generator.generator import Generator
-from master.events import GeneratorEvent
 from master.interfaces import MasterIF
 
 
@@ -91,7 +91,7 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
     タスク設計図をもとにサーバへ非同期にポストし, ファイル保存をする
     """
 
-    def __init__(self, master: MasterIF, to_master: BottleMail[GeneratorEvent]):
+    def __init__(self, master: MasterIF, to_master: BottleMail[master.events.GeneratorEvent]):
         """
         コンストラクタ
 

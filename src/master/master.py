@@ -8,6 +8,7 @@ import tkinter
 from dataclasses import dataclass
 from pathlib import Path
 
+import master.events
 from archiver.archiver import Archiver
 from archiver.dataclasses import NoImageStats, PicStats
 from common.functions import BackEnd, BottleMail, dump_json
@@ -21,31 +22,6 @@ from generator.dataclasses import (
     TaskBlueprintImg2Img,
     TaskBlueprintTxt2Img,
     UpScalerName,
-)
-from master.events import (
-    ArchiverEvent,
-    ChangeTasks,
-    DisplayerEvent,
-    GeneratorEvent,
-    NewPicStats,
-    NewProgress,
-    NewPrompts,
-    OnBackward,
-    OnChangeConfig,
-    OnDebug,
-    OnDelete,
-    OnDumpArchiver,
-    OnDumpTaskList,
-    OnFlushTasks,
-    OnForward,
-    OnInterruptTask,
-    OnRepeatTask,
-    OnSelectYaml,
-    OnSwitchBackend,
-    OnUpscale,
-    ParserEvent,
-    TaskComplete,
-    TaskStart,
 )
 from master.interfaces import MasterIF
 from parser.parser import Parser
@@ -71,10 +47,10 @@ class Master(MasterIF):
         self.root = tkinter.Tk()
         self.after_id: str = ""
 
-        self.from_archiver: BottleMail[ArchiverEvent] = BottleMail()
-        self.from_displayer: BottleMail[DisplayerEvent] = BottleMail()
-        self.from_generator: BottleMail[GeneratorEvent] = BottleMail()
-        self.from_parser: BottleMail[ParserEvent] = BottleMail()
+        self.from_archiver: BottleMail[master.events.ArchiverEvent] = BottleMail()
+        self.from_displayer: BottleMail[master.events.DisplayerEvent] = BottleMail()
+        self.from_generator: BottleMail[master.events.GeneratorEvent] = BottleMail()
+        self.from_parser: BottleMail[master.events.ParserEvent] = BottleMail()
 
         self.crnt_configs: GUIConfigs = (
             GUIConfigs.fromjson(Consts.config_path)
@@ -225,7 +201,7 @@ class Master(MasterIF):
                     f"{self.archiver.__class__.__name__:20} > {event.__class__.__name__:20} > ",
                     end="",
                 )
-            if isinstance(event, NewPicStats):
+            if isinstance(event, master.events.NewPicStats):
                 if self.crnt_gui_configs.print_event:
                     print("stats=", end="")
                     if event.next_picstats is NoImageStats:
@@ -248,33 +224,33 @@ class Master(MasterIF):
 
             if self.crnt_gui_configs.print_event:
                 print(f"{self.displayer.__class__.__name__:20} > {event.__class__.__name__:20}")
-            if isinstance(event, OnRepeatTask):
+            if isinstance(event, master.events.OnRepeatTask):
                 if self.parser.crnt_prompt:
                     pos, neg = self.parser.make_prompt_strs()
                     self.reserve_txt2img_task(pos, neg)
-            if isinstance(event, OnInterruptTask):
+            if isinstance(event, master.events.OnInterruptTask):
                 self.generator.reserve_interrupt()
-            if isinstance(event, OnFlushTasks):
+            if isinstance(event, master.events.OnFlushTasks):
                 self.generator.clear()
-            if isinstance(event, OnSelectYaml):
+            if isinstance(event, master.events.OnSelectYaml):
                 self.switch_frontend(Path(event.path))
-            if isinstance(event, OnDebug):
+            if isinstance(event, master.events.OnDebug):
                 self.parser.ready_for_debug()
-            if isinstance(event, OnDumpArchiver):
+            if isinstance(event, master.events.OnDumpArchiver):
                 dump_json(self.archiver.archive.todict(), "archiver")
-            if isinstance(event, OnDumpTaskList):
+            if isinstance(event, master.events.OnDumpTaskList):
                 dump_json(self.generator.crnt_tasklist(), "tasks")
-            if isinstance(event, OnBackward):
+            if isinstance(event, master.events.OnBackward):
                 self.archiver.backward_picstats()
-            if isinstance(event, OnForward):
+            if isinstance(event, master.events.OnForward):
                 self.archiver.forward_picstats()
-            if isinstance(event, OnUpscale):
+            if isinstance(event, master.events.OnUpscale):
                 self.reserve_img2img_task()
-            if isinstance(event, OnDelete):
+            if isinstance(event, master.events.OnDelete):
                 self.archiver.remove_crnt_picstats()
-            if isinstance(event, OnChangeConfig):
+            if isinstance(event, master.events.OnChangeConfig):
                 self.crnt_configs = event.new_config
-            if isinstance(event, OnSwitchBackend):
+            if isinstance(event, master.events.OnSwitchBackend):
                 self.switch_backend(event.new_backend)
 
     def operate_from_generator(self) -> None:
@@ -294,7 +270,7 @@ class Master(MasterIF):
                     f"{self.generator.__class__.__name__:20} > {event.__class__.__name__:20} > ",
                     end="",
                 )
-            if isinstance(event, TaskStart):
+            if isinstance(event, master.events.TaskStart):
                 if self.crnt_gui_configs.print_event:
                     prompt = event.new_task.prompt[:27] + "..."
                     if isinstance(event.new_task, TaskBlueprintTxt2Img):
@@ -302,15 +278,15 @@ class Master(MasterIF):
                     elif isinstance(event.new_task, TaskBlueprintImg2Img):
                         print(f"img2img, prompt={prompt}")
                 self.displayer.info_window.update_taskinfo_tab(task=event.new_task)
-            if isinstance(event, NewProgress):
+            if isinstance(event, master.events.NewProgress):
                 if self.crnt_gui_configs.print_event:
                     print(f"progress={event.progress}")
                 self.displayer.info_window.update_taskinfo_tab(progress=event.progress)
-            if isinstance(event, ChangeTasks):
+            if isinstance(event, master.events.ChangeTasks):
                 if self.crnt_gui_configs.print_event:
                     print(f"tasks={event.tasks}")
                 self.displayer.info_window.update_taskinfo_tab(tasks=event.tasks)
-            if isinstance(event, TaskComplete):
+            if isinstance(event, master.events.TaskComplete):
                 if self.crnt_gui_configs.print_event:
                     print("OK")
                 self.displayer.info_window.update_taskinfo_tab(done=True)
@@ -334,7 +310,7 @@ class Master(MasterIF):
                     f"{self.parser.__class__.__name__:20} > {event.__class__.__name__:20} > ",
                     end="",
                 )
-            if isinstance(event, NewPrompts):
+            if isinstance(event, master.events.NewPrompts):
                 if self.crnt_gui_configs.print_event:
                     print(f"enough={event.is_enough}")
                 if event.is_enough:

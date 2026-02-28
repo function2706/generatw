@@ -16,9 +16,9 @@ from typing import Any
 from watchdog.events import PatternMatchingEventHandler
 from watchdog.observers import Observer
 
+import master.events
 from archiver.dataclasses import NoImageStats, PicStats
 from common.functions import BottleMail, PathConsts
-from master.events import ArchiverEvent, NewPicStats
 
 
 class EventType(Enum):
@@ -171,7 +171,7 @@ class Archiver:
     画像管理クラス
     """
 
-    def __init__(self, to_master: BottleMail[ArchiverEvent]):
+    def __init__(self, to_master: BottleMail[master.events.ArchiverEvent]):
         """
         コンストラクタ
         """
@@ -221,7 +221,7 @@ class Archiver:
         注目中 PicStats を解除する
         """
         self.crnt_picstats = NoImageStats
-        self.to_master.enclose(NewPicStats(self.crnt_picstats))
+        self.to_master.enclose(master.events.NewPicStats(self.crnt_picstats))
 
     def forward_picstats(self) -> None:
         """
@@ -238,7 +238,7 @@ class Archiver:
 
         idx = picstats_list.index(self.crnt_picstats)
         self.crnt_picstats = picstats_list[min(idx + 1, len(picstats_list) - 1)]
-        self.to_master.enclose(NewPicStats(self.crnt_picstats))
+        self.to_master.enclose(master.events.NewPicStats(self.crnt_picstats))
 
     def backward_picstats(self) -> None:
         """
@@ -255,7 +255,7 @@ class Archiver:
 
         idx = picstats_list.index(self.crnt_picstats)
         self.crnt_picstats = picstats_list[max(idx - 1, 0)]
-        self.to_master.enclose(NewPicStats(self.crnt_picstats))
+        self.to_master.enclose(master.events.NewPicStats(self.crnt_picstats))
 
     def warp_picstats(self, dir: str) -> None:
         """
@@ -267,7 +267,7 @@ class Archiver:
             return
 
         self.crnt_picstats = random.choice(picstats_list)
-        self.to_master.enclose(NewPicStats(self.crnt_picstats))
+        self.to_master.enclose(master.events.NewPicStats(self.crnt_picstats))
 
     def remove_crnt_picstats(self) -> None:
         """
