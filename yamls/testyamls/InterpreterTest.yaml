@@ -113,11 +113,14 @@ essential:
         positive: NOTNEED1
         negative: notneed1
   need2:
-    pattern: "(C)"
+    pattern: "(C|X)"
     maps:
       C:
         positive: NEED2
         negative: need2
+    default:
+      positive: DEFAULT
+      negative: default
   notneed2:
     pattern: "(D)"
     maps:
@@ -133,3 +136,64 @@ essential:
   common:
     positive: essential_common_pos
     negative: essential_common_neg
+expr1:
+  ignition: "expr1"
+  location:
+    indoors:
+      pattern: "(room)"
+      maps:
+        room: room
+    outdoors:
+      pattern: "(city)"
+      maps:
+        city: city
+  weather:
+    pattern: "(sunny)"
+    maps:
+      sunny: sunny
+expr2:
+  ignition: "expr2"
+  p:
+    pattern: "(P)"
+    maps:
+      P: P
+  q:
+    pattern: "(Q)"
+    maps:
+      Q: Q
+  r:
+    pattern: "(R)"
+    maps:
+      R: R
+  checkHas:
+    pattern: "(checkHas)"
+    maps:
+      checkHas: checkHas
+  checkAnd:
+    pattern: "(checkAnd)"
+    maps:
+      checkAnd: checkAnd
+  checkOr:
+    pattern: "(checkOr)"
+    maps:
+      checkOr: checkOr
+  checkNot:
+    pattern: "(checkNot)"
+    maps:
+      checkNot: checkNot
+  checkComplex:
+    pattern: "(checkComplex)"
+    maps:
+      checkComplex: checkComplex
+  checkTrue:
+    pattern: "(checkTrue)"
+    maps:
+      checkTrue: checkTrue
+  checkFalse:
+    pattern: "(checkFalse)"
+    maps:
+      checkFalse: checkFalse
+  checkNone:
+    pattern: "(checkNone)"
+    maps:
+      checkNone: checkNone

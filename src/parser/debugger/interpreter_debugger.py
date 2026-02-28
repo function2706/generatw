@@ -13,6 +13,7 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 
+from common.expr import FalseExpr, Has, TrueExpr  # noqa: E402
 from common.functions import dump_json  # noqa: E402
 from parser.interpreter.test_interpreter import EnhancedCategory, TestInterpreter  # noqa: E402
 from parser.parser import Parser  # noqa: E402
@@ -367,6 +368,430 @@ CORRECT_RESULT = {
             },
             "essentiality": True,
         },
+        "InterpreterTest-6: 'essential ABXDE'": {
+            "dataclass": [
+                {
+                    "screen_id": "essential",
+                    "positive": [
+                        {"path": ["need1"], "tokens": [{"token": "NEED1", "weight": 1.0}]},
+                        {"path": ["need2"], "tokens": [{"token": "DEFAULT", "weight": 1.0}]},
+                        {"path": ["need3"], "tokens": [{"token": "NEED3", "weight": 1.0}]},
+                        {"path": ["notneed1"], "tokens": [{"token": "NOTNEED1", "weight": 1.0}]},
+                        {"path": ["notneed2"], "tokens": [{"token": "NOTNEED2", "weight": 1.0}]},
+                        {"path": [], "tokens": [{"token": "essential_common_pos", "weight": 1.0}]},
+                    ],
+                    "negative": [
+                        {"path": ["need1"], "tokens": [{"token": "need1", "weight": 1.0}]},
+                        {"path": ["need2"], "tokens": [{"token": "default", "weight": 1.0}]},
+                        {"path": ["need3"], "tokens": [{"token": "need3", "weight": 1.0}]},
+                        {"path": ["notneed1"], "tokens": [{"token": "notneed1", "weight": 1.0}]},
+                        {"path": ["notneed2"], "tokens": [{"token": "notneed2", "weight": 1.0}]},
+                        {"path": [], "tokens": [{"token": "essential_common_neg", "weight": 1.0}]},
+                    ],
+                }
+            ],
+            "string": {
+                "POS": "NEED1,DEFAULT,NEED3,NOTNEED1,NOTNEED2,essential_common_pos",
+                "NEG": "need1,default,need3,notneed1,notneed2,essential_common_neg",
+            },
+            "essentiality": True,
+        },
+    },
+    "CASE 'expr1'": {
+        "InterpreterTest-1: 'expr1 room city'": {
+            "dataclass": [{"screen_id": "expr1", "positive": [], "negative": []}],
+            "string": {"POS": "", "NEG": ""},
+            "essentiality": False,
+        },
+        "InterpreterTest-2: 'expr1 city room'": {
+            "dataclass": [{"screen_id": "expr1", "positive": [], "negative": []}],
+            "string": {"POS": "", "NEG": ""},
+            "essentiality": False,
+        },
+        "InterpreterTest-3: 'expr1 room sunny'": {
+            "dataclass": [
+                {
+                    "screen_id": "expr1",
+                    "positive": [
+                        {
+                            "path": ["location", "indoors"],
+                            "tokens": [{"token": "room", "weight": 1.0}],
+                        }
+                    ],
+                    "negative": [],
+                }
+            ],
+            "string": {"POS": "room", "NEG": ""},
+            "essentiality": True,
+        },
+        "InterpreterTest-4: 'expr1 city sunny'": {
+            "dataclass": [
+                {
+                    "screen_id": "expr1",
+                    "positive": [
+                        {
+                            "path": ["location", "outdoors"],
+                            "tokens": [{"token": "city", "weight": 1.0}],
+                        },
+                        {"path": ["weather"], "tokens": [{"token": "sunny", "weight": 1.0}]},
+                    ],
+                    "negative": [],
+                }
+            ],
+            "string": {"POS": "city,sunny", "NEG": ""},
+            "essentiality": True,
+        },
+    },
+    "CASE 'expr2'": {
+        "InterpreterTest-1: 'expr2 checkHas'": {
+            "dataclass": [{"screen_id": "expr2", "positive": [], "negative": []}],
+            "string": {"POS": "", "NEG": ""},
+            "essentiality": False,
+        },
+        "InterpreterTest-2: 'expr2 P checkHas'": {
+            "dataclass": [
+                {
+                    "screen_id": "expr2",
+                    "positive": [
+                        {"path": ["p"], "tokens": [{"token": "P", "weight": 1.0}]},
+                        {"path": ["checkHas"], "tokens": [{"token": "checkHas", "weight": 1.0}]},
+                    ],
+                    "negative": [],
+                }
+            ],
+            "string": {"POS": "P,checkHas", "NEG": ""},
+            "essentiality": True,
+        },
+        "InterpreterTest-3: 'expr2 PQR checkHas'": {
+            "dataclass": [
+                {
+                    "screen_id": "expr2",
+                    "positive": [
+                        {"path": ["p"], "tokens": [{"token": "P", "weight": 1.0}]},
+                        {"path": ["q"], "tokens": [{"token": "Q", "weight": 1.0}]},
+                        {"path": ["r"], "tokens": [{"token": "R", "weight": 1.0}]},
+                        {"path": ["checkHas"], "tokens": [{"token": "checkHas", "weight": 1.0}]},
+                    ],
+                    "negative": [],
+                }
+            ],
+            "string": {"POS": "P,Q,R,checkHas", "NEG": ""},
+            "essentiality": True,
+        },
+        "InterpreterTest-4: 'expr2 QR checkHas'": {
+            "dataclass": [
+                {
+                    "screen_id": "expr2",
+                    "positive": [
+                        {"path": ["q"], "tokens": [{"token": "Q", "weight": 1.0}]},
+                        {"path": ["r"], "tokens": [{"token": "R", "weight": 1.0}]},
+                    ],
+                    "negative": [],
+                }
+            ],
+            "string": {"POS": "Q,R", "NEG": ""},
+            "essentiality": True,
+        },
+        "InterpreterTest-5: 'expr2 checkAnd'": {
+            "dataclass": [{"screen_id": "expr2", "positive": [], "negative": []}],
+            "string": {"POS": "", "NEG": ""},
+            "essentiality": False,
+        },
+        "InterpreterTest-6: 'expr2 P checkAnd'": {
+            "dataclass": [
+                {
+                    "screen_id": "expr2",
+                    "positive": [{"path": ["p"], "tokens": [{"token": "P", "weight": 1.0}]}],
+                    "negative": [],
+                }
+            ],
+            "string": {"POS": "P", "NEG": ""},
+            "essentiality": True,
+        },
+        "InterpreterTest-7: 'expr2 Q checkAnd'": {
+            "dataclass": [
+                {
+                    "screen_id": "expr2",
+                    "positive": [{"path": ["q"], "tokens": [{"token": "Q", "weight": 1.0}]}],
+                    "negative": [],
+                }
+            ],
+            "string": {"POS": "Q", "NEG": ""},
+            "essentiality": True,
+        },
+        "InterpreterTest-8: 'expr2 PQ checkAnd'": {
+            "dataclass": [
+                {
+                    "screen_id": "expr2",
+                    "positive": [
+                        {"path": ["p"], "tokens": [{"token": "P", "weight": 1.0}]},
+                        {"path": ["q"], "tokens": [{"token": "Q", "weight": 1.0}]},
+                        {"path": ["checkAnd"], "tokens": [{"token": "checkAnd", "weight": 1.0}]},
+                    ],
+                    "negative": [],
+                }
+            ],
+            "string": {"POS": "P,Q,checkAnd", "NEG": ""},
+            "essentiality": True,
+        },
+        "InterpreterTest-9: 'expr2 PQR checkAnd'": {
+            "dataclass": [
+                {
+                    "screen_id": "expr2",
+                    "positive": [
+                        {"path": ["p"], "tokens": [{"token": "P", "weight": 1.0}]},
+                        {"path": ["q"], "tokens": [{"token": "Q", "weight": 1.0}]},
+                        {"path": ["r"], "tokens": [{"token": "R", "weight": 1.0}]},
+                        {"path": ["checkAnd"], "tokens": [{"token": "checkAnd", "weight": 1.0}]},
+                    ],
+                    "negative": [],
+                }
+            ],
+            "string": {"POS": "P,Q,R,checkAnd", "NEG": ""},
+            "essentiality": True,
+        },
+        "InterpreterTest-10: 'expr2 checkOr'": {
+            "dataclass": [{"screen_id": "expr2", "positive": [], "negative": []}],
+            "string": {"POS": "", "NEG": ""},
+            "essentiality": False,
+        },
+        "InterpreterTest-11: 'expr2 P checkOr'": {
+            "dataclass": [
+                {
+                    "screen_id": "expr2",
+                    "positive": [
+                        {"path": ["p"], "tokens": [{"token": "P", "weight": 1.0}]},
+                        {"path": ["checkOr"], "tokens": [{"token": "checkOr", "weight": 1.0}]},
+                    ],
+                    "negative": [],
+                }
+            ],
+            "string": {"POS": "P,checkOr", "NEG": ""},
+            "essentiality": True,
+        },
+        "InterpreterTest-12: 'expr2 Q checkOr'": {
+            "dataclass": [
+                {
+                    "screen_id": "expr2",
+                    "positive": [
+                        {"path": ["q"], "tokens": [{"token": "Q", "weight": 1.0}]},
+                        {"path": ["checkOr"], "tokens": [{"token": "checkOr", "weight": 1.0}]},
+                    ],
+                    "negative": [],
+                }
+            ],
+            "string": {"POS": "Q,checkOr", "NEG": ""},
+            "essentiality": True,
+        },
+        "InterpreterTest-13: 'expr2 PQ checkOr'": {
+            "dataclass": [
+                {
+                    "screen_id": "expr2",
+                    "positive": [
+                        {"path": ["p"], "tokens": [{"token": "P", "weight": 1.0}]},
+                        {"path": ["q"], "tokens": [{"token": "Q", "weight": 1.0}]},
+                        {"path": ["checkOr"], "tokens": [{"token": "checkOr", "weight": 1.0}]},
+                    ],
+                    "negative": [],
+                }
+            ],
+            "string": {"POS": "P,Q,checkOr", "NEG": ""},
+            "essentiality": True,
+        },
+        "InterpreterTest-14: 'expr2 PQR checkOr'": {
+            "dataclass": [
+                {
+                    "screen_id": "expr2",
+                    "positive": [
+                        {"path": ["p"], "tokens": [{"token": "P", "weight": 1.0}]},
+                        {"path": ["q"], "tokens": [{"token": "Q", "weight": 1.0}]},
+                        {"path": ["r"], "tokens": [{"token": "R", "weight": 1.0}]},
+                        {"path": ["checkOr"], "tokens": [{"token": "checkOr", "weight": 1.0}]},
+                    ],
+                    "negative": [],
+                }
+            ],
+            "string": {"POS": "P,Q,R,checkOr", "NEG": ""},
+            "essentiality": True,
+        },
+        "InterpreterTest-15: 'expr2 checkNot'": {
+            "dataclass": [
+                {
+                    "screen_id": "expr2",
+                    "positive": [
+                        {"path": ["checkNot"], "tokens": [{"token": "checkNot", "weight": 1.0}]}
+                    ],
+                    "negative": [],
+                }
+            ],
+            "string": {"POS": "checkNot", "NEG": ""},
+            "essentiality": True,
+        },
+        "InterpreterTest-16: 'expr2 P checkNot'": {
+            "dataclass": [
+                {
+                    "screen_id": "expr2",
+                    "positive": [{"path": ["p"], "tokens": [{"token": "P", "weight": 1.0}]}],
+                    "negative": [],
+                }
+            ],
+            "string": {"POS": "P", "NEG": ""},
+            "essentiality": True,
+        },
+        "InterpreterTest-17: 'expr2 PQR checkNot'": {
+            "dataclass": [
+                {
+                    "screen_id": "expr2",
+                    "positive": [
+                        {"path": ["p"], "tokens": [{"token": "P", "weight": 1.0}]},
+                        {"path": ["q"], "tokens": [{"token": "Q", "weight": 1.0}]},
+                        {"path": ["r"], "tokens": [{"token": "R", "weight": 1.0}]},
+                    ],
+                    "negative": [],
+                }
+            ],
+            "string": {"POS": "P,Q,R", "NEG": ""},
+            "essentiality": True,
+        },
+        "InterpreterTest-18: 'expr2 QR checkNot'": {
+            "dataclass": [
+                {
+                    "screen_id": "expr2",
+                    "positive": [
+                        {"path": ["q"], "tokens": [{"token": "Q", "weight": 1.0}]},
+                        {"path": ["r"], "tokens": [{"token": "R", "weight": 1.0}]},
+                        {"path": ["checkNot"], "tokens": [{"token": "checkNot", "weight": 1.0}]},
+                    ],
+                    "negative": [],
+                }
+            ],
+            "string": {"POS": "Q,R,checkNot", "NEG": ""},
+            "essentiality": True,
+        },
+        "InterpreterTest-19: 'expr2 QR checkComplex'": {
+            "dataclass": [
+                {
+                    "screen_id": "expr2",
+                    "positive": [
+                        {"path": ["q"], "tokens": [{"token": "Q", "weight": 1.0}]},
+                        {"path": ["r"], "tokens": [{"token": "R", "weight": 1.0}]},
+                    ],
+                    "negative": [],
+                }
+            ],
+            "string": {"POS": "Q,R", "NEG": ""},
+            "essentiality": True,
+        },
+        "InterpreterTest-20: 'expr2 PQ checkComplex'": {
+            "dataclass": [
+                {
+                    "screen_id": "expr2",
+                    "positive": [
+                        {"path": ["p"], "tokens": [{"token": "P", "weight": 1.0}]},
+                        {"path": ["q"], "tokens": [{"token": "Q", "weight": 1.0}]},
+                        {
+                            "path": ["checkComplex"],
+                            "tokens": [{"token": "checkComplex", "weight": 1.0}],
+                        },
+                    ],
+                    "negative": [],
+                }
+            ],
+            "string": {"POS": "P,Q,checkComplex", "NEG": ""},
+            "essentiality": True,
+        },
+        "InterpreterTest-21: 'expr2 PR checkComplex'": {
+            "dataclass": [
+                {
+                    "screen_id": "expr2",
+                    "positive": [
+                        {"path": ["p"], "tokens": [{"token": "P", "weight": 1.0}]},
+                        {"path": ["r"], "tokens": [{"token": "R", "weight": 1.0}]},
+                    ],
+                    "negative": [],
+                }
+            ],
+            "string": {"POS": "P,R", "NEG": ""},
+            "essentiality": True,
+        },
+        "InterpreterTest-22: 'expr2 checkTrue'": {
+            "dataclass": [
+                {
+                    "screen_id": "expr2",
+                    "positive": [
+                        {"path": ["checkTrue"], "tokens": [{"token": "checkTrue", "weight": 1.0}]}
+                    ],
+                    "negative": [],
+                }
+            ],
+            "string": {"POS": "checkTrue", "NEG": ""},
+            "essentiality": True,
+        },
+        "InterpreterTest-23: 'expr2 PQR checkTrue'": {
+            "dataclass": [
+                {
+                    "screen_id": "expr2",
+                    "positive": [
+                        {"path": ["p"], "tokens": [{"token": "P", "weight": 1.0}]},
+                        {"path": ["q"], "tokens": [{"token": "Q", "weight": 1.0}]},
+                        {"path": ["r"], "tokens": [{"token": "R", "weight": 1.0}]},
+                        {"path": ["checkTrue"], "tokens": [{"token": "checkTrue", "weight": 1.0}]},
+                    ],
+                    "negative": [],
+                }
+            ],
+            "string": {"POS": "P,Q,R,checkTrue", "NEG": ""},
+            "essentiality": True,
+        },
+        "InterpreterTest-24: 'expr2 checkFalse'": {
+            "dataclass": [{"screen_id": "expr2", "positive": [], "negative": []}],
+            "string": {"POS": "", "NEG": ""},
+            "essentiality": False,
+        },
+        "InterpreterTest-25: 'expr2 PQR checkFalse'": {
+            "dataclass": [
+                {
+                    "screen_id": "expr2",
+                    "positive": [
+                        {"path": ["p"], "tokens": [{"token": "P", "weight": 1.0}]},
+                        {"path": ["q"], "tokens": [{"token": "Q", "weight": 1.0}]},
+                        {"path": ["r"], "tokens": [{"token": "R", "weight": 1.0}]},
+                    ],
+                    "negative": [],
+                }
+            ],
+            "string": {"POS": "P,Q,R", "NEG": ""},
+            "essentiality": True,
+        },
+        "InterpreterTest-26: 'expr2 checkNone'": {
+            "dataclass": [
+                {
+                    "screen_id": "expr2",
+                    "positive": [
+                        {"path": ["checkNone"], "tokens": [{"token": "checkNone", "weight": 1.0}]}
+                    ],
+                    "negative": [],
+                }
+            ],
+            "string": {"POS": "checkNone", "NEG": ""},
+            "essentiality": True,
+        },
+        "InterpreterTest-27: 'expr2 PQR checkNone'": {
+            "dataclass": [
+                {
+                    "screen_id": "expr2",
+                    "positive": [
+                        {"path": ["p"], "tokens": [{"token": "P", "weight": 1.0}]},
+                        {"path": ["q"], "tokens": [{"token": "Q", "weight": 1.0}]},
+                        {"path": ["r"], "tokens": [{"token": "R", "weight": 1.0}]},
+                        {"path": ["checkNone"], "tokens": [{"token": "checkNone", "weight": 1.0}]},
+                    ],
+                    "negative": [],
+                }
+            ],
+            "string": {"POS": "P,Q,R,checkNone", "NEG": ""},
+            "essentiality": True,
+        },
     },
 }
 
@@ -598,6 +1023,7 @@ def debug_interpreter() -> None:
                     "essential BCD",
                     "essential BDE",
                     "essential ABCDE",
+                    "essential ABXDE",  # default で満たす場合
                 ],
                 "essential",
                 [
@@ -606,6 +1032,71 @@ def debug_interpreter() -> None:
                     (("need3",), None, True),
                     (("notneed1",), None, False),
                     (("notneed2",), None, False),
+                ],
+            ),
+            "expr1": make_testcase(
+                "yamls/testyamls/InterpreterTest.yaml",
+                [
+                    "expr1 room city",
+                    "expr1 city room",
+                    "expr1 room sunny",
+                    "expr1 city sunny",
+                ],
+                "expr1",
+                [
+                    (("location", "outdoors"), ~Has(("location", "indoors")), False),
+                    (("location", "indoors"), ~Has(("location", "outdoors")), False),
+                    (
+                        ("weather",),
+                        Has(("location", "outdoors")) | ~Has(("location", "indoors")),
+                        False,
+                    ),
+                ],
+            ),
+            "expr2": make_testcase(
+                "yamls/testyamls/InterpreterTest.yaml",
+                [
+                    "expr2 checkHas",
+                    "expr2 P checkHas",
+                    "expr2 PQR checkHas",
+                    "expr2 QR checkHas",
+                    "expr2 checkAnd",
+                    "expr2 P checkAnd",
+                    "expr2 Q checkAnd",
+                    "expr2 PQ checkAnd",
+                    "expr2 PQR checkAnd",
+                    "expr2 checkOr",
+                    "expr2 P checkOr",
+                    "expr2 Q checkOr",
+                    "expr2 PQ checkOr",
+                    "expr2 PQR checkOr",
+                    "expr2 checkNot",
+                    "expr2 P checkNot",
+                    "expr2 PQR checkNot",
+                    "expr2 QR checkNot",
+                    "expr2 QR checkComplex",
+                    "expr2 PQ checkComplex",
+                    "expr2 PR checkComplex",
+                    "expr2 checkTrue",
+                    "expr2 PQR checkTrue",
+                    "expr2 checkFalse",
+                    "expr2 PQR checkFalse",
+                    "expr2 checkNone",
+                    "expr2 PQR checkNone",
+                ],
+                "expr2",
+                [
+                    (("p",), TrueExpr(), False),
+                    (("q",), TrueExpr(), False),
+                    (("r",), TrueExpr(), False),
+                    (("checkHas",), Has(("p",)), False),  # 単項
+                    (("checkAnd",), Has(("p",)) & Has(("q",)), False),  # And
+                    (("checkOr",), Has(("p",)) | Has(("q",)), False),  # Or
+                    (("checkNot",), ~Has(("p",)), False),  # Not
+                    (("checkComplex",), Has(("p",)) & (Has(("q",)) | ~Has(("r",))), False),  # 複合
+                    (("checkTrue",), TrueExpr(), False),  # 恒真
+                    (("checkFalse",), FalseExpr(), False),  # 恒偽
+                    (("checkNone",), None, False),  # None = 恒真
                 ],
             ),
         }

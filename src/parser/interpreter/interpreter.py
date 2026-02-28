@@ -7,10 +7,11 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Set, TypeAlias
+from typing import Callable, TypeAlias
 
 import yaml
 
+from common.expr import Expr, TrueExpr
 from parser.prompter import (
     CategoryPath,
     Prompt,
@@ -79,67 +80,6 @@ def prompt_to_memory(prompt: Prompt | None) -> Memory | None:
             # ポジティブ側になかった場合は単独で登録
             memory.entries.append(MemoryEntry(parts.path, neg_tokens=parts.tokens))
     return memory
-
-
-class Expr(ABC):
-    @abstractmethod
-    def eval(self, s: Set[CategoryPath]) -> bool:
-        raise NotImplementedError
-
-    def __and__(self, other: Expr) -> Expr:
-        return And(self, other)
-
-    def __or__(self, other: Expr) -> Expr:
-        return Or(self, other)
-
-    def __invert__(self) -> Expr:
-        return Not(self)
-
-
-@dataclass(frozen=True)
-class Has(Expr):
-    path: CategoryPath
-
-    def eval(self, s: Set[CategoryPath]) -> bool:
-        return self.path in s
-
-
-@dataclass(frozen=True)
-class And(Expr):
-    left: Expr
-    right: Expr
-
-    def eval(self, s: Set[CategoryPath]) -> bool:
-        return self.left.eval(s) and self.right.eval(s)
-
-
-@dataclass(frozen=True)
-class Or(Expr):
-    left: Expr
-    right: Expr
-
-    def eval(self, s: Set[CategoryPath]) -> bool:
-        return self.left.eval(s) or self.right.eval(s)
-
-
-@dataclass(frozen=True)
-class Not(Expr):
-    expr: Expr
-
-    def eval(self, s: Set[CategoryPath]) -> bool:
-        return not self.expr.eval(s)
-
-
-@dataclass(frozen=True)
-class TrueExpr(Expr):
-    def eval(self, s: set[str]) -> bool:
-        return True
-
-
-@dataclass(frozen=True)
-class FalseExpr(Expr):
-    def eval(self, s: set[str]) -> bool:
-        return False
 
 
 MemorySyncer: TypeAlias = Callable[[Memory], Memory]
@@ -223,12 +163,14 @@ class Interpreter(ABC):
         for sid, (encats, _) in self.screen_table.items():
             if sid == screen_id:
                 return [t[0] for t in encats]
+        print(f"category_list_on() returns None, no match Screen ID ({screen_id}).")
         return None
 
     def expr_of(self, screen_id: str, category_path: CategoryPath) -> Expr | None:
         """
         ScreenTable から指定の Screen ID, CategoryPath とペアの Expr を取得する\n
-        指定の Screen ID, CategoryPath にあたるものが存在しない場合は None を返す
+        指定の Screen ID, CategoryPath にあたるものが存在しない場合は None を返す\n
+        None が指定されている場合は恒真とする
 
         Args:
             screen_id (str): Screen ID
@@ -242,7 +184,11 @@ class Interpreter(ABC):
                 continue
             for encat in encats:
                 if encat[0] == category_path:
-                    return encat[1]
+                    return encat[1] if encat[1] is not None else TrueExpr()
+        print(
+            f"expr_of() returns None, no match Screen ID ({screen_id}) "
+            f"or CategoryPath ({category_path})."
+        )
         return None
 
     def essentials_of(self, screen_id: str) -> list[CategoryPath] | None:
@@ -265,6 +211,7 @@ class Interpreter(ABC):
                 if encat[2]:  # essential = True
                     result.append(encat[0])
             return result
+        print(f"essentials_of() returns None, no match Screen ID ({screen_id}).")
         return None
 
     def sync(self, prompt: Prompt) -> Prompt | None:
@@ -280,6 +227,7 @@ class Interpreter(ABC):
             prompt (Prompt): プロンプト
         """
         if prompt is None:
+            print("sync() returns None, assigned prompt is None.")
             return None
 
         for sid, (_, sync_) in self.screen_table.items():
@@ -289,6 +237,7 @@ class Interpreter(ABC):
 
                 memory = prompt_to_memory(prompt)
                 if memory is None:
+                    print("sync() returns None by prompt_to_memory().")
                     return None
                 return sync_(memory).to_prompt(sid)
 
@@ -306,10 +255,12 @@ class Interpreter(ABC):
             Prompt | None: Prompt
         """
         if prompt is None:
+            print("strip() returns None, assigned prompt is None.")
             return None
 
         category_list = self.category_list_on(prompt.screen_id)
         if category_list is None:
+            print(f"strip() returns None, check category list for '{prompt.screen_id}'.")
             return None
 
         def strip_(parts_list: list[PromptParts]) -> list[PromptParts]:
@@ -356,10 +307,12 @@ class Interpreter(ABC):
             Prompt | None: 重複排除済みの新しい Prompt
         """
         if prompt is None:
+            print("dedupe() returns None, assigned prompt is None.")
             return None
 
         category_list = list(self.category_list_on(prompt.screen_id))
         if category_list is None:
+            print(f"dedupe() returns None, check category list for '{prompt.screen_id}'.")
             return None
         category_list.append(CategoryPath())  # common 用に末尾に空の Path を追加
 
@@ -428,6 +381,46 @@ class Interpreter(ABC):
             negative=make_new_parts_(make_best_(prompt.negative)),
         )
 
+    def sift(self, prompt: Prompt | None) -> Prompt | None:
+        """
+        CategoryPath ごとに存在適性を確認し, 適するもののみとなるようふるいがけする\n
+        ふるいがけルールはカテゴリーリストの各 Path に紐づくものによる\n
+        ただし common は必ず結果に含める\n
+        None についてはそのまま None を返す\n
+        本関数は非破壊的である
+
+        Args:
+            prompt (Prompt | None): ふるいがけ対象の Prompt
+
+        Returns:
+            Prompt | None: ふるいがけ済みの新しい Prompt
+        """
+        if prompt is None:
+            print("sift() returns None, assigned prompt is None.")
+            return None
+
+        def sift_(parts_list: list[PromptParts]) -> list[PromptParts]:
+            existing_paths: set[CategoryPath] = set()
+            for parts in parts_list:
+                existing_paths.add(parts.path)
+            new_parts_list: list[PromptParts] = []
+            for parts in parts_list:
+                if len(parts.path) == 0:
+                    # common は必ず追加
+                    new_parts_list.append(parts)
+                    continue
+
+                formula = self.expr_of(prompt.screen_id, parts.path)
+                if formula is not None and formula.eval(existing_paths):
+                    new_parts_list.append(parts)
+            return new_parts_list
+
+        return Prompt(
+            screen_id=prompt.screen_id,
+            positive=sift_(prompt.positive),
+            negative=sift_(prompt.negative),
+        )
+
     def sort(self, prompt: Prompt | None) -> Prompt | None:
         """
         PromptBase を適切にソートする\n
@@ -445,10 +438,12 @@ class Interpreter(ABC):
             Prompt | None: ソート済みの新しい Prompt
         """
         if prompt is None:
+            print("sort() returns None, assigned prompt is None.")
             return None
 
         category_list = self.category_list_on(prompt.screen_id)
         if category_list is None:
+            print(f"sort() returns None, check category list for '{prompt.screen_id}'.")
             return None
 
         def sort_(parts_list: list[PromptParts]) -> list[PromptParts]:
@@ -459,13 +454,11 @@ class Interpreter(ABC):
                 i += 1
             return sorted(parts_list, key=lambda c: order_index.get(c.path, float("inf")))
 
-        new_prompt = Prompt(
+        return Prompt(
             screen_id=prompt.screen_id,
             positive=sort_(prompt.positive),
             negative=sort_(prompt.negative),
         )
-
-        return new_prompt
 
     def edit(self, prompt: Prompt | None) -> Prompt | None:
         """
@@ -480,9 +473,10 @@ class Interpreter(ABC):
             Prompt | None: Prompt
         """
         if prompt is None:
+            print("edit() returns None, assigned prompt is None.")
             return None
 
-        return self.sort(self.sync(self.dedupe(self.strip(prompt))))
+        return self.sort(self.sync(self.sift(self.dedupe(self.strip(prompt)))))
 
     def make_prompt(self, text: str) -> Prompt | None:
         """
@@ -497,6 +491,7 @@ class Interpreter(ABC):
             Prompt | None: Prompt, Prompter 未指定の場合に None
         """
         if self.prompter is None:
+            print("make_prompt() returns None, assigned prompt is None.")
             return None
 
         return self.edit(self.prompter.to_prompt(text))
