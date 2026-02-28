@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from common.expr import Expr
 from parser.interpreter.interpreter import EnhancedCategory, Interpreter, ScreenTable
 
 
@@ -19,15 +20,17 @@ class TestInterpreter(Interpreter):
         self.screen_table_v: ScreenTable = {}
 
     def restore_enhanced_category_list(
-        self, screen_id: str, encats: list[EnhancedCategory]
+        self, screen_id: str, encats: list[EnhancedCategory], essential: Expr
     ) -> None:
         """
         指定の Screen ID の list[EnhancedCategory] を更新する
 
         Args:
+            screen_id (str): Screen ID
             encats (list[EnhancedCategory]): list[CategoryPath], Expr, Essential Checker のリスト
+            essential (Expr): 充足条件
         """
-        self.screen_table_v[screen_id] = (encats, None)
+        self.screen_table_v[screen_id] = (encats, essential, None)
 
     @property
     def screen_table(self) -> ScreenTable:

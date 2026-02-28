@@ -28,5 +28,6 @@ class DebugInterpreter(Interpreter):
                     (("character", "lower"), None, False),
                 ],
                 None,
+                None,
             )
         }

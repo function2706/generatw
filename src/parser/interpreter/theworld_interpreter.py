@@ -10,6 +10,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import TypeAlias
 
+from common.expr import Has
 from parser.interpreter.interpreter import Interpreter, Memory, MemoryEntry, ScreenTable
 
 
@@ -83,77 +84,93 @@ class TheWorldInterpreter(Interpreter):
 
     @property
     def screen_table(self) -> ScreenTable:
+        expr_no_upper_costumes = (
+            ~Has((CategoryName.outers,))
+            & ~Has((CategoryName.upper_cloths,))
+            & ~Has((CategoryName.dresses,))
+            & ~Has((CategoryName.kimonos,))
+        )
+        expr_no_lower_costumes = (
+            ~Has((CategoryName.lower_cloths,))
+            & ~Has((CategoryName.dresses,))
+            & ~Has((CategoryName.kimonos,))
+        )
+        expr_no_costumes = expr_no_upper_costumes & expr_no_lower_costumes
+
         # 単項タプルの ',' を忘れないように!!
         return {
             ScreenName.main: (
                 [
-                    ((CategoryName.character, CategoryName.name_n), None, True),
-                    ((CategoryName.character, CategoryName.vibe), None, False),
-                    ((CategoryName.character, CategoryName.affection), None, False),
-                    ((CategoryName.character, CategoryName.trust), None, False),
-                    ((CategoryName.character, CategoryName.frustration), None, False),
-                    ((CategoryName.character, CategoryName.angry), None, False),
-                    ((CategoryName.character, CategoryName.in_heat), None, False),
-                    ((CategoryName.character, CategoryName.mood), None, False),
-                    ((CategoryName.character, CategoryName.reason), None, False),
-                    ((CategoryName.character, CategoryName.upper_n), None, False),
-                    ((CategoryName.character, CategoryName.upper_state), None, False),
-                    ((CategoryName.character, CategoryName.lower_n), None, False),
-                    ((CategoryName.character, CategoryName.lower_state), None, False),
-                    ((CategoryName.caps,), None, False),
-                    ((CategoryName.hands,), None, False),
-                    ((CategoryName.dresses,), None, False),
-                    ((CategoryName.kimonos,), None, False),
-                    ((CategoryName.outers,), None, False),
-                    ((CategoryName.upper_cloths,), None, False),
-                    ((CategoryName.lower_cloths,), None, False),
-                    ((CategoryName.lingeries,), None, False),
-                    ((CategoryName.upper_lingeries,), None, False),
-                    ((CategoryName.lower_lingeries,), None, False),
-                    ((CategoryName.socks,), None, False),
-                    ((CategoryName.shoes,), None, False),
-                    ((CategoryName.equipments,), None, False),
+                    ((CategoryName.character, CategoryName.name_n), None),
+                    ((CategoryName.character, CategoryName.vibe), None),
+                    ((CategoryName.character, CategoryName.affection), None),
+                    ((CategoryName.character, CategoryName.trust), None),
+                    ((CategoryName.character, CategoryName.frustration), None),
+                    ((CategoryName.character, CategoryName.angry), None),
+                    ((CategoryName.character, CategoryName.in_heat), None),
+                    ((CategoryName.character, CategoryName.mood), None),
+                    ((CategoryName.character, CategoryName.reason), None),
+                    ((CategoryName.character, CategoryName.upper_n), None),
+                    ((CategoryName.character, CategoryName.upper_state), None),
+                    ((CategoryName.character, CategoryName.lower_n), None),
+                    ((CategoryName.character, CategoryName.lower_state), None),
+                    ((CategoryName.caps,), None),
+                    ((CategoryName.hands,), None),
+                    ((CategoryName.dresses,), None),
+                    ((CategoryName.kimonos,), None),
+                    ((CategoryName.outers,), None),
+                    ((CategoryName.upper_cloths,), None),
+                    ((CategoryName.lower_cloths,), None),
+                    ((CategoryName.lingeries,), expr_no_costumes),
+                    ((CategoryName.upper_lingeries,), expr_no_upper_costumes),
+                    ((CategoryName.lower_lingeries,), expr_no_lower_costumes),
+                    ((CategoryName.socks,), None),
+                    ((CategoryName.shoes,), None),
+                    ((CategoryName.equipments,), None),
                 ],
+                Has((CategoryName.character, CategoryName.name_n)),
                 self.sync_on_main,
             ),
             ScreenName.status: (
                 [
-                    ((CategoryName.name_n,), None, True),
-                    ((CategoryName.affection,), None, False),
-                    ((CategoryName.trust,), None, False),
-                    ((CategoryName.caps,), None, False),
-                    ((CategoryName.hands,), None, False),
-                    ((CategoryName.dresses,), None, False),
-                    ((CategoryName.kimonos,), None, False),
-                    ((CategoryName.outers,), None, False),
-                    ((CategoryName.upper_cloths,), None, False),
-                    ((CategoryName.lower_cloths,), None, False),
-                    ((CategoryName.lingeries,), None, False),
-                    ((CategoryName.upper_lingeries,), None, False),
-                    ((CategoryName.lower_lingeries,), None, False),
-                    ((CategoryName.socks,), None, False),
-                    ((CategoryName.shoes,), None, False),
-                    ((CategoryName.equipments,), None, False),
+                    ((CategoryName.name_n,), None),
+                    ((CategoryName.affection,), None),
+                    ((CategoryName.trust,), None),
+                    ((CategoryName.caps,), None),
+                    ((CategoryName.hands,), None),
+                    ((CategoryName.dresses,), None),
+                    ((CategoryName.kimonos,), None),
+                    ((CategoryName.outers,), None),
+                    ((CategoryName.upper_cloths,), None),
+                    ((CategoryName.lower_cloths,), None),
+                    ((CategoryName.lingeries,), expr_no_costumes),
+                    ((CategoryName.upper_lingeries,), expr_no_upper_costumes),
+                    ((CategoryName.lower_lingeries,), expr_no_lower_costumes),
+                    ((CategoryName.socks,), None),
+                    ((CategoryName.shoes,), None),
+                    ((CategoryName.equipments,), None),
                 ],
+                Has((CategoryName.name_n,)),
                 None,
             ),
             ScreenName.fashion: (
                 [
-                    ((CategoryName.character, CategoryName.name_n), None, True),
-                    ((CategoryName.caps,), None, False),
-                    ((CategoryName.hands,), None, False),
-                    ((CategoryName.dresses,), None, False),
-                    ((CategoryName.kimonos,), None, False),
-                    ((CategoryName.outers,), None, False),
-                    ((CategoryName.upper_cloths,), None, False),
-                    ((CategoryName.lower_cloths,), None, False),
-                    ((CategoryName.lingeries,), None, False),
-                    ((CategoryName.upper_lingeries,), None, False),
-                    ((CategoryName.lower_lingeries,), None, False),
-                    ((CategoryName.socks,), None, False),
-                    ((CategoryName.shoes,), None, False),
-                    ((CategoryName.equipments,), None, False),
+                    ((CategoryName.character, CategoryName.name_n), None),
+                    ((CategoryName.caps,), None),
+                    ((CategoryName.hands,), None),
+                    ((CategoryName.dresses,), None),
+                    ((CategoryName.kimonos,), None),
+                    ((CategoryName.outers,), None),
+                    ((CategoryName.upper_cloths,), None),
+                    ((CategoryName.lower_cloths,), None),
+                    ((CategoryName.lingeries,), expr_no_costumes),
+                    ((CategoryName.upper_lingeries,), expr_no_upper_costumes),
+                    ((CategoryName.lower_lingeries,), expr_no_lower_costumes),
+                    ((CategoryName.socks,), None),
+                    ((CategoryName.shoes,), None),
+                    ((CategoryName.equipments,), None),
                 ],
+                Has((CategoryName.character, CategoryName.name_n)),
                 self.sync_on_fashion,
             ),
         }

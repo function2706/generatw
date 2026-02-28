@@ -13,7 +13,7 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 
-from common.expr import FalseExpr, Has, TrueExpr  # noqa: E402
+from common.expr import Expr, FalseExpr, Has, TrueExpr  # noqa: E402
 from common.functions import dump_json  # noqa: E402
 from parser.interpreter.test_interpreter import EnhancedCategory, TestInterpreter  # noqa: E402
 from parser.parser import Parser  # noqa: E402
@@ -793,6 +793,43 @@ CORRECT_RESULT = {
             "essentiality": True,
         },
     },
+    "CASE 'essential & expr'": {
+        "InterpreterTest-1: 'expr2'": {
+            "dataclass": [{"screen_id": "expr2", "positive": [], "negative": []}],
+            "string": {"POS": "", "NEG": ""},
+            "essentiality": False,
+        },
+        "InterpreterTest-2: 'expr2 P'": {
+            "dataclass": [
+                {
+                    "screen_id": "expr2",
+                    "positive": [{"path": ["p"], "tokens": [{"token": "P", "weight": 1.0}]}],
+                    "negative": [],
+                }
+            ],
+            "string": {"POS": "P", "NEG": ""},
+            "essentiality": False,
+        },
+        "InterpreterTest-3: 'expr2 Q'": {
+            "dataclass": [{"screen_id": "expr2", "positive": [], "negative": []}],
+            "string": {"POS": "", "NEG": ""},
+            "essentiality": False,
+        },
+        "InterpreterTest-4: 'expr2 PQ'": {
+            "dataclass": [
+                {
+                    "screen_id": "expr2",
+                    "positive": [
+                        {"path": ["p"], "tokens": [{"token": "P", "weight": 1.0}]},
+                        {"path": ["q"], "tokens": [{"token": "Q", "weight": 1.0}]},
+                    ],
+                    "negative": [],
+                }
+            ],
+            "string": {"POS": "P,Q", "NEG": ""},
+            "essentiality": True,
+        },
+    },
 }
 
 
@@ -814,6 +851,7 @@ class KeyName(StrEnum):
     texts = "texts"
     screen_id = "screen_id"
     enhanced_category_list = "enhanced_category_list"
+    essential = "essential"
 
 
 class InterpreterDebugger(Parser):
@@ -825,6 +863,7 @@ class InterpreterDebugger(Parser):
         texts: list[str],
         screen_id: str = None,
         encats: list[EnhancedCategory] = None,
+        essential: Expr = None,
         with_texts: bool = True,
     ) -> dict[str, dict[str, Any]]:
         """
@@ -843,7 +882,7 @@ class InterpreterDebugger(Parser):
                     and screen_id is not None
                     and encats is not None
                 ):
-                    self.interpreter.restore_enhanced_category_list(screen_id, encats)
+                    self.interpreter.restore_enhanced_category_list(screen_id, encats, essential)
                 self.crnt_prompt = self.interpreter.make_prompt(text)
                 major = f"{yamlname}-{i + 1}: '{text}'" if with_texts else f"{yamlname}-{i + 1}"
                 posneg = self.make_prompt_strs()
@@ -863,7 +902,7 @@ class InterpreterDebugger(Parser):
 
     def debug_cases(
         self,
-        testcases: dict[str, dict[str, str | list]],
+        testcases: dict[str, dict[str, str | list | Expr]],
         with_texts: bool = True,
     ) -> dict[str, dict[str, dict[str, Any]]]:
         """
@@ -876,6 +915,7 @@ class InterpreterDebugger(Parser):
             texts = []
             screen_id = None
             encats = None
+            essential = None
             for key, val in testcase.items():
                 if key == KeyName.yamlpath:
                     yamlpath = val
@@ -885,12 +925,15 @@ class InterpreterDebugger(Parser):
                     screen_id = val
                 elif key == KeyName.enhanced_category_list:
                     encats = val
+                elif key == KeyName.essential:
+                    essential = val
             try:
                 self.switch_interpreter(Path(yamlpath))
                 result_by_texts = self.debug_texts(
                     texts=texts,
                     screen_id=screen_id,
                     encats=encats,
+                    essential=essential,
                     with_texts=with_texts,
                 )
             except Exception as e:
@@ -919,12 +962,19 @@ def normalize(obj):
     return obj
 
 
-def make_testcase(yamlpath: Path, texts: list[str], screen_id: str, encats: list[EnhancedCategory]):
+def make_testcase(
+    yamlpath: Path,
+    texts: list[str],
+    screen_id: str,
+    encats: list[EnhancedCategory],
+    essential: Expr,
+):
     return {
         KeyName.yamlpath: yamlpath,
         KeyName.texts: texts,
         KeyName.screen_id: screen_id,
         KeyName.enhanced_category_list: encats,
+        KeyName.essential: essential,
     }
 
 
@@ -953,71 +1003,80 @@ def debug_interpreter() -> None:
     result = debugger.debug_cases(
         {
             "strip": make_testcase(
-                "yamls/testyamls/InterpreterTest.yaml",
-                ["strip xxx"],
-                "strip",
-                [(("ok1",), None, False), (("ok2",), None, False)],
+                yamlpath="yamls/testyamls/InterpreterTest.yaml",
+                texts=["strip xxx"],
+                screen_id="strip",
+                encats=[
+                    (("ok1",), None),
+                    (("ok2",), None),
+                ],
+                essential=None,
             ),
             "dedupe": make_testcase(
-                "yamls/testyamls/InterpreterTest.yaml",
-                ["dedupe xxx"],
-                "dedupe",
-                [
-                    (("map1",), None, False),
-                    (("map2",), None, False),
-                    (("map3",), None, False),
-                    (("map4",), None, False),
+                yamlpath="yamls/testyamls/InterpreterTest.yaml",
+                texts=["dedupe xxx"],
+                screen_id="dedupe",
+                encats=[
+                    (("map1",), None),
+                    (("map2",), None),
+                    (("map3",), None),
+                    (("map4",), None),
                 ],
+                essential=None,
             ),
             "dedupe2": make_testcase(
-                "yamls/testyamls/InterpreterTest.yaml",
-                ["dedupe xxx"],
-                "dedupe",
-                [
-                    (("map5",), None, False),
-                    (("map1",), None, False),
-                    (("map2",), None, False),
-                    (("map3",), None, False),
-                    (("map4",), None, False),
+                yamlpath="yamls/testyamls/InterpreterTest.yaml",
+                texts=["dedupe xxx"],
+                screen_id="dedupe",
+                encats=[
+                    (("map5",), None),
+                    (("map1",), None),
+                    (("map2",), None),
+                    (("map3",), None),
+                    (("map4",), None),
                 ],
+                essential=None,
             ),
             "dedupe3": make_testcase(
-                "yamls/testyamls/InterpreterTest.yaml",
-                ["dedupe xxx"],
-                "dedupe",
-                [
-                    (("map5",), None, False),
-                    (("map1",), None, False),
-                    (("map2",), None, False),
-                    (("map4",), None, False),
+                yamlpath="yamls/testyamls/InterpreterTest.yaml",
+                texts=["dedupe xxx"],
+                screen_id="dedupe",
+                encats=[
+                    (("map5",), None),
+                    (("map1",), None),
+                    (("map2",), None),
+                    (("map4",), None),
                 ],
+                essential=None,
             ),
             "dedupe4": make_testcase(
-                "yamls/testyamls/InterpreterTest.yaml",
-                ["dedupe xxx"],
-                "dedupe",
-                [
-                    (("map5",), None, False),
-                    (("map1",), None, False),
-                    (("dummy"), None, False),
-                    (("map2",), None, False),
-                    (("map4",), None, False),
+                yamlpath="yamls/testyamls/InterpreterTest.yaml",
+                texts=["dedupe xxx"],
+                screen_id="dedupe",
+                encats=[
+                    (("map5",), None),
+                    (("map1",), None),
+                    (("dummy"), None),
+                    (("map2",), None),
+                    (("map4",), None),
                 ],
+                essential=None,
             ),
             "sort": make_testcase(
-                "yamls/testyamls/InterpreterTest.yaml",
-                ["sort xxx"],
-                "sort",
-                [
-                    (("map3",), None, False),
-                    (("map2",), None, False),
-                    (("map4",), None, False),
-                    (("map1",), None, False),
+                yamlpath="yamls/testyamls/InterpreterTest.yaml",
+                texts=["sort xxx"],
+                screen_id="sort",
+                encats=[
+                    (("map3",), None),
+                    (("map2",), None),
+                    (("map4",), None),
+                    (("map1",), None),
                 ],
+                essential=None,
             ),
             "essential": make_testcase(
-                "yamls/testyamls/InterpreterTest.yaml",
-                [
+                yamlpath="yamls/testyamls/InterpreterTest.yaml",
+                texts=[
                     "essential BD",
                     "essential ABD",
                     "essential BCD",
@@ -1025,37 +1084,35 @@ def debug_interpreter() -> None:
                     "essential ABCDE",
                     "essential ABXDE",  # default で満たす場合
                 ],
-                "essential",
-                [
-                    (("need1",), None, True),
-                    (("need2",), None, True),
-                    (("need3",), None, True),
-                    (("notneed1",), None, False),
-                    (("notneed2",), None, False),
+                screen_id="essential",
+                encats=[
+                    (("need1",), None),
+                    (("need2",), None),
+                    (("need3",), None),
+                    (("notneed1",), None),
+                    (("notneed2",), None),
                 ],
+                essential=Has(("need1",)) & Has(("need2",)) & Has(("need3",)),
             ),
             "expr1": make_testcase(
-                "yamls/testyamls/InterpreterTest.yaml",
-                [
+                yamlpath="yamls/testyamls/InterpreterTest.yaml",
+                texts=[
                     "expr1 room city",
                     "expr1 city room",
                     "expr1 room sunny",
                     "expr1 city sunny",
                 ],
-                "expr1",
-                [
-                    (("location", "outdoors"), ~Has(("location", "indoors")), False),
-                    (("location", "indoors"), ~Has(("location", "outdoors")), False),
-                    (
-                        ("weather",),
-                        Has(("location", "outdoors")) | ~Has(("location", "indoors")),
-                        False,
-                    ),
+                screen_id="expr1",
+                encats=[
+                    (("location", "outdoors"), ~Has(("location", "indoors"))),
+                    (("location", "indoors"), ~Has(("location", "outdoors"))),
+                    (("weather",), Has(("location", "outdoors")) | ~Has(("location", "indoors"))),
                 ],
+                essential=None,
             ),
             "expr2": make_testcase(
-                "yamls/testyamls/InterpreterTest.yaml",
-                [
+                yamlpath="yamls/testyamls/InterpreterTest.yaml",
+                texts=[
                     "expr2 checkHas",
                     "expr2 P checkHas",
                     "expr2 PQR checkHas",
@@ -1084,20 +1141,36 @@ def debug_interpreter() -> None:
                     "expr2 checkNone",
                     "expr2 PQR checkNone",
                 ],
-                "expr2",
-                [
-                    (("p",), TrueExpr(), False),
-                    (("q",), TrueExpr(), False),
-                    (("r",), TrueExpr(), False),
-                    (("checkHas",), Has(("p",)), False),  # 単項
-                    (("checkAnd",), Has(("p",)) & Has(("q",)), False),  # And
-                    (("checkOr",), Has(("p",)) | Has(("q",)), False),  # Or
-                    (("checkNot",), ~Has(("p",)), False),  # Not
-                    (("checkComplex",), Has(("p",)) & (Has(("q",)) | ~Has(("r",))), False),  # 複合
-                    (("checkTrue",), TrueExpr(), False),  # 恒真
-                    (("checkFalse",), FalseExpr(), False),  # 恒偽
-                    (("checkNone",), None, False),  # None = 恒真
+                screen_id="expr2",
+                encats=[
+                    (("p",), TrueExpr()),
+                    (("q",), TrueExpr()),
+                    (("r",), TrueExpr()),
+                    (("checkHas",), Has(("p",))),  # 単項
+                    (("checkAnd",), Has(("p",)) & Has(("q",))),  # And
+                    (("checkOr",), Has(("p",)) | Has(("q",))),  # Or
+                    (("checkNot",), ~Has(("p",))),  # Not
+                    (("checkComplex",), Has(("p",)) & (Has(("q",)) | ~Has(("r",)))),  # 複合
+                    (("checkTrue",), TrueExpr()),  # 恒真
+                    (("checkFalse",), FalseExpr()),  # 恒偽
+                    (("checkNone",), None),  # None = 恒真
                 ],
+                essential=None,
+            ),
+            "essential & expr": make_testcase(
+                yamlpath="yamls/testyamls/InterpreterTest.yaml",
+                texts=[
+                    "expr2",  # ("q",) がないので False
+                    "expr2 P",  # ("p",) はあるが ("q",) がないので False
+                    "expr2 Q",  # ("p",) がないので ("q",) も適用されず False
+                    "expr2 PQ",  # ("p",) があり ("q",) が適用されるので True
+                ],
+                screen_id="expr2",
+                encats=[
+                    (("p",), TrueExpr()),
+                    (("q",), Has(("p",))),
+                ],
+                essential=Has(("q",)),
             ),
         }
     )
