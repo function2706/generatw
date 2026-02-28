@@ -49,6 +49,11 @@ class OnSelectYaml(DisplayerEvent):
 
 
 @dataclass
+class OnReloadYaml(DisplayerEvent):
+    pass
+
+
+@dataclass
 class OnDebug(DisplayerEvent):
     pass
 

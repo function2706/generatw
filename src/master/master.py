@@ -234,6 +234,8 @@ class Master(MasterIF):
                 self.generator.clear()
             if isinstance(event, master.events.OnSelectYaml):
                 self.switch_frontend(Path(event.path))
+            if isinstance(event, master.events.OnReloadYaml):
+                self.switch_frontend(Path(self.crnt_configs.yamlpath))
             if isinstance(event, master.events.OnDebug):
                 self.parser.ready_for_debug()
             if isinstance(event, master.events.OnDumpArchiver):

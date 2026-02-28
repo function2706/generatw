@@ -273,6 +273,7 @@ status:
       ホワイトブリム: maid headdress
       髪飾り: hair ornament
       手ぬぐい: white bandana
+      リボン: hair ribbon
   hands:
     pattern: '装備:腕\s*\[(.+?)\]'
     capturegrp: 1
@@ -313,6 +314,7 @@ status:
       作務衣（上）: blue samue
       道着: dougi
       長着: yukata
+      小紋: kimono
   lower_cloths:
     pattern: '装備:下衣\s*\[(.+?)\]'
     capturegrp: 1
@@ -324,6 +326,7 @@ status:
       スラックス: black pants
       袴: hakama
       作務衣（下）: blue pants
+      行灯袴: hakama
   lingeries:
     pattern: '装備:下着\s*\[(.+?)\]'
     capturegrp: 1

@@ -271,6 +271,13 @@ class MainTab:
             ttk.Label(self.thread_sellect_frame, textvariable=self.yamlpath_var).grid(
                 row=0, column=1, padx=6, pady=6, sticky="w"
             )
+            # ボタン(再読み込み)
+            self.debug_button = ttk.Button(
+                self.thread_sellect_frame,
+                text="再読み込み",
+                command=owner.super_owner.super_owner.on_reload_yaml,
+            )
+            self.debug_button.grid(row=0, column=2, padx=6, pady=6, sticky="w")
 
             # バックエンド
             ttk.Label(self.thread_sellect_frame, text="バックエンド").grid(
@@ -641,6 +648,12 @@ class Displayer:
         self.main_window.main_tab_obj.sellect_frame.yamlpath_var.set(Path(path).name)
         self.to_master.enclose(master.events.OnSelectYaml(path=path))
         self.update_configs()
+
+    def on_reload_yaml(self) -> None:
+        """
+        YAML 再読み込みボタンハンドラ
+        """
+        self.to_master.enclose(master.events.OnReloadYaml())
 
     def on_debug(self) -> None:
         """
