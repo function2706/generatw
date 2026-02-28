@@ -91,7 +91,7 @@ ScreenTable: TypeAlias = dict[
     str,  # Screen ID
     tuple[
         list[EnhancedCategory],  # カテゴリーリスト(兼優先順位)
-        Expr | Expr,  # 充足条件 (None = 恒真)
+        Expr | None,  # 充足条件 (None = 恒真)
         MemorySyncer | None,  # 同期処理定義
     ],
 ]
