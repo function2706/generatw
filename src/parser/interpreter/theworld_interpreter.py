@@ -43,11 +43,13 @@ class CategoryName(StrEnum):
     upper_cloths = "upper_cloths"
     lower_cloths = "lower_cloths"
     lingeries = "lingeries"
+    whole_lingeries = "whole_lingeries"
     upper_lingeries = "upper_lingeries"
     lower_lingeries = "lower_lingeries"
     socks = "socks"
     shoes = "shoes"
     equipments = "equipments"
+    accessories = "accessories"
 
 
 @dataclass
@@ -61,11 +63,13 @@ class FashionSet:
     upper_cloths: MemoryEntry = field(default_factory=MemoryEntry)
     lower_cloths: MemoryEntry = field(default_factory=MemoryEntry)
     lingeries: MemoryEntry = field(default_factory=MemoryEntry)
+    whole_lingeries: MemoryEntry = field(default_factory=MemoryEntry)
     upper_lingeries: MemoryEntry = field(default_factory=MemoryEntry)
     lower_lingeries: MemoryEntry = field(default_factory=MemoryEntry)
     socks: MemoryEntry = field(default_factory=MemoryEntry)
     shoes: MemoryEntry = field(default_factory=MemoryEntry)
     equipments: MemoryEntry = field(default_factory=MemoryEntry)
+    accessories: MemoryEntry = field(default_factory=MemoryEntry)
 
 
 FashionList: TypeAlias = list[FashionSet]
@@ -122,11 +126,13 @@ class TheWorldInterpreter(Interpreter):
                     ((CategoryName.upper_cloths,), None),
                     ((CategoryName.lower_cloths,), None),
                     ((CategoryName.lingeries,), expr_no_costumes),
+                    ((CategoryName.whole_lingeries,), expr_no_costumes),
                     ((CategoryName.upper_lingeries,), expr_no_upper_costumes),
                     ((CategoryName.lower_lingeries,), expr_no_lower_costumes),
                     ((CategoryName.socks,), None),
                     ((CategoryName.shoes,), None),
                     ((CategoryName.equipments,), None),
+                    ((CategoryName.accessories,), None),
                 ],
                 Has((CategoryName.character, CategoryName.name_n)),
                 self.sync_on_main,
@@ -144,11 +150,13 @@ class TheWorldInterpreter(Interpreter):
                     ((CategoryName.upper_cloths,), None),
                     ((CategoryName.lower_cloths,), None),
                     ((CategoryName.lingeries,), expr_no_costumes),
+                    ((CategoryName.whole_lingeries,), expr_no_costumes),
                     ((CategoryName.upper_lingeries,), expr_no_upper_costumes),
                     ((CategoryName.lower_lingeries,), expr_no_lower_costumes),
                     ((CategoryName.socks,), None),
                     ((CategoryName.shoes,), None),
                     ((CategoryName.equipments,), None),
+                    ((CategoryName.accessories,), None),
                 ],
                 Has((CategoryName.name_n,)),
                 None,
@@ -164,11 +172,13 @@ class TheWorldInterpreter(Interpreter):
                     ((CategoryName.upper_cloths,), None),
                     ((CategoryName.lower_cloths,), None),
                     ((CategoryName.lingeries,), expr_no_costumes),
+                    ((CategoryName.whole_lingeries,), expr_no_costumes),
                     ((CategoryName.upper_lingeries,), expr_no_upper_costumes),
                     ((CategoryName.lower_lingeries,), expr_no_lower_costumes),
                     ((CategoryName.socks,), None),
                     ((CategoryName.shoes,), None),
                     ((CategoryName.equipments,), None),
+                    ((CategoryName.accessories,), None),
                 ],
                 Has((CategoryName.character, CategoryName.name_n)),
                 self.sync_on_fashion,
