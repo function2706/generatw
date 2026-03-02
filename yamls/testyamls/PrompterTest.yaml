@@ -160,6 +160,10 @@ import_src:
       capturegrp: 1
       import: [import_src, character, name]
       default: zero
+  flag:
+    pattern: "flag"
+    maps:
+      flag: flag is true
   common:
     positive: import common pos
     negative: import common neg
@@ -179,3 +183,19 @@ import_dst2:
     import: [import_dst1, name]
     default: bob
   common: [import_dst1]
+import_dst3:
+  ignition: "import_dst3"
+  name:
+    import: [import_src, character, name]
+    default: cate
+  flag:
+    import: [import_src, flag]
+  common: [import_dst2]
+import_dst4:
+  ignition: "import_dst4"
+  name:
+    import: [import_dst3, name]
+    default: doe
+  flag:
+    import: [import_dst3, flag]
+  common: [import_dst3]

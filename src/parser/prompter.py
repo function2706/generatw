@@ -406,7 +406,7 @@ class Category:
         category: dict[str, int | str | dict | list],
         screen_id: str,
         category_path: CategoryPath,
-        rules_dict: dict[CategoryPath, list[Rule]],
+        rules_dict: dict[CategoryPath, tuple[re.Pattern[str], int, list[Rule]]],
     ):
         """
         YAML の定義から Category インスタンスを生成する
@@ -415,7 +415,8 @@ class Category:
             category (dict[str, dict]): Category 定義の辞書
             screen_id (str): Screen ID
             category_path (CategoryPath): Category パス
-            rules_dict (dict[CategoryPath, list[Rule]]): CategoryPath ごとの Rule リスト
+            rules_dict (dict[CategoryPath, tuple[re.Pattern[str], int, list[Rule]]]):
+                CategoryPath ごとの pattern, capturegrp, Rule リストのタプル
 
         Returns:
             Category: 生成された Category インスタンス
@@ -427,42 +428,55 @@ class Category:
 
         obj.category_path = category_path
 
-        if KeyName.pattern in category:
-            try:
-                obj.pattern = re.compile(category.get(KeyName.pattern), flags=re.MULTILINE)
-            except re.error as e:
-                raise ValueError(f"Invalid regex pattern: {obj.pattern.pattern}") from e
-        else:
-            raise ValueError(
-                f"Category definition missing mandatory 'pattern' key. Source: {category}"
-            )
-
-        if KeyName.capturegrp in category:
-            obj.capturegrp = int(category.get(KeyName.capturegrp))
-
-        if (
-            sum(
-                k in category
-                for k in (KeyName.maps, KeyName.ranges, KeyName.intervals, KeyName.import_k)
-            )
-            != 1
-        ):
-            raise ValueError("Category must have only 1 Ruletype, maps/ranges/intervals or import.")
-        elif KeyName.maps in category:
-            for key, val in category.get(KeyName.maps).items():
-                obj.rules.append(MapsRule.make(key=key, val=val))
-        elif KeyName.ranges in category:
-            for key, val in category.get(KeyName.ranges).items():
-                obj.rules.append(RangesRule.make(key=key, val=val))
-        elif KeyName.intervals in category:
-            for key, val in category.get(KeyName.intervals).items():
-                obj.rules.append(IntervalsRule.make(key=key, val=val))
-        elif KeyName.import_k in category:
+        if KeyName.import_k in category:
             target_path = category.get(KeyName.import_k)
             if not isinstance(target_path, list):
                 raise ValueError("Type of value for 'import' must be list.")
-            obj.rules.extend(rules_dict.get(tuple(target_path)))
-        rules_dict[(screen_id,) + category_path] = obj.rules
+            elif tuple(target_path) not in rules_dict:
+                raise ValueError(f"CategoryPath '{target_path}' has not been defined in the YAML.")
+
+            if KeyName.pattern in category and KeyName.capturegrp in category:
+                # pattern と capturegrp が定義されている場合はそちらを採用
+                try:
+                    obj.pattern = re.compile(category.get(KeyName.pattern), flags=re.MULTILINE)
+                except re.error as e:
+                    raise ValueError(f"Invalid regex pattern: {obj.pattern.pattern}") from e
+
+                obj.capturegrp = int(category.get(KeyName.capturegrp))
+            else:
+                # そうでない場合は import 元のものを採用
+                obj.pattern = rules_dict.get(tuple(target_path))[0]
+                obj.capturegrp = rules_dict.get(tuple(target_path))[1]
+            obj.rules.extend(rules_dict.get(tuple(target_path))[2])
+        else:
+            if KeyName.pattern in category:
+                try:
+                    obj.pattern = re.compile(category.get(KeyName.pattern), flags=re.MULTILINE)
+                except re.error as e:
+                    raise ValueError(f"Invalid regex pattern: {obj.pattern.pattern}") from e
+            else:
+                raise ValueError(
+                    f"Category definition missing mandatory 'pattern' key. Source: {category}"
+                )
+
+            if KeyName.capturegrp in category:
+                obj.capturegrp = int(category.get(KeyName.capturegrp))
+
+            if sum(k in category for k in (KeyName.maps, KeyName.ranges, KeyName.intervals)) != 1:
+                raise ValueError(
+                    "Category must have only 1 Ruletype, maps/ranges/intervals if without import."
+                )
+            elif KeyName.maps in category:
+                for key, val in category.get(KeyName.maps).items():
+                    obj.rules.append(MapsRule.make(key=key, val=val))
+            elif KeyName.ranges in category:
+                for key, val in category.get(KeyName.ranges).items():
+                    obj.rules.append(RangesRule.make(key=key, val=val))
+            elif KeyName.intervals in category:
+                for key, val in category.get(KeyName.intervals).items():
+                    obj.rules.append(IntervalsRule.make(key=key, val=val))
+
+        rules_dict[(screen_id,) + category_path] = (obj.pattern, obj.capturegrp, obj.rules)
 
         if KeyName.default in category:
             val = category.get(KeyName.default)
@@ -546,7 +560,10 @@ class Screen:
     common_negative: list[Token] = field(default_factory=list)
 
     def collect_fields(
-        self, node: dict, category_path: CategoryPath, rules_dict: dict[CategoryPath, list[Rule]]
+        self,
+        node: dict,
+        category_path: CategoryPath,
+        rules_dict: dict[CategoryPath, tuple[re.Pattern[str], int, list[Rule]]],
     ) -> None:
         """
         YAML のノードを再帰的に探索し, Category 定義を収集する
@@ -554,14 +571,15 @@ class Screen:
         Args:
             node (dict): 探索対象のノード
             category_path (CategoryPath): 現在の Category パス
-            rules_dict (dict[CategoryPath, list[Rule]]): CategoryPath ごとの Rule リスト
+            rules_dict (dict[CategoryPath, tuple[re.Pattern[str], int, list[Rule]]]):
+                CategoryPath ごとの pattern, capturegrp, Rule リストのタプル
         """
         if not isinstance(node, dict):
             # str や list は無視
             return
 
-        if KeyName.pattern in node:
-            # 最下層の Category = 'pattern' キーが存在する
+        if KeyName.import_k in node or KeyName.pattern in node:
+            # 最下層の Category = 'import' キーか 'pattern' キーが存在する
             category = Category.make(node, self.screen_id, category_path, rules_dict)
             self.categories.append(category)
             return
@@ -575,7 +593,7 @@ class Screen:
         screen_id: str,
         screen: dict[str, dict[str, Any] | list[str]],
         common_dict: dict[str, tuple[list[Token], list[Token]]],
-        rules_dict: dict[CategoryPath, list[Rule]],
+        rules_dict: dict[CategoryPath, tuple[re.Pattern[str], int, list[Rule]]],
     ):
         """
         YAML の定義から Screen インスタンスを生成する
@@ -584,7 +602,8 @@ class Screen:
             screen_id (str): Screen 名
             screen (dict[str, dict[str, Any]]): Screen 定義の辞書
             common_dict (dict[str, tuple[list[Token], list[Token]]]): Screen ごとの common 領域
-            rules_dict (dict[CategoryPath, list[Rule]]): CategoryPath ごとの Rule リスト
+            rules_dict (dict[CategoryPath, tuple[re.Pattern[str], int, list[Rule]]]):
+                CategoryPath ごとの pattern, capturegrp, Rule リストのタプル
 
         Returns:
             Screen: 生成されたScreenインスタンス
@@ -694,7 +713,7 @@ class Prompter:
         with open(yamlpath, "r", encoding="utf-8") as f:
             yamldict: dict = yaml.safe_load(f)
 
-        rules_dict: dict[CategoryPath, list[Rule]] = {}
+        rules_dict: dict[CategoryPath, tuple[re.Pattern[str], int, list[Rule]]] = {}
         common_dict: dict[str, tuple[list[Token], list[Token]]] = {}
         for key, val in yamldict.items():
             if key == KeyName.interpreter:

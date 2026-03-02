@@ -5,7 +5,6 @@
 - main 画面の upper/lower も fashion_list に記録しておき, ここが変わった = 衣装もリセットとする機構
 - 終了時の fashion_list の保存
 - クリップボードパース失敗時のログ(パースできなかった文字列と正規表現のペアで残しておく)
-- pattern の import 機能(imported Rule は pattern 書かれてなければ引き継ぎ？)
 
 ## Generaor
 

@@ -268,6 +268,7 @@ pattern が複数回マッチした場合, 各マッチを独立に処理し, �
 
 使用するキャプチャグループのインデックス.  
 指定された番号のキャプチャグループが存在しない場合, そのマッチは無視される(例外にはならない).
+未定義の場合は `0` と同義.
 
 - `0`: パターン全体のマッチ
 - `1`, `2`, ...: 各キャプチャグループ
@@ -296,8 +297,9 @@ default:
 
 - `pattern` に1度もマッチしなかった場合は適用されない
 - `pattern` にマッチし, かつ `maps` / `ranges` / `intervals` のいずれの Rule にもヒットしなかった場合に適用される
+- よって **`capturegrp` が `0` (もしくは未定義)の場合, `default` が採用されることはない**
 
-すなわち `default` は `maps` / `ranges` / `intervals` の各ルールと同じ評価パスを通る.
+以上のように `default` は `maps` / `ranges` / `intervals` の各ルールと同じ評価パスを通る.
 
 #### 4.3.3 `import`
 
@@ -324,10 +326,16 @@ import_dst:
     capturegrp: 1
     import: [import_src, character, name]
     default: bob
+import_dst2:
+  ignition: "dst2"
+  name:
+    import: [import_dst, name] # パターン引き継ぎ
+    default: alice
 ```
 
 - インポートする Rule は `import` の記述箇所よりも上部に定義されていなければならない(シンタックスエラー)
-- `pattern` 及び `capturegrp` は引き継がれないので必ず再定義すること
+- `pattern` が記述されている場合は上書きされ, **未定義の場合はインポート元から引き継がれる**
+- `capturegrp` もこれに従う(インポート元で未定義の場合は仕様に則り `0`)
 - インポート対象は `maps` / `ranges` / `intervals` のみ, **`default` はインポート対象外**
 - Screen ID 及び Category のパスはインポートした側の記述に従う(上記の場合は `import_dst,name`)
 - 多段インポート(すでにインポートしている Rule をインポートすること)は合法である

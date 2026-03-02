@@ -523,6 +523,54 @@ CORRECT_RESULT = {
             ],
             "NEG": [{"path": [], "tokens": [{"token": "import common neg", "weight": 1.0}]}],
         },
+        "PrompterTest-7: 'import_dst3 name:Hogemaru'": {
+            "SID": "import_dst3",
+            "POS": [
+                {"path": ["name"], "tokens": [{"token": "hogemaru", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "import common pos", "weight": 1.0}]},
+            ],
+            "NEG": [{"path": [], "tokens": [{"token": "import common neg", "weight": 1.0}]}],
+        },
+        "PrompterTest-8: 'import_dst3 name:HogeFuga'": {
+            "SID": "import_dst3",
+            "POS": [
+                {"path": ["name"], "tokens": [{"token": "cate", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "import common pos", "weight": 1.0}]},
+            ],
+            "NEG": [{"path": [], "tokens": [{"token": "import common neg", "weight": 1.0}]}],
+        },
+        "PrompterTest-9: 'import_dst4 name:Hogemaru'": {
+            "SID": "import_dst4",
+            "POS": [
+                {"path": ["name"], "tokens": [{"token": "hogemaru", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "import common pos", "weight": 1.0}]},
+            ],
+            "NEG": [{"path": [], "tokens": [{"token": "import common neg", "weight": 1.0}]}],
+        },
+        "PrompterTest-10: 'import_dst4 name:HogeFuga'": {
+            "SID": "import_dst4",
+            "POS": [
+                {"path": ["name"], "tokens": [{"token": "doe", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "import common pos", "weight": 1.0}]},
+            ],
+            "NEG": [{"path": [], "tokens": [{"token": "import common neg", "weight": 1.0}]}],
+        },
+        "PrompterTest-11: 'import_dst3 flag'": {
+            "SID": "import_dst3",
+            "POS": [
+                {"path": ["flag"], "tokens": [{"token": "flag is true", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "import common pos", "weight": 1.0}]},
+            ],
+            "NEG": [{"path": [], "tokens": [{"token": "import common neg", "weight": 1.0}]}],
+        },
+        "PrompterTest-12: 'import_dst4 flag'": {
+            "SID": "import_dst4",
+            "POS": [
+                {"path": ["flag"], "tokens": [{"token": "flag is true", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "import common pos", "weight": 1.0}]},
+            ],
+            "NEG": [{"path": [], "tokens": [{"token": "import common neg", "weight": 1.0}]}],
+        },
     },
 }
 
@@ -728,6 +776,12 @@ def debug_prompter() -> None:
                     "import_dst1 NAME-HogeFuga",  # 異なる Screen のインポート (default)
                     "import_dst2 Name>Hogemaru",  # 多段インポート
                     "import_dst2 Name>HogeFuga",  # 多段インポート (default)
+                    "import_dst3 name:Hogemaru",  # pattern インポート
+                    "import_dst3 name:HogeFuga",  # pattern インポート (default)
+                    "import_dst4 name:Hogemaru",  # 多段 pattern インポート
+                    "import_dst4 name:HogeFuga",  # 多段 pattern インポート (default)
+                    "import_dst3 flag",  # pattern インポート (capturegrp 未定義)
+                    "import_dst4 flag",  # 多段 pattern インポート (capturegrp 未定義)
                 ]
             },
         }
