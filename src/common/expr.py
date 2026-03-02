@@ -16,13 +16,13 @@ class Expr(ABC, Generic[Type]):
     def eval(self, objset: set[Type]) -> bool:
         raise NotImplementedError
 
-    def __and__(self, other: Expr) -> Expr:
+    def __and__(self, other: Expr[Type]) -> Expr[Type]:
         return And(self, other)
 
-    def __or__(self, other: Expr) -> Expr:
+    def __or__(self, other: Expr[Type]) -> Expr[Type]:
         return Or(self, other)
 
-    def __invert__(self) -> Expr:
+    def __invert__(self) -> Expr[Type]:
         return Not(self)
 
 
