@@ -113,6 +113,8 @@ class Interpreter(ABC):
             yamlpath (Path): YAML パス
         """
         self.prompter: Prompter = None
+        self.yamlpath = yamlpath
+
         self.switch_prompter(yamlpath)
 
     @classmethod
@@ -140,6 +142,35 @@ class Interpreter(ABC):
                 keyword = yamldict.get("interpreter")
             if keyword == self.keyword():
                 self.prompter = Prompter.make(yamlpath)
+                self.yamlpath = yamlpath
+
+    def reload_prompter(self) -> None:
+        """
+        設定している YAML によって Prompter を開き直す
+        """
+        self.switch_prompter(self.yamlpath)
+
+    @abstractmethod
+    def save_state(self) -> dict:
+        """
+        このインスタンスの状態を保存可能な形式で返す\n
+        記憶がない場合は空の dict を返す
+
+        Returns:
+            dict: 状態を表す辞書
+        """
+        pass
+
+    @abstractmethod
+    def restore_state(self, state: dict) -> None:
+        """
+        指定の状態から記憶を復元する\n
+        不正な状態が渡された場合は無視する(何もしない)
+
+        Args:
+            state (dict): 保存された状態
+        """
+        pass
 
     @property
     @abstractmethod

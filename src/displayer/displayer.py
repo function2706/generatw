@@ -278,6 +278,15 @@ class MainTab:
                 command=owner.super_owner.super_owner.on_reload_yaml,
             )
             self.debug_button.grid(row=0, column=2, padx=6, pady=6, sticky="w")
+            # チェックボックス(記憶の継続)
+            self.allow_carryover_yaml_record = tkinter.BooleanVar()
+            ttk.Checkbutton(
+                self.thread_sellect_frame,
+                text="記憶の継続",
+                variable=self.allow_carryover_yaml_record,
+                command=self.super_owner.super_owner.super_owner.update_configs,
+            ).grid(row=0, column=3, padx=6, pady=6, sticky="w")
+            self.allow_carryover_yaml_record.set(init_configs.allow_carryover_yaml_record)
 
             # バックエンド
             ttk.Label(self.thread_sellect_frame, text="バックエンド").grid(
@@ -345,7 +354,7 @@ class DebugTab:
                 command=owner.super_owner.super_owner.on_debug,
             )
             self.debug_button.grid(row=0, column=0, padx=6, pady=6, sticky="w")
-            # チェックボックス
+            # チェックボックス(クリップボードの更新)
             self.allow_edit_clipboard_check = tkinter.BooleanVar()
             ttk.Checkbutton(
                 self.exe_debug_frame,
@@ -739,6 +748,9 @@ class Displayer:
             if self.main_window.main_tab_obj.sellect_frame.yamlpath is not None
             else None,
             backend=self.main_window.main_tab_obj.sellect_frame.backend_combo.get(),
+            allow_carryover_yaml_record=bool(
+                self.main_window.main_tab_obj.sellect_frame.allow_carryover_yaml_record.get()
+            ),
             allow_edit_clipboard=bool(
                 self.main_window.debug_tab_obj.exe_debug_frame.allow_edit_clipboard_check.get()
             ),

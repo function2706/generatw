@@ -83,8 +83,8 @@ class TheWorldInterpreter(Interpreter):
     def __init__(self, yamlpath: Path):
         super().__init__(yamlpath)
 
-        self.name_on_main = MemoryEntry()
-        self.fashion_list = FashionList()
+        self.name_on_main: MemoryEntry = MemoryEntry()
+        self.fashion_list: FashionList = FashionList()
 
     @property
     def screen_table(self) -> ScreenTable:
@@ -255,3 +255,33 @@ class TheWorldInterpreter(Interpreter):
         recalled = deepcopy(memory)
         recalled.entries.append(self.name_on_main)
         return recalled
+
+    def save_state(self) -> dict:
+        """
+        このインスタンスの状態を保存可能な形式で返す\n
+        name_on_main と fashion_list を保存する
+
+        Returns:
+            dict: 状態を表す辞書
+        """
+        return {
+            "name_on_main": deepcopy(self.name_on_main),
+            "fashion_list": deepcopy(self.fashion_list),
+        }
+
+    def restore_state(self, state: dict) -> None:
+        """
+        指定の状態から記憶を復元する\n
+        不正な状態が渡された場合は無視する(何もしない)
+
+        Args:
+            state (dict): 保存された状態
+        """
+        try:
+            if "name_on_main" in state:
+                self.name_on_main = deepcopy(state["name_on_main"])
+            if "fashion_list" in state:
+                self.fashion_list = deepcopy(state["fashion_list"])
+        except Exception:
+            # 不正な状態の場合は無視する
+            pass

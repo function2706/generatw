@@ -23,6 +23,7 @@ class GUIConfigs:
     sd_height: int = 0
     yamlpath: str | None = None
     backend: str = ""
+    allow_carryover_yaml_record: bool = False
     allow_edit_clipboard: bool = False
     print_new_clipboard: bool = False
     print_new_prompt_set: bool = False

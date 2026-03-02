@@ -153,6 +153,24 @@ class Master(MasterIF):
 
         self.root.after(0, worker)
 
+    def reload_frontend(self, carry_over: bool = False) -> None:
+        """
+        フロントエンドを再起動する\n
+
+        Args:
+            carry_over (bool): 記憶データを引き継ぐ
+        """
+        if self.is_switching_frontend:
+            return
+
+        self.is_switching_frontend = True
+
+        def worker():
+            self.parser.reload_interpreter(carry_over)
+            self.is_switching_frontend = False
+
+        self.root.after(0, worker)
+
     def switch_backend(self, new_backend: BackEnd) -> None:
         """
         バックエンドの切り替えを行う
@@ -235,7 +253,7 @@ class Master(MasterIF):
             if isinstance(event, master.events.OnSelectYaml):
                 self.switch_frontend(Path(event.path))
             if isinstance(event, master.events.OnReloadYaml):
-                self.switch_frontend(Path(self.crnt_configs.yamlpath))
+                self.reload_frontend(self.crnt_configs.allow_carryover_yaml_record)
             if isinstance(event, master.events.OnDebug):
                 self.parser.ready_for_debug()
             if isinstance(event, master.events.OnDumpArchiver):

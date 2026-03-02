@@ -32,6 +32,26 @@ class TestInterpreter(Interpreter):
         """
         self.screen_table_v[screen_id] = (encats, essential, None)
 
+    def save_state(self) -> dict:
+        """
+        このインスタンスの状態を保存可能な形式で返す\n
+        TestInterpreter は記憶を持たない
+
+        Returns:
+            dict: 常に空の辞書
+        """
+        return {}
+
+    def restore_state(self, state: dict) -> None:
+        """
+        指定の状態から記憶を復元する\n
+        TestInterpreter は記憶がないため何もしない
+
+        Args:
+            state (dict): 保存された状態 (無視される)
+        """
+        return
+
     @property
     def screen_table(self) -> ScreenTable:
         return self.screen_table_v

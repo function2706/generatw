@@ -118,6 +118,26 @@ class Parser:
                 self.interpreter = interpreter(yamlpath)
                 self.interpreter_cache = deepcopy(self.interpreter)
 
+    def reload_interpreter(self, carry_over: bool = False) -> None:
+        """
+        YAML の再読み込みを実施する
+
+        Args:
+            carry_over (bool, optional): インスタンスに記憶データがある場合持ち越すか
+        """
+        if self.interpreter is None:
+            return
+
+        saved_state = None
+        if carry_over:
+            saved_state = self.interpreter.save_state()
+
+        self.interpreter.reload_prompter()
+        if carry_over and saved_state is not None:
+            self.interpreter.restore_state(saved_state)
+
+        self.interpreter_cache = deepcopy(self.interpreter)
+
     def make_prompt_strs(self) -> tuple[str, str]:
         """
         現在の Prompter 成果物からプロンプト文字列を生成する
