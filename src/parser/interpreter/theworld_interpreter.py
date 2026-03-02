@@ -35,6 +35,17 @@ class CategoryName(StrEnum):
     upper_state = "upper_state"
     lower_n = "lower"
     lower_state = "lower_state"
+    meta = "meta"
+    time = "time"
+    day = "day"
+    night = "night"
+    location = "location"
+    indoors = "indoors"
+    outdoors = "outdoors"
+    type1 = "type1"
+    type2 = "type2"
+    type3 = "type3"
+    weather = "weather"
     caps = "caps"
     hands = "hands"
     dresses = "dresses"
@@ -100,6 +111,32 @@ class TheWorldInterpreter(Interpreter):
             & ~Has((CategoryName.kimonos,))
         )
         expr_no_costumes = expr_no_upper_costumes & expr_no_lower_costumes
+        expr_outdoors = (
+            Has(
+                (
+                    CategoryName.meta,
+                    CategoryName.location,
+                    CategoryName.outdoors,
+                    CategoryName.type1,
+                )
+            )
+            | Has(
+                (
+                    CategoryName.meta,
+                    CategoryName.location,
+                    CategoryName.outdoors,
+                    CategoryName.type2,
+                )
+            )
+            | Has(
+                (
+                    CategoryName.meta,
+                    CategoryName.location,
+                    CategoryName.outdoors,
+                    CategoryName.type3,
+                )
+            )
+        )
 
         # 単項タプルの ',' を忘れないように!!
         return {
@@ -133,6 +170,63 @@ class TheWorldInterpreter(Interpreter):
                     ((CategoryName.shoes,), None),
                     ((CategoryName.equipments,), None),
                     ((CategoryName.accessories,), None),
+                    ((CategoryName.meta, CategoryName.time, CategoryName.day), expr_outdoors),
+                    ((CategoryName.meta, CategoryName.time, CategoryName.night), expr_outdoors),
+                    (
+                        (
+                            CategoryName.meta,
+                            CategoryName.location,
+                            CategoryName.indoors,
+                            CategoryName.type1,
+                        ),
+                        None,
+                    ),
+                    (
+                        (
+                            CategoryName.meta,
+                            CategoryName.location,
+                            CategoryName.indoors,
+                            CategoryName.type2,
+                        ),
+                        None,
+                    ),
+                    (
+                        (
+                            CategoryName.meta,
+                            CategoryName.location,
+                            CategoryName.indoors,
+                            CategoryName.type3,
+                        ),
+                        None,
+                    ),
+                    (
+                        (
+                            CategoryName.meta,
+                            CategoryName.location,
+                            CategoryName.outdoors,
+                            CategoryName.type1,
+                        ),
+                        None,
+                    ),
+                    (
+                        (
+                            CategoryName.meta,
+                            CategoryName.location,
+                            CategoryName.outdoors,
+                            CategoryName.type2,
+                        ),
+                        None,
+                    ),
+                    (
+                        (
+                            CategoryName.meta,
+                            CategoryName.location,
+                            CategoryName.outdoors,
+                            CategoryName.type3,
+                        ),
+                        None,
+                    ),
+                    ((CategoryName.meta, CategoryName.weather), expr_outdoors),
                 ],
                 Has((CategoryName.character, CategoryName.name_n)),
                 self.sync_on_main,

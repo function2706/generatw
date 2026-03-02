@@ -247,6 +247,66 @@ main:
       capturegrp: 1
       maps:
         xxx: xxx
+  meta:
+    time:
+      day:
+        pattern: '(\d+)時'
+        capturegrp: 1
+        intervals:
+          midnight: [0, 3]
+          dawn: [4, 5]
+          evening: [16, 18]
+          night: [19, 23]
+      night:
+        pattern: '(\d+)時'
+        capturegrp: 1
+        intervals:
+          morning: [6, 10]
+          noon: [11, 12]
+          afternoon: [13, 15]
+    location:
+      indoors:
+        type1:
+          pattern: '(.+?)\s+清潔度:'
+          capturegrp: 1
+          ranges:
+            room: ["広間", "レミリア私室"]
+        type2:
+          pattern: '(.+?)\s+\(到着'
+          capturegrp: 1
+          ranges:
+            room: ["広間", "レミリア私室"]
+        type3:
+          pattern: '\S+\s+-\s(.+?)\s-'
+          capturegrp: 1
+          ranges:
+            room: ["広間", "レミリア私室"]
+      outdoors:
+        type1:
+          pattern: '(.+?)\s+清潔度:'
+          capturegrp: 1
+          ranges:
+            path: ["中有の道"]
+        type2:
+          pattern: '(.+?)\s+\(到着'
+          capturegrp: 1
+          ranges:
+            path: ["中有の道"]
+        type3:
+          pattern: '\S+\s+-\s(.+?)\s-'
+          capturegrp: 1
+          ranges:
+            path: ["中有の道"]
+    weather:
+      pattern: "(晴|曇|雨|霧|雪|みぞれ|あられ)"
+      capturegrp: 1
+      maps:
+        晴: sunny
+        曇: cloudy
+        雨: rainy
+        霧: foggy
+        雪: snowy
+        みぞれ: snowy
   common:
     positive: best quality,masterpiece,absurdres,1girl,solo
     negative: (amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm
