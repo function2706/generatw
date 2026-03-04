@@ -572,6 +572,216 @@ CORRECT_RESULT = {
             "NEG": [{"path": [], "tokens": [{"token": "import common neg", "weight": 1.0}]}],
         },
     },
+    "CASE 'recursive'": {
+        "PrompterTest-1: 'recursive_plane [(foo1),(foo2)][(bar1),(bar2),(bar3)][(baz1)]'": {
+            "SID": "recursive",
+            "POS": [
+                {
+                    "path": ["brackets_parentheses"],
+                    "tokens": [
+                        {"token": "foo1", "weight": 1.0},
+                        {"token": "foo2", "weight": 1.0},
+                        {"token": "bar1", "weight": 1.0},
+                        {"token": "bar2", "weight": 1.0},
+                        {"token": "bar3", "weight": 1.0},
+                        {"token": "baz1", "weight": 1.0},
+                    ],
+                }
+            ],
+            "NEG": [],
+        },
+        "PrompterTest-2: 'recursive_plane [(foo4)]'": {
+            "SID": "recursive",
+            "POS": [
+                {"path": ["brackets_parentheses"], "tokens": [{"token": "foobar", "weight": 1.0}]}
+            ],
+            "NEG": [],
+        },
+        "PrompterTest-3: 'recursive_plane {(foo1),(foo2)}{(bar1),(bar2),(bar3)}{(baz1)}'": {
+            "SID": "recursive",
+            "POS": [
+                {
+                    "path": ["curlybrackets_parentheses"],
+                    "tokens": [
+                        {"token": "foo1", "weight": 1.0},
+                        {"token": "foo2", "weight": 1.0},
+                        {"token": "bar1", "weight": 1.0},
+                        {"token": "bar2", "weight": 1.0},
+                        {"token": "bar3", "weight": 1.0},
+                        {"token": "baz1", "weight": 1.0},
+                    ],
+                }
+            ],
+            "NEG": [],
+        },
+        "PrompterTest-4: 'recursive_import <(foo1),(foo2)><(bar1),(bar2),(bar3)><(baz1)>'": {
+            "SID": "recursive_import",
+            "POS": [
+                {
+                    "path": ["angles_parentheses"],
+                    "tokens": [
+                        {"token": "foo1", "weight": 1.0},
+                        {"token": "foo2", "weight": 1.0},
+                        {"token": "bar1", "weight": 1.0},
+                        {"token": "bar2", "weight": 1.0},
+                        {"token": "bar3", "weight": 1.0},
+                        {"token": "baz1", "weight": 1.0},
+                    ],
+                },
+                {
+                    "path": ["parentheses"],
+                    "tokens": [
+                        {"token": "foo1", "weight": 1.0},
+                        {"token": "foo2", "weight": 1.0},
+                        {"token": "bar1", "weight": 1.0},
+                        {"token": "bar2", "weight": 1.0},
+                        {"token": "bar3", "weight": 1.0},
+                        {"token": "baz1", "weight": 1.0},
+                    ],
+                },
+            ],
+            "NEG": [],
+        },
+        "PrompterTest-5: 'recursive_import [(foo1),(foo2)][(bar1),(bar2),(bar3)][(baz1)]'": {
+            "SID": "recursive_import",
+            "POS": [
+                {
+                    "path": ["brackets_parentheses"],
+                    "tokens": [
+                        {"token": "foo1", "weight": 1.0},
+                        {"token": "foo2", "weight": 1.0},
+                        {"token": "bar1", "weight": 1.0},
+                        {"token": "bar2", "weight": 1.0},
+                        {"token": "bar3", "weight": 1.0},
+                        {"token": "baz1", "weight": 1.0},
+                    ],
+                },
+                {
+                    "path": ["parentheses"],
+                    "tokens": [
+                        {"token": "foo1", "weight": 1.0},
+                        {"token": "foo2", "weight": 1.0},
+                        {"token": "bar1", "weight": 1.0},
+                        {"token": "bar2", "weight": 1.0},
+                        {"token": "bar3", "weight": 1.0},
+                        {"token": "baz1", "weight": 1.0},
+                    ],
+                },
+            ],
+            "NEG": [],
+        },
+        "PrompterTest-6: 'recursive_import <(foo4)>'": {
+            "SID": "recursive_import",
+            "POS": [
+                {"path": ["angles_parentheses"], "tokens": [{"token": "foobar", "weight": 1.0}]}
+            ],
+            "NEG": [],
+        },
+        "PrompterTest-7: 'recursive_import [(foo4)]'": {
+            "SID": "recursive_import",
+            "POS": [
+                {"path": ["brackets_parentheses"], "tokens": [{"token": "foobar", "weight": 1.0}]}
+            ],
+            "NEG": [],
+        },
+        "PrompterTest-8: 'recursive_import <foo1>,<foo2>,<bar1>,<bar2>,<bar3>,<baz1>'": {
+            "SID": "recursive_import",
+            "POS": [
+                {
+                    "path": ["angles"],
+                    "tokens": [
+                        {"token": "foo1", "weight": 1.0},
+                        {"token": "foo2", "weight": 1.0},
+                        {"token": "bar1", "weight": 1.0},
+                        {"token": "bar2", "weight": 1.0},
+                        {"token": "bar3", "weight": 1.0},
+                        {"token": "baz1", "weight": 1.0},
+                    ],
+                }
+            ],
+            "NEG": [],
+        },
+        "PrompterTest-9: 'recursive_import (foo1),(foo2),(bar1),(bar2),(bar3),(baz1)'": {
+            "SID": "recursive_import",
+            "POS": [
+                {
+                    "path": ["parentheses"],
+                    "tokens": [
+                        {"token": "foo1", "weight": 1.0},
+                        {"token": "foo2", "weight": 1.0},
+                        {"token": "bar1", "weight": 1.0},
+                        {"token": "bar2", "weight": 1.0},
+                        {"token": "bar3", "weight": 1.0},
+                        {"token": "baz1", "weight": 1.0},
+                    ],
+                }
+            ],
+            "NEG": [],
+        },
+        "PrompterTest-10: 'recursive_import -(foo1),(foo2)--(bar1),(bar2),(bar3)--(baz1)-'": {
+            "SID": "recursive_import",
+            "POS": [
+                {
+                    "path": ["parentheses"],
+                    "tokens": [
+                        {"token": "foo1", "weight": 1.0},
+                        {"token": "foo2", "weight": 1.0},
+                        {"token": "bar1", "weight": 1.0},
+                        {"token": "bar2", "weight": 1.0},
+                        {"token": "bar3", "weight": 1.0},
+                        {"token": "baz1", "weight": 1.0},
+                    ],
+                }
+            ],
+            "NEG": [],
+        },
+        "PrompterTest-11: 'recursive_recursive [{(foo1),foo2}{bar1,(bar2)}][{(bar3)},{baz1}]'": {
+            "SID": "recursives",
+            "POS": [
+                {
+                    "path": ["big"],
+                    "tokens": [
+                        {"token": "foo1", "weight": 1.0},
+                        {"token": "bar2", "weight": 1.0},
+                        {"token": "bar3", "weight": 1.0},
+                    ],
+                }
+            ],
+            "NEG": [],
+        },
+        "PrompterTest-12: 'recursive_name [(foo1),(foo2)][<bar1>,<bar2>,<bar3>][(baz1)]'": {
+            "SID": "recursive_name",
+            "POS": [
+                {
+                    "path": ["big"],
+                    "tokens": [
+                        {"token": "foo1", "weight": 1.0},
+                        {"token": "foo2", "weight": 1.0},
+                        {"token": "bar1", "weight": 1.0},
+                        {"token": "bar2", "weight": 1.0},
+                        {"token": "bar3", "weight": 1.0},
+                        {"token": "baz1", "weight": 1.0},
+                    ],
+                }
+            ],
+            "NEG": [],
+        },
+        "PrompterTest-13: 'recursive_practice one's equip:[equip1][equip2][equip3][equip4]'": {
+            "SID": "recursive_practice",
+            "POS": [
+                {
+                    "path": ["equip"],
+                    "tokens": [
+                        {"token": "equip1", "weight": 1.0},
+                        {"token": "equip2", "weight": 1.0},
+                        {"token": "equip3", "weight": 1.0},
+                        {"token": "equip4", "weight": 1.0},
+                    ],
+                }
+            ],
+            "NEG": [],
+        },
+    },
 }
 
 
@@ -784,6 +994,36 @@ def debug_prompter() -> None:
                     "import_dst4 flag",  # 多段 pattern インポート (capturegrp 未定義)
                 ]
             },
+            "recursive": {
+                "yamls/testyamls/PrompterTest.yaml": [
+                    # 再帰標準機能
+                    "recursive_plane [(foo1),(foo2)][(bar1),(bar2),(bar3)][(baz1)]",
+                    # 再帰先 default
+                    "recursive_plane [(foo4)]",
+                    # 再帰構造のローカル import
+                    "recursive_plane {(foo1),(foo2)}{(bar1),(bar2),(bar3)}{(baz1)}",
+                    # 再帰構造のグローバル import
+                    "recursive_import <(foo1),(foo2)><(bar1),(bar2),(bar3)><(baz1)>",
+                    # 再帰構造のグローバル import (pattern 省略)
+                    "recursive_import [(foo1),(foo2)][(bar1),(bar2),(bar3)][(baz1)]",
+                    # 再帰構造のグローバル import, default
+                    "recursive_import <(foo4)>",
+                    # 再帰構造のグローバル import (pattern 省略), default
+                    "recursive_import [(foo4)]",
+                    # 再帰先 import
+                    "recursive_import <foo1>,<foo2>,<bar1>,<bar2>,<bar3>,<baz1>",
+                    # 再帰先 import (pattern 省略)
+                    "recursive_import (foo1),(foo2),(bar1),(bar2),(bar3),(baz1)",
+                    # 再帰先を別の再帰先 import で定義
+                    "recursive_import -(foo1),(foo2)--(bar1),(bar2),(bar3)--(baz1)-",
+                    # 2段以上の再帰
+                    "recursive_recursive [{(foo1),foo2}{bar1,(bar2)}][{(bar3)},{baz1}]",
+                    # 再帰先の名前が再帰・分岐
+                    "recursive_name [(foo1),(foo2)][<bar1>,<bar2>,<bar3>][(baz1)]",
+                    # 実践
+                    "recursive_practice one's equip:[equip1][equip2][equip3][equip4]",
+                ]
+            },
         }
     )
     dump_json(result, "debug")
@@ -798,4 +1038,9 @@ def debug_prompter() -> None:
                 print(f"OK  - {key}")
             else:
                 print(f"NG  - {key}")
-                dump_json(dict_diff(normalized_test_result, correct_result), "diff")
+                # dump_json(dict_diff(normalized_test_result, correct_result), "diff")
+
+
+def print_yamldict(path: Path) -> None:
+    debugger = PrompterDebugger.make(Path(path))
+    debugger.dump_normalized_yamldict()

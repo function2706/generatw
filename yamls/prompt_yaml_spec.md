@@ -322,7 +322,7 @@ import_src:
 import_dst:
   ignition: "dst"
   name:
-    pattern: NAME-(.+?) # パターンは再定義
+    pattern: NAME-(.+?) # パターン再定義
     capturegrp: 1
     import: [import_src, character, name]
     default: bob
@@ -339,6 +339,71 @@ import_dst2:
 - インポート対象は `maps` / `ranges` / `intervals` のみ, **`default` はインポート対象外**
 - Screen ID 及び Category のパスはインポートした側の記述に従う(上記の場合は `import_dst,name`)
 - 多段インポート(すでにインポートしている Rule をインポートすること)は合法である
+
+### 4.3.4 `recurse`
+
+Category を再帰的に定義する.
+
+`[(foo1)(foo2)][(bar1)(bar2)(bar3)][(baz1)]` といった文字列から `foo1,foo2,bar1,bar2,bar3,baz1` を抜き出すなど, 複数回のグローバルマッチが必要な場合に用いる.
+
+```yaml
+brackets_parentheses:
+  pattern: '\[([^\[\]]+)\]'
+  capturegrp: 1
+  recurse:
+    parentheses:
+      pattern: '\(([^\(\)]+)\)'
+      capturegrp: 1
+      maps:
+        foo1: foo1
+      default: foobar
+```
+
+処理は以下のように実施される.
+
+1. 与えられた文字列に対して `\[([^\[\]]+)\]` を実施
+2. こうして得た各部分文字列について `\(([^\(\)]+)\)` を実施
+
+- Category のパスは最下層の `pattern` に紐づくものまでのすべてをとる(上記の場合は `brackets_parentheses,parentheses`)
+- `default` は同階層の `pattern` に対するフォールバックとする
+- `recurse` が存在する `pattern` の `default` は原理上通らない(マッチすれば例外なく下層へ移譲するため)
+- 再帰構造のインポート, 及び再帰先のインポートはどちらも合法である
+
+```yaml
+angles_parentheses:
+  pattern: '\<([^\<\>]+)\>'
+  capturegrp: 1
+  import: [recursive, brackets_parentheses] # 再起構造のインポート
+curlyblackets:
+  pattern: '\{([^\{\}])\}'
+  capturegrp: 1
+  import: [recursive, brackets_parentheses, parentheses] # 再記先のインポート
+```
+
+- 再帰構造のインポートを行う場合, その再帰先に `default` が定義されているなら引き継がれる
+- 再帰先の定義を別の再帰先で行うことは合法である
+
+```yaml
+hifen&quotes:
+  pattern: '\-([^\-]+)\-'
+  capturegrp: 1
+  quotes: { import: [recursive, brackets&quotes, quotes] } # 再帰先を別の再帰先 import で定義
+```
+
+- 2段以上の再帰構造は合法である
+
+```yaml
+big:
+  pattern: '\[([^\[\]]+)\]'
+  capturegrp: 1
+  middle:
+    pattern: '\{([^\{\}]+)\}'
+    capturegrp: 1
+    small:
+      pattern: '\(([^\(\)]+)\)"'
+      capturegrp: 1
+      import: [recursive, brackets&quotes, quotes] 
+```
 
 ---
 

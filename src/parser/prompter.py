@@ -21,6 +21,7 @@ class KeyName(StrEnum):
     ranges = "ranges"
     intervals = "intervals"
     import_k = "import"
+    recurse = "recurse"
     default = "default"
     common = "common"
     positive = "positive"
@@ -374,10 +375,23 @@ class DefaultRule(Rule):
 
 
 @dataclass
+class CategoryRegister:
+    """
+    import の際に CategoryPath から索いて Category を復元する際の元データ
+    """
+
+    pattern: re.Pattern[str] = field(default_factory=re.Pattern[str])
+    capturegrp: int = 0
+    rules: list[Rule] = field(default_factory=list)
+    children: list[Rule] = field(default_factory=list)
+
+
+@dataclass
 class Category:
     """
     正規表現パターンと Rule の組み合わせを定義するクラス\n
-    テキストからパターンマッチングでトークンを抽出し, Rule に従って CategoryDeliverable を生成する
+    テキストからパターンマッチングでトークンを抽出し, Rule に従って CategoryDeliverable を生成する\n
+    sub_category が空でない場合は, 各マッチング結果をリストの各 Category に移譲する
 
     例:
         {'pattern': '(xxx|yyy)', 'capturegrp': 1,\n
@@ -386,18 +400,19 @@ class Category:
          'default': {'positive': 'defpos1,(defpos2:1.7)', 'negative': 'defneg1'}}
 
     Attributes:
-        pattern (str): 正規表現パターン
+        pattern (re.Pattern[str]): コンパイル済み正規表現
         capturegrp (int): キャプチャグループ番号(デフォルト: 0)
-        rules (list[Rule]): Rule のリスト
-        default (Rule | None): デフォルト Rule
         category_path (CategoryPath): Category パス
-        re_cache (re.Pattern[str]): コンパイル済み正規表現
+        rules (list[Rule]): Rule のリスト (children と排他)
+        children (list[Category]): 再帰的に定義された Category のリスト (rules と排他)
+        default (Rule | None): デフォルト Rule
     """
 
     pattern: re.Pattern[str] = field(default=None, init=False, repr=False, compare=False)
     capturegrp: int = 0
     category_path: CategoryPath = field(default_factory=tuple)
     rules: list[Rule] = field(default_factory=list)
+    children: list[Category] = field(default_factory=list)
     default: Rule | None = None
 
     @classmethod
@@ -406,7 +421,7 @@ class Category:
         category: dict[str, int | str | dict | list],
         screen_id: str,
         category_path: CategoryPath,
-        rules_dict: dict[CategoryPath, tuple[re.Pattern[str], int, list[Rule]]],
+        catreg_dict: dict[CategoryPath, CategoryRegister],
     ):
         """
         YAML の定義から Category インスタンスを生成する
@@ -415,8 +430,7 @@ class Category:
             category (dict[str, dict]): Category 定義の辞書
             screen_id (str): Screen ID
             category_path (CategoryPath): Category パス
-            rules_dict (dict[CategoryPath, tuple[re.Pattern[str], int, list[Rule]]]):
-                CategoryPath ごとの pattern, capturegrp, Rule リストのタプル
+            catreg_dict (dict[CategoryPath, CategoryRegister]): CategoryPath ごとの CategoryRegister
 
         Returns:
             Category: 生成された Category インスタンス
@@ -428,13 +442,35 @@ class Category:
 
         obj.category_path = category_path
 
+        def collect_categories(
+            node: dict,
+            category_path: CategoryPath,
+            catreg_dict: dict[CategoryPath, CategoryRegister],
+        ) -> None:
+            """
+            YAML のノードを再帰的に探索し, Category 定義を収集する
+            """
+            if not isinstance(node, dict):
+                # str や list は無視
+                return
+
+            if KeyName.import_k in node or KeyName.pattern in node:
+                # 最下層の Category = 'import' キーか 'pattern' キーが存在する
+                category = Category.make(node, screen_id, category_path, catreg_dict)
+                obj.children.append(category)
+                return
+
+            for k, v in node.items():
+                collect_categories(v, (category_path + (k,)), catreg_dict)
+
         if KeyName.import_k in category:
             target_path = category.get(KeyName.import_k)
             if not isinstance(target_path, list):
                 raise ValueError("Type of value for 'import' must be list.")
-            elif tuple(target_path) not in rules_dict:
+            elif tuple(target_path) not in catreg_dict:
                 raise ValueError(f"CategoryPath '{target_path}' has not been defined in the YAML.")
 
+            target_catreg = catreg_dict.get(tuple(target_path))
             if KeyName.pattern in category and KeyName.capturegrp in category:
                 # pattern と capturegrp が定義されている場合はそちらを採用
                 try:
@@ -445,9 +481,14 @@ class Category:
                 obj.capturegrp = int(category.get(KeyName.capturegrp))
             else:
                 # そうでない場合は import 元のものを採用
-                obj.pattern = rules_dict.get(tuple(target_path))[0]
-                obj.capturegrp = rules_dict.get(tuple(target_path))[1]
-            obj.rules.extend(rules_dict.get(tuple(target_path))[2])
+                obj.pattern = target_catreg.pattern
+                obj.capturegrp = target_catreg.capturegrp
+
+            # rules と children は排他なので必ずどちらか一方
+            if target_catreg.rules:
+                obj.rules.extend(target_catreg.rules)
+            elif target_catreg.children:
+                obj.children.extend(target_catreg.children)
         else:
             if KeyName.pattern in category:
                 try:
@@ -462,9 +503,16 @@ class Category:
             if KeyName.capturegrp in category:
                 obj.capturegrp = int(category.get(KeyName.capturegrp))
 
-            if sum(k in category for k in (KeyName.maps, KeyName.ranges, KeyName.intervals)) != 1:
+            if (
+                sum(
+                    k in category
+                    for k in (KeyName.maps, KeyName.ranges, KeyName.intervals, KeyName.recurse)
+                )
+                != 1
+            ):
                 raise ValueError(
-                    "Category must have only 1 Ruletype, maps/ranges/intervals if without import."
+                    "Category must have only 1 Ruletype,"
+                    "maps/ranges/intervals/recurse if without import."
                 )
             elif KeyName.maps in category:
                 for key, val in category.get(KeyName.maps).items():
@@ -475,8 +523,17 @@ class Category:
             elif KeyName.intervals in category:
                 for key, val in category.get(KeyName.intervals).items():
                     obj.rules.append(IntervalsRule.make(key=key, val=val))
+            elif KeyName.recurse in category:
+                for key, val in category.get(KeyName.recurse).items():
+                    collect_categories(
+                        node=val,
+                        category_path=obj.category_path + (key,),
+                        catreg_dict=catreg_dict,
+                    )
 
-        rules_dict[(screen_id,) + category_path] = (obj.pattern, obj.capturegrp, obj.rules)
+        catreg_dict[(screen_id,) + category_path] = CategoryRegister(
+            pattern=obj.pattern, capturegrp=obj.capturegrp, rules=obj.rules, children=obj.children
+        )
 
         if KeyName.default in category:
             val = category.get(KeyName.default)
@@ -487,10 +544,22 @@ class Category:
 
         return obj
 
+    def has_children(self) -> bool:
+        """
+        再帰的に Category を有するか
+        """
+        return self.children and not self.rules
+
     def to_prompts(self, text: str) -> tuple[PromptParts, PromptParts] | None:
         """
-        指定の text から PromptParts を生成する\n
+        指定の text から PromptParts を生成する
+
+        - 再帰的 Category を有する場合\n
+        順に Rule を適用していく\n
         マッチしたがヒットしない場合は default を採用する
+
+        - 再帰的 Category を有する場合\n
+        順に Category.to_prompts() を処理していく
 
         Args:
             text (str): テキスト
@@ -513,14 +582,24 @@ class Category:
                 continue
 
             has_matched = True
-            for rule in self.rules:
-                result_hit = rule.to_tokenlists(match=match)
-                if result_hit is None:
-                    continue
+            if self.has_children():
+                for child_category in self.children:
+                    result = child_category.to_prompts(match)
+                    if result is None:
+                        continue
 
-                pos, neg = result_hit
-                positive.tokens.extend(pos)
-                negative.tokens.extend(neg)
+                    pos_parts, neg_parts = result
+                    positive.tokens.extend(pos_parts.tokens)
+                    negative.tokens.extend(neg_parts.tokens)
+            else:
+                for rule in self.rules:
+                    result_hit = rule.to_tokenlists(match=match)
+                    if result_hit is None:
+                        continue
+
+                    pos, neg = result_hit
+                    positive.tokens.extend(pos)
+                    negative.tokens.extend(neg)
 
         if has_matched:
             if not positive.tokens and not negative.tokens:
@@ -559,11 +638,11 @@ class Screen:
     common_positive: list[Token] = field(default_factory=list)
     common_negative: list[Token] = field(default_factory=list)
 
-    def collect_fields(
+    def collect_categories(
         self,
         node: dict,
         category_path: CategoryPath,
-        rules_dict: dict[CategoryPath, tuple[re.Pattern[str], int, list[Rule]]],
+        catreg_dict: dict[CategoryPath, CategoryRegister],
     ) -> None:
         """
         YAML のノードを再帰的に探索し, Category 定義を収集する
@@ -571,8 +650,7 @@ class Screen:
         Args:
             node (dict): 探索対象のノード
             category_path (CategoryPath): 現在の Category パス
-            rules_dict (dict[CategoryPath, tuple[re.Pattern[str], int, list[Rule]]]):
-                CategoryPath ごとの pattern, capturegrp, Rule リストのタプル
+            catreg_dict (dict[CategoryPath, CategoryRegister]): CategoryPath ごとの CategoryRegister
         """
         if not isinstance(node, dict):
             # str や list は無視
@@ -580,12 +658,12 @@ class Screen:
 
         if KeyName.import_k in node or KeyName.pattern in node:
             # 最下層の Category = 'import' キーか 'pattern' キーが存在する
-            category = Category.make(node, self.screen_id, category_path, rules_dict)
+            category = Category.make(node, self.screen_id, category_path, catreg_dict)
             self.categories.append(category)
             return
 
         for k, v in node.items():
-            self.collect_fields(v, (category_path + (k,)), rules_dict)
+            self.collect_categories(v, (category_path + (k,)), catreg_dict)
 
     @classmethod
     def make(
@@ -593,7 +671,7 @@ class Screen:
         screen_id: str,
         screen: dict[str, dict[str, Any] | list[str]],
         common_dict: dict[str, tuple[list[Token], list[Token]]],
-        rules_dict: dict[CategoryPath, tuple[re.Pattern[str], int, list[Rule]]],
+        catreg_dict: dict[CategoryPath, CategoryRegister],
     ):
         """
         YAML の定義から Screen インスタンスを生成する
@@ -602,8 +680,7 @@ class Screen:
             screen_id (str): Screen 名
             screen (dict[str, dict[str, Any]]): Screen 定義の辞書
             common_dict (dict[str, tuple[list[Token], list[Token]]]): Screen ごとの common 領域
-            rules_dict (dict[CategoryPath, tuple[re.Pattern[str], int, list[Rule]]]):
-                CategoryPath ごとの pattern, capturegrp, Rule リストのタプル
+            catreg_dict (dict[CategoryPath, CategoryRegister]): CategoryPath ごとの CategoryRegister
 
         Returns:
             Screen: 生成されたScreenインスタンス
@@ -641,8 +718,11 @@ class Screen:
                     raise ValueError("Syntax of 'common' is invalid.")
                 common_dict[screen_id] = (obj.common_positive, obj.common_negative)
             else:
-                rule_path = CategoryPath((key,))
-                obj.collect_fields(val, rule_path, rules_dict)
+                obj.collect_categories(
+                    node=val,
+                    category_path=CategoryPath((key,)),
+                    catreg_dict=catreg_dict,
+                )
 
         return obj
 
@@ -713,13 +793,13 @@ class Prompter:
         with open(yamlpath, "r", encoding="utf-8") as f:
             yamldict: dict = yaml.safe_load(f)
 
-        rules_dict: dict[CategoryPath, tuple[re.Pattern[str], int, list[Rule]]] = {}
+        catreg_dict: dict[CategoryPath, CategoryRegister] = {}
         common_dict: dict[str, tuple[list[Token], list[Token]]] = {}
         for key, val in yamldict.items():
             if key == KeyName.interpreter:
                 obj.interpreter_keyword = val
             else:
-                obj.screens.append(Screen.make(key, val, common_dict, rules_dict))
+                obj.screens.append(Screen.make(key, val, common_dict, catreg_dict))
 
         return obj
 

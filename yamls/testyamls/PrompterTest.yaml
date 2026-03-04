@@ -199,3 +199,86 @@ import_dst4:
   flag:
     import: [import_dst3, flag]
   common: [import_dst3]
+recursive:
+  ignition: "recursive_plane"
+  brackets_parentheses: # 再帰標準機能
+    pattern: '\[([^\[\]]+?)\]'
+    capturegrp: 1
+    recurse:
+      parentheses:
+        pattern: '\(([^\(\)]+?)\)'
+        capturegrp: 1
+        maps:
+          foo1: foo1
+          foo2: foo2
+          foo3: foo3
+          bar1: bar1
+          bar2: bar2
+          bar3: bar3
+          baz1: baz1
+          baz2: baz2
+          baz3: baz3
+        default: foobar # 再帰先 default
+  curlybrackets_parentheses: # 再帰構造のローカル import (pattern 省略は無意味な記法につき略)
+    pattern: '\{([^\{\}]+?)\}'
+    capturegrp: 1
+    import: [recursive, brackets_parentheses]
+recursive_import:
+  ignition: "recursive_import"
+  angles_parentheses: # 再帰構造のグローバル import
+    pattern: "<([^<>]+?)>"
+    capturegrp: 1
+    import: [recursive, brackets_parentheses]
+  brackets_parentheses: { import: [recursive, brackets_parentheses] } # 再帰構造のグローバル import (pattern 省略)
+  angles:
+    pattern: "<([^<>]+?)>"
+    capturegrp: 1
+    import: [recursive, brackets_parentheses, parentheses] # 再帰先 import
+  parentheses: { import: [recursive, brackets_parentheses, parentheses] } # 再帰先 import (pattern 省略)
+  slash_parentheses:
+    pattern: "/([^/]+?)/"
+    capturegrp: 1
+    recurse:
+      parentheses:
+        import: [recursive, brackets_parentheses, parentheses] # 再帰先を別の再帰先 import で定義
+recursives: # 2段以上の再帰
+  ignition: "recursive_recursive"
+  big:
+    pattern: '\[([^\[\]]+?)\]'
+    capturegrp: 1
+    recurse:
+      middle:
+        pattern: '\{([^\{\}]+?)\}'
+        capturegrp: 1
+        recurse:
+          small:
+            pattern: '\(([^\(\)]+?)\)'
+            capturegrp: 1
+            import: [recursive, brackets_parentheses, parentheses]
+recursive_name: # 再帰先の名前が再帰・分岐
+  ignition: "recursive_name"
+  big:
+    pattern: '\[([^\[\]]+?)\]'
+    capturegrp: 1
+    recurse:
+      child:
+        parentheses:
+          import: [recursive, brackets_parentheses, parentheses]
+        angle:
+          pattern: "<([^<>]+?)>"
+          capturegrp: 1
+          import: [recursive, brackets_parentheses, parentheses]
+recursive_practice:
+  ignition: "recursive_practice"
+  equip:
+    pattern: "equip:(.+)"
+    capturegrp: 1
+    recurse:
+      equip_parts:
+        pattern: '\[([^\[\]]+?)\]'
+        capturegrp: 1
+        maps:
+          equip1: equip1
+          equip2: equip2
+          equip3: equip3
+          equip4: equip4
