@@ -113,7 +113,7 @@ main:
         女苑: "yorigami jo'on,tsurime"
         紫苑: "yorigami shion"
     vibe:
-      pattern: '調教中\r\n.+の状態:\[(.+?)\]'
+      pattern: 'の状態:\[(.+?)\].*の状態'
       capturegrp: 1
       ranges:
         tired: ["疲弊", "衰弱"]
@@ -164,7 +164,20 @@ main:
           pattern: '\[([^\[\]]+?)\]'
           capturegrp: 1
           maps:
-            縄で緊縛: holding rope
+            ペニスバンド: strap-on
   common:
     positive: best quality,masterpiece,absurdres,1girl,solo
     negative: (amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm
+action:
+  ignition: "(今の気分について聞いてみた|縄で縛ろうとした|足を舐めろ)"
+  asking:
+    pattern: "今の気分について聞いてみた"
+    今の気分について聞いてみた: talk to viewer
+  rope:
+    pattern: "縄で縛ろうとした"
+    縄で縛ろうとした:
+      positive: holding rope,looking at viewer
+      negative: bondage
+  foot-licking:
+    pattern: "足を舐めろ"
+    足を舐めろ: (five toes:1.5),foot focus,from below,pov,
