@@ -387,7 +387,7 @@ curlyblackets:
 hifen&quotes:
   pattern: '\-([^\-]+)\-'
   capturegrp: 1
-  quotes: { import: [recursive, brackets&quotes, quotes] } # 再帰先を別の再帰先 import で定義
+  quotes: { import: [recursive, brackets_parentheses, parentheses] } # 再帰先を別の再帰先 import で定義
 ```
 
 - 2段以上の再帰構造は合法である
@@ -402,7 +402,7 @@ big:
     small:
       pattern: '\(([^\(\)]+)\)"'
       capturegrp: 1
-      import: [recursive, brackets&quotes, quotes] 
+      import: [recursive, brackets_parentheses, parentheses] 
 ```
 
 ---
