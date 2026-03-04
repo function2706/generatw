@@ -113,7 +113,7 @@ main:
         女苑: "yorigami jo'on,tsurime"
         紫苑: "yorigami shion"
     vibe:
-      pattern: 'の状態:\[(.+?)\]\s'
+      pattern: '調教中\r\n.+の状態:\[(.+?)\]'
       capturegrp: 1
       ranges:
         tired: ["疲弊", "衰弱"]
@@ -122,8 +122,9 @@ main:
         angry: ["怒り"]
         bored: ["退屈"]
         depressed: ["鬱屈"]
+        (expressionless:0.8): ["通常"]
     fashion:
-      pattern: '-\n.+の衣装：(.+)'
+      pattern: '-\r\n.+の衣装：(.+)'
       capturegrp: 1
       recurse:
         dresses:
