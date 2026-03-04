@@ -550,7 +550,7 @@ class Category:
         """
         return self.children and not self.rules
 
-    def to_prompts(self, text: str) -> tuple[PromptParts, PromptParts] | None:
+    def to_prompts(self, text: str) -> list[tuple[PromptParts, PromptParts]] | None:
         """
         指定の text から PromptParts を生成する
 
@@ -565,13 +565,17 @@ class Category:
             text (str): テキスト
 
         Returns:
-            tuple[PromptParts, PromptParts] | None:
-            ヒット時に PromptParts のタプル(ポジティブ/ネガティブ)\n
+            list[tuple[PromptParts, PromptParts] | None:
+            ヒット時に PromptParts のタプル(ポジティブ/ネガティブ)のリスト\n
             マッチしない, あるいはマッチしたがヒットせず default 適用を試みるも未定義の場合に None\n
             tuple の片方が空の tokens である場合があることに注意
         """
-        positive = PromptParts(path=self.category_path)
-        negative = PromptParts(path=self.category_path)
+        results: dict[CategoryPath, tuple[PromptParts, PromptParts]] = {}
+
+        def get_or_create(path: CategoryPath) -> tuple[PromptParts, PromptParts]:
+            if path not in results:
+                results[path] = (PromptParts(path=path), PromptParts(path=path))
+            return results[path]
 
         has_matched = False
         for match_itr in self.pattern.finditer(text):
@@ -584,13 +588,14 @@ class Category:
             has_matched = True
             if self.has_children():
                 for child_category in self.children:
-                    result = child_category.to_prompts(match)
-                    if result is None:
+                    child_results = child_category.to_prompts(match)
+                    if child_results is None:
                         continue
 
-                    pos_parts, neg_parts = result
-                    positive.tokens.extend(pos_parts.tokens)
-                    negative.tokens.extend(neg_parts.tokens)
+                    for pos_parts, neg_parts in child_results:
+                        pos, neg = get_or_create(pos_parts.path)
+                        pos.tokens.extend(pos_parts.tokens)
+                        neg.tokens.extend(neg_parts.tokens)
             else:
                 for rule in self.rules:
                     result_hit = rule.to_tokenlists(match=match)
@@ -598,17 +603,19 @@ class Category:
                         continue
 
                     pos, neg = result_hit
-                    positive.tokens.extend(pos)
-                    negative.tokens.extend(neg)
+                    dst_pos, dst_neg = get_or_create(self.category_path)
+                    dst_pos.tokens.extend(pos)
+                    dst_neg.tokens.extend(neg)
 
         if has_matched:
-            if not positive.tokens and not negative.tokens:
+            if not results:
                 if self.default is not None:
                     # 未ヒット = どの Rule でもポジティブ/ネガティブともにトークンが追加されなかった
                     #   -> default
                     pos, neg = self.default.to_tokenlists()
-                    positive.tokens.extend(pos)
-                    negative.tokens.extend(neg)
+                    dst_pos, dst_neg = get_or_create(self.category_path)
+                    dst_pos.tokens.extend(pos)
+                    dst_neg.tokens.extend(neg)
                 else:
                     # default も未定義につき適用不可だった
                     return None
@@ -616,7 +623,7 @@ class Category:
             # 一切マッチしなかった
             return None
 
-        return positive, negative
+        return list(results.values())
 
 
 @dataclass
@@ -743,16 +750,16 @@ class Screen:
 
         prompt = Prompt(screen_id=self.screen_id)
         for category in self.categories:
-            result = category.to_prompts(text)
-            if result is None:
+            results = category.to_prompts(text)
+            if results is None:
                 # tokens が空の場合は追加しない
                 continue
 
-            pos_parts, neg_parts = result
-            if pos_parts.tokens:
-                prompt.positive.append(pos_parts)
-            if neg_parts.tokens:
-                prompt.negative.append(neg_parts)
+            for pos_parts, neg_parts in results:
+                if pos_parts.tokens:
+                    prompt.positive.append(pos_parts)
+                if neg_parts.tokens:
+                    prompt.negative.append(neg_parts)
 
         if self.common_positive:
             prompt.positive.append(PromptParts(tokens=self.common_positive))

@@ -577,7 +577,7 @@ CORRECT_RESULT = {
             "SID": "recursive",
             "POS": [
                 {
-                    "path": ["brackets_parentheses"],
+                    "path": ["brackets_parentheses", "parentheses"],
                     "tokens": [
                         {"token": "foo1", "weight": 1.0},
                         {"token": "foo2", "weight": 1.0},
@@ -593,7 +593,10 @@ CORRECT_RESULT = {
         "PrompterTest-2: 'recursive_plane [(foo4)]'": {
             "SID": "recursive",
             "POS": [
-                {"path": ["brackets_parentheses"], "tokens": [{"token": "foobar", "weight": 1.0}]}
+                {
+                    "path": ["brackets_parentheses", "parentheses"],
+                    "tokens": [{"token": "foobar", "weight": 1.0}],
+                }
             ],
             "NEG": [],
         },
@@ -601,7 +604,7 @@ CORRECT_RESULT = {
             "SID": "recursive",
             "POS": [
                 {
-                    "path": ["curlybrackets_parentheses"],
+                    "path": ["brackets_parentheses", "parentheses"],
                     "tokens": [
                         {"token": "foo1", "weight": 1.0},
                         {"token": "foo2", "weight": 1.0},
@@ -618,7 +621,7 @@ CORRECT_RESULT = {
             "SID": "recursive_import",
             "POS": [
                 {
-                    "path": ["angles_parentheses"],
+                    "path": ["brackets_parentheses", "parentheses"],
                     "tokens": [
                         {"token": "foo1", "weight": 1.0},
                         {"token": "foo2", "weight": 1.0},
@@ -646,7 +649,7 @@ CORRECT_RESULT = {
             "SID": "recursive_import",
             "POS": [
                 {
-                    "path": ["brackets_parentheses"],
+                    "path": ["brackets_parentheses", "parentheses"],
                     "tokens": [
                         {"token": "foo1", "weight": 1.0},
                         {"token": "foo2", "weight": 1.0},
@@ -673,14 +676,20 @@ CORRECT_RESULT = {
         "PrompterTest-6: 'recursive_import <(foo4)>'": {
             "SID": "recursive_import",
             "POS": [
-                {"path": ["angles_parentheses"], "tokens": [{"token": "foobar", "weight": 1.0}]}
+                {
+                    "path": ["brackets_parentheses", "parentheses"],
+                    "tokens": [{"token": "foobar", "weight": 1.0}],
+                }
             ],
             "NEG": [],
         },
         "PrompterTest-7: 'recursive_import [(foo4)]'": {
             "SID": "recursive_import",
             "POS": [
-                {"path": ["brackets_parentheses"], "tokens": [{"token": "foobar", "weight": 1.0}]}
+                {
+                    "path": ["brackets_parentheses", "parentheses"],
+                    "tokens": [{"token": "foobar", "weight": 1.0}],
+                }
             ],
             "NEG": [],
         },
@@ -739,7 +748,7 @@ CORRECT_RESULT = {
             "SID": "recursives",
             "POS": [
                 {
-                    "path": ["big"],
+                    "path": ["big", "middle", "small"],
                     "tokens": [
                         {"token": "foo1", "weight": 1.0},
                         {"token": "bar2", "weight": 1.0},
@@ -753,16 +762,21 @@ CORRECT_RESULT = {
             "SID": "recursive_name",
             "POS": [
                 {
-                    "path": ["big"],
+                    "path": ["big", "child", "parentheses"],
                     "tokens": [
                         {"token": "foo1", "weight": 1.0},
                         {"token": "foo2", "weight": 1.0},
+                        {"token": "baz1", "weight": 1.0},
+                    ],
+                },
+                {
+                    "path": ["big", "child", "angle"],
+                    "tokens": [
                         {"token": "bar1", "weight": 1.0},
                         {"token": "bar2", "weight": 1.0},
                         {"token": "bar3", "weight": 1.0},
-                        {"token": "baz1", "weight": 1.0},
                     ],
-                }
+                },
             ],
             "NEG": [],
         },
@@ -770,7 +784,7 @@ CORRECT_RESULT = {
             "SID": "recursive_practice",
             "POS": [
                 {
-                    "path": ["equip"],
+                    "path": ["equip", "equip_parts"],
                     "tokens": [
                         {"token": "equip1", "weight": 1.0},
                         {"token": "equip2", "weight": 1.0},
