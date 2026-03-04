@@ -19,6 +19,7 @@ from common.functions import BottleMail, dirname_by_prompts, dump_json
 from master.interfaces import MasterIF
 from parser.interpreter.debug_interpreter import DebugInterpreter
 from parser.interpreter.interpreter import Interpreter
+from parser.interpreter.reverse_interpreter import ReverseInterpreter
 from parser.interpreter.test_interpreter import TestInterpreter
 from parser.interpreter.theworld_interpreter import TheWorldInterpreter
 from parser.prompter import Prompt
@@ -26,6 +27,7 @@ from parser.prompter import Prompt
 INTERPRETER_LIST: list[type[Interpreter]] = [
     TestInterpreter,
     TheWorldInterpreter,
+    ReverseInterpreter,
 ]
 
 

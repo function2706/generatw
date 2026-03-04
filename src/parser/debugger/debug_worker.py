@@ -13,6 +13,7 @@ if parent_dir not in sys.path:
 
 from parser.debugger.interpreter_debugger import debug_interpreter  # noqa: E402
 from parser.debugger.prompter_debugger import debug_prompter, print_yamldict  # noqa: E402
+from parser.debugger.reverse_debugger import debug_r_interpreter  # noqa: E402
 from parser.debugger.the_world_debugger import debug_tw_interpreter  # noqa: E402
 
 parser = argparse.ArgumentParser(
@@ -22,7 +23,7 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument("-p", "--prompter", action="store_true", help="Prompter")
 parser.add_argument("-y", "--yaml", type=str, help="Print normarized YAML")
-parser.add_argument("-i", "--interpreter", choices=["W", "T"], default="T", help="Interpreter")
+parser.add_argument("-i", "--interpreter", choices=["W", "R", "T"], default="T", help="Interpreter")
 args = parser.parse_args()
 
 
@@ -34,5 +35,7 @@ elif args.interpreter:
     target = args.interpreter
     if target == "W":
         debug_tw_interpreter()
+    elif target == "R":
+        debug_r_interpreter()
     elif target == "T":
         debug_interpreter()
