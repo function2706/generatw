@@ -172,12 +172,15 @@ action:
   ignition: "(今の気分について聞いてみた|縄で縛ろうとした|足を舐めろ)"
   asking:
     pattern: "今の気分について聞いてみた"
-    今の気分について聞いてみた: talk to viewer
+    maps:
+      今の気分について聞いてみた: talk to viewer
   rope:
     pattern: "縄で縛ろうとした"
-    縄で縛ろうとした:
-      positive: holding rope,looking at viewer
-      negative: bondage
+    maps:
+      縄で縛ろうとした:
+        positive: holding rope,looking at viewer
+        negative: bondage
   foot-licking:
     pattern: "足を舐めろ"
-    足を舐めろ: (five toes:1.5),foot focus,from below,pov,
+    maps:
+      足を舐めろ: (five toes:1.5),foot focus,from below,pov,

@@ -1052,7 +1052,7 @@ def debug_prompter() -> None:
                 print(f"OK  - {key}")
             else:
                 print(f"NG  - {key}")
-                # dump_json(dict_diff(normalized_test_result, correct_result), "diff")
+                dump_json(dict_diff(normalized_test_result, correct_result), "diff")
 
 
 def print_yamldict(path: Path) -> None:

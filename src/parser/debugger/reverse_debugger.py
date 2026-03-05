@@ -25,6 +25,10 @@ CORRECT_RESULT = {
                             "tokens": [{"token": "houjuu nue", "weight": 1.0}],
                         },
                         {
+                            "path": ["character", "vibe"],
+                            "tokens": [{"token": "expressionless", "weight": 0.8}],
+                        },
+                        {
                             "path": ["character", "fashion", "dresses"],
                             "tokens": [{"token": "one-piece dress", "weight": 1.0}],
                         },
@@ -38,7 +42,7 @@ CORRECT_RESULT = {
                         },
                         {
                             "path": ["character", "tool", "tool_meat"],
-                            "tokens": [{"token": "holding rope", "weight": 1.0}],
+                            "tokens": [{"token": "strap-on", "weight": 1.0}],
                         },
                         {
                             "path": [],
@@ -99,8 +103,8 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {
-                "POS": "houjuu nue,one-piece dress,kneehighs,looking at viewer,holding rope,best quality,masterpiece,absurdres,1girl,solo",  # noqa E501
-                "NEG": "(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa E501
+                "POS": "houjuu nue,(expressionless:0.8),one-piece dress,kneehighs,looking at viewer,strap-on,best quality,masterpiece,absurdres,1girl,solo",  # noqa: E501
+                "NEG": "(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
             },
             "essentiality": True,
         }
@@ -119,14 +123,14 @@ def debug_r_interpreter() -> None:
             "main": make_testcase(
                 [
                     # No.1
-                    "6日目(昼)　経過時間[0]\n"
-                    "ぬえ [LV 3  EXP 529/540] がxxx [LV 3  EXP 278/540] を調教中\n"
-                    "ぬえの状態:[通常]                                      xxxの状態:[通常]\n"
-                    "---------------------------------------------------------------------------------------------------------------------\n"  # noqa E501
-                    "ぬえの衣装：[ワンピース][ブラジャー][パンティ][ニーソックス]\n"
-                    "xxxの衣装：[Ｔシャツ][トランクス][ソックス]\n"
-                    "現在の姿勢：[xxx：楽にしている][ぬえ：xxxを観察]\n"
-                    "使用中　[縄で緊縛]",
+                    "6日目(昼)　経過時間[0]\r\n"
+                    "ぬえ [LV 3  EXP 529/540] がxxx [LV 3  EXP 278/540] を調教中\r\n"
+                    "ぬえの状態:[通常]                                      xxxの状態:[通常]\r\n"
+                    "---------------------------------------------------------------------------------------------------------------------\r\n"  # noqa E501
+                    "ぬえの衣装：[ワンピース][ブラジャー][パンティ][ニーソックス]\r\n"
+                    "xxxの衣装：[Ｔシャツ][トランクス][ソックス]\r\n"
+                    "現在の姿勢：[xxx：楽にしている][ぬえ：xxxを観察]\r\n"
+                    "使用中　[ペニスバンド]",
                 ],
             ),
         },

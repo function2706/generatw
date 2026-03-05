@@ -383,7 +383,7 @@ class CategoryRegister:
     pattern: re.Pattern[str] = field(default_factory=re.Pattern[str])
     capturegrp: int = 0
     rules: list[Rule] = field(default_factory=list)
-    children: list[Rule] = field(default_factory=list)
+    children: list[Category] = field(default_factory=list)
 
 
 @dataclass
