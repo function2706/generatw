@@ -337,6 +337,11 @@ class Master(MasterIF):
                     self.run_oneshot(event.positive, event.negative)
                 else:
                     self.archiver.drop_picstats()
+            if isinstance(event, master.events.NewReports):
+                if self.crnt_gui_configs.print_event:
+                    print("New Reports")
+                if self.crnt_gui_configs.print_parser_reports:
+                    dump_json(event.reports, "parser_reports")
 
     @property
     def backend_type(self) -> BackEnd:

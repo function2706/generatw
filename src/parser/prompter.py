@@ -398,6 +398,14 @@ class Report:
     screen_id: str = ""
     path: CategoryPath = field(default_factory=CategoryPath)
 
+    def __eq__(self, other: Report):
+        return (
+            self.matched == other.matched
+            and self.pattern == other.pattern
+            and self.capturegrp == other.capturegrp
+            and self.screen_id == other.screen_id
+        )
+
 
 @dataclass
 class Category:
@@ -606,7 +614,9 @@ class Category:
             has_matched = True
             if self.has_children():
                 for child_category in self.children:
-                    child_results, _ = child_category.to_prompts(match, screen_id)
+                    child_results, child_reports = child_category.to_prompts(match, screen_id)
+                    reports.extend(child_reports)
+
                     if child_results is None:
                         continue
 
@@ -615,18 +625,19 @@ class Category:
                         pos.tokens.extend(pos_parts.tokens)
                         neg.tokens.extend(neg_parts.tokens)
             else:
+                hit = False
                 for rule in self.rules:
                     result_hit = rule.to_tokenlists(match=match)
                     if result_hit is None:
                         continue
 
+                    hit = True
                     pos, neg = result_hit
                     dst_pos, dst_neg = get_or_create(self.category_path)
                     dst_pos.tokens.extend(pos)
                     dst_neg.tokens.extend(neg)
 
-                if self.category_path not in results:
-                    # このマッチはヒットしなかった
+                if not hit:
                     report = Report(
                         matched=match,
                         pattern=self.pattern.pattern,

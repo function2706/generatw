@@ -799,7 +799,15 @@ CORRECT_RESULT = {
                 }
             ],
             "NEG": [],
-            "REP": [],
+            "REP": [
+                {
+                    "matched": "foo4",
+                    "pattern": "\\(([^\\(\\)]+?)\\)",
+                    "capturegrp": 1,
+                    "screen_id": "recursive",
+                    "path": ["brackets_parentheses", "parentheses"],
+                }
+            ],
         },
         "PrompterTest-3: 'recursive_plane {(foo1),(foo2)}{(bar1),(bar2),(bar3)}{(baz1)}'": {
             "SID": "recursive",
@@ -910,6 +918,13 @@ CORRECT_RESULT = {
             "NEG": [],
             "REP": [
                 {
+                    "matched": "foo4",
+                    "pattern": "\\(([^\\(\\)]+?)\\)",
+                    "capturegrp": 1,
+                    "screen_id": "recursive_import",
+                    "path": ["brackets_parentheses", "parentheses"],
+                },
+                {
                     "matched": "(foo4)",
                     "pattern": "<([^<>]+?)>",
                     "capturegrp": 1,
@@ -940,8 +955,15 @@ CORRECT_RESULT = {
                     "pattern": "\\(([^\\(\\)]+?)\\)",
                     "capturegrp": 1,
                     "screen_id": "recursive_import",
+                    "path": ["brackets_parentheses", "parentheses"],
+                },
+                {
+                    "matched": "foo4",
+                    "pattern": "\\(([^\\(\\)]+?)\\)",
+                    "capturegrp": 1,
+                    "screen_id": "recursive_import",
                     "path": ["parentheses"],
-                }
+                },
             ],
         },
         "PrompterTest-8: 'recursive_import <foo1>,<foo2>,<bar1>,<bar2>,<bar3>,<baz1>'": {
@@ -1062,6 +1084,114 @@ CORRECT_RESULT = {
             ],
             "NEG": [],
             "REP": [],
+        },
+        "PrompterTest-14: 'recursive_report one's equip:[equip1][equip2][equip3][equip4]'": {
+            "SID": "recursive_report",
+            "POS": [
+                {
+                    "path": ["equip", "equip_parts_1"],
+                    "tokens": [{"token": "equip1", "weight": 1.0}],
+                },
+                {
+                    "path": ["equip", "equip_parts_2"],
+                    "tokens": [{"token": "equip2", "weight": 1.0}],
+                },
+                {
+                    "path": ["equip", "equip_parts_3"],
+                    "tokens": [{"token": "equip3", "weight": 1.0}],
+                },
+                {
+                    "path": ["equip", "equip_parts_4"],
+                    "tokens": [{"token": "equip4", "weight": 1.0}],
+                },
+            ],
+            "NEG": [],
+            "REP": [
+                {
+                    "matched": "equip2",
+                    "pattern": "\\[([^\\[\\]]+?)\\]",
+                    "capturegrp": 1,
+                    "screen_id": "recursive_report",
+                    "path": ["equip", "equip_parts_1"],
+                },
+                {
+                    "matched": "equip3",
+                    "pattern": "\\[([^\\[\\]]+?)\\]",
+                    "capturegrp": 1,
+                    "screen_id": "recursive_report",
+                    "path": ["equip", "equip_parts_1"],
+                },
+                {
+                    "matched": "equip4",
+                    "pattern": "\\[([^\\[\\]]+?)\\]",
+                    "capturegrp": 1,
+                    "screen_id": "recursive_report",
+                    "path": ["equip", "equip_parts_1"],
+                },
+                {
+                    "matched": "equip1",
+                    "pattern": "\\[([^\\[\\]]+?)\\]",
+                    "capturegrp": 1,
+                    "screen_id": "recursive_report",
+                    "path": ["equip", "equip_parts_2"],
+                },
+                {
+                    "matched": "equip3",
+                    "pattern": "\\[([^\\[\\]]+?)\\]",
+                    "capturegrp": 1,
+                    "screen_id": "recursive_report",
+                    "path": ["equip", "equip_parts_2"],
+                },
+                {
+                    "matched": "equip4",
+                    "pattern": "\\[([^\\[\\]]+?)\\]",
+                    "capturegrp": 1,
+                    "screen_id": "recursive_report",
+                    "path": ["equip", "equip_parts_2"],
+                },
+                {
+                    "matched": "equip1",
+                    "pattern": "\\[([^\\[\\]]+?)\\]",
+                    "capturegrp": 1,
+                    "screen_id": "recursive_report",
+                    "path": ["equip", "equip_parts_3"],
+                },
+                {
+                    "matched": "equip2",
+                    "pattern": "\\[([^\\[\\]]+?)\\]",
+                    "capturegrp": 1,
+                    "screen_id": "recursive_report",
+                    "path": ["equip", "equip_parts_3"],
+                },
+                {
+                    "matched": "equip4",
+                    "pattern": "\\[([^\\[\\]]+?)\\]",
+                    "capturegrp": 1,
+                    "screen_id": "recursive_report",
+                    "path": ["equip", "equip_parts_3"],
+                },
+                {
+                    "matched": "equip1",
+                    "pattern": "\\[([^\\[\\]]+?)\\]",
+                    "capturegrp": 1,
+                    "screen_id": "recursive_report",
+                    "path": ["equip", "equip_parts_4"],
+                },
+                {
+                    "matched": "equip2",
+                    "pattern": "\\[([^\\[\\]]+?)\\]",
+                    "capturegrp": 1,
+                    "screen_id": "recursive_report",
+                    "path": ["equip", "equip_parts_4"],
+                },
+                {
+                    "matched": "equip3",
+                    "pattern": "\\[([^\\[\\]]+?)\\]",
+                    "capturegrp": 1,
+                    "screen_id": "recursive_report",
+                    "path": ["equip", "equip_parts_4"],
+                },
+            ],
         },
     },
 }
@@ -1306,6 +1436,8 @@ def debug_prompter() -> None:
                     "recursive_name [(foo1),(foo2)][<bar1>,<bar2>,<bar3>][(baz1)]",
                     # 実践
                     "recursive_practice one's equip:[equip1][equip2][equip3][equip4]",
+                    # レポート
+                    "recursive_report one's equip:[equip1][equip2][equip3][equip4]",
                 ]
             },
         }

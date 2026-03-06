@@ -378,6 +378,32 @@ class DebugTab:
             )
             self.debug_button.grid(row=1, column=1, padx=6, pady=6, sticky="w")
 
+    class ToggleFrame:
+        """
+        トグルフレーム
+        """
+
+        def __init__(self, owner: DebugTab, init_configs: GUIConfigs):
+            """
+            トグルフレームコンストラクタ
+
+            Args:
+                owner (ConfigWindow.DebugTab): DebugTab インスタンス
+            """
+            self.super_owner = owner
+
+            self.toggle_frame = ttk.Frame(owner.main_frame)
+            self.toggle_frame.grid(row=1, column=0, sticky="w")
+            # Parser レポートのロギング
+            self.log_parser_reports_check = tkinter.BooleanVar()
+            ttk.Checkbutton(
+                self.toggle_frame,
+                text="Parser レポートのロギング",
+                variable=self.log_parser_reports_check,
+                command=self.super_owner.super_owner.super_owner.update_configs,
+            ).grid(row=0, column=0, padx=6, pady=6, sticky="w")
+            self.log_parser_reports_check.set(init_configs.log_parser_reports)
+
     class VerboseFrame:
         """
         表示設定フレーム
@@ -393,12 +419,12 @@ class DebugTab:
             self.super_owner = owner
 
             self.verbose_frame = ttk.Frame(owner.main_frame)
-            self.verbose_frame.grid(row=1, column=0, sticky="w")
+            self.verbose_frame.grid(row=2, column=0, sticky="w")
             # クリップボードの表示
             self.verbose_clipboard_check = tkinter.BooleanVar()
             ttk.Checkbutton(
                 self.verbose_frame,
-                text="クリップボード",
+                text="クリップボードを表示",
                 variable=self.verbose_clipboard_check,
                 command=self.super_owner.super_owner.super_owner.update_configs,
             ).grid(row=0, column=0, padx=6, pady=6, sticky="w")
@@ -407,7 +433,7 @@ class DebugTab:
             self.verbose_prompt_set_check = tkinter.BooleanVar()
             ttk.Checkbutton(
                 self.verbose_frame,
-                text="プロンプト(データ)",
+                text="プロンプト(データ)を表示",
                 variable=self.verbose_prompt_set_check,
                 command=self.super_owner.super_owner.super_owner.update_configs,
             ).grid(row=0, column=1, padx=6, pady=6, sticky="w")
@@ -416,7 +442,7 @@ class DebugTab:
             self.verbose_prompt_check = tkinter.BooleanVar()
             ttk.Checkbutton(
                 self.verbose_frame,
-                text="プロンプト(文字列)",
+                text="プロンプト(文字列)を表示",
                 variable=self.verbose_prompt_check,
                 command=self.super_owner.super_owner.super_owner.update_configs,
             ).grid(row=1, column=0, padx=6, pady=6, sticky="w")
@@ -425,7 +451,7 @@ class DebugTab:
             self.verbose_picinfo_check = tkinter.BooleanVar()
             ttk.Checkbutton(
                 self.verbose_frame,
-                text="画像メタデータ",
+                text="画像メタデータを表示",
                 variable=self.verbose_picinfo_check,
                 command=self.super_owner.super_owner.super_owner.update_configs,
             ).grid(row=1, column=1, padx=6, pady=6, sticky="w")
@@ -434,11 +460,20 @@ class DebugTab:
             self.verbose_event_check = tkinter.BooleanVar()
             ttk.Checkbutton(
                 self.verbose_frame,
-                text="イベント",
+                text="イベントを表示",
                 variable=self.verbose_event_check,
                 command=self.super_owner.super_owner.super_owner.update_configs,
             ).grid(row=2, column=0, padx=6, pady=6, sticky="w")
             self.verbose_event_check.set(init_configs.print_event)
+            # Parser レポートの表示
+            self.verbose_parser_reports_check = tkinter.BooleanVar()
+            ttk.Checkbutton(
+                self.verbose_frame,
+                text="Parser レポートを表示",
+                variable=self.verbose_parser_reports_check,
+                command=self.super_owner.super_owner.super_owner.update_configs,
+            ).grid(row=2, column=1, padx=6, pady=6, sticky="w")
+            self.verbose_parser_reports_check.set(init_configs.print_parser_reports)
 
     def __init__(self, owner: MainWindow, init_configs: GUIConfigs):
         """
@@ -453,6 +488,7 @@ class DebugTab:
         self.main_frame.grid(row=0, column=0, sticky="nsew")
 
         self.exe_debug_frame = self.ExeDebugFrame(self, init_configs)
+        self.toggle_frame = self.ToggleFrame(self, init_configs)
         self.verbose_frame = self.VerboseFrame(self, init_configs)
 
 
@@ -754,6 +790,9 @@ class Displayer:
             allow_edit_clipboard=bool(
                 self.main_window.debug_tab_obj.exe_debug_frame.allow_edit_clipboard_check.get()
             ),
+            log_parser_reports=bool(
+                self.main_window.debug_tab_obj.toggle_frame.log_parser_reports_check.get()
+            ),
             print_new_clipboard=bool(
                 self.main_window.debug_tab_obj.verbose_frame.verbose_clipboard_check.get()
             ),
@@ -765,6 +804,9 @@ class Displayer:
             ),
             print_picinfo=bool(
                 self.main_window.debug_tab_obj.verbose_frame.verbose_picinfo_check.get()
+            ),
+            print_parser_reports=bool(
+                self.main_window.debug_tab_obj.verbose_frame.verbose_parser_reports_check.get()
             ),
             print_event=bool(
                 self.main_window.debug_tab_obj.verbose_frame.verbose_event_check.get()

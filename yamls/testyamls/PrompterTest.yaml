@@ -282,3 +282,29 @@ recursive_practice:
           equip2: equip2
           equip3: equip3
           equip4: equip4
+recursive_report:
+  ignition: "recursive_report"
+  equip:
+    pattern: "equip:(.+)"
+    capturegrp: 1
+    recurse:
+      equip_parts_1:
+        pattern: '\[([^\[\]]+?)\]'
+        capturegrp: 1
+        maps:
+          equip1: equip1
+      equip_parts_2:
+        pattern: '\[([^\[\]]+?)\]'
+        capturegrp: 1
+        maps:
+          equip2: equip2
+      equip_parts_3:
+        pattern: '\[([^\[\]]+?)\]'
+        capturegrp: 1
+        maps:
+          equip3: equip3
+      equip_parts_4:
+        pattern: '\[([^\[\]]+?)\]'
+        capturegrp: 1
+        maps:
+          equip4: equip4

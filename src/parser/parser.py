@@ -260,6 +260,7 @@ class Parser:
                     prompt, _ = self.debug_interpreter.make_prompt(new_clipboard)
                 elif self.interpreter is not None:
                     prompt, reports = self.interpreter.make_prompt(new_clipboard)
+                    self.to_master.enclose(master.events.NewReports(reports))
 
                 if prompt is not None:
                     self.inform_new_prompt(prompt)

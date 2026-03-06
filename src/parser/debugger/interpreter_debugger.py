@@ -1051,7 +1051,7 @@ def print_result(
                     dump_json(val.get("string"), key)
             else:
                 print(f"NG  - {key}")
-                dump_json(dict_diff(normalized_test_result, correct_result))
+                # dump_json(dict_diff(normalized_test_result, correct_result))
 
 
 def debug_interpreter() -> None:

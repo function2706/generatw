@@ -4,13 +4,14 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from archiver.dataclasses import NoImageStats, PicStats
 from common.functions import BackEnd
 from displayer.dataclasses import GUIConfigs
 from generator.dataclasses import TaskBlueprint
+from parser.prompter import Report
 
 
 @dataclass
@@ -133,3 +134,8 @@ class NewPrompts(ParserEvent):
     is_enough: bool = False
     positive: str = ""
     negative: str = ""
+
+
+@dataclass
+class NewReports(ParserEvent):
+    reports: list[Report] = field(default_factory=list)
