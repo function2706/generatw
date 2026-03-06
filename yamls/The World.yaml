@@ -253,17 +253,17 @@ main:
         pattern: '(\d+)時'
         capturegrp: 1
         intervals:
-          midnight: [0, 3]
-          dawn: [4, 5]
-          evening: [16, 18]
-          night: [19, 23]
+          morning: [6, 10]
+          noon: [11, 12]
+          afternoon: [13, 15]
       night:
         pattern: '(\d+)時'
         capturegrp: 1
         intervals:
-          morning: [6, 10]
-          noon: [11, 12]
-          afternoon: [13, 15]
+          midnight: [0, 3]
+          dawn: [4, 5]
+          evening: [16, 18]
+          night: [19, 23]
     location:
       indoors:
         type1:

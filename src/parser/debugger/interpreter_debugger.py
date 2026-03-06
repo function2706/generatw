@@ -38,6 +38,7 @@ CORRECT_RESULT = {
             ],
             "string": {"POS": "OK1,OK2,strip_common_pos", "NEG": "ok1,ok2,strip_common_neg"},
             "essentiality": True,
+            "reports": [],
         }
     },
     "CASE 'dedupe'": {
@@ -84,6 +85,7 @@ CORRECT_RESULT = {
                 "NEG": "(dedupe:0.15),map1,map2,map3,map4,dedupe_common_neg",
             },
             "essentiality": True,
+            "reports": [],
         }
     },
     "CASE 'dedupe2'": {
@@ -133,6 +135,7 @@ CORRECT_RESULT = {
                 "NEG": "map5,(dedupe:0.15),map5',map1,map2,map3,map4,dedupe_common_neg",
             },
             "essentiality": True,
+            "reports": [],
         }
     },
     "CASE 'dedupe3'": {
@@ -174,6 +177,7 @@ CORRECT_RESULT = {
                 "NEG": "map5,(dedupe:0.5),map5',map1,map2,map4,dedupe_common_neg",
             },
             "essentiality": True,
+            "reports": [],
         }
     },
     "CASE 'dedupe4'": {
@@ -215,6 +219,7 @@ CORRECT_RESULT = {
                 "NEG": "map5,(dedupe:0.5),map5',map1,map2,map4,dedupe_common_neg",
             },
             "essentiality": True,
+            "reports": [],
         }
     },
     "CASE 'sort'": {
@@ -243,6 +248,7 @@ CORRECT_RESULT = {
                 "NEG": "map3,map2,map4,map1,sort_common_neg",
             },
             "essentiality": True,
+            "reports": [],
         }
     },
     "CASE 'essential'": {
@@ -267,6 +273,7 @@ CORRECT_RESULT = {
                 "NEG": "notneed1,notneed2,essential_common_neg",
             },
             "essentiality": False,
+            "reports": [],
         },
         "InterpreterTest-2: 'essential ABD'": {
             "dataclass": [
@@ -291,6 +298,7 @@ CORRECT_RESULT = {
                 "NEG": "need1,notneed1,notneed2,essential_common_neg",
             },
             "essentiality": False,
+            "reports": [],
         },
         "InterpreterTest-3: 'essential BCD'": {
             "dataclass": [
@@ -315,6 +323,7 @@ CORRECT_RESULT = {
                 "NEG": "need2,notneed1,notneed2,essential_common_neg",
             },
             "essentiality": False,
+            "reports": [],
         },
         "InterpreterTest-4: 'essential BDE'": {
             "dataclass": [
@@ -339,6 +348,7 @@ CORRECT_RESULT = {
                 "NEG": "need3,notneed1,notneed2,essential_common_neg",
             },
             "essentiality": False,
+            "reports": [],
         },
         "InterpreterTest-5: 'essential ABCDE'": {
             "dataclass": [
@@ -367,6 +377,7 @@ CORRECT_RESULT = {
                 "NEG": "need1,need2,need3,notneed1,notneed2,essential_common_neg",
             },
             "essentiality": True,
+            "reports": [],
         },
         "InterpreterTest-6: 'essential ABXDE'": {
             "dataclass": [
@@ -395,6 +406,15 @@ CORRECT_RESULT = {
                 "NEG": "need1,default,need3,notneed1,notneed2,essential_common_neg",
             },
             "essentiality": True,
+            "reports": [
+                {
+                    "matched": "X",
+                    "pattern": "(C|X)",
+                    "capturegrp": 0,
+                    "screen_id": "essential",
+                    "path": ["need2"],
+                }
+            ],
         },
     },
     "CASE 'expr1'": {
@@ -402,11 +422,13 @@ CORRECT_RESULT = {
             "dataclass": [{"screen_id": "expr1", "positive": [], "negative": []}],
             "string": {"POS": "", "NEG": ""},
             "essentiality": False,
+            "reports": [],
         },
         "InterpreterTest-2: 'expr1 city room'": {
             "dataclass": [{"screen_id": "expr1", "positive": [], "negative": []}],
             "string": {"POS": "", "NEG": ""},
             "essentiality": False,
+            "reports": [],
         },
         "InterpreterTest-3: 'expr1 room sunny'": {
             "dataclass": [
@@ -423,6 +445,7 @@ CORRECT_RESULT = {
             ],
             "string": {"POS": "room", "NEG": ""},
             "essentiality": True,
+            "reports": [],
         },
         "InterpreterTest-4: 'expr1 city sunny'": {
             "dataclass": [
@@ -440,6 +463,7 @@ CORRECT_RESULT = {
             ],
             "string": {"POS": "city,sunny", "NEG": ""},
             "essentiality": True,
+            "reports": [],
         },
     },
     "CASE 'expr2'": {
@@ -447,6 +471,7 @@ CORRECT_RESULT = {
             "dataclass": [{"screen_id": "expr2", "positive": [], "negative": []}],
             "string": {"POS": "", "NEG": ""},
             "essentiality": False,
+            "reports": [],
         },
         "InterpreterTest-2: 'expr2 P checkHas'": {
             "dataclass": [
@@ -461,6 +486,7 @@ CORRECT_RESULT = {
             ],
             "string": {"POS": "P,checkHas", "NEG": ""},
             "essentiality": True,
+            "reports": [],
         },
         "InterpreterTest-3: 'expr2 PQR checkHas'": {
             "dataclass": [
@@ -477,6 +503,7 @@ CORRECT_RESULT = {
             ],
             "string": {"POS": "P,Q,R,checkHas", "NEG": ""},
             "essentiality": True,
+            "reports": [],
         },
         "InterpreterTest-4: 'expr2 QR checkHas'": {
             "dataclass": [
@@ -491,11 +518,13 @@ CORRECT_RESULT = {
             ],
             "string": {"POS": "Q,R", "NEG": ""},
             "essentiality": True,
+            "reports": [],
         },
         "InterpreterTest-5: 'expr2 checkAnd'": {
             "dataclass": [{"screen_id": "expr2", "positive": [], "negative": []}],
             "string": {"POS": "", "NEG": ""},
             "essentiality": False,
+            "reports": [],
         },
         "InterpreterTest-6: 'expr2 P checkAnd'": {
             "dataclass": [
@@ -507,6 +536,7 @@ CORRECT_RESULT = {
             ],
             "string": {"POS": "P", "NEG": ""},
             "essentiality": True,
+            "reports": [],
         },
         "InterpreterTest-7: 'expr2 Q checkAnd'": {
             "dataclass": [
@@ -518,6 +548,7 @@ CORRECT_RESULT = {
             ],
             "string": {"POS": "Q", "NEG": ""},
             "essentiality": True,
+            "reports": [],
         },
         "InterpreterTest-8: 'expr2 PQ checkAnd'": {
             "dataclass": [
@@ -533,6 +564,7 @@ CORRECT_RESULT = {
             ],
             "string": {"POS": "P,Q,checkAnd", "NEG": ""},
             "essentiality": True,
+            "reports": [],
         },
         "InterpreterTest-9: 'expr2 PQR checkAnd'": {
             "dataclass": [
@@ -549,11 +581,13 @@ CORRECT_RESULT = {
             ],
             "string": {"POS": "P,Q,R,checkAnd", "NEG": ""},
             "essentiality": True,
+            "reports": [],
         },
         "InterpreterTest-10: 'expr2 checkOr'": {
             "dataclass": [{"screen_id": "expr2", "positive": [], "negative": []}],
             "string": {"POS": "", "NEG": ""},
             "essentiality": False,
+            "reports": [],
         },
         "InterpreterTest-11: 'expr2 P checkOr'": {
             "dataclass": [
@@ -568,6 +602,7 @@ CORRECT_RESULT = {
             ],
             "string": {"POS": "P,checkOr", "NEG": ""},
             "essentiality": True,
+            "reports": [],
         },
         "InterpreterTest-12: 'expr2 Q checkOr'": {
             "dataclass": [
@@ -582,6 +617,7 @@ CORRECT_RESULT = {
             ],
             "string": {"POS": "Q,checkOr", "NEG": ""},
             "essentiality": True,
+            "reports": [],
         },
         "InterpreterTest-13: 'expr2 PQ checkOr'": {
             "dataclass": [
@@ -597,6 +633,7 @@ CORRECT_RESULT = {
             ],
             "string": {"POS": "P,Q,checkOr", "NEG": ""},
             "essentiality": True,
+            "reports": [],
         },
         "InterpreterTest-14: 'expr2 PQR checkOr'": {
             "dataclass": [
@@ -613,6 +650,7 @@ CORRECT_RESULT = {
             ],
             "string": {"POS": "P,Q,R,checkOr", "NEG": ""},
             "essentiality": True,
+            "reports": [],
         },
         "InterpreterTest-15: 'expr2 checkNot'": {
             "dataclass": [
@@ -626,6 +664,7 @@ CORRECT_RESULT = {
             ],
             "string": {"POS": "checkNot", "NEG": ""},
             "essentiality": True,
+            "reports": [],
         },
         "InterpreterTest-16: 'expr2 P checkNot'": {
             "dataclass": [
@@ -637,6 +676,7 @@ CORRECT_RESULT = {
             ],
             "string": {"POS": "P", "NEG": ""},
             "essentiality": True,
+            "reports": [],
         },
         "InterpreterTest-17: 'expr2 PQR checkNot'": {
             "dataclass": [
@@ -652,6 +692,7 @@ CORRECT_RESULT = {
             ],
             "string": {"POS": "P,Q,R", "NEG": ""},
             "essentiality": True,
+            "reports": [],
         },
         "InterpreterTest-18: 'expr2 QR checkNot'": {
             "dataclass": [
@@ -667,6 +708,7 @@ CORRECT_RESULT = {
             ],
             "string": {"POS": "Q,R,checkNot", "NEG": ""},
             "essentiality": True,
+            "reports": [],
         },
         "InterpreterTest-19: 'expr2 QR checkComplex'": {
             "dataclass": [
@@ -681,6 +723,7 @@ CORRECT_RESULT = {
             ],
             "string": {"POS": "Q,R", "NEG": ""},
             "essentiality": True,
+            "reports": [],
         },
         "InterpreterTest-20: 'expr2 PQ checkComplex'": {
             "dataclass": [
@@ -699,6 +742,7 @@ CORRECT_RESULT = {
             ],
             "string": {"POS": "P,Q,checkComplex", "NEG": ""},
             "essentiality": True,
+            "reports": [],
         },
         "InterpreterTest-21: 'expr2 PR checkComplex'": {
             "dataclass": [
@@ -713,6 +757,7 @@ CORRECT_RESULT = {
             ],
             "string": {"POS": "P,R", "NEG": ""},
             "essentiality": True,
+            "reports": [],
         },
         "InterpreterTest-22: 'expr2 checkTrue'": {
             "dataclass": [
@@ -726,6 +771,7 @@ CORRECT_RESULT = {
             ],
             "string": {"POS": "checkTrue", "NEG": ""},
             "essentiality": True,
+            "reports": [],
         },
         "InterpreterTest-23: 'expr2 PQR checkTrue'": {
             "dataclass": [
@@ -742,11 +788,13 @@ CORRECT_RESULT = {
             ],
             "string": {"POS": "P,Q,R,checkTrue", "NEG": ""},
             "essentiality": True,
+            "reports": [],
         },
         "InterpreterTest-24: 'expr2 checkFalse'": {
             "dataclass": [{"screen_id": "expr2", "positive": [], "negative": []}],
             "string": {"POS": "", "NEG": ""},
             "essentiality": False,
+            "reports": [],
         },
         "InterpreterTest-25: 'expr2 PQR checkFalse'": {
             "dataclass": [
@@ -762,6 +810,7 @@ CORRECT_RESULT = {
             ],
             "string": {"POS": "P,Q,R", "NEG": ""},
             "essentiality": True,
+            "reports": [],
         },
         "InterpreterTest-26: 'expr2 checkNone'": {
             "dataclass": [
@@ -775,6 +824,7 @@ CORRECT_RESULT = {
             ],
             "string": {"POS": "checkNone", "NEG": ""},
             "essentiality": True,
+            "reports": [],
         },
         "InterpreterTest-27: 'expr2 PQR checkNone'": {
             "dataclass": [
@@ -791,6 +841,7 @@ CORRECT_RESULT = {
             ],
             "string": {"POS": "P,Q,R,checkNone", "NEG": ""},
             "essentiality": True,
+            "reports": [],
         },
     },
     "CASE 'essential & expr'": {
@@ -798,6 +849,7 @@ CORRECT_RESULT = {
             "dataclass": [{"screen_id": "expr2", "positive": [], "negative": []}],
             "string": {"POS": "", "NEG": ""},
             "essentiality": False,
+            "reports": [],
         },
         "InterpreterTest-2: 'expr2 P'": {
             "dataclass": [
@@ -809,11 +861,13 @@ CORRECT_RESULT = {
             ],
             "string": {"POS": "P", "NEG": ""},
             "essentiality": False,
+            "reports": [],
         },
         "InterpreterTest-3: 'expr2 Q'": {
             "dataclass": [{"screen_id": "expr2", "positive": [], "negative": []}],
             "string": {"POS": "", "NEG": ""},
             "essentiality": False,
+            "reports": [],
         },
         "InterpreterTest-4: 'expr2 PQ'": {
             "dataclass": [
@@ -828,6 +882,7 @@ CORRECT_RESULT = {
             ],
             "string": {"POS": "P,Q", "NEG": ""},
             "essentiality": True,
+            "reports": [],
         },
     },
 }
@@ -883,7 +938,7 @@ class InterpreterDebugger(Parser):
                     and encats is not None
                 ):
                     self.interpreter.restore_enhanced_category_list(screen_id, encats, essential)
-                self.crnt_prompt = self.interpreter.make_prompt(text)
+                self.crnt_prompt, reports = self.interpreter.make_prompt(text)
                 major = f"{yamlname}-{i + 1}: '{text}'" if with_texts else f"{yamlname}-{i + 1}"
                 posneg = self.make_prompt_strs()
                 if posneg is None:
@@ -895,6 +950,7 @@ class InterpreterDebugger(Parser):
                     "dataclass": (self.crnt_prompt,),
                     "string": {"POS": pos, "NEG": neg},
                     "essentiality": self.interpreter.check_essentiality_of(self.crnt_prompt),
+                    "reports": reports,
                 }
             except Exception as e:
                 raise Exception(f"Error with '{text}'") from e
@@ -1007,8 +1063,8 @@ def debug_interpreter() -> None:
                 texts=["strip xxx"],
                 screen_id="strip",
                 encats=[
-                    (("ok1",), None),
-                    (("ok2",), None),
+                    (("ok1",), None, True),
+                    (("ok2",), None, True),
                 ],
                 essential=None,
             ),
@@ -1017,10 +1073,10 @@ def debug_interpreter() -> None:
                 texts=["dedupe xxx"],
                 screen_id="dedupe",
                 encats=[
-                    (("map1",), None),
-                    (("map2",), None),
-                    (("map3",), None),
-                    (("map4",), None),
+                    (("map1",), None, True),
+                    (("map2",), None, True),
+                    (("map3",), None, True),
+                    (("map4",), None, True),
                 ],
                 essential=None,
             ),
@@ -1029,11 +1085,11 @@ def debug_interpreter() -> None:
                 texts=["dedupe xxx"],
                 screen_id="dedupe",
                 encats=[
-                    (("map5",), None),
-                    (("map1",), None),
-                    (("map2",), None),
-                    (("map3",), None),
-                    (("map4",), None),
+                    (("map5",), None, True),
+                    (("map1",), None, True),
+                    (("map2",), None, True),
+                    (("map3",), None, True),
+                    (("map4",), None, True),
                 ],
                 essential=None,
             ),
@@ -1042,10 +1098,10 @@ def debug_interpreter() -> None:
                 texts=["dedupe xxx"],
                 screen_id="dedupe",
                 encats=[
-                    (("map5",), None),
-                    (("map1",), None),
-                    (("map2",), None),
-                    (("map4",), None),
+                    (("map5",), None, True),
+                    (("map1",), None, True),
+                    (("map2",), None, True),
+                    (("map4",), None, True),
                 ],
                 essential=None,
             ),
@@ -1054,11 +1110,11 @@ def debug_interpreter() -> None:
                 texts=["dedupe xxx"],
                 screen_id="dedupe",
                 encats=[
-                    (("map5",), None),
-                    (("map1",), None),
-                    (("dummy"), None),
-                    (("map2",), None),
-                    (("map4",), None),
+                    (("map5",), None, True),
+                    (("map1",), None, True),
+                    (("dummy"), None, True),
+                    (("map2",), None, True),
+                    (("map4",), None, True),
                 ],
                 essential=None,
             ),
@@ -1067,10 +1123,10 @@ def debug_interpreter() -> None:
                 texts=["sort xxx"],
                 screen_id="sort",
                 encats=[
-                    (("map3",), None),
-                    (("map2",), None),
-                    (("map4",), None),
-                    (("map1",), None),
+                    (("map3",), None, True),
+                    (("map2",), None, True),
+                    (("map4",), None, True),
+                    (("map1",), None, True),
                 ],
                 essential=None,
             ),
@@ -1086,11 +1142,11 @@ def debug_interpreter() -> None:
                 ],
                 screen_id="essential",
                 encats=[
-                    (("need1",), None),
-                    (("need2",), None),
-                    (("need3",), None),
-                    (("notneed1",), None),
-                    (("notneed2",), None),
+                    (("need1",), None, True),
+                    (("need2",), None, True),
+                    (("need3",), None, True),
+                    (("notneed1",), None, True),
+                    (("notneed2",), None, True),
                 ],
                 essential=Has(("need1",)) & Has(("need2",)) & Has(("need3",)),
             ),
@@ -1104,9 +1160,13 @@ def debug_interpreter() -> None:
                 ],
                 screen_id="expr1",
                 encats=[
-                    (("location", "outdoors"), ~Has(("location", "indoors"))),
-                    (("location", "indoors"), ~Has(("location", "outdoors"))),
-                    (("weather",), Has(("location", "outdoors")) | ~Has(("location", "indoors"))),
+                    (("location", "outdoors"), ~Has(("location", "indoors")), True),
+                    (("location", "indoors"), ~Has(("location", "outdoors")), True),
+                    (
+                        ("weather",),
+                        Has(("location", "outdoors")) | ~Has(("location", "indoors")),
+                        True,
+                    ),
                 ],
                 essential=None,
             ),
@@ -1143,17 +1203,17 @@ def debug_interpreter() -> None:
                 ],
                 screen_id="expr2",
                 encats=[
-                    (("p",), TrueExpr()),
-                    (("q",), TrueExpr()),
-                    (("r",), TrueExpr()),
-                    (("checkHas",), Has(("p",))),  # 単項
-                    (("checkAnd",), Has(("p",)) & Has(("q",))),  # And
-                    (("checkOr",), Has(("p",)) | Has(("q",))),  # Or
-                    (("checkNot",), ~Has(("p",))),  # Not
-                    (("checkComplex",), Has(("p",)) & (Has(("q",)) | ~Has(("r",)))),  # 複合
-                    (("checkTrue",), TrueExpr()),  # 恒真
-                    (("checkFalse",), FalseExpr()),  # 恒偽
-                    (("checkNone",), None),  # None = 恒真
+                    (("p",), TrueExpr(), True),
+                    (("q",), TrueExpr(), True),
+                    (("r",), TrueExpr(), True),
+                    (("checkHas",), Has(("p",)), True),  # 単項
+                    (("checkAnd",), Has(("p",)) & Has(("q",)), True),  # And
+                    (("checkOr",), Has(("p",)) | Has(("q",)), True),  # Or
+                    (("checkNot",), ~Has(("p",)), True),  # Not
+                    (("checkComplex",), Has(("p",)) & (Has(("q",)) | ~Has(("r",))), True),  # 複合
+                    (("checkTrue",), TrueExpr(), True),  # 恒真
+                    (("checkFalse",), FalseExpr(), True),  # 恒偽
+                    (("checkNone",), None, True),  # None = 恒真
                 ],
                 essential=None,
             ),
@@ -1167,8 +1227,8 @@ def debug_interpreter() -> None:
                 ],
                 screen_id="expr2",
                 encats=[
-                    (("p",), TrueExpr()),
-                    (("q",), Has(("p",))),
+                    (("p",), TrueExpr(), True),
+                    (("q",), Has(("p",)), True),
                 ],
                 essential=Has(("q",)),
             ),

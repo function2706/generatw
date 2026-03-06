@@ -232,7 +232,7 @@ class Parser:
             pyperclip.copy(dummy_input)
             return
 
-        prompt_set = self.debug_interpreter.make_prompt(dummy_input)
+        prompt_set, _ = self.debug_interpreter.make_prompt(dummy_input)
         if prompt_set is None:
             return
 
@@ -257,9 +257,9 @@ class Parser:
 
                 prompt = None
                 if self.event.in_debugging.is_set():
-                    prompt = self.debug_interpreter.make_prompt(new_clipboard)
+                    prompt, _ = self.debug_interpreter.make_prompt(new_clipboard)
                 elif self.interpreter is not None:
-                    prompt = self.interpreter.make_prompt(new_clipboard)
+                    prompt, reports = self.interpreter.make_prompt(new_clipboard)
 
                 if prompt is not None:
                     self.inform_new_prompt(prompt)

@@ -72,9 +72,13 @@ class ReverseInterpreter(Interpreter):
         return {
             ScreenName.main: (
                 [
-                    ((CategoryName.character, CategoryName.name_n), None),
-                    ((CategoryName.character, CategoryName.vibe), None),
-                    ((CategoryName.character, CategoryName.fashion, CategoryName.dresses), None),
+                    ((CategoryName.character, CategoryName.name_n), None, True),
+                    ((CategoryName.character, CategoryName.vibe), None, False),
+                    (
+                        (CategoryName.character, CategoryName.fashion, CategoryName.dresses),
+                        None,
+                        True,
+                    ),
                     (
                         (
                             CategoryName.character,
@@ -82,6 +86,7 @@ class ReverseInterpreter(Interpreter):
                             CategoryName.upper_lingeries,
                         ),
                         expr_no_upper_costumes,
+                        True,
                     ),
                     (
                         (
@@ -90,13 +95,27 @@ class ReverseInterpreter(Interpreter):
                             CategoryName.lower_lingeries,
                         ),
                         expr_no_lower_costumes,
+                        True,
                     ),
-                    ((CategoryName.character, CategoryName.fashion, CategoryName.socks), None),
                     (
-                        (CategoryName.character, CategoryName.posture, CategoryName.posture_meat),
+                        (CategoryName.character, CategoryName.fashion, CategoryName.socks),
                         None,
+                        True,
                     ),
-                    ((CategoryName.character, CategoryName.tool, CategoryName.tool_meat), None),
+                    (
+                        (
+                            CategoryName.character,
+                            CategoryName.posture,
+                            CategoryName.posture_meat,
+                        ),
+                        None,
+                        False,
+                    ),
+                    (
+                        (CategoryName.character, CategoryName.tool, CategoryName.tool_meat),
+                        None,
+                        False,
+                    ),
                 ],
                 Has((CategoryName.character, CategoryName.name_n)),
                 self.sync_on_main,

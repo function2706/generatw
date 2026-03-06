@@ -12,13 +12,7 @@ from typing import Callable, TypeAlias
 import yaml
 
 from common.expr import Expr, TrueExpr
-from parser.prompter import (
-    CategoryPath,
-    Prompt,
-    Prompter,
-    PromptParts,
-    Token,
-)
+from parser.prompter import CategoryPath, Prompt, Prompter, PromptParts, Report, Token
 
 
 @dataclass
@@ -86,6 +80,7 @@ MemorySyncer: TypeAlias = Callable[[Memory], Memory]
 EnhancedCategory: TypeAlias = tuple[
     CategoryPath,  # カテゴリーパス
     Expr | None,  # ふるいがけ条件 (None = 恒真)
+    bool,  # Report を残すか
 ]
 ScreenTable: TypeAlias = dict[
     str,  # Screen ID
@@ -237,6 +232,26 @@ class Interpreter(ABC):
             if sid == screen_id:
                 return essential if essential is not None else TrueExpr()
         return None
+
+    def should_leave_report_of(self, screen_id: str, category_path: CategoryPath) -> bool:
+        """
+        ScreenTable における指定の Screen ID, CategoryPath にあたる Report を残すべきか\n
+        指定の Screen ID, CategoryPath にあたるものが存在しない場合は False を返す\n
+
+        Args:
+            screen_id (str): Screen ID
+            category_path (CategoryPath): CategoryPath
+
+        Returns:
+            bool: True: 残すべき
+        """
+        for sid, (encats, _, _) in self.screen_table.items():
+            if sid != screen_id:
+                continue
+            for encat in encats:
+                if encat[0] == category_path:
+                    return encat[2]
+        return False
 
     def sync(self, prompt: Prompt) -> Prompt | None:
         """
@@ -478,8 +493,7 @@ class Interpreter(ABC):
     def edit(self, prompt: Prompt | None) -> Prompt | None:
         """
         非破壊的に prompt を編集, 記録する\n
-        None についてはそのまま None を返す\n
-        各派生クラスはこの関数をオーバーライドすべきである(この関数自体を実行するのは構わない)
+        None についてはそのまま None を返す
 
         Args:
             prompt (Prompt | None): Prompt
@@ -492,7 +506,23 @@ class Interpreter(ABC):
 
         return self.sort(self.sync(self.sift(self.dedupe(self.strip(prompt)))))
 
-    def make_prompt(self, text: str) -> Prompt | None:
+    def strip_reports(self, reports: list[Report]) -> list[Report]:
+        """
+        非破壊的に残すべきでないレポートを削ぎ落とす
+
+        Args:
+            reports (list[Report]): レポートリスト
+
+        Returns:
+            list[Report]: 残すべきもののみとなったレポートのリスト
+        """
+        new_reports: list[Report] = []
+        for report in reports:
+            if self.should_leave_report_of(report.screen_id, report.path):
+                new_reports.append(report)
+        return new_reports
+
+    def make_prompt(self, text: str) -> tuple[Prompt | None, list[Report]]:
         """
         テキストをもとに Prompter によって Prompt を得る\n
         Prompt は dedupe かつ sort 済み, 加えて edit も実施済みである\n
@@ -502,12 +532,14 @@ class Interpreter(ABC):
             text (str): テキスト
 
         Returns:
-            Prompt | None: Prompt, Prompter 未指定の場合に None
+            tuple[Prompt | None, list[Report]]: Prompt, Prompter 未指定の場合に None
+            及び Prompt 化の際のレポート
         """
         if self.prompter is None:
             return None
 
-        return self.edit(self.prompter.to_prompt(text))
+        prompt, reports = self.prompter.to_prompt(text)
+        return self.edit(prompt), self.strip_reports(reports)
 
     def check_essentiality_of(self, prompt: Prompt) -> bool:
         """

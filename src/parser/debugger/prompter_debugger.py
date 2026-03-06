@@ -17,9 +17,9 @@ from common.functions import dump_json  # noqa: E402
 from parser.prompter import Prompter  # noqa: E402
 
 CORRECT_RESULT = {
-    "CASE 'empty definition'": {"Empty-1: 'go'": {"SID": "main", "POS": [], "NEG": []}},
+    "CASE 'empty definition'": {"Empty-1: 'go'": {"SID": "main", "POS": [], "NEG": [], "REP": []}},
     "CASE 'ignition'": {
-        "PrompterTest-1: 'foobarbaz'": {"SID": None, "POS": [], "NEG": []},
+        "PrompterTest-1: 'foobarbaz'": {"SID": None, "POS": [], "NEG": [], "REP": []},
         "PrompterTest-2: 'main name: Hogemaru,'": {
             "SID": "main",
             "POS": [
@@ -27,6 +27,7 @@ CORRECT_RESULT = {
                 {"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]},
             ],
             "NEG": [{"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]}],
+            "REP": [],
         },
         "PrompterTest-3: 'main meta name: Fugami,weather: sunny,'": {
             "SID": "main",
@@ -35,6 +36,7 @@ CORRECT_RESULT = {
                 {"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]},
             ],
             "NEG": [{"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]}],
+            "REP": [],
         },
     },
     "CASE 'match'": {
@@ -42,8 +44,9 @@ CORRECT_RESULT = {
             "SID": "main",
             "POS": [{"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]}],
             "NEG": [{"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]}],
+            "REP": [],
         },
-        "PrompterTest-2: 'sub vibe: good,'": {"SID": "sub", "POS": [], "NEG": []},
+        "PrompterTest-2: 'sub vibe: good,'": {"SID": "sub", "POS": [], "NEG": [], "REP": []},
         "PrompterTest-3: 'main season: 02,name: Foota,'": {
             "SID": "main",
             "POS": [
@@ -65,6 +68,7 @@ CORRECT_RESULT = {
                 {"path": ["season"], "tokens": [{"token": "scorching heat", "weight": 1.0}]},
                 {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
+            "REP": [],
         },
         "PrompterTest-4: 'main name: Hogemaru,name: Fugami,'": {
             "SID": "main",
@@ -79,6 +83,7 @@ CORRECT_RESULT = {
                 {"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]},
             ],
             "NEG": [{"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]}],
+            "REP": [],
         },
     },
     "CASE 'hit'": {
@@ -89,18 +94,58 @@ CORRECT_RESULT = {
                 {"path": [], "tokens": [{"token": "common meta", "weight": 1.0}]},
             ],
             "NEG": [],
+            "REP": [
+                {
+                    "matched": "snowy",
+                    "pattern": "weather:\\s(.+?),",
+                    "capturegrp": 1,
+                    "screen_id": "meta",
+                    "path": ["weather"],
+                }
+            ],
         },
         "PrompterTest-2: 'meta location: office,'": {
             "SID": "meta",
             "POS": [{"path": [], "tokens": [{"token": "common meta", "weight": 1.0}]}],
             "NEG": [],
+            "REP": [
+                {
+                    "matched": "location: o",
+                    "pattern": "location:\\s(.+?)",
+                    "capturegrp": 0,
+                    "screen_id": "meta",
+                    "path": ["location"],
+                }
+            ],
         },
         "PrompterTest-3: 'sub like: Carrot,'": {
             "SID": "sub",
             "POS": [{"path": ["like"], "tokens": [{"token": "nothing", "weight": 1.0}]}],
             "NEG": [],
+            "REP": [
+                {
+                    "matched": "Carrot",
+                    "pattern": "like:\\s(.+?),",
+                    "capturegrp": 1,
+                    "screen_id": "sub",
+                    "path": ["like"],
+                }
+            ],
         },
-        "PrompterTest-4: 'sub ability: Toughness,'": {"SID": "sub", "POS": [], "NEG": []},
+        "PrompterTest-4: 'sub ability: Toughness,'": {
+            "SID": "sub",
+            "POS": [],
+            "NEG": [],
+            "REP": [
+                {
+                    "matched": "Toughness",
+                    "pattern": "ability:\\s(.+?),",
+                    "capturegrp": 1,
+                    "screen_id": "sub",
+                    "path": ["ability"],
+                }
+            ],
+        },
     },
     "CASE 'nest'": {
         "PrompterTest-1: 'main upper: T Shirt,lower: Pants,'": {
@@ -111,6 +156,7 @@ CORRECT_RESULT = {
                 {"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]},
             ],
             "NEG": [{"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]}],
+            "REP": [],
         }
     },
     "CASE 'capture'": {
@@ -118,17 +164,20 @@ CORRECT_RESULT = {
             "SID": "sub",
             "POS": [{"path": ["whole"], "tokens": [{"token": "WoW", "weight": 1.0}]}],
             "NEG": [],
+            "REP": [],
         },
-        "PrompterTest-2: 'sub ng: Dummy,'": {"SID": "sub", "POS": [], "NEG": []},
+        "PrompterTest-2: 'sub ng: Dummy,'": {"SID": "sub", "POS": [], "NEG": [], "REP": []},
         "PrompterTest-3: 'sub grade: 1,'": {
             "SID": "sub",
             "POS": [{"path": ["grade"], "tokens": [{"token": "grade 1", "weight": 1.0}]}],
             "NEG": [],
+            "REP": [],
         },
         "PrompterTest-4: 'sub grade: 2,'": {
             "SID": "sub",
             "POS": [{"path": ["grade"], "tokens": [{"token": "grade 2", "weight": 1.0}]}],
             "NEG": [],
+            "REP": [],
         },
     },
     "CASE 'weight-tokens'": {
@@ -145,6 +194,7 @@ CORRECT_RESULT = {
                 {"path": ["name"], "tokens": [{"token": "barta", "weight": 1.0}]},
                 {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
+            "REP": [],
         }
     },
     "CASE 'default'": {
@@ -155,6 +205,15 @@ CORRECT_RESULT = {
                 {"path": [], "tokens": [{"token": "common meta", "weight": 1.0}]},
             ],
             "NEG": [],
+            "REP": [
+                {
+                    "matched": "snowy",
+                    "pattern": "weather:\\s(.+?),",
+                    "capturegrp": 1,
+                    "screen_id": "meta",
+                    "path": ["weather"],
+                }
+            ],
         },
         "PrompterTest-2: 'main season: 13,'": {
             "SID": "main",
@@ -166,6 +225,15 @@ CORRECT_RESULT = {
                 {"path": ["season"], "tokens": [{"token": "storm", "weight": 1.0}]},
                 {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
+            "REP": [
+                {
+                    "matched": "13",
+                    "pattern": "season:\\s([0-9]{2})",
+                    "capturegrp": 1,
+                    "screen_id": "main",
+                    "path": ["season"],
+                }
+            ],
         },
         "PrompterTest-3: 'main name: HogetaFugao,'": {
             "SID": "main",
@@ -174,6 +242,15 @@ CORRECT_RESULT = {
                 {"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]},
             ],
             "NEG": [{"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]}],
+            "REP": [
+                {
+                    "matched": "HogetaFugao",
+                    "pattern": "name:\\s(.+?),",
+                    "capturegrp": 1,
+                    "screen_id": "main",
+                    "path": ["name"],
+                }
+            ],
         },
         "PrompterTest-4: 'main vitality: 1000,'": {
             "SID": "main",
@@ -182,6 +259,15 @@ CORRECT_RESULT = {
                 {"path": ["vitality"], "tokens": [{"token": "special", "weight": 1.0}]},
                 {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
+            "REP": [
+                {
+                    "matched": "1000",
+                    "pattern": "vitality:\\s(.+?),",
+                    "capturegrp": 1,
+                    "screen_id": "main",
+                    "path": ["vitality"],
+                }
+            ],
         },
     },
     "CASE 'common'": {
@@ -189,21 +275,25 @@ CORRECT_RESULT = {
             "SID": "common1",
             "POS": [{"path": [], "tokens": [{"token": "common1", "weight": 1.0}]}],
             "NEG": [],
+            "REP": [],
         },
         "PrompterTest-2: 'common2'": {
             "SID": "common2",
             "POS": [{"path": [], "tokens": [{"token": "common2", "weight": 1.0}]}],
             "NEG": [],
+            "REP": [],
         },
         "PrompterTest-3: 'common3'": {
             "SID": "common3",
             "POS": [],
             "NEG": [{"path": [], "tokens": [{"token": "common3", "weight": 1.0}]}],
+            "REP": [],
         },
         "PrompterTest-4: 'common4'": {
             "SID": "common4",
             "POS": [{"path": [], "tokens": [{"token": "common4-pos", "weight": 1.0}]}],
             "NEG": [{"path": [], "tokens": [{"token": "common4-neg", "weight": 1.0}]}],
+            "REP": [],
         },
     },
     "CASE 'ranges'": {
@@ -230,6 +320,7 @@ CORRECT_RESULT = {
                 },
                 {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
+            "REP": [],
         },
         "PrompterTest-2: 'main season: 08'": {
             "SID": "main",
@@ -247,6 +338,7 @@ CORRECT_RESULT = {
                 },
                 {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
+            "REP": [],
         },
         "PrompterTest-3: 'main season: 08'": {
             "SID": "main",
@@ -264,6 +356,7 @@ CORRECT_RESULT = {
                 },
                 {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
+            "REP": [],
         },
         "PrompterTest-4: 'main season: 07'": {
             "SID": "main",
@@ -281,6 +374,7 @@ CORRECT_RESULT = {
                 },
                 {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
+            "REP": [],
         },
         "PrompterTest-5: 'main season: 01'": {
             "SID": "main",
@@ -299,6 +393,7 @@ CORRECT_RESULT = {
                 {"path": ["season"], "tokens": [{"token": "scorching heat", "weight": 1.0}]},
                 {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
+            "REP": [],
         },
         "PrompterTest-6: 'main season: 09'": {
             "SID": "main",
@@ -324,6 +419,7 @@ CORRECT_RESULT = {
                 },
                 {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
+            "REP": [],
         },
         "PrompterTest-7: 'main season: 13'": {
             "SID": "main",
@@ -335,8 +431,30 @@ CORRECT_RESULT = {
                 {"path": ["season"], "tokens": [{"token": "storm", "weight": 1.0}]},
                 {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
+            "REP": [
+                {
+                    "matched": "13",
+                    "pattern": "season:\\s([0-9]{2})",
+                    "capturegrp": 1,
+                    "screen_id": "main",
+                    "path": ["season"],
+                }
+            ],
         },
-        "PrompterTest-8: 'sub rwd: c,'": {"SID": "sub", "POS": [], "NEG": []},
+        "PrompterTest-8: 'sub rwd: c,'": {
+            "SID": "sub",
+            "POS": [],
+            "NEG": [],
+            "REP": [
+                {
+                    "matched": "c",
+                    "pattern": "rwd:\\s(.+?),",
+                    "capturegrp": 1,
+                    "screen_id": "sub",
+                    "path": ["ranges without default"],
+                }
+            ],
+        },
     },
     "CASE 'intervals'": {
         "PrompterTest-1: 'main vitality: 100,'": {
@@ -346,6 +464,7 @@ CORRECT_RESULT = {
                 {"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]},
             ],
             "NEG": [{"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]}],
+            "REP": [],
         },
         "PrompterTest-2: 'main vitality: 50,'": {
             "SID": "main",
@@ -367,6 +486,7 @@ CORRECT_RESULT = {
                 },
                 {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
+            "REP": [],
         },
         "PrompterTest-3: 'main vitality: 95,'": {
             "SID": "main",
@@ -375,6 +495,7 @@ CORRECT_RESULT = {
                 {"path": [], "tokens": [{"token": "common main positive", "weight": 1.0}]},
             ],
             "NEG": [{"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]}],
+            "REP": [],
         },
         "PrompterTest-4: 'main vitality: 20,'": {
             "SID": "main",
@@ -396,6 +517,7 @@ CORRECT_RESULT = {
                 },
                 {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
+            "REP": [],
         },
         "PrompterTest-5: 'main vitality: 30,'": {
             "SID": "main",
@@ -417,6 +539,7 @@ CORRECT_RESULT = {
                 },
                 {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
+            "REP": [],
         },
         "PrompterTest-6: 'main vitality: 20,'": {
             "SID": "main",
@@ -438,6 +561,7 @@ CORRECT_RESULT = {
                 },
                 {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
+            "REP": [],
         },
         "PrompterTest-7: 'main vitality: 40,'": {
             "SID": "main",
@@ -463,6 +587,7 @@ CORRECT_RESULT = {
                 },
                 {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
+            "REP": [],
         },
         "PrompterTest-8: 'main vitality: 1000,'": {
             "SID": "main",
@@ -471,8 +596,30 @@ CORRECT_RESULT = {
                 {"path": ["vitality"], "tokens": [{"token": "special", "weight": 1.0}]},
                 {"path": [], "tokens": [{"token": "common main negative", "weight": 1.0}]},
             ],
+            "REP": [
+                {
+                    "matched": "1000",
+                    "pattern": "vitality:\\s(.+?),",
+                    "capturegrp": 1,
+                    "screen_id": "main",
+                    "path": ["vitality"],
+                }
+            ],
         },
-        "PrompterTest-9: 'sub iwd: 100,'": {"SID": "sub", "POS": [], "NEG": []},
+        "PrompterTest-9: 'sub iwd: 100,'": {
+            "SID": "sub",
+            "POS": [],
+            "NEG": [],
+            "REP": [
+                {
+                    "matched": "100",
+                    "pattern": "iwd:\\s(.+?),",
+                    "capturegrp": 1,
+                    "screen_id": "sub",
+                    "path": ["intervals without default"],
+                }
+            ],
+        },
     },
     "CASE 'import'": {
         "PrompterTest-1: 'import_src NAME:Hogemaru'": {
@@ -482,6 +629,7 @@ CORRECT_RESULT = {
                 {"path": [], "tokens": [{"token": "import common pos", "weight": 1.0}]},
             ],
             "NEG": [{"path": [], "tokens": [{"token": "import common neg", "weight": 1.0}]}],
+            "REP": [],
         },
         "PrompterTest-2: 'import_src NAME:HogeFuga'": {
             "SID": "import_src",
@@ -490,6 +638,15 @@ CORRECT_RESULT = {
                 {"path": [], "tokens": [{"token": "import common pos", "weight": 1.0}]},
             ],
             "NEG": [{"path": [], "tokens": [{"token": "import common neg", "weight": 1.0}]}],
+            "REP": [
+                {
+                    "matched": "HogeFuga",
+                    "pattern": "NAME:(.+)",
+                    "capturegrp": 1,
+                    "screen_id": "import_src",
+                    "path": ["partner", "name"],
+                }
+            ],
         },
         "PrompterTest-3: 'import_dst1 NAME-Fugami'": {
             "SID": "import_dst1",
@@ -498,6 +655,7 @@ CORRECT_RESULT = {
                 {"path": [], "tokens": [{"token": "import common pos", "weight": 1.0}]},
             ],
             "NEG": [{"path": [], "tokens": [{"token": "import common neg", "weight": 1.0}]}],
+            "REP": [],
         },
         "PrompterTest-4: 'import_dst1 NAME-HogeFuga'": {
             "SID": "import_dst1",
@@ -506,6 +664,15 @@ CORRECT_RESULT = {
                 {"path": [], "tokens": [{"token": "import common pos", "weight": 1.0}]},
             ],
             "NEG": [{"path": [], "tokens": [{"token": "import common neg", "weight": 1.0}]}],
+            "REP": [
+                {
+                    "matched": "HogeFuga",
+                    "pattern": "NAME-(.+)",
+                    "capturegrp": 1,
+                    "screen_id": "import_dst1",
+                    "path": ["name"],
+                }
+            ],
         },
         "PrompterTest-5: 'import_dst2 Name>Hogemaru'": {
             "SID": "import_dst2",
@@ -514,6 +681,7 @@ CORRECT_RESULT = {
                 {"path": [], "tokens": [{"token": "import common pos", "weight": 1.0}]},
             ],
             "NEG": [{"path": [], "tokens": [{"token": "import common neg", "weight": 1.0}]}],
+            "REP": [],
         },
         "PrompterTest-6: 'import_dst2 Name>HogeFuga'": {
             "SID": "import_dst2",
@@ -522,6 +690,15 @@ CORRECT_RESULT = {
                 {"path": [], "tokens": [{"token": "import common pos", "weight": 1.0}]},
             ],
             "NEG": [{"path": [], "tokens": [{"token": "import common neg", "weight": 1.0}]}],
+            "REP": [
+                {
+                    "matched": "HogeFuga",
+                    "pattern": "Name>(.+)",
+                    "capturegrp": 1,
+                    "screen_id": "import_dst2",
+                    "path": ["name"],
+                }
+            ],
         },
         "PrompterTest-7: 'import_dst3 name:Hogemaru'": {
             "SID": "import_dst3",
@@ -530,6 +707,7 @@ CORRECT_RESULT = {
                 {"path": [], "tokens": [{"token": "import common pos", "weight": 1.0}]},
             ],
             "NEG": [{"path": [], "tokens": [{"token": "import common neg", "weight": 1.0}]}],
+            "REP": [],
         },
         "PrompterTest-8: 'import_dst3 name:HogeFuga'": {
             "SID": "import_dst3",
@@ -538,6 +716,15 @@ CORRECT_RESULT = {
                 {"path": [], "tokens": [{"token": "import common pos", "weight": 1.0}]},
             ],
             "NEG": [{"path": [], "tokens": [{"token": "import common neg", "weight": 1.0}]}],
+            "REP": [
+                {
+                    "matched": "HogeFuga",
+                    "pattern": "name:(.+)",
+                    "capturegrp": 1,
+                    "screen_id": "import_dst3",
+                    "path": ["name"],
+                }
+            ],
         },
         "PrompterTest-9: 'import_dst4 name:Hogemaru'": {
             "SID": "import_dst4",
@@ -546,6 +733,7 @@ CORRECT_RESULT = {
                 {"path": [], "tokens": [{"token": "import common pos", "weight": 1.0}]},
             ],
             "NEG": [{"path": [], "tokens": [{"token": "import common neg", "weight": 1.0}]}],
+            "REP": [],
         },
         "PrompterTest-10: 'import_dst4 name:HogeFuga'": {
             "SID": "import_dst4",
@@ -554,6 +742,15 @@ CORRECT_RESULT = {
                 {"path": [], "tokens": [{"token": "import common pos", "weight": 1.0}]},
             ],
             "NEG": [{"path": [], "tokens": [{"token": "import common neg", "weight": 1.0}]}],
+            "REP": [
+                {
+                    "matched": "HogeFuga",
+                    "pattern": "name:(.+)",
+                    "capturegrp": 1,
+                    "screen_id": "import_dst4",
+                    "path": ["name"],
+                }
+            ],
         },
         "PrompterTest-11: 'import_dst3 flag'": {
             "SID": "import_dst3",
@@ -562,6 +759,7 @@ CORRECT_RESULT = {
                 {"path": [], "tokens": [{"token": "import common pos", "weight": 1.0}]},
             ],
             "NEG": [{"path": [], "tokens": [{"token": "import common neg", "weight": 1.0}]}],
+            "REP": [],
         },
         "PrompterTest-12: 'import_dst4 flag'": {
             "SID": "import_dst4",
@@ -570,6 +768,7 @@ CORRECT_RESULT = {
                 {"path": [], "tokens": [{"token": "import common pos", "weight": 1.0}]},
             ],
             "NEG": [{"path": [], "tokens": [{"token": "import common neg", "weight": 1.0}]}],
+            "REP": [],
         },
     },
     "CASE 'recursive'": {
@@ -589,6 +788,7 @@ CORRECT_RESULT = {
                 }
             ],
             "NEG": [],
+            "REP": [],
         },
         "PrompterTest-2: 'recursive_plane [(foo4)]'": {
             "SID": "recursive",
@@ -599,6 +799,7 @@ CORRECT_RESULT = {
                 }
             ],
             "NEG": [],
+            "REP": [],
         },
         "PrompterTest-3: 'recursive_plane {(foo1),(foo2)}{(bar1),(bar2),(bar3)}{(baz1)}'": {
             "SID": "recursive",
@@ -616,6 +817,7 @@ CORRECT_RESULT = {
                 }
             ],
             "NEG": [],
+            "REP": [],
         },
         "PrompterTest-4: 'recursive_import <(foo1),(foo2)><(bar1),(bar2),(bar3)><(baz1)>'": {
             "SID": "recursive_import",
@@ -644,6 +846,29 @@ CORRECT_RESULT = {
                 },
             ],
             "NEG": [],
+            "REP": [
+                {
+                    "matched": "(foo1),(foo2)",
+                    "pattern": "<([^<>]+?)>",
+                    "capturegrp": 1,
+                    "screen_id": "recursive_import",
+                    "path": ["angles"],
+                },
+                {
+                    "matched": "(bar1),(bar2),(bar3)",
+                    "pattern": "<([^<>]+?)>",
+                    "capturegrp": 1,
+                    "screen_id": "recursive_import",
+                    "path": ["angles"],
+                },
+                {
+                    "matched": "(baz1)",
+                    "pattern": "<([^<>]+?)>",
+                    "capturegrp": 1,
+                    "screen_id": "recursive_import",
+                    "path": ["angles"],
+                },
+            ],
         },
         "PrompterTest-5: 'recursive_import [(foo1),(foo2)][(bar1),(bar2),(bar3)][(baz1)]'": {
             "SID": "recursive_import",
@@ -672,6 +897,7 @@ CORRECT_RESULT = {
                 },
             ],
             "NEG": [],
+            "REP": [],
         },
         "PrompterTest-6: 'recursive_import <(foo4)>'": {
             "SID": "recursive_import",
@@ -682,6 +908,22 @@ CORRECT_RESULT = {
                 }
             ],
             "NEG": [],
+            "REP": [
+                {
+                    "matched": "(foo4)",
+                    "pattern": "<([^<>]+?)>",
+                    "capturegrp": 1,
+                    "screen_id": "recursive_import",
+                    "path": ["angles"],
+                },
+                {
+                    "matched": "foo4",
+                    "pattern": "\\(([^\\(\\)]+?)\\)",
+                    "capturegrp": 1,
+                    "screen_id": "recursive_import",
+                    "path": ["parentheses"],
+                },
+            ],
         },
         "PrompterTest-7: 'recursive_import [(foo4)]'": {
             "SID": "recursive_import",
@@ -692,6 +934,15 @@ CORRECT_RESULT = {
                 }
             ],
             "NEG": [],
+            "REP": [
+                {
+                    "matched": "foo4",
+                    "pattern": "\\(([^\\(\\)]+?)\\)",
+                    "capturegrp": 1,
+                    "screen_id": "recursive_import",
+                    "path": ["parentheses"],
+                }
+            ],
         },
         "PrompterTest-8: 'recursive_import <foo1>,<foo2>,<bar1>,<bar2>,<bar3>,<baz1>'": {
             "SID": "recursive_import",
@@ -709,6 +960,7 @@ CORRECT_RESULT = {
                 }
             ],
             "NEG": [],
+            "REP": [],
         },
         "PrompterTest-9: 'recursive_import (foo1),(foo2),(bar1),(bar2),(bar3),(baz1)'": {
             "SID": "recursive_import",
@@ -726,8 +978,9 @@ CORRECT_RESULT = {
                 }
             ],
             "NEG": [],
+            "REP": [],
         },
-        "PrompterTest-10: 'recursive_import -(foo1),(foo2)--(bar1),(bar2),(bar3)--(baz1)-'": {
+        "PrompterTest-10: 'recursive_import /(foo1),(foo2)//(bar1),(bar2),(bar3)//(baz1)/'": {
             "SID": "recursive_import",
             "POS": [
                 {
@@ -740,9 +993,21 @@ CORRECT_RESULT = {
                         {"token": "bar3", "weight": 1.0},
                         {"token": "baz1", "weight": 1.0},
                     ],
-                }
+                },
+                {
+                    "path": ["slash_parentheses", "parentheses"],
+                    "tokens": [
+                        {"token": "foo1", "weight": 1.0},
+                        {"token": "foo2", "weight": 1.0},
+                        {"token": "bar1", "weight": 1.0},
+                        {"token": "bar2", "weight": 1.0},
+                        {"token": "bar3", "weight": 1.0},
+                        {"token": "baz1", "weight": 1.0},
+                    ],
+                },
             ],
             "NEG": [],
+            "REP": [],
         },
         "PrompterTest-11: 'recursive_recursive [{(foo1),foo2}{bar1,(bar2)}][{(bar3)},{baz1}]'": {
             "SID": "recursives",
@@ -757,6 +1022,7 @@ CORRECT_RESULT = {
                 }
             ],
             "NEG": [],
+            "REP": [],
         },
         "PrompterTest-12: 'recursive_name [(foo1),(foo2)][<bar1>,<bar2>,<bar3>][(baz1)]'": {
             "SID": "recursive_name",
@@ -779,6 +1045,7 @@ CORRECT_RESULT = {
                 },
             ],
             "NEG": [],
+            "REP": [],
         },
         "PrompterTest-13: 'recursive_practice one's equip:[equip1][equip2][equip3][equip4]'": {
             "SID": "recursive_practice",
@@ -794,6 +1061,7 @@ CORRECT_RESULT = {
                 }
             ],
             "NEG": [],
+            "REP": [],
         },
     },
 }
@@ -847,8 +1115,13 @@ class PrompterDebugger:
         result: dict[str, dict[str, Any]] = {}
         for i, text in enumerate(texts):
             try:
-                prompt = self.prompter.to_prompt(text)
-                posneg = {"SID": prompt.screen_id, "POS": prompt.positive, "NEG": prompt.negative}
+                prompt, reports = self.prompter.to_prompt(text)
+                posneg = {
+                    "SID": prompt.screen_id,
+                    "POS": prompt.positive,
+                    "NEG": prompt.negative,
+                    "REP": reports,
+                }
                 if with_texts:
                     result[f"{yamlname}-{i + 1}: '{text}'"] = posneg
                 else:
@@ -890,13 +1163,10 @@ class PrompterDebugger:
 def normalize(obj):
     if is_dataclass(obj):
         return normalize(asdict(obj))
-
     if isinstance(obj, dict):
         return {k: normalize(v) for k, v in obj.items()}
-
     if isinstance(obj, list):
         return [normalize(i) for i in obj]
-
     if isinstance(obj, tuple):
         return [normalize(i) for i in obj]
 
@@ -1029,7 +1299,7 @@ def debug_prompter() -> None:
                     # 再帰先 import (pattern 省略)
                     "recursive_import (foo1),(foo2),(bar1),(bar2),(bar3),(baz1)",
                     # 再帰先を別の再帰先 import で定義
-                    "recursive_import -(foo1),(foo2)--(bar1),(bar2),(bar3)--(baz1)-",
+                    "recursive_import /(foo1),(foo2)//(bar1),(bar2),(bar3)//(baz1)/",
                     # 2段以上の再帰
                     "recursive_recursive [{(foo1),foo2}{bar1,(bar2)}][{(bar3)},{baz1}]",
                     # 再帰先の名前が再帰・分岐

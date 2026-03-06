@@ -107,6 +107,7 @@ CORRECT_RESULT = {
                 "NEG": "disgusting,(in heat:0.9),(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
             },
             "essentiality": True,
+            "reports": [],
         },
         "The World-2": {
             "dataclass": [
@@ -176,6 +177,7 @@ CORRECT_RESULT = {
                 "NEG": "(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
             },
             "essentiality": False,
+            "reports": [],
         },
         "The World-3": {
             "dataclass": [
@@ -273,6 +275,15 @@ CORRECT_RESULT = {
                 "NEG": "disgusting,(in heat:0.9),(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
             },
             "essentiality": True,
+            "reports": [
+                {
+                    "matched": "レミリア私室",
+                    "pattern": "(.+?)\\s+清潔度:",
+                    "capturegrp": 1,
+                    "screen_id": "main",
+                    "path": ["meta", "location", "outdoors", "type1"],
+                }
+            ],
         },
         "The World-4": {
             "dataclass": [
@@ -296,7 +307,7 @@ CORRECT_RESULT = {
                             "tokens": [{"token": "jitome", "weight": 1.0}],
                         },
                         {
-                            "path": ["meta", "time", "night"],
+                            "path": ["meta", "time", "day"],
                             "tokens": [{"token": "noon", "weight": 1.0}],
                         },
                         {
@@ -378,6 +389,15 @@ CORRECT_RESULT = {
                 "NEG": "disgusting,(in heat:0.9),(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
             },
             "essentiality": True,
+            "reports": [
+                {
+                    "matched": "中有の道",
+                    "pattern": "(.+?)\\s+清潔度:",
+                    "capturegrp": 1,
+                    "screen_id": "main",
+                    "path": ["meta", "location", "indoors", "type1"],
+                }
+            ],
         },
     },
     "CASE 'status'": {
@@ -459,6 +479,15 @@ CORRECT_RESULT = {
                 "NEG": "disgusting,(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
             },
             "essentiality": True,
+            "reports": [
+                {
+                    "matched": "？？？？？",
+                    "pattern": "装備:下着\\s*\\[(.+?)\\]",
+                    "capturegrp": 1,
+                    "screen_id": "status",
+                    "path": ["lingeries"],
+                }
+            ],
         },
         "The World-2": {
             "dataclass": [
@@ -538,6 +567,22 @@ CORRECT_RESULT = {
                 "NEG": "disgusting,(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
             },
             "essentiality": True,
+            "reports": [
+                {
+                    "matched": "？？？？？",
+                    "pattern": "装備:下着\\s*\\[(.+?)\\]",
+                    "capturegrp": 1,
+                    "screen_id": "status",
+                    "path": ["lingeries"],
+                },
+                {
+                    "matched": "リボン",
+                    "pattern": "装備:付属\\s*\\[(.+?)\\]",
+                    "capturegrp": 1,
+                    "screen_id": "status",
+                    "path": ["equipments"],
+                },
+            ],
         },
         "The World-3": {
             "dataclass": [
@@ -631,6 +676,7 @@ CORRECT_RESULT = {
                 "NEG": "disgusting,(in heat:0.9),(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
             },
             "essentiality": True,
+            "reports": [],
         },
         "The World-4": {
             "dataclass": [
@@ -724,6 +770,7 @@ CORRECT_RESULT = {
                 "NEG": "disgusting,(in heat:0.9),(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
             },
             "essentiality": True,
+            "reports": [],
         },
     },
     "CASE 'fashion'": {
@@ -818,6 +865,7 @@ CORRECT_RESULT = {
                 "NEG": "disgusting,(in heat:1.2),(blush:1.2),(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
             },
             "essentiality": True,
+            "reports": [],
         },
         "The World-2": {
             "dataclass": [
@@ -903,6 +951,15 @@ CORRECT_RESULT = {
                 "NEG": "(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
             },
             "essentiality": True,
+            "reports": [
+                {
+                    "matched": "？？？？？",
+                    "pattern": "装備:下着\\s*\\[(.+?)\\]",
+                    "capturegrp": 1,
+                    "screen_id": "fashion",
+                    "path": ["lingeries"],
+                }
+            ],
         },
         "The World-3": {
             "dataclass": [
@@ -1003,6 +1060,7 @@ CORRECT_RESULT = {
                 "NEG": "disgusting,(in heat:1.2),(blush:1.2),(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
             },
             "essentiality": True,
+            "reports": [],
         },
     },
 }

@@ -387,6 +387,19 @@ class CategoryRegister:
 
 
 @dataclass
+class Report:
+    """
+    マッチしたがヒットしなかったテキストの記録
+    """
+
+    matched: str = ""
+    pattern: str = ""
+    capturegrp: int = 0
+    screen_id: str = ""
+    path: CategoryPath = field(default_factory=CategoryPath)
+
+
+@dataclass
 class Category:
     """
     正規表現パターンと Rule の組み合わせを定義するクラス\n
@@ -550,7 +563,9 @@ class Category:
         """
         return self.children and not self.rules
 
-    def to_prompts(self, text: str) -> list[tuple[PromptParts, PromptParts]] | None:
+    def to_prompts(
+        self, text: str, screen_id: str
+    ) -> tuple[list[tuple[PromptParts, PromptParts]] | None, list[Report]]:
         """
         指定の text から PromptParts を生成する
 
@@ -563,14 +578,17 @@ class Category:
 
         Args:
             text (str): テキスト
+            screen_id (str): Screen ID
 
         Returns:
-            list[tuple[PromptParts, PromptParts] | None:
+            tuple[list[tuple[PromptParts, PromptParts]] | None, list[Report]]:
             ヒット時に PromptParts のタプル(ポジティブ/ネガティブ)のリスト\n
             マッチしない, あるいはマッチしたがヒットせず default 適用を試みるも未定義の場合に None\n
-            tuple の片方が空の tokens である場合があることに注意
+            PromptParts の片方が空の tokens である場合があることに注意\n
+            Report はヒットしなかった場合を記録 (default が適用された場合も含める)
         """
         results: dict[CategoryPath, tuple[PromptParts, PromptParts]] = {}
+        reports: list[Report] = []
 
         def get_or_create(path: CategoryPath) -> tuple[PromptParts, PromptParts]:
             if path not in results:
@@ -588,7 +606,7 @@ class Category:
             has_matched = True
             if self.has_children():
                 for child_category in self.children:
-                    child_results = child_category.to_prompts(match)
+                    child_results, _ = child_category.to_prompts(match, screen_id)
                     if child_results is None:
                         continue
 
@@ -607,6 +625,18 @@ class Category:
                     dst_pos.tokens.extend(pos)
                     dst_neg.tokens.extend(neg)
 
+                if self.category_path not in results:
+                    # このマッチはヒットしなかった
+                    report = Report(
+                        matched=match,
+                        pattern=self.pattern.pattern,
+                        capturegrp=self.capturegrp,
+                        screen_id=screen_id,
+                        path=self.category_path,
+                    )
+                    if report not in reports:
+                        reports.append(report)
+
         if has_matched:
             if not results:
                 if self.default is not None:
@@ -618,12 +648,12 @@ class Category:
                     dst_neg.tokens.extend(neg)
                 else:
                     # default も未定義につき適用不可だった
-                    return None
+                    return None, reports
         else:
             # 一切マッチしなかった
-            return None
+            return None, reports
 
-        return list(results.values())
+        return list(results.values()), reports
 
 
 @dataclass
@@ -733,7 +763,7 @@ class Screen:
 
         return obj
 
-    def to_prompts(self, text: str) -> Prompt | None:
+    def to_prompts(self, text: str) -> tuple[Prompt | None, list[Report]]:
         """
         テキストから Prompt を生成する\n
         PromptParts の tokens が空の場合は追加しない
@@ -742,15 +772,18 @@ class Screen:
             text (str): テキスト
 
         Returns:
-            tuple[Prompt, Prompt] | None: Prompt, 未発火時は None
+            tuple[Prompt | None, list[Report]]: Prompt, 未発火時は None\n
+            Report はヒットしなかった場合を記録 (default が適用された場合も含める)
         """
         if self.ignition.search(text) is None:
             # 発火しなかった場合は None
-            return None
+            return None, []
 
         prompt = Prompt(screen_id=self.screen_id)
+        reports: list[Report] = []
         for category in self.categories:
-            results = category.to_prompts(text)
+            results, rprts = category.to_prompts(text, self.screen_id)
+            reports.extend(rprts)
             if results is None:
                 # tokens が空の場合は追加しない
                 continue
@@ -766,7 +799,7 @@ class Screen:
         if self.common_negative:
             prompt.negative.append(PromptParts(tokens=self.common_negative))
 
-        return prompt
+        return prompt, reports
 
 
 @dataclass
@@ -810,7 +843,7 @@ class Prompter:
 
         return obj
 
-    def to_prompt(self, text: str) -> Prompt:
+    def to_prompt(self, text: str) -> tuple[Prompt, list[Report]]:
         """
         テキストから Prompt を生成する\n
         Prompt が空の list の場合は追加しない\n
@@ -820,16 +853,19 @@ class Prompter:
             text (str): テキスト
 
         Returns:
-            Prompt: Prompt
+            tuple[Prompt, list[Report]]: Prompt\n
+            Report はヒットしなかった場合を記録 (default が適用された場合も含める)
         """
         prompt: Prompt = None
+        reports: list[Report] = []
         for screen in self.screens:
-            prompt = screen.to_prompts(text)
+            prompt, rprts = screen.to_prompts(text)
+            reports.extend(rprts)
             if prompt is not None:
                 # 初めて発火した Screen のみを付帯
                 break
 
-        return prompt if prompt is not None else Prompt()
+        return prompt if prompt is not None else Prompt(), reports
 
     def todict(self) -> dict:
         return asdict(self)
