@@ -388,23 +388,58 @@ class CategoryRegister:
 
 @dataclass
 class Report:
-    """
-    マッチしたがヒットしなかったテキストの記録
-    """
-
     matched: str = ""
     pattern: str = ""
     capturegrp: int = 0
     screen_id: str = ""
-    path: CategoryPath = field(default_factory=CategoryPath)
+    paths: set[CategoryPath] = field(default_factory=set)
 
-    def __eq__(self, other: Report):
-        return (
-            self.matched == other.matched
-            and self.pattern == other.pattern
-            and self.capturegrp == other.capturegrp
-            and self.screen_id == other.screen_id
+    def __eq__(self, other: Report) -> bool:
+        return (self.matched, self.pattern, self.capturegrp) == (
+            other.matched,
+            other.pattern,
+            other.capturegrp,
         )
+
+
+@dataclass
+class Reports:
+    hit_reports: list[Report] = field(default_factory=list)
+    nothit_reports: list[Report] = field(default_factory=list)
+
+    def append(self, report: Report, is_hit_report: bool) -> None:
+        target_list = self.hit_reports if is_hit_report else self.nothit_reports
+        for appended_report in target_list:
+            if report == appended_report:
+                # キャプチャ方法とマッチ結果が一致する場合は CategoryPath リストに追加
+                appended_report.paths = appended_report.paths | report.paths
+                break
+        else:
+            target_list.append(report)
+
+    def extend(self, other: Reports) -> None:
+        for hit_report in other.hit_reports:
+            self.append(hit_report, True)
+        for nothit_report in other.nothit_reports:
+            self.append(nothit_report, False)
+
+    @property
+    def stripped_nothit_reports(reports: Reports) -> list[Report]:
+        hit_patterns_dict: dict[str, set[str]] = {}
+        for report in reports.hit_reports:
+            if report.pattern in hit_patterns_dict:
+                hit_patterns_dict[report.pattern].add(report.matched)
+            else:
+                hit_patterns_dict[report.pattern] = {report.matched}
+
+        new_reports = []
+        for report in reports.nothit_reports:
+            if (
+                report.pattern not in hit_patterns_dict
+                or report.matched not in hit_patterns_dict[report.pattern]
+            ):
+                new_reports.append(report)
+        return new_reports
 
 
 @dataclass
@@ -573,7 +608,7 @@ class Category:
 
     def to_prompts(
         self, text: str, screen_id: str
-    ) -> tuple[list[tuple[PromptParts, PromptParts]] | None, list[Report]]:
+    ) -> tuple[list[tuple[PromptParts, PromptParts]] | None, Reports]:
         """
         指定の text から PromptParts を生成する
 
@@ -589,14 +624,14 @@ class Category:
             screen_id (str): Screen ID
 
         Returns:
-            tuple[list[tuple[PromptParts, PromptParts]] | None, list[Report]]:
+            tuple[list[tuple[PromptParts, PromptParts]] | None, Reports]:
             ヒット時に PromptParts のタプル(ポジティブ/ネガティブ)のリスト\n
             マッチしない, あるいはマッチしたがヒットせず default 適用を試みるも未定義の場合に None\n
             PromptParts の片方が空の tokens である場合があることに注意\n
-            Report はヒットしなかった場合を記録 (default が適用された場合も含める)
+            Reports にはヒットしなかった場合を記録 (default が適用された場合も含める)
         """
         results: dict[CategoryPath, tuple[PromptParts, PromptParts]] = {}
-        reports: list[Report] = []
+        reports = Reports()
 
         def get_or_create(path: CategoryPath) -> tuple[PromptParts, PromptParts]:
             if path not in results:
@@ -636,17 +671,28 @@ class Category:
                     dst_pos, dst_neg = get_or_create(self.category_path)
                     dst_pos.tokens.extend(pos)
                     dst_neg.tokens.extend(neg)
+                    reports.append(
+                        Report(
+                            matched=match,
+                            pattern=self.pattern.pattern,
+                            capturegrp=self.capturegrp,
+                            screen_id=screen_id,
+                            paths={self.category_path},
+                        ),
+                        True,
+                    )
 
                 if not hit:
-                    report = Report(
-                        matched=match,
-                        pattern=self.pattern.pattern,
-                        capturegrp=self.capturegrp,
-                        screen_id=screen_id,
-                        path=self.category_path,
+                    reports.append(
+                        Report(
+                            matched=match,
+                            pattern=self.pattern.pattern,
+                            capturegrp=self.capturegrp,
+                            screen_id=screen_id,
+                            paths={self.category_path},
+                        ),
+                        False,
                     )
-                    if report not in reports:
-                        reports.append(report)
 
         if has_matched:
             if not results:
@@ -774,7 +820,7 @@ class Screen:
 
         return obj
 
-    def to_prompts(self, text: str) -> tuple[Prompt | None, list[Report]]:
+    def to_prompts(self, text: str) -> tuple[Prompt | None, Reports]:
         """
         テキストから Prompt を生成する\n
         PromptParts の tokens が空の場合は追加しない
@@ -788,10 +834,10 @@ class Screen:
         """
         if self.ignition.search(text) is None:
             # 発火しなかった場合は None
-            return None, []
+            return None, Reports()
 
         prompt = Prompt(screen_id=self.screen_id)
-        reports: list[Report] = []
+        reports = Reports()
         for category in self.categories:
             results, rprts = category.to_prompts(text, self.screen_id)
             reports.extend(rprts)
@@ -868,7 +914,7 @@ class Prompter:
             Report はヒットしなかった場合を記録 (default が適用された場合も含める)
         """
         prompt: Prompt = None
-        reports: list[Report] = []
+        reports = Reports()
         for screen in self.screens:
             prompt, rprts = screen.to_prompts(text)
             reports.extend(rprts)
@@ -876,7 +922,7 @@ class Prompter:
                 # 初めて発火した Screen のみを付帯
                 break
 
-        return prompt if prompt is not None else Prompt(), reports
+        return prompt if prompt is not None else Prompt(), reports.stripped_nothit_reports
 
     def todict(self) -> dict:
         return asdict(self)

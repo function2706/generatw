@@ -197,3 +197,78 @@ expr2:
     pattern: "(checkNone)"
     maps:
       checkNone: checkNone
+report:
+  ignition: "report"
+  rules_maps:
+    pattern: "rules_maps:(.+?);"
+    capturegrp: 1
+    maps:
+      MAPs: maps
+      nMAPs:
+        negative: neg_maps
+  rules_ranges:
+    pattern: "rules_ranges:(.+?);"
+    capturegrp: 1
+    ranges:
+      ranges: ["RANGEs"]
+      neg_ranges:
+        negative: ["nRANGEs"]
+  rules_intervals:
+    pattern: "rules_intervals:(.+?);"
+    capturegrp: 1
+    intervals:
+      intervals: [0, 10]
+      neg_intervals:
+        negative: [-10, -1]
+  recurses:
+    pattern: "recurses:(.+?);"
+    capturegrp: 1
+    recurse:
+      recurses_parts_1:
+        pattern: '\[([^\[\]]+?)\]'
+        capturegrp: 1
+        maps:
+          REC1: recurses1
+      recurses_parts_2:
+        pattern: '\[([^\[\]]+?)\]'
+        capturegrp: 1
+        recurse:
+          recurses_parts_2':
+            pattern: '\{([^\{\}]+?)\}'
+            capturegrp: 1
+            maps:
+              REC2: recurses2
+      recurses_parts_3:
+        pattern: '\[([^\[\]]+?)\]'
+        capturegrp: 1
+        recurse:
+          recurses_parts_3':
+            pattern: '\{([^\{\}]+?)\}'
+            capturegrp: 1
+            recurse:
+              recurses_parts_3'':
+                pattern: '\(([^\(\)]+?)\)'
+                capturegrp: 1
+                maps:
+                  REC3: recurses3
+  no-report_maps:
+    pattern: "no-report_maps:(.+?);"
+    capturegrp: 1
+    maps:
+      MAPs: maps
+      nMAPs:
+        negative: neg_maps
+  no-report_ranges:
+    pattern: "no-report_ranges:(.+?);"
+    capturegrp: 1
+    ranges:
+      ranges: ["RANGEs"]
+      neg_ranges:
+        negative: ["nRANGEs"]
+  no-report_intervals:
+    pattern: "no-report_intervals:(.+?);"
+    capturegrp: 1
+    intervals:
+      intervals: [0, 10]
+      neg_intervals:
+        negative: [-10, -1]

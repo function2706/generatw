@@ -412,7 +412,7 @@ CORRECT_RESULT = {
                     "pattern": "(C|X)",
                     "capturegrp": 0,
                     "screen_id": "essential",
-                    "path": ["need2"],
+                    "paths": [["need2"]],
                 }
             ],
         },
@@ -885,6 +885,320 @@ CORRECT_RESULT = {
             "reports": [],
         },
     },
+    "CASE 'report'": {
+        "InterpreterTest-1: 'report rules_maps:MAPs;rules_maps:nMAPs;rules_maps:None;'": {
+            "dataclass": [
+                {
+                    "screen_id": "report",
+                    "positive": [
+                        {"path": ["rules_maps"], "tokens": [{"token": "maps", "weight": 1.0}]}
+                    ],
+                    "negative": [
+                        {"path": ["rules_maps"], "tokens": [{"token": "neg_maps", "weight": 1.0}]}
+                    ],
+                }
+            ],
+            "string": {"POS": "maps", "NEG": "neg_maps"},
+            "essentiality": True,
+            "reports": [
+                {
+                    "matched": "None",
+                    "pattern": "rules_maps:(.+?);",
+                    "capturegrp": 1,
+                    "screen_id": "report",
+                    "paths": [["rules_maps"]],
+                }
+            ],
+        },
+        "InterpreterTest-2: 'report rules_ranges:RANGEs;rules_ranges:nRANGEs;rules_ranges:None;'": {
+            "dataclass": [
+                {
+                    "screen_id": "report",
+                    "positive": [
+                        {"path": ["rules_ranges"], "tokens": [{"token": "ranges", "weight": 1.0}]}
+                    ],
+                    "negative": [
+                        {
+                            "path": ["rules_ranges"],
+                            "tokens": [{"token": "neg_ranges", "weight": 1.0}],
+                        }
+                    ],
+                }
+            ],
+            "string": {"POS": "ranges", "NEG": "neg_ranges"},
+            "essentiality": True,
+            "reports": [
+                {
+                    "matched": "None",
+                    "pattern": "rules_ranges:(.+?);",
+                    "capturegrp": 1,
+                    "screen_id": "report",
+                    "paths": [["rules_ranges"]],
+                }
+            ],
+        },
+        "InterpreterTest-3: 'report rules_intervals:5;rules_intervals:-5;rules_intervals:100;'": {
+            "dataclass": [
+                {
+                    "screen_id": "report",
+                    "positive": [
+                        {
+                            "path": ["rules_intervals"],
+                            "tokens": [{"token": "intervals", "weight": 1.0}],
+                        }
+                    ],
+                    "negative": [
+                        {
+                            "path": ["rules_intervals"],
+                            "tokens": [{"token": "neg_intervals", "weight": 1.0}],
+                        }
+                    ],
+                }
+            ],
+            "string": {"POS": "intervals", "NEG": "neg_intervals"},
+            "essentiality": True,
+            "reports": [
+                {
+                    "matched": "100",
+                    "pattern": "rules_intervals:(.+?);",
+                    "capturegrp": 1,
+                    "screen_id": "report",
+                    "paths": [["rules_intervals"]],
+                }
+            ],
+        },
+        "InterpreterTest-4: 'report recurses:[REC1];recurses:[REC2];recurses:[REC3];'": {
+            "dataclass": [
+                {
+                    "screen_id": "report",
+                    "positive": [
+                        {
+                            "path": ["recurses", "recurses_parts_1"],
+                            "tokens": [{"token": "recurses1", "weight": 1.0}],
+                        }
+                    ],
+                    "negative": [],
+                }
+            ],
+            "string": {"POS": "recurses1", "NEG": ""},
+            "essentiality": True,
+            "reports": [
+                {
+                    "matched": "REC2",
+                    "pattern": "\\[([^\\[\\]]+?)\\]",
+                    "capturegrp": 1,
+                    "screen_id": "report",
+                    "paths": [["recurses", "recurses_parts_1"]],
+                },
+                {
+                    "matched": "REC3",
+                    "pattern": "\\[([^\\[\\]]+?)\\]",
+                    "capturegrp": 1,
+                    "screen_id": "report",
+                    "paths": [["recurses", "recurses_parts_1"]],
+                },
+            ],
+        },
+        "InterpreterTest-5: 'report recurses:[{REC1}];recurses:[{REC2}];recurses:[{REC3}];'": {
+            "dataclass": [
+                {
+                    "screen_id": "report",
+                    "positive": [
+                        {
+                            "path": ["recurses", "recurses_parts_2", "recurses_parts_2'"],
+                            "tokens": [{"token": "recurses2", "weight": 1.0}],
+                        }
+                    ],
+                    "negative": [],
+                }
+            ],
+            "string": {"POS": "recurses2", "NEG": ""},
+            "essentiality": True,
+            "reports": [
+                {
+                    "matched": "{REC1}",
+                    "pattern": "\\[([^\\[\\]]+?)\\]",
+                    "capturegrp": 1,
+                    "screen_id": "report",
+                    "paths": [["recurses", "recurses_parts_1"]],
+                },
+                {
+                    "matched": "REC1",
+                    "pattern": "\\{([^\\{\\}]+?)\\}",
+                    "capturegrp": 1,
+                    "screen_id": "report",
+                    "paths": [["recurses", "recurses_parts_2", "recurses_parts_2'"]],
+                },
+                {
+                    "matched": "{REC2}",
+                    "pattern": "\\[([^\\[\\]]+?)\\]",
+                    "capturegrp": 1,
+                    "screen_id": "report",
+                    "paths": [["recurses", "recurses_parts_1"]],
+                },
+                {
+                    "matched": "{REC3}",
+                    "pattern": "\\[([^\\[\\]]+?)\\]",
+                    "capturegrp": 1,
+                    "screen_id": "report",
+                    "paths": [["recurses", "recurses_parts_1"]],
+                },
+                {
+                    "matched": "REC3",
+                    "pattern": "\\{([^\\{\\}]+?)\\}",
+                    "capturegrp": 1,
+                    "screen_id": "report",
+                    "paths": [["recurses", "recurses_parts_2", "recurses_parts_2'"]],
+                },
+            ],
+        },
+        "InterpreterTest-6: 'report recurses:[{(REC1)}];recurses:[{(REC2)}];recurses:[{(REC3)}];'": {  # noqa: E501
+            "dataclass": [
+                {
+                    "screen_id": "report",
+                    "positive": [
+                        {
+                            "path": [
+                                "recurses",
+                                "recurses_parts_3",
+                                "recurses_parts_3'",
+                                "recurses_parts_3''",
+                            ],
+                            "tokens": [{"token": "recurses3", "weight": 1.0}],
+                        }
+                    ],
+                    "negative": [],
+                }
+            ],
+            "string": {"POS": "recurses3", "NEG": ""},
+            "essentiality": True,
+            "reports": [
+                {
+                    "matched": "{(REC1)}",
+                    "pattern": "\\[([^\\[\\]]+?)\\]",
+                    "capturegrp": 1,
+                    "screen_id": "report",
+                    "paths": [["recurses", "recurses_parts_1"]],
+                },
+                {
+                    "matched": "(REC1)",
+                    "pattern": "\\{([^\\{\\}]+?)\\}",
+                    "capturegrp": 1,
+                    "screen_id": "report",
+                    "paths": [["recurses", "recurses_parts_2", "recurses_parts_2'"]],
+                },
+                {
+                    "matched": "REC1",
+                    "pattern": "\\(([^\\(\\)]+?)\\)",
+                    "capturegrp": 1,
+                    "screen_id": "report",
+                    "paths": [
+                        ["recurses", "recurses_parts_3", "recurses_parts_3'", "recurses_parts_3''"]
+                    ],
+                },
+                {
+                    "matched": "{(REC2)}",
+                    "pattern": "\\[([^\\[\\]]+?)\\]",
+                    "capturegrp": 1,
+                    "screen_id": "report",
+                    "paths": [["recurses", "recurses_parts_1"]],
+                },
+                {
+                    "matched": "(REC2)",
+                    "pattern": "\\{([^\\{\\}]+?)\\}",
+                    "capturegrp": 1,
+                    "screen_id": "report",
+                    "paths": [["recurses", "recurses_parts_2", "recurses_parts_2'"]],
+                },
+                {
+                    "matched": "REC2",
+                    "pattern": "\\(([^\\(\\)]+?)\\)",
+                    "capturegrp": 1,
+                    "screen_id": "report",
+                    "paths": [
+                        ["recurses", "recurses_parts_3", "recurses_parts_3'", "recurses_parts_3''"]
+                    ],
+                },
+                {
+                    "matched": "{(REC3)}",
+                    "pattern": "\\[([^\\[\\]]+?)\\]",
+                    "capturegrp": 1,
+                    "screen_id": "report",
+                    "paths": [["recurses", "recurses_parts_1"]],
+                },
+                {
+                    "matched": "(REC3)",
+                    "pattern": "\\{([^\\{\\}]+?)\\}",
+                    "capturegrp": 1,
+                    "screen_id": "report",
+                    "paths": [["recurses", "recurses_parts_2", "recurses_parts_2'"]],
+                },
+            ],
+        },
+        "InterpreterTest-7: 'report no-report_maps:MAPs;no-report_maps:nMAPs;no-report_maps:None;'": {  # noqa: E501
+            "dataclass": [
+                {
+                    "screen_id": "report",
+                    "positive": [
+                        {"path": ["no-report_maps"], "tokens": [{"token": "maps", "weight": 1.0}]}
+                    ],
+                    "negative": [
+                        {
+                            "path": ["no-report_maps"],
+                            "tokens": [{"token": "neg_maps", "weight": 1.0}],
+                        }
+                    ],
+                }
+            ],
+            "string": {"POS": "maps", "NEG": "neg_maps"},
+            "essentiality": True,
+            "reports": [],
+        },
+        "InterpreterTest-8: 'report no-report_ranges:RANGEs;no-report_ranges:nRANGEs;no-report_ranges:None;'": {  # noqa: E501
+            "dataclass": [
+                {
+                    "screen_id": "report",
+                    "positive": [
+                        {
+                            "path": ["no-report_ranges"],
+                            "tokens": [{"token": "ranges", "weight": 1.0}],
+                        }
+                    ],
+                    "negative": [
+                        {
+                            "path": ["no-report_ranges"],
+                            "tokens": [{"token": "neg_ranges", "weight": 1.0}],
+                        }
+                    ],
+                }
+            ],
+            "string": {"POS": "ranges", "NEG": "neg_ranges"},
+            "essentiality": True,
+            "reports": [],
+        },
+        "InterpreterTest-9: 'report no-report_intervals:5;no-report_intervals:-5;no-report_intervals:100;'": {  # noqa: E501
+            "dataclass": [
+                {
+                    "screen_id": "report",
+                    "positive": [
+                        {
+                            "path": ["no-report_intervals"],
+                            "tokens": [{"token": "intervals", "weight": 1.0}],
+                        }
+                    ],
+                    "negative": [
+                        {
+                            "path": ["no-report_intervals"],
+                            "tokens": [{"token": "neg_intervals", "weight": 1.0}],
+                        }
+                    ],
+                }
+            ],
+            "string": {"POS": "intervals", "NEG": "neg_intervals"},
+            "essentiality": True,
+            "reports": [],
+        },
+    },
 }
 
 
@@ -1014,6 +1328,8 @@ def normalize(obj):
         return [normalize(i) for i in obj]
     if isinstance(obj, tuple):
         return [normalize(i) for i in obj]
+    if isinstance(obj, set):
+        return sorted([normalize(i) for i in obj])
 
     return obj
 
@@ -1037,21 +1353,24 @@ def make_testcase(
 def print_result(
     result: dict[str, dict[str, dict[str, Any]]], correct: dict[str, dict[str, dict[str, Any]]]
 ) -> None:
-    dump_json(result, "debug")
-    print("---------------------------------------------------------------------------")
+    normalized_result: dict[str, dict[str, dict[str, Any]]] = {}
     for key, test_result in result.items():
+        normalized_result[key] = normalize(test_result)
+
+    dump_json(normalized_result, "debug")
+    print("---------------------------------------------------------------------------")
+    for key, test_result in normalized_result.items():
         correct_result = correct.get(key)
         if correct_result is None:
             print(f"NEW - {key}")
         else:
-            normalized_test_result = normalize(test_result)
-            if normalized_test_result == correct_result:
+            if test_result == correct_result:
                 print(f"OK  - {key}")
-                for key, val in test_result.items():
-                    dump_json(val.get("string"), key)
+                # for key, val in test_result.items():
+                # dump_json(val.get("string"), key)
             else:
                 print(f"NG  - {key}")
-                # dump_json(dict_diff(normalized_test_result, correct_result))
+                # dump_json(dict_diff(test_result, correct_result))
 
 
 def debug_interpreter() -> None:
@@ -1231,6 +1550,37 @@ def debug_interpreter() -> None:
                     (("q",), Has(("p",)), True),
                 ],
                 essential=Has(("q",)),
+            ),
+            "report": make_testcase(
+                yamlpath="yamls/testyamls/InterpreterTest.yaml",
+                texts=[
+                    "report rules_maps:MAPs;rules_maps:nMAPs;rules_maps:None;",
+                    "report rules_ranges:RANGEs;rules_ranges:nRANGEs;rules_ranges:None;",
+                    "report rules_intervals:5;rules_intervals:-5;rules_intervals:100;",
+                    "report recurses:[REC1];recurses:[REC2];recurses:[REC3];",
+                    "report recurses:[{REC1}];recurses:[{REC2}];recurses:[{REC3}];",
+                    "report recurses:[{(REC1)}];recurses:[{(REC2)}];recurses:[{(REC3)}];",
+                    "report no-report_maps:MAPs;no-report_maps:nMAPs;no-report_maps:None;",  # noqa: E501
+                    "report no-report_ranges:RANGEs;no-report_ranges:nRANGEs;no-report_ranges:None;",  # noqa: E501
+                    "report no-report_intervals:5;no-report_intervals:-5;no-report_intervals:100;",  # noqa: E501
+                ],
+                screen_id="report",
+                encats=[
+                    (("rules_maps",), TrueExpr(), True),  # maps と neg 有効時
+                    (("rules_ranges",), TrueExpr(), True),  # ranges と neg 有効時
+                    (("rules_intervals",), TrueExpr(), True),  # interval と neg 有効時
+                    (("recurses", "recurses_parts_1"), TrueExpr(), True),
+                    (("recurses", "recurses_parts_2", "recurses_parts_2'"), TrueExpr(), True),
+                    (
+                        ("recurses", "recurses_parts_3", "recurses_parts_3'", "recurses_parts_3''"),
+                        TrueExpr(),
+                        True,
+                    ),
+                    (("no-report_maps",), TrueExpr(), False),  # maps, レポートしない
+                    (("no-report_ranges",), TrueExpr(), False),  # ranges, レポートしない
+                    (("no-report_intervals",), TrueExpr(), False),  # interval, レポートしない
+                ],
+                essential=None,
             ),
         }
     )

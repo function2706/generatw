@@ -233,7 +233,7 @@ class Interpreter(ABC):
                 return essential if essential is not None else TrueExpr()
         return None
 
-    def should_leave_report_of(self, screen_id: str, category_path: CategoryPath) -> bool:
+    def should_leave_report_of(self, screen_id: str, category_paths: set[CategoryPath]) -> bool:
         """
         ScreenTable における指定の Screen ID, CategoryPath にあたる Report を残すべきか\n
         指定の Screen ID, CategoryPath にあたるものが存在しない場合は False を返す\n
@@ -249,7 +249,7 @@ class Interpreter(ABC):
             if sid != screen_id:
                 continue
             for encat in encats:
-                if encat[0] == category_path:
+                if encat[0] in category_paths:
                     return encat[2]
         return False
 
@@ -518,7 +518,7 @@ class Interpreter(ABC):
         """
         new_reports: list[Report] = []
         for report in reports:
-            if self.should_leave_report_of(report.screen_id, report.path):
+            if self.should_leave_report_of(report.screen_id, report.paths):
                 new_reports.append(report)
         return new_reports
 

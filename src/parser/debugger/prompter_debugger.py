@@ -100,7 +100,7 @@ CORRECT_RESULT = {
                     "pattern": "weather:\\s(.+?),",
                     "capturegrp": 1,
                     "screen_id": "meta",
-                    "path": ["weather"],
+                    "paths": [["weather"]],
                 }
             ],
         },
@@ -114,7 +114,7 @@ CORRECT_RESULT = {
                     "pattern": "location:\\s(.+?)",
                     "capturegrp": 0,
                     "screen_id": "meta",
-                    "path": ["location"],
+                    "paths": [["location"]],
                 }
             ],
         },
@@ -128,7 +128,7 @@ CORRECT_RESULT = {
                     "pattern": "like:\\s(.+?),",
                     "capturegrp": 1,
                     "screen_id": "sub",
-                    "path": ["like"],
+                    "paths": [["like"]],
                 }
             ],
         },
@@ -142,7 +142,7 @@ CORRECT_RESULT = {
                     "pattern": "ability:\\s(.+?),",
                     "capturegrp": 1,
                     "screen_id": "sub",
-                    "path": ["ability"],
+                    "paths": [["ability"]],
                 }
             ],
         },
@@ -211,7 +211,7 @@ CORRECT_RESULT = {
                     "pattern": "weather:\\s(.+?),",
                     "capturegrp": 1,
                     "screen_id": "meta",
-                    "path": ["weather"],
+                    "paths": [["weather"]],
                 }
             ],
         },
@@ -231,7 +231,7 @@ CORRECT_RESULT = {
                     "pattern": "season:\\s([0-9]{2})",
                     "capturegrp": 1,
                     "screen_id": "main",
-                    "path": ["season"],
+                    "paths": [["season"]],
                 }
             ],
         },
@@ -248,7 +248,7 @@ CORRECT_RESULT = {
                     "pattern": "name:\\s(.+?),",
                     "capturegrp": 1,
                     "screen_id": "main",
-                    "path": ["name"],
+                    "paths": [["name"]],
                 }
             ],
         },
@@ -265,7 +265,7 @@ CORRECT_RESULT = {
                     "pattern": "vitality:\\s(.+?),",
                     "capturegrp": 1,
                     "screen_id": "main",
-                    "path": ["vitality"],
+                    "paths": [["vitality"]],
                 }
             ],
         },
@@ -437,7 +437,7 @@ CORRECT_RESULT = {
                     "pattern": "season:\\s([0-9]{2})",
                     "capturegrp": 1,
                     "screen_id": "main",
-                    "path": ["season"],
+                    "paths": [["season"]],
                 }
             ],
         },
@@ -451,7 +451,7 @@ CORRECT_RESULT = {
                     "pattern": "rwd:\\s(.+?),",
                     "capturegrp": 1,
                     "screen_id": "sub",
-                    "path": ["ranges without default"],
+                    "paths": [["ranges without default"]],
                 }
             ],
         },
@@ -602,7 +602,7 @@ CORRECT_RESULT = {
                     "pattern": "vitality:\\s(.+?),",
                     "capturegrp": 1,
                     "screen_id": "main",
-                    "path": ["vitality"],
+                    "paths": [["vitality"]],
                 }
             ],
         },
@@ -616,7 +616,7 @@ CORRECT_RESULT = {
                     "pattern": "iwd:\\s(.+?),",
                     "capturegrp": 1,
                     "screen_id": "sub",
-                    "path": ["intervals without default"],
+                    "paths": [["intervals without default"]],
                 }
             ],
         },
@@ -644,7 +644,7 @@ CORRECT_RESULT = {
                     "pattern": "NAME:(.+)",
                     "capturegrp": 1,
                     "screen_id": "import_src",
-                    "path": ["partner", "name"],
+                    "paths": [["partner", "name"]],
                 }
             ],
         },
@@ -670,7 +670,7 @@ CORRECT_RESULT = {
                     "pattern": "NAME-(.+)",
                     "capturegrp": 1,
                     "screen_id": "import_dst1",
-                    "path": ["name"],
+                    "paths": [["name"]],
                 }
             ],
         },
@@ -696,7 +696,7 @@ CORRECT_RESULT = {
                     "pattern": "Name>(.+)",
                     "capturegrp": 1,
                     "screen_id": "import_dst2",
-                    "path": ["name"],
+                    "paths": [["name"]],
                 }
             ],
         },
@@ -722,7 +722,7 @@ CORRECT_RESULT = {
                     "pattern": "name:(.+)",
                     "capturegrp": 1,
                     "screen_id": "import_dst3",
-                    "path": ["name"],
+                    "paths": [["name"]],
                 }
             ],
         },
@@ -748,7 +748,7 @@ CORRECT_RESULT = {
                     "pattern": "name:(.+)",
                     "capturegrp": 1,
                     "screen_id": "import_dst4",
-                    "path": ["name"],
+                    "paths": [["name"]],
                 }
             ],
         },
@@ -805,7 +805,7 @@ CORRECT_RESULT = {
                     "pattern": "\\(([^\\(\\)]+?)\\)",
                     "capturegrp": 1,
                     "screen_id": "recursive",
-                    "path": ["brackets_parentheses", "parentheses"],
+                    "paths": [["brackets_parentheses", "parentheses"]],
                 }
             ],
         },
@@ -860,21 +860,21 @@ CORRECT_RESULT = {
                     "pattern": "<([^<>]+?)>",
                     "capturegrp": 1,
                     "screen_id": "recursive_import",
-                    "path": ["angles"],
+                    "paths": [["angles"]],
                 },
                 {
                     "matched": "(bar1),(bar2),(bar3)",
                     "pattern": "<([^<>]+?)>",
                     "capturegrp": 1,
                     "screen_id": "recursive_import",
-                    "path": ["angles"],
+                    "paths": [["angles"]],
                 },
                 {
                     "matched": "(baz1)",
                     "pattern": "<([^<>]+?)>",
                     "capturegrp": 1,
                     "screen_id": "recursive_import",
-                    "path": ["angles"],
+                    "paths": [["angles"]],
                 },
             ],
         },
@@ -922,21 +922,14 @@ CORRECT_RESULT = {
                     "pattern": "\\(([^\\(\\)]+?)\\)",
                     "capturegrp": 1,
                     "screen_id": "recursive_import",
-                    "path": ["brackets_parentheses", "parentheses"],
+                    "paths": [["brackets_parentheses", "parentheses"], ["parentheses"]],
                 },
                 {
                     "matched": "(foo4)",
                     "pattern": "<([^<>]+?)>",
                     "capturegrp": 1,
                     "screen_id": "recursive_import",
-                    "path": ["angles"],
-                },
-                {
-                    "matched": "foo4",
-                    "pattern": "\\(([^\\(\\)]+?)\\)",
-                    "capturegrp": 1,
-                    "screen_id": "recursive_import",
-                    "path": ["parentheses"],
+                    "paths": [["angles"]],
                 },
             ],
         },
@@ -955,15 +948,8 @@ CORRECT_RESULT = {
                     "pattern": "\\(([^\\(\\)]+?)\\)",
                     "capturegrp": 1,
                     "screen_id": "recursive_import",
-                    "path": ["brackets_parentheses", "parentheses"],
-                },
-                {
-                    "matched": "foo4",
-                    "pattern": "\\(([^\\(\\)]+?)\\)",
-                    "capturegrp": 1,
-                    "screen_id": "recursive_import",
-                    "path": ["parentheses"],
-                },
+                    "paths": [["brackets_parentheses", "parentheses"], ["parentheses"]],
+                }
             ],
         },
         "PrompterTest-8: 'recursive_import <foo1>,<foo2>,<bar1>,<bar2>,<bar3>,<baz1>'": {
@@ -1069,23 +1055,23 @@ CORRECT_RESULT = {
             "NEG": [],
             "REP": [],
         },
-        "PrompterTest-13: 'recursive_practice one's equip:[equip1][equip2][equip3][equip4]'": {
+        "PrompterTest-13: 'recursive_practice one's equip:[EQUIP1][EQUIP2][EQUIP3][EQUIP4]'": {
             "SID": "recursive_practice",
             "POS": [
                 {
                     "path": ["equip", "equip_parts"],
                     "tokens": [
-                        {"token": "equip1", "weight": 1.0},
-                        {"token": "equip2", "weight": 1.0},
-                        {"token": "equip3", "weight": 1.0},
-                        {"token": "equip4", "weight": 1.0},
+                        {"token": "EQUIP1", "weight": 1.0},
+                        {"token": "EQUIP2", "weight": 1.0},
+                        {"token": "EQUIP3", "weight": 1.0},
+                        {"token": "EQUIP4", "weight": 1.0},
                     ],
                 }
             ],
             "NEG": [],
             "REP": [],
         },
-        "PrompterTest-14: 'recursive_report one's equip:[equip1][equip2][equip3][equip4]'": {
+        "PrompterTest-14: 'recursive_report one's equip:[EQUIP1][EQUIP2][EQUIP3][EQUIP4]'": {
             "SID": "recursive_report",
             "POS": [
                 {
@@ -1106,90 +1092,45 @@ CORRECT_RESULT = {
                 },
             ],
             "NEG": [],
+            "REP": [],
+        },
+        "PrompterTest-15: 'recursive_report one's equip:[EQUIP5][EQUIP6][EQUIP3][EQUIP4]'": {
+            "SID": "recursive_report",
+            "POS": [
+                {
+                    "path": ["equip", "equip_parts_3"],
+                    "tokens": [{"token": "equip3", "weight": 1.0}],
+                },
+                {
+                    "path": ["equip", "equip_parts_4"],
+                    "tokens": [{"token": "equip4", "weight": 1.0}],
+                },
+            ],
+            "NEG": [],
             "REP": [
                 {
-                    "matched": "equip2",
+                    "matched": "EQUIP5",
                     "pattern": "\\[([^\\[\\]]+?)\\]",
                     "capturegrp": 1,
                     "screen_id": "recursive_report",
-                    "path": ["equip", "equip_parts_1"],
+                    "paths": [
+                        ["equip", "equip_parts_1"],
+                        ["equip", "equip_parts_2"],
+                        ["equip", "equip_parts_3"],
+                        ["equip", "equip_parts_4"],
+                    ],
                 },
                 {
-                    "matched": "equip3",
+                    "matched": "EQUIP6",
                     "pattern": "\\[([^\\[\\]]+?)\\]",
                     "capturegrp": 1,
                     "screen_id": "recursive_report",
-                    "path": ["equip", "equip_parts_1"],
-                },
-                {
-                    "matched": "equip4",
-                    "pattern": "\\[([^\\[\\]]+?)\\]",
-                    "capturegrp": 1,
-                    "screen_id": "recursive_report",
-                    "path": ["equip", "equip_parts_1"],
-                },
-                {
-                    "matched": "equip1",
-                    "pattern": "\\[([^\\[\\]]+?)\\]",
-                    "capturegrp": 1,
-                    "screen_id": "recursive_report",
-                    "path": ["equip", "equip_parts_2"],
-                },
-                {
-                    "matched": "equip3",
-                    "pattern": "\\[([^\\[\\]]+?)\\]",
-                    "capturegrp": 1,
-                    "screen_id": "recursive_report",
-                    "path": ["equip", "equip_parts_2"],
-                },
-                {
-                    "matched": "equip4",
-                    "pattern": "\\[([^\\[\\]]+?)\\]",
-                    "capturegrp": 1,
-                    "screen_id": "recursive_report",
-                    "path": ["equip", "equip_parts_2"],
-                },
-                {
-                    "matched": "equip1",
-                    "pattern": "\\[([^\\[\\]]+?)\\]",
-                    "capturegrp": 1,
-                    "screen_id": "recursive_report",
-                    "path": ["equip", "equip_parts_3"],
-                },
-                {
-                    "matched": "equip2",
-                    "pattern": "\\[([^\\[\\]]+?)\\]",
-                    "capturegrp": 1,
-                    "screen_id": "recursive_report",
-                    "path": ["equip", "equip_parts_3"],
-                },
-                {
-                    "matched": "equip4",
-                    "pattern": "\\[([^\\[\\]]+?)\\]",
-                    "capturegrp": 1,
-                    "screen_id": "recursive_report",
-                    "path": ["equip", "equip_parts_3"],
-                },
-                {
-                    "matched": "equip1",
-                    "pattern": "\\[([^\\[\\]]+?)\\]",
-                    "capturegrp": 1,
-                    "screen_id": "recursive_report",
-                    "path": ["equip", "equip_parts_4"],
-                },
-                {
-                    "matched": "equip2",
-                    "pattern": "\\[([^\\[\\]]+?)\\]",
-                    "capturegrp": 1,
-                    "screen_id": "recursive_report",
-                    "path": ["equip", "equip_parts_4"],
-                },
-                {
-                    "matched": "equip3",
-                    "pattern": "\\[([^\\[\\]]+?)\\]",
-                    "capturegrp": 1,
-                    "screen_id": "recursive_report",
-                    "path": ["equip", "equip_parts_4"],
+                    "paths": [
+                        ["equip", "equip_parts_1"],
+                        ["equip", "equip_parts_2"],
+                        ["equip", "equip_parts_3"],
+                        ["equip", "equip_parts_4"],
+                    ],
                 },
             ],
         },
@@ -1299,6 +1240,8 @@ def normalize(obj):
         return [normalize(i) for i in obj]
     if isinstance(obj, tuple):
         return [normalize(i) for i in obj]
+    if isinstance(obj, set):
+        return sorted([normalize(i) for i in obj])
 
     return obj
 
@@ -1435,26 +1378,32 @@ def debug_prompter() -> None:
                     # 再帰先の名前が再帰・分岐
                     "recursive_name [(foo1),(foo2)][<bar1>,<bar2>,<bar3>][(baz1)]",
                     # 実践
-                    "recursive_practice one's equip:[equip1][equip2][equip3][equip4]",
+                    "recursive_practice one's equip:[EQUIP1][EQUIP2][EQUIP3][EQUIP4]",
                     # レポート
-                    "recursive_report one's equip:[equip1][equip2][equip3][equip4]",
+                    "recursive_report one's equip:[EQUIP1][EQUIP2][EQUIP3][EQUIP4]",
+                    # レポート2
+                    "recursive_report one's equip:[EQUIP5][EQUIP6][EQUIP3][EQUIP4]",
                 ]
             },
         }
     )
-    dump_json(result, "debug")
-    print("---------------------------------------------------------------------------")
+
+    normalized_result: dict[str, dict[str, dict[str, Any]]] = {}
     for key, test_result in result.items():
+        normalized_result[key] = normalize(test_result)
+
+    dump_json(normalized_result, "debug")
+    print("---------------------------------------------------------------------------")
+    for key, test_result in normalized_result.items():
         correct_result = CORRECT_RESULT.get(key)
         if correct_result is None:
             print(f"NEW - {key}")
         else:
-            normalized_test_result = normalize(test_result)
-            if normalized_test_result == correct_result:
+            if test_result == correct_result:
                 print(f"OK  - {key}")
             else:
                 print(f"NG  - {key}")
-                dump_json(dict_diff(normalized_test_result, correct_result), "diff")
+                dump_json(dict_diff(test_result, correct_result), "diff")
 
 
 def print_yamldict(path: Path) -> None:
