@@ -493,7 +493,7 @@ class Generator(ABC, Generic[TaskProgress]):
         neg_prompt = picinfo.negative_prompt
         seed = picinfo.seed
 
-        dirpath = PathConsts.pichome_dir / Path(dirname_by_prompts(pos_prompt, neg_prompt))
+        dirpath = PathConsts.pic_dir / Path(dirname_by_prompts(pos_prompt, neg_prompt))
         now = datetime.now().strftime("%Y%m%d%H%M%S")
         filename = Path(f"{now}-{seed}-{idx}.png")
         return dirpath / filename

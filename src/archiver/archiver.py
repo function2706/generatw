@@ -89,7 +89,7 @@ class PicArchive:
         監視対象ディレクトリ内の画像ファイルを PicStats の形で再帰的にリスト化する
         """
         self.piclist = []
-        for dirpath, _, filenames in os.walk(PathConsts.pichome_dir):
+        for dirpath, _, filenames in os.walk(PathConsts.pic_dir):
             picstats: list[PicStats] = []
             for filename in filenames:
                 if filename.lower().endswith(".png"):
@@ -175,7 +175,7 @@ class Archiver:
         """
         コンストラクタ
         """
-        PathConsts.pichome_dir.mkdir(parents=True, exist_ok=True)
+        PathConsts.pic_dir.mkdir(parents=True, exist_ok=True)
         self.archive = PicArchive()
         self.crnt_picstats: PicStats | NoImageStats = None
         self.to_master = to_master
@@ -184,7 +184,7 @@ class Archiver:
         self.reports: deque[tuple[EventType, Path]] = deque()
         self.observer = Observer()
         self.observer.schedule(
-            PicEventHandler(self.reports), path=str(PathConsts.pichome_dir), recursive=True
+            PicEventHandler(self.reports), path=str(PathConsts.pic_dir), recursive=True
         )
         self.observer.start()
 

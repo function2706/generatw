@@ -18,8 +18,12 @@ from typing import Any, Generic, TypeVar
 
 @dataclass(frozen=True)
 class PathConsts:
+    # コンフィグファイル
+    config_path: Path = Path("config.json")
     # 画像保存先ディレクトリ
-    pichome_dir: Path = Path("pics")
+    pic_dir: Path = Path("pics")
+    # ログ保存先ディレクトリ
+    log_dir: Path = Path("logs")
 
 
 class BackEnd(Enum):

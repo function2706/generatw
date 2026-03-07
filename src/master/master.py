@@ -5,13 +5,13 @@
 from __future__ import annotations
 
 import tkinter
-from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 import master.events
 from archiver.archiver import Archiver
 from archiver.dataclasses import NoImageStats, PicStats
-from common.functions import BackEnd, BottleMail, dump_json
+from common.functions import BackEnd, BottleMail, PathConsts, dump_json
 from displayer.dataclasses import GUIConfigs
 from displayer.displayer import Displayer
 from generator.a1111_generator import A1111Generator
@@ -25,11 +25,7 @@ from generator.dataclasses import (
 )
 from master.interfaces import MasterIF
 from parser.parser import Parser
-
-
-@dataclass(frozen=True)
-class Consts:
-    config_path: Path = Path("config.json")
+from parser.prompter import Report
 
 
 class Master(MasterIF):
@@ -53,8 +49,8 @@ class Master(MasterIF):
         self.from_parser: BottleMail[master.events.ParserEvent] = BottleMail()
 
         self.crnt_configs: GUIConfigs = (
-            GUIConfigs.fromjson(Consts.config_path)
-            if Consts.config_path.exists()
+            GUIConfigs.fromjson(PathConsts.config_path)
+            if PathConsts.config_path.exists()
             else GUIConfigs(
                 # コンフィグファイルがない場合は A1111 をバックエンドとして起動
                 srv_ipaddr="127.0.0.1",
@@ -108,7 +104,7 @@ class Master(MasterIF):
         終了処理
         """
 
-        self.crnt_configs.tojson(Consts.config_path)
+        self.crnt_configs.tojson(PathConsts.config_path)
 
         if self.after_id:
             self.root.after_cancel(self.after_id)
@@ -342,6 +338,8 @@ class Master(MasterIF):
                     print("New Reports")
                 if self.crnt_gui_configs.print_parser_reports:
                     dump_json(event.reports, "parser_reports")
+                if self.crnt_gui_configs.log_parser_reports:
+                    self.log_nothit_reports(event.reports)
 
     @property
     def backend_type(self) -> BackEnd:
@@ -372,6 +370,28 @@ class Master(MasterIF):
             CrntGUIConfigs: 現在の GUI 上の設定値
         """
         return self.crnt_configs
+
+    def log_nothit_reports(self, nothit_reports: list[Report]) -> None:
+        """
+        無ヒットレポートをロギングする
+
+        Args:
+            nothit_reports (list[Report]): 無ヒットレポート
+        """
+        PathConsts.log_dir.mkdir(parents=True, exist_ok=True)
+        filepath = Path(f"logs/nothit_reports_{datetime.now().strftime('%Y%m%d')}.log")
+        with open(filepath, "a", encoding="utf-8") as f:
+            for report in nothit_reports:
+                headline = (
+                    f"[{Path(self.crnt_gui_configs.yamlpath).name}], "
+                    + f'Screen: "{report.screen_id}"'
+                ).ljust(95, "=")
+                f.write(f"{headline}\n")
+                f.write(
+                    f'matched: "{report.matched}"\n'
+                    f'pattern({report.capturegrp}): "{report.pattern}"\n'
+                    f"paths: {report.paths}\n"
+                )
 
     def reserve_img2img_task(self) -> None:
         """
