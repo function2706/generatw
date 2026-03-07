@@ -15,6 +15,7 @@ from parser.interpreter.interpreter import Interpreter, Memory, MemoryEntry, Scr
 
 class ScreenName(StrEnum):
     main = "main"
+    action = "action"
 
 
 class CategoryName(StrEnum):
@@ -30,6 +31,9 @@ class CategoryName(StrEnum):
     posture_meat = "posture_meat"
     tool = "tool"
     tool_meat = "tool_meat"
+    asking = "asking"
+    rope = "rope"
+    foot_licking = "foot_licking"
 
 
 @dataclass
@@ -120,6 +124,58 @@ class ReverseInterpreter(Interpreter):
                 Has((CategoryName.character, CategoryName.name_n)),
                 self.sync_on_main,
             ),
+            ScreenName.action: (
+                [
+                    ((CategoryName.character, CategoryName.name_n), None, True),
+                    ((CategoryName.asking,), None, False),
+                    ((CategoryName.rope,), None, False),
+                    ((CategoryName.foot_licking,), None, False),
+                    (
+                        (CategoryName.character, CategoryName.fashion, CategoryName.dresses),
+                        None,
+                        True,
+                    ),
+                    (
+                        (
+                            CategoryName.character,
+                            CategoryName.fashion,
+                            CategoryName.upper_lingeries,
+                        ),
+                        expr_no_upper_costumes,
+                        True,
+                    ),
+                    (
+                        (
+                            CategoryName.character,
+                            CategoryName.fashion,
+                            CategoryName.lower_lingeries,
+                        ),
+                        expr_no_lower_costumes,
+                        True,
+                    ),
+                    (
+                        (CategoryName.character, CategoryName.fashion, CategoryName.socks),
+                        None,
+                        True,
+                    ),
+                    (
+                        (
+                            CategoryName.character,
+                            CategoryName.posture,
+                            CategoryName.posture_meat,
+                        ),
+                        None,
+                        False,
+                    ),
+                    (
+                        (CategoryName.character, CategoryName.tool, CategoryName.tool_meat),
+                        None,
+                        False,
+                    ),
+                ],
+                Has((CategoryName.character, CategoryName.name_n)),
+                self.sync_on_action,
+            ),
         }
 
     def sync_on_main(self, memory: Memory) -> Memory:
@@ -143,9 +199,10 @@ class ReverseInterpreter(Interpreter):
 
         new_fashion_set = FashionSet()
         for entry in memory.entries:
-            if len(entry.path) > 0 and hasattr(new_fashion_set, entry.path[0]):
+            if len(entry.path) >= 3 and hasattr(new_fashion_set, entry.path[2]):
                 # common 以外の全 Category を記録
-                setattr(new_fashion_set, entry.path[0], entry)
+                setattr(new_fashion_set, entry.path[2], entry)
+        self.fashion_set = new_fashion_set
 
         # Load
 
