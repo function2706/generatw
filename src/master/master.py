@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import os
 import tkinter
 from datetime import datetime
 from pathlib import Path
@@ -379,13 +380,12 @@ class Master(MasterIF):
             nothit_reports (list[Report]): 無ヒットレポート
         """
         PathConsts.log_dir.mkdir(parents=True, exist_ok=True)
-        filepath = Path(f"logs/nothit_reports_{datetime.now().strftime('%Y%m%d')}.log")
+        filepath = Path(
+            f"logs/{os.path.splitext(os.path.basename(self.crnt_gui_configs.yamlpath))[0]}_nothit_reports_{datetime.now().strftime('%Y%m%d')}.log"
+        )
         with open(filepath, "a", encoding="utf-8") as f:
             for report in nothit_reports:
-                headline = (
-                    f"[{Path(self.crnt_gui_configs.yamlpath).name}], "
-                    + f'Screen: "{report.screen_id}"'
-                ).ljust(95, "=")
+                headline = (f'Screen: "{report.screen_id}"').ljust(95, "=")
                 f.write(f"{headline}\n")
                 f.write(
                     f'matched: "{report.matched}"\n'
