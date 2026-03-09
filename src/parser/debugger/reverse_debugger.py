@@ -34,7 +34,7 @@ CORRECT_RESULT = {
                         },
                         {
                             "path": ["character", "fashion", "socks"],
-                            "tokens": [{"token": "kneehighs", "weight": 1.0}],
+                            "tokens": [{"token": "thighhighs", "weight": 1.0}],
                         },
                         {
                             "path": ["character", "posture", "posture_meat"],
@@ -56,6 +56,10 @@ CORRECT_RESULT = {
                         },
                     ],
                     "negative": [
+                        {
+                            "path": ["character", "fashion", "socks"],
+                            "tokens": [{"token": "barefoot", "weight": 1.0}],
+                        },
                         {
                             "path": [],
                             "tokens": [
@@ -98,13 +102,13 @@ CORRECT_RESULT = {
                                 {"token": "extra arms", "weight": 1.0},
                                 {"token": "missing arm", "weight": 1.0},
                             ],
-                        }
+                        },
                     ],
                 }
             ],
             "string": {
-                "POS": "houjuu nue,(expressionless:0.8),one-piece dress,kneehighs,looking at viewer,strap-on,best quality,masterpiece,absurdres,1girl,solo",  # noqa: E501
-                "NEG": "(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
+                "POS": "houjuu nue,(expressionless:0.8),one-piece dress,thighhighs,looking at viewer,strap-on,best quality,masterpiece,absurdres,1girl,solo",  # noqa: E501
+                "NEG": "barefoot,(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
             },
             "essentiality": True,
             "reports": [],

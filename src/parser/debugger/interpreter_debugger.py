@@ -1366,11 +1366,11 @@ def print_result(
         else:
             if test_result == correct_result:
                 print(f"OK  - {key}")
-                # for key, val in test_result.items():
-                # dump_json(val.get("string"), key)
+                for key, val in test_result.items():
+                    dump_json(val.get("string"), key)
             else:
                 print(f"NG  - {key}")
-                # dump_json(dict_diff(test_result, correct_result))
+                dump_json(dict_diff(test_result, correct_result))
 
 
 def debug_interpreter() -> None:

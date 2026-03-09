@@ -389,8 +389,8 @@ class Master(MasterIF):
                 f.write(f"{headline}\n")
                 f.write(
                     f'matched: "{report.matched}"\n'
-                    f'pattern({report.capturegrp}): "{report.pattern}"\n'
-                    f"paths: {report.paths}\n"
+                    f'pattern(idx={report.capturegrp}): "{report.pattern}"\n'
+                    f"paths: {sorted(report.paths)}\n"
                 )
 
     def reserve_img2img_task(self) -> None:
