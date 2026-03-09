@@ -15,7 +15,10 @@ if parent_dir not in sys.path:
 
 from common.expr import Expr, FalseExpr, Has, TrueExpr  # noqa: E402
 from common.functions import dump_json  # noqa: E402
-from parser.interpreter.test_interpreter import EnhancedCategory, TestInterpreter  # noqa: E402
+from parser.interpreter.test_interpreter import (  # noqa: E402
+    PrimitiveEnhancedCategory,
+    TestInterpreter,
+)
 from parser.parser import Parser  # noqa: E402
 
 CORRECT_RESULT = {
@@ -1219,7 +1222,7 @@ class KeyName(StrEnum):
     yamlpath = "yamlpath"
     texts = "texts"
     screen_id = "screen_id"
-    enhanced_category_list = "enhanced_category_list"
+    primitive_enhanced_category_list = "primitive_enhanced_category_list"
     essential = "essential"
 
 
@@ -1231,7 +1234,7 @@ class InterpreterDebugger(Parser):
         self,
         texts: list[str],
         screen_id: str = None,
-        encats: list[EnhancedCategory] = None,
+        pencats: list[PrimitiveEnhancedCategory] = None,
         essential: Expr = None,
         with_texts: bool = True,
     ) -> dict[str, dict[str, Any]]:
@@ -1249,9 +1252,9 @@ class InterpreterDebugger(Parser):
                 if (
                     isinstance(self.interpreter, TestInterpreter)
                     and screen_id is not None
-                    and encats is not None
+                    and pencats is not None
                 ):
-                    self.interpreter.restore_enhanced_category_list(screen_id, encats, essential)
+                    self.interpreter.restore_screen_config(screen_id, pencats, essential)
                 self.crnt_prompt, reports = self.interpreter.make_prompt(text)
                 major = f"{yamlname}-{i + 1}: '{text}'" if with_texts else f"{yamlname}-{i + 1}"
                 posneg = self.make_prompt_strs()
@@ -1284,7 +1287,7 @@ class InterpreterDebugger(Parser):
             result_by_texts = {}
             texts = []
             screen_id = None
-            encats = None
+            pencats = None
             essential = None
             for key, val in testcase.items():
                 if key == KeyName.yamlpath:
@@ -1293,8 +1296,8 @@ class InterpreterDebugger(Parser):
                     texts = val
                 elif key == KeyName.screen_id:
                     screen_id = val
-                elif key == KeyName.enhanced_category_list:
-                    encats = val
+                elif key == KeyName.primitive_enhanced_category_list:
+                    pencats = val
                 elif key == KeyName.essential:
                     essential = val
             try:
@@ -1302,7 +1305,7 @@ class InterpreterDebugger(Parser):
                 result_by_texts = self.debug_texts(
                     texts=texts,
                     screen_id=screen_id,
-                    encats=encats,
+                    pencats=pencats,
                     essential=essential,
                     with_texts=with_texts,
                 )
@@ -1338,14 +1341,14 @@ def make_testcase(
     yamlpath: Path,
     texts: list[str],
     screen_id: str,
-    encats: list[EnhancedCategory],
+    pencats: list[PrimitiveEnhancedCategory],
     essential: Expr,
 ):
     return {
         KeyName.yamlpath: yamlpath,
         KeyName.texts: texts,
         KeyName.screen_id: screen_id,
-        KeyName.enhanced_category_list: encats,
+        KeyName.primitive_enhanced_category_list: pencats,
         KeyName.essential: essential,
     }
 
@@ -1381,7 +1384,7 @@ def debug_interpreter() -> None:
                 yamlpath="yamls/testyamls/InterpreterTest.yaml",
                 texts=["strip xxx"],
                 screen_id="strip",
-                encats=[
+                pencats=[
                     (("ok1",), None, True),
                     (("ok2",), None, True),
                 ],
@@ -1391,7 +1394,7 @@ def debug_interpreter() -> None:
                 yamlpath="yamls/testyamls/InterpreterTest.yaml",
                 texts=["dedupe xxx"],
                 screen_id="dedupe",
-                encats=[
+                pencats=[
                     (("map1",), None, True),
                     (("map2",), None, True),
                     (("map3",), None, True),
@@ -1403,7 +1406,7 @@ def debug_interpreter() -> None:
                 yamlpath="yamls/testyamls/InterpreterTest.yaml",
                 texts=["dedupe xxx"],
                 screen_id="dedupe",
-                encats=[
+                pencats=[
                     (("map5",), None, True),
                     (("map1",), None, True),
                     (("map2",), None, True),
@@ -1416,7 +1419,7 @@ def debug_interpreter() -> None:
                 yamlpath="yamls/testyamls/InterpreterTest.yaml",
                 texts=["dedupe xxx"],
                 screen_id="dedupe",
-                encats=[
+                pencats=[
                     (("map5",), None, True),
                     (("map1",), None, True),
                     (("map2",), None, True),
@@ -1428,7 +1431,7 @@ def debug_interpreter() -> None:
                 yamlpath="yamls/testyamls/InterpreterTest.yaml",
                 texts=["dedupe xxx"],
                 screen_id="dedupe",
-                encats=[
+                pencats=[
                     (("map5",), None, True),
                     (("map1",), None, True),
                     (("dummy"), None, True),
@@ -1441,7 +1444,7 @@ def debug_interpreter() -> None:
                 yamlpath="yamls/testyamls/InterpreterTest.yaml",
                 texts=["sort xxx"],
                 screen_id="sort",
-                encats=[
+                pencats=[
                     (("map3",), None, True),
                     (("map2",), None, True),
                     (("map4",), None, True),
@@ -1460,7 +1463,7 @@ def debug_interpreter() -> None:
                     "essential ABXDE",  # default で満たす場合
                 ],
                 screen_id="essential",
-                encats=[
+                pencats=[
                     (("need1",), None, True),
                     (("need2",), None, True),
                     (("need3",), None, True),
@@ -1478,7 +1481,7 @@ def debug_interpreter() -> None:
                     "expr1 city sunny",
                 ],
                 screen_id="expr1",
-                encats=[
+                pencats=[
                     (("location", "outdoors"), ~Has(("location", "indoors")), True),
                     (("location", "indoors"), ~Has(("location", "outdoors")), True),
                     (
@@ -1521,7 +1524,7 @@ def debug_interpreter() -> None:
                     "expr2 PQR checkNone",
                 ],
                 screen_id="expr2",
-                encats=[
+                pencats=[
                     (("p",), TrueExpr(), True),
                     (("q",), TrueExpr(), True),
                     (("r",), TrueExpr(), True),
@@ -1545,7 +1548,7 @@ def debug_interpreter() -> None:
                     "expr2 PQ",  # ("p",) があり ("q",) が適用されるので True
                 ],
                 screen_id="expr2",
-                encats=[
+                pencats=[
                     (("p",), TrueExpr(), True),
                     (("q",), Has(("p",)), True),
                 ],
@@ -1565,7 +1568,7 @@ def debug_interpreter() -> None:
                     "report no-report_intervals:5;no-report_intervals:-5;no-report_intervals:100;",  # noqa: E501
                 ],
                 screen_id="report",
-                encats=[
+                pencats=[
                     (("rules_maps",), TrueExpr(), True),  # maps と neg 有効時
                     (("rules_ranges",), TrueExpr(), True),  # ranges と neg 有効時
                     (("rules_intervals",), TrueExpr(), True),  # interval と neg 有効時

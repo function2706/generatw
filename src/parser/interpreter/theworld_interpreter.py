@@ -11,7 +11,13 @@ from pathlib import Path
 from typing import TypeAlias
 
 from common.expr import Has
-from parser.interpreter.interpreter import Interpreter, Memory, MemoryEntry, ScreenTable
+from parser.interpreter.interpreter import (
+    Interpreter,
+    Memory,
+    MemoryEntry,
+    ScreenConfig,
+    ScreenTable,
+)
 
 
 class ScreenName(StrEnum):
@@ -140,8 +146,8 @@ class TheWorldInterpreter(Interpreter):
 
         # 単項タプルの ',' を忘れないように!!
         return {
-            ScreenName.main: (
-                [
+            ScreenName.main: ScreenConfig.set(
+                primitive_enhanced_category=[
                     ((CategoryName.character, CategoryName.name_n), None, True),
                     ((CategoryName.character, CategoryName.vibe), None, False),
                     ((CategoryName.character, CategoryName.affection), None, False),
@@ -242,11 +248,11 @@ class TheWorldInterpreter(Interpreter):
                     ),
                     ((CategoryName.meta, CategoryName.weather), expr_outdoors, False),
                 ],
-                Has((CategoryName.character, CategoryName.name_n)),
-                self.sync_on_main,
+                essential_condition=Has((CategoryName.character, CategoryName.name_n)),
+                syncer=self.sync_on_main,
             ),
-            ScreenName.status: (
-                [
+            ScreenName.status: ScreenConfig.set(
+                primitive_enhanced_category=[
                     ((CategoryName.name_n,), None, True),
                     ((CategoryName.affection,), None, True),
                     ((CategoryName.trust,), None, True),
@@ -266,11 +272,11 @@ class TheWorldInterpreter(Interpreter):
                     ((CategoryName.equipments,), None, True),
                     ((CategoryName.accessories,), None, True),
                 ],
-                Has((CategoryName.name_n,)),
-                None,
+                essential_condition=Has((CategoryName.name_n,)),
+                syncer=None,
             ),
-            ScreenName.fashion: (
-                [
+            ScreenName.fashion: ScreenConfig.set(
+                primitive_enhanced_category=[
                     ((CategoryName.character, CategoryName.name_n), None, True),
                     ((CategoryName.caps,), None, True),
                     ((CategoryName.hands,), None, True),
@@ -288,8 +294,8 @@ class TheWorldInterpreter(Interpreter):
                     ((CategoryName.equipments,), None, True),
                     ((CategoryName.accessories,), None, True),
                 ],
-                Has((CategoryName.character, CategoryName.name_n)),
-                self.sync_on_fashion,
+                essential_condition=Has((CategoryName.character, CategoryName.name_n)),
+                syncer=self.sync_on_fashion,
             ),
         }
 

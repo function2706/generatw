@@ -10,7 +10,13 @@ from enum import StrEnum
 from pathlib import Path
 
 from common.expr import Has
-from parser.interpreter.interpreter import Interpreter, Memory, MemoryEntry, ScreenTable
+from parser.interpreter.interpreter import (
+    Interpreter,
+    Memory,
+    MemoryEntry,
+    ScreenConfig,
+    ScreenTable,
+)
 
 
 class ScreenName(StrEnum):
@@ -74,8 +80,8 @@ class ReverseInterpreter(Interpreter):
 
         # 単項タプルの ',' を忘れないように!!
         return {
-            ScreenName.main: (
-                [
+            ScreenName.main: ScreenConfig.set(
+                primitive_enhanced_category=[
                     ((CategoryName.character, CategoryName.name_n), None, True),
                     ((CategoryName.character, CategoryName.vibe), None, False),
                     (
@@ -121,11 +127,11 @@ class ReverseInterpreter(Interpreter):
                         False,
                     ),
                 ],
-                Has((CategoryName.character, CategoryName.name_n)),
-                self.sync_on_main,
+                essential_condition=Has((CategoryName.character, CategoryName.name_n)),
+                syncer=self.sync_on_main,
             ),
-            ScreenName.action: (
-                [
+            ScreenName.action: ScreenConfig.set(
+                primitive_enhanced_category=[
                     ((CategoryName.character, CategoryName.name_n), None, True),
                     ((CategoryName.asking,), None, False),
                     ((CategoryName.rope,), None, False),
@@ -173,8 +179,8 @@ class ReverseInterpreter(Interpreter):
                         False,
                     ),
                 ],
-                Has((CategoryName.character, CategoryName.name_n)),
-                self.sync_on_action,
+                essential_condition=Has((CategoryName.character, CategoryName.name_n)),
+                syncer=self.sync_on_action,
             ),
         }
 

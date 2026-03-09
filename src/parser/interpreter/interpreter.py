@@ -76,19 +76,42 @@ def prompt_to_memory(prompt: Prompt | None) -> Memory | None:
     return memory
 
 
-MemorySyncer: TypeAlias = Callable[[Memory], Memory]
-EnhancedCategory: TypeAlias = tuple[
-    CategoryPath,  # カテゴリーパス
-    Expr | None,  # ふるいがけ条件 (None = 恒真)
-    bool,  # Report を残すか
-]
+@dataclass(frozen=True)
+class EnhancedCategory:
+    category_path: CategoryPath  # カテゴリーパス
+    sift_condition: Expr | None  # ふるいがけ条件 (None = 恒真)
+    log_report: bool  # Report を残すか
+
+
+PrimitiveEnhancedCategory: TypeAlias = tuple[CategoryPath, Expr | None, bool]
+
+
+@dataclass(frozen=True)
+class ScreenConfig:
+    enhanced_categories: list[EnhancedCategory]  # カテゴリーリスト(兼優先順位)
+    essential_condition: Expr | None  # 充足条件 (None = 恒真)
+    syncer: Callable[[Memory], Memory] | None  # 同期処理定義
+
+    @classmethod
+    def set(
+        cls,
+        primitive_enhanced_category: list[PrimitiveEnhancedCategory],
+        essential_condition: Expr | None,
+        syncer: Callable[[Memory], Memory] | None,
+    ):
+        return cls(
+            enhanced_categories=[
+                EnhancedCategory(encat[0], encat[1], encat[2])
+                for encat in primitive_enhanced_category
+            ],
+            essential_condition=essential_condition,
+            syncer=syncer,
+        )
+
+
 ScreenTable: TypeAlias = dict[
     str,  # Screen ID
-    tuple[
-        list[EnhancedCategory],  # カテゴリーリスト(兼優先順位)
-        Expr | None,  # 充足条件 (None = 恒真)
-        MemorySyncer | None,  # 同期処理定義
-    ],
+    ScreenConfig,
 ]
 
 
@@ -190,12 +213,12 @@ class Interpreter(ABC):
         Returns:
             list[CategoryPath] | None: list[CategoryPath]
         """
-        for sid, (encats, _, _) in self.screen_table.items():
+        for sid, config in self.screen_table.items():
             if sid == screen_id:
-                return [t[0] for t in encats]
+                return [encat.category_path for encat in config.enhanced_categories]
         return None
 
-    def expr_of(self, screen_id: str, category_path: CategoryPath) -> Expr | None:
+    def condition_of(self, screen_id: str, category_path: CategoryPath) -> Expr | None:
         """
         ScreenTable から指定の Screen ID, CategoryPath とペアの Expr を取得する\n
         指定の Screen ID, CategoryPath にあたるものが存在しない場合は None を返す\n
@@ -208,12 +231,12 @@ class Interpreter(ABC):
         Returns:
             Expr | None: Expr
         """
-        for sid, (encats, _, _) in self.screen_table.items():
+        for sid, config in self.screen_table.items():
             if sid != screen_id:
                 continue
-            for encat in encats:
-                if encat[0] == category_path:
-                    return encat[1] if encat[1] is not None else TrueExpr()
+            for encat in config.enhanced_categories:
+                if encat.category_path == category_path:
+                    return encat.sift_condition if encat.sift_condition is not None else TrueExpr()
         return None
 
     def essential_of(self, screen_id: str) -> Expr | None:
@@ -228,9 +251,13 @@ class Interpreter(ABC):
         Returns:
             list[CategoryPath] | None: Essential CategoryPath のリスト
         """
-        for sid, (_, essential, _) in self.screen_table.items():
+        for sid, config in self.screen_table.items():
             if sid == screen_id:
-                return essential if essential is not None else TrueExpr()
+                return (
+                    config.essential_condition
+                    if config.essential_condition is not None
+                    else TrueExpr()
+                )
         return None
 
     def should_leave_report_of(self, screen_id: str, category_paths: set[CategoryPath]) -> bool:
@@ -245,12 +272,12 @@ class Interpreter(ABC):
         Returns:
             bool: True: 残すべき
         """
-        for sid, (encats, _, _) in self.screen_table.items():
+        for sid, config in self.screen_table.items():
             if sid != screen_id:
                 continue
-            for encat in encats:
-                if encat[0] in category_paths:
-                    return encat[2]
+            for encat in config.enhanced_categories:
+                if encat.category_path in category_paths:
+                    return encat.log_report
         return False
 
     def sync(self, prompt: Prompt) -> Prompt | None:
@@ -268,15 +295,15 @@ class Interpreter(ABC):
         if prompt is None:
             return None
 
-        for sid, (_, _, sync_) in self.screen_table.items():
+        for sid, config in self.screen_table.items():
             if sid == prompt.screen_id:
-                if sync_ is None:
+                if config.syncer is None:
                     return prompt
 
                 memory = prompt_to_memory(prompt)
                 if memory is None:
                     return None
-                return sync_(memory).to_prompt(sid)
+                return config.syncer(memory).to_prompt(sid)
 
     def strip(self, prompt: Prompt | None) -> Prompt | None:
         """
@@ -442,7 +469,7 @@ class Interpreter(ABC):
                     new_parts_list.append(parts)
                     continue
 
-                formula = self.expr_of(prompt.screen_id, parts.path)
+                formula = self.condition_of(prompt.screen_id, parts.path)
                 if formula is not None and formula.eval(existing_paths):
                     new_parts_list.append(parts)
             return new_parts_list

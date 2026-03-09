@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from parser.interpreter.interpreter import Interpreter, ScreenTable
+from parser.interpreter.interpreter import Interpreter, ScreenConfig, ScreenTable
 
 
 class DebugInterpreter(Interpreter):
@@ -20,15 +20,15 @@ class DebugInterpreter(Interpreter):
     @property
     def screen_table(self) -> ScreenTable:
         return {
-            "main": (
-                [
+            "main": ScreenConfig.set(
+                primitive_enhanced_category=[
                     (("character", "name"), None, False),
                     (("character", "vibe"), None, False),
                     (("character", "upper"), None, False),
                     (("character", "lower"), None, False),
                 ],
-                None,
-                None,
+                essential_condition=None,
+                syncer=None,
             )
         }
 
