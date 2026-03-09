@@ -179,8 +179,9 @@ class Parser:
         """
         if self.event.in_debugging.is_set():
             return self.debug_interpreter.check_essentiality_of(self.crnt_prompt)
-        else:
+        elif self.interpreter is not None:
             return self.interpreter.check_essentiality_of(self.crnt_prompt)
+        return False
 
     def inform_new_prompt(self, prompt: Prompt) -> None:
         """
