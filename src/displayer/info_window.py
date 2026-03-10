@@ -10,7 +10,7 @@ from tkinter import TclError, font, ttk
 from typing import TYPE_CHECKING, Any
 
 from archiver.dataclasses import NoImageStats, PicStats
-from generator.dataclasses import TaskBlueprint, TaskBlueprintTxt2Img
+from generator.dataclasses import TaskBlueprint, TaskBlueprintImg2Img, TaskBlueprintTxt2Img
 
 if TYPE_CHECKING:
     from displayer.displayer import Displayer
@@ -291,12 +291,16 @@ class TaskInfoTab:
 
             data = [
                 ("キー", "値"),
+                ("タスク種別", Consts.not_available_text),
                 ("ポジティブプロンプト", Consts.not_available_text),
                 ("ネガティブプロンプト", Consts.not_available_text),
                 ("ステップ数", Consts.not_available_text),
                 ("バッチサイズ", Consts.not_available_text),
                 ("サンプラ", Consts.not_available_text),
                 ("スケジューラ", Consts.not_available_text),
+                ("リサイズモード", Consts.not_available_text),
+                ("アップスケーラ", Consts.not_available_text),
+                ("デノイズ強度", Consts.not_available_text),
                 ("スケール", Consts.not_available_text),
                 ("シード値", Consts.not_available_text),
                 ("幅", Consts.not_available_text),
@@ -426,7 +430,7 @@ class InfoWindow:
             )
         self.info_window.title("picmaker - 情報")
         self.info_window.protocol("WM_DELETE_WINDOW", self.destroy)
-        self.info_window.geometry("500x380")
+        self.info_window.geometry("500x460")
         self.info_window.rowconfigure(0, weight=1)
         self.info_window.columnconfigure(0, weight=1)
 
@@ -505,6 +509,9 @@ class InfoWindow:
         if done:
             self.super_owner.last_task = None
             self.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "タスク種別", Consts.not_available_text
+            )
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
                 "ポジティブプロンプト", Consts.not_available_text
             )
             self.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
@@ -523,6 +530,15 @@ class InfoWindow:
                 "スケジューラ", Consts.not_available_text
             )
             self.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "リサイズモード", Consts.not_available_text
+            )
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "アップスケーラ", Consts.not_available_text
+            )
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "デノイズ強度", Consts.not_available_text
+            )
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
                 "スケール", Consts.not_available_text
             )
             self.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
@@ -538,6 +554,7 @@ class InfoWindow:
             )
         elif isinstance(task, TaskBlueprintTxt2Img):
             self.super_owner.last_task = task
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("タスク種別", "txt2img")
             self.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
                 "ポジティブプロンプト", task.prompt
             )
@@ -548,6 +565,43 @@ class InfoWindow:
             self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("バッチサイズ", task.batch_size)
             self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("サンプラ", task.sampler_name)
             self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("スケジューラ", task.scheduler)
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "リサイズモード", Consts.not_available_text
+            )
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "アップスケーラ", Consts.not_available_text
+            )
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("デノイズ強度", "1.0")
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("スケール", task.cfg_scale)
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("シード値", task.seed)
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("幅", task.width)
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("高さ", task.height)
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("宛先アドレス", task.dst_addr)
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("宛先ポート", task.dst_port)
+        elif isinstance(task, TaskBlueprintImg2Img):
+            self.super_owner.last_task = task
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("タスク種別", "img2img")
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "ポジティブプロンプト", task.prompt
+            )
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "ネガティブプロンプト", task.negative_prompt
+            )
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("ステップ数", task.steps)
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("バッチサイズ", task.batch_size)
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("サンプラ", task.sampler_name)
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("スケジューラ", task.scheduler)
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "リサイズモード",
+                task.resize_mode if not task.upscaler_name else Consts.not_available_text,
+            )
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "アップスケーラ",
+                task.upscaler_name if task.upscaler_name else Consts.not_available_text,
+            )
+            self.taskinfo_tab_obj.infobox_frame.infobox_tree.set(
+                "デノイズ強度", task.denoising_strength
+            )
             self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("スケール", task.cfg_scale)
             self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("シード値", task.seed)
             self.taskinfo_tab_obj.infobox_frame.infobox_tree.set("幅", task.width)
