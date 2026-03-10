@@ -26,8 +26,8 @@ from parser.prompter import Report
 
 @dataclass(frozen=True)
 class Consts:
-    max_width: int = 2560
-    max_height: int = 1440
+    max_width: int = 1440
+    max_height: int = 2560
 
 
 class Master(MasterIF):
