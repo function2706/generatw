@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import os
 import tkinter
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
@@ -21,6 +22,12 @@ from generator.dataclasses import TaskBlueprintImg2Img, TaskBlueprintTxt2Img
 from master.interfaces import MasterIF
 from parser.parser import Parser
 from parser.prompter import Report
+
+
+@dataclass(frozen=True)
+class Consts:
+    max_width: int = 2560
+    max_height: int = 1440
 
 
 class Master(MasterIF):
@@ -455,9 +462,17 @@ class Master(MasterIF):
     def reserve_img2img_task(self) -> None:
         """
         アップスケール予約ボタンハンドラ\n
-        NoImage 表示中, あるいはバックエンド変更中の場合は何もしない
+        NoImage 表示中, バックエンド変更中,\n
+        あるいは拡大後の幅 or 高さが最大値を超過する場合は何もしない
         """
-        if self.archiver.crnt_picstats_copy is NoImageStats or self.is_switching_backend:
+        if (
+            self.archiver.crnt_picstats_copy is NoImageStats
+            or self.is_switching_backend
+            or self.archiver.crnt_picstats_copy.info.width * self.crnt_configs.sd_scaleby
+            > Consts.max_width
+            or self.archiver.crnt_picstats_copy.info.height * self.crnt_configs.sd_scaleby
+            > Consts.max_height
+        ):
             return
 
         self.generator.reserve_img2img(

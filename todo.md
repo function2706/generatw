@@ -9,8 +9,6 @@
 
 ## Generaor
 
-- 元画像のサイズでアップスケール対象かどうかを決定する(WQHD以下？)
-
 ## Master
 
 ## Parser
