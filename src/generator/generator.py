@@ -276,16 +276,16 @@ class Generator(ABC, Generic[TaskProgress]):
         self,
         pos: str,
         neg: str,
-        seed: int,
         stps: int,
         b_size: int,
-        smplr: SamplerName,
-        schdlr: SchedulerName,
-        cfg: float,
         w: int,
         h: int,
         d_addr: str,
         d_port: str,
+        seed: int = -1,
+        smplr: SamplerName = SamplerName.dpmpp_2m,
+        schdlr: SchedulerName = SchedulerName.karras,
+        cfg: float = 7.0,
     ):
         """
         新しい txt2img タスクを生成し, タスクリストに予約する\n
@@ -294,16 +294,16 @@ class Generator(ABC, Generic[TaskProgress]):
         Args:
             pos (str): ポジティブプロンプト
             neg (str): ネガティブプロンプト
-            seed (int): シード値
             stps (int): ステップ数
             b_size (int): バッチサイズ
-            smplr (SamplerName): サンプラ
-            schdlr (SchedulerName): スケジューラ
-            cfg (float): コンフィグスケール
             w (int): 幅
             h (int): 高さ
             d_addr (str): 宛先アドレス
             d_port (str): 宛先ポート
+            seed (int): シード値, Defaults to -1.
+            smplr (SamplerName): サンプラ, Defaults to SamplerName.dpmpp_2m.
+            schdlr (SchedulerName): スケジューラ, Defaults to SchedulerName.karras.
+            cfg (float): コンフィグスケール, Defaults to 7.0.
         """
         new_task: TaskBlueprintTxt2Img = TaskBlueprintTxt2Img(
             prompt=pos,
@@ -333,15 +333,15 @@ class Generator(ABC, Generic[TaskProgress]):
         self,
         picstats: PicStats,
         stps: int,
-        smplr: SamplerName,
-        schdlr: SchedulerName,
-        cfg: float,
         scaleby: float,
-        denoise: float,
         d_addr: str,
         d_port: str,
+        smplr: SamplerName = None,
+        schdlr: SchedulerName = SchedulerName.karras,
         resize_mode: ResizeMode = None,
         upsclr: UpScalerName = None,
+        cfg: float = 7.0,
+        denoise: float = 0.65,
     ):
         """
         新しい img2img タスクを生成し, タスクリストに予約する\n
@@ -350,18 +350,31 @@ class Generator(ABC, Generic[TaskProgress]):
         Args:
             picstats (PicStats): 拡大する PicStats
             stps (int): ステップ数
-            smplr (SamplerName): サンプラ
-            schdlr (SchedulerName): スケジューラ
-            cfg (float): コンフィグスケール
             scaleby (float): 拡大率
-            denoise (float): ノイズ付加タイミング
             d_addr (str): 宛先アドレス
             d_port (str): 宛先ポート
+            smplr (SamplerName): サンプラ, Defaults to None.
+            schdlr (SchedulerName): スケジューラ, Defaults to SchedulerName.karras.
             resize_mode (ResizeMode, optional): 拡大モード(for A1111), Defaults to None.
             upsclr (UpScalerName, optional): アップスケーラ(for ComfyUI), Defaults to None.
+            cfg (float): コンフィグスケール, Defaults to 7.0.
+            denoise (float): ノイズ付加タイミング, Defaults to 0.65.
         """
 
         backend = self.master.backend_type
+        if backend == BackEnd.comfy_ui:
+            if smplr is None:
+                smplr = SamplerName.dpmpp_2m_sde_gpu
+            if upsclr is None:
+                upsclr = UpScalerName.nearest_exact
+        elif backend == BackEnd.a1111:
+            if smplr is None:
+                smplr = SamplerName.dpmpp_2m_sde
+            if resize_mode is None:
+                resize_mode = 3
+        else:
+            raise ValueError("Invalid backend for generator, img2img.")
+
         new_task: TaskBlueprintImg2Img = TaskBlueprintImg2Img(
             path=str(picstats.path),
             prompt=picstats.info.positive_prompt,

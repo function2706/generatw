@@ -17,13 +17,7 @@ from displayer.dataclasses import GUIConfigs
 from displayer.displayer import Displayer
 from generator.a1111_generator import A1111Generator
 from generator.comfyui_generator import ComfyUIGenerator
-from generator.dataclasses import (
-    SamplerName,
-    SchedulerName,
-    TaskBlueprintImg2Img,
-    TaskBlueprintTxt2Img,
-    UpScalerName,
-)
+from generator.dataclasses import TaskBlueprintImg2Img, TaskBlueprintTxt2Img
 from master.interfaces import MasterIF
 from parser.parser import Parser
 from parser.prompter import Report
@@ -60,6 +54,7 @@ class Master(MasterIF):
                 sd_batch_size=2,
                 sd_width=540,
                 sd_height=960,
+                sd_scaleby=2.0,
                 each_max_pics=8,
                 yamlpath=None,
                 backend=BackEnd.a1111.value,
@@ -449,12 +444,8 @@ class Master(MasterIF):
         self.generator.reserve_txt2img(
             pos=positive,
             neg=negative,
-            seed=-1,
             stps=self.crnt_configs.sd_steps,
             b_size=batch_size,
-            smplr=SamplerName.dpmpp_2m,
-            schdlr=SchedulerName.karras,
-            cfg=7.0,
             w=self.crnt_configs.sd_width,
             h=self.crnt_configs.sd_height,
             d_addr=self.crnt_configs.srv_ipaddr,
@@ -472,17 +463,9 @@ class Master(MasterIF):
         self.generator.reserve_img2img(
             picstats=self.archiver.crnt_picstats_copy,
             stps=self.crnt_configs.sd_steps,
-            smplr=SamplerName.dpmpp_2m_sde_gpu
-            if self.backend == BackEnd.comfy_ui
-            else SamplerName.dpmpp_2m_sde,
-            schdlr=SchedulerName.karras,
-            cfg=7.0,
-            scaleby=1.2,
-            denoise=0.65,
+            scaleby=self.crnt_configs.sd_scaleby,
             d_addr=self.crnt_configs.srv_ipaddr,
             d_port=self.crnt_configs.srv_port,
-            resize_mode=3 if self.backend_type == BackEnd.a1111 else None,
-            upsclr=UpScalerName.nearest_exact if self.backend_type == BackEnd.comfy_ui else None,
         )
 
     def refresh_pic_randomly(self, construct_window=False) -> None:

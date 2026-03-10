@@ -190,12 +190,23 @@ class MainTab:
                 sticky="w",
                 on_change=owner.super_owner.super_owner.update_configs,
             )
+            # テキストボックス(倍率)
+            self.scaleby_entry = put_textbox(
+                frame=self.sd_interior_config_frame,
+                name="倍率",
+                row=1,
+                col=4,
+                width=4,
+                default=str(init_configs.sd_scaleby),
+                sticky="w",
+                on_change=owner.super_owner.super_owner.update_configs,
+            )
             # テキストボックス(ステップ数)
             self.steps_entry = put_textbox(
                 frame=self.sd_interior_config_frame,
                 name="ステップ数",
                 row=1,
-                col=4,
+                col=6,
                 width=4,
                 default=str(init_configs.sd_steps),
                 sticky="w",
@@ -206,7 +217,7 @@ class MainTab:
                 frame=self.sd_interior_config_frame,
                 name="生成数",
                 row=1,
-                col=6,
+                col=8,
                 width=4,
                 default=str(init_configs.sd_batch_size),
                 sticky="w",
@@ -857,6 +868,9 @@ class Displayer:
             sd_width=int(self.main_window.main_tab_obj.sd_interior_config_frame.width_entry.get()),
             sd_height=int(
                 self.main_window.main_tab_obj.sd_interior_config_frame.height_entry.get()
+            ),
+            sd_scaleby=float(
+                self.main_window.main_tab_obj.sd_interior_config_frame.scaleby_entry.get()
             ),
             each_max_pics=int(
                 self.main_window.main_tab_obj.gen_ctrl_config_frame.each_max_pics_entry.get()

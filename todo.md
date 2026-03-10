@@ -13,8 +13,6 @@
 
 ## Master
 
-- reserve 系の引数見直し
-
 ## Parser
 
 - main 画面の upper/lower も fashion_list に記録しておき, ここが変わった = 衣装もリセットとする機構
