@@ -115,13 +115,27 @@ class MainTab:
                 command=owner.super_owner.super_owner.on_interrput_task,
             )
             self.interrupt_button.grid(row=0, column=1, padx=6, pady=6, sticky="w")
-            # タスククリア
+            # 全タスククリア
             self.clear_button = ttk.Button(
                 self.button_frame,
-                text="タスククリア",
+                text="全タスククリア",
                 command=owner.super_owner.super_owner.on_flush_tasks,
             )
             self.clear_button.grid(row=0, column=2, padx=6, pady=6, sticky="w")
+            # 生成タスククリア
+            self.clear_txt2img_button = ttk.Button(
+                self.button_frame,
+                text="生成タスククリア",
+                command=owner.super_owner.super_owner.on_flush_txt2img_tasks,
+            )
+            self.clear_txt2img_button.grid(row=0, column=3, padx=6, pady=6, sticky="w")
+            # 拡大タスククリア
+            self.clear_img2img_button = ttk.Button(
+                self.button_frame,
+                text="拡大タスククリア",
+                command=owner.super_owner.super_owner.on_flush_img2img_tasks,
+            )
+            self.clear_img2img_button.grid(row=0, column=4, padx=6, pady=6, sticky="w")
             # ボタン(画像を表示)
             self.output_button = ttk.Button(
                 self.button_frame,
@@ -136,13 +150,6 @@ class MainTab:
                 command=owner.super_owner.super_owner.on_open_info_window,
             )
             self.open_info_button.grid(row=1, column=1, padx=6, pady=6, sticky="w")
-            # ボタン(YAML選択)
-            self.select_yaml_button = ttk.Button(
-                self.button_frame,
-                text="YAML選択",
-                command=owner.super_owner.super_owner.on_select_yaml,
-            )
-            self.select_yaml_button.grid(row=1, column=2, padx=6, pady=6, sticky="w")
 
     class SDInteriorConfigFrame:
         """
@@ -186,9 +193,9 @@ class MainTab:
             # テキストボックス(ステップ数)
             self.steps_entry = put_textbox(
                 frame=self.sd_interior_config_frame,
-                name="Steps",
-                row=2,
-                col=0,
+                name="ステップ数",
+                row=1,
+                col=4,
                 width=4,
                 default=str(init_configs.sd_steps),
                 sticky="w",
@@ -198,8 +205,8 @@ class MainTab:
             self.batch_size_entry = put_textbox(
                 frame=self.sd_interior_config_frame,
                 name="生成数",
-                row=2,
-                col=2,
+                row=1,
+                col=6,
                 width=4,
                 default=str(init_configs.sd_batch_size),
                 sticky="w",
@@ -246,6 +253,35 @@ class MainTab:
                 on_change=owner.super_owner.super_owner.update_configs,
             )
 
+    class GenCtrlConfigFrame:
+        """
+        生成制御設定フレーム
+        """
+
+        def __init__(self, owner: MainTab, init_configs: GUIConfigs):
+            """
+            生成制御設定フレーム
+
+            Args:
+                owner (ConfigWindow.MainTab): MainTab インスタンス
+            """
+            self.super_owner = owner
+
+            self.gen_ctrl_config_frame = ttk.Frame(owner.main_frame)
+            self.gen_ctrl_config_frame.grid(row=3, column=0, sticky="w")
+
+            # テキストボックス(プロンプトごとの生成上限)
+            self.each_max_pics_entry = put_textbox(
+                frame=self.gen_ctrl_config_frame,
+                name="プロンプトごとの生成上限",
+                row=0,
+                col=0,
+                width=4,
+                default=str(init_configs.each_max_pics),
+                sticky="w",
+                on_change=owner.super_owner.super_owner.update_configs,
+            )
+
     class SellectFrame:
         """
         エンドポイント選択フレーム
@@ -254,7 +290,7 @@ class MainTab:
         def __init__(self, owner: MainTab, init_configs: GUIConfigs):
             self.super_owner = owner
             self.thread_sellect_frame = ttk.Frame(owner.main_frame)
-            self.thread_sellect_frame.grid(row=3, column=0, sticky="w")
+            self.thread_sellect_frame.grid(row=4, column=0, sticky="w")
 
             # YAML 選択
             ttk.Label(self.thread_sellect_frame, text="選択中のYAML").grid(
@@ -271,13 +307,20 @@ class MainTab:
             ttk.Label(self.thread_sellect_frame, textvariable=self.yamlpath_var).grid(
                 row=0, column=1, padx=6, pady=6, sticky="w"
             )
+            # ボタン(YAML選択)
+            self.select_yaml_button = ttk.Button(
+                self.thread_sellect_frame,
+                text="YAML選択",
+                command=owner.super_owner.super_owner.on_select_yaml,
+            )
+            self.select_yaml_button.grid(row=0, column=2, padx=6, pady=6, sticky="w")
             # ボタン(再読み込み)
             self.debug_button = ttk.Button(
                 self.thread_sellect_frame,
                 text="再読み込み",
                 command=owner.super_owner.super_owner.on_reload_yaml,
             )
-            self.debug_button.grid(row=0, column=2, padx=6, pady=6, sticky="w")
+            self.debug_button.grid(row=0, column=3, padx=6, pady=6, sticky="w")
             # チェックボックス(記憶の継続)
             self.allow_carryover_yaml_record = tkinter.BooleanVar()
             ttk.Checkbutton(
@@ -285,7 +328,7 @@ class MainTab:
                 text="記憶の継続",
                 variable=self.allow_carryover_yaml_record,
                 command=self.super_owner.super_owner.super_owner.update_configs,
-            ).grid(row=0, column=3, padx=6, pady=6, sticky="w")
+            ).grid(row=0, column=4, padx=6, pady=6, sticky="w")
             self.allow_carryover_yaml_record.set(init_configs.allow_carryover_yaml_record)
 
             # バックエンド
@@ -323,6 +366,7 @@ class MainTab:
         self.button_frame = self.ButtonFrame(self)
         self.sd_interior_config_frame = self.SDInteriorConfigFrame(self, init_configs)
         self.sd_exterior_config_frame = self.SDExteriorConfigFrame(self, init_configs)
+        self.gen_ctrl_config_frame = self.GenCtrlConfigFrame(self, init_configs)
         self.sellect_frame = self.SellectFrame(self, init_configs)
 
 
@@ -649,9 +693,21 @@ class Displayer:
 
     def on_flush_tasks(self) -> None:
         """
-        タスククリアボタンハンドラ
+        全タスククリアボタンハンドラ
         """
         self.to_master.enclose(master.events.OnFlushTasks())
+
+    def on_flush_txt2img_tasks(self) -> None:
+        """
+        生成タスククリアボタンハンドラ
+        """
+        self.to_master.enclose(master.events.OnFlushTxt2ImgTasks())
+
+    def on_flush_img2img_tasks(self) -> None:
+        """
+        拡大タスククリアボタンハンドラ
+        """
+        self.to_master.enclose(master.events.OnFlushImg2ImgTasks())
 
     def on_open_pic_window(self) -> None:
         """
@@ -779,6 +835,9 @@ class Displayer:
             sd_width=int(self.main_window.main_tab_obj.sd_interior_config_frame.width_entry.get()),
             sd_height=int(
                 self.main_window.main_tab_obj.sd_interior_config_frame.height_entry.get()
+            ),
+            each_max_pics=int(
+                self.main_window.main_tab_obj.gen_ctrl_config_frame.each_max_pics_entry.get()
             ),
             yamlpath=str(self.main_window.main_tab_obj.sellect_frame.yamlpath)
             if self.main_window.main_tab_obj.sellect_frame.yamlpath is not None

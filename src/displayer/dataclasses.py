@@ -21,6 +21,7 @@ class GUIConfigs:
     sd_batch_size: int = 0
     sd_width: int = 0
     sd_height: int = 0
+    each_max_pics: int = 0
     yamlpath: str | None = None
     backend: str = ""
     allow_carryover_yaml_record: bool = False

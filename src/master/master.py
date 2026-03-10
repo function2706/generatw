@@ -60,6 +60,7 @@ class Master(MasterIF):
                 sd_batch_size=2,
                 sd_width=540,
                 sd_height=960,
+                each_max_pics=8,
                 yamlpath=None,
                 backend=BackEnd.a1111.value,
                 allow_edit_clipboard=False,
@@ -393,9 +394,43 @@ class Master(MasterIF):
                     f"paths: {sorted(report.paths)}\n"
                 )
 
+    def reserve_txt2img_task(self, positive: str, negative: str) -> None:
+        """
+        生成予約ボタンハンドラ\n
+        生成数上限到達時, あるいはバックエンド変更中の場合は何もしない\n
+        バッチサイズが残り容量より大きい場合, その差だけ生成する(すり切りいっぱい)
+        """
+        rest_capacity = self.crnt_gui_configs.each_max_pics - self.archiver.count_files_in(
+            self.parser.crnt_prompt_dir
+        )
+        if rest_capacity <= 0 or self.is_switching_backend:
+            return
+
+        batch_size = (
+            rest_capacity
+            if (rest_capacity < self.crnt_configs.sd_batch_size)
+            else self.crnt_configs.sd_batch_size
+        )
+
+        self.generator.reserve_txt2img(
+            pos=positive,
+            neg=negative,
+            seed=-1,
+            stps=self.crnt_configs.sd_steps,
+            b_size=batch_size,
+            smplr=SamplerName.dpmpp_2m,
+            schdlr=SchedulerName.karras,
+            cfg=7.0,
+            w=self.crnt_configs.sd_width,
+            h=self.crnt_configs.sd_height,
+            d_addr=self.crnt_configs.srv_ipaddr,
+            d_port=self.crnt_configs.srv_port,
+        )
+
     def reserve_img2img_task(self) -> None:
         """
-        アップスケール予約ボタンハンドラ
+        アップスケール予約ボタンハンドラ\n
+        NoImage 表示中, あるいはバックエンド変更中の場合は何もしない
         """
         if self.archiver.crnt_picstats_copy is NoImageStats or self.is_switching_backend:
             return
@@ -414,30 +449,6 @@ class Master(MasterIF):
             d_port=self.crnt_configs.srv_port,
             resize_mode=3 if self.backend_type == BackEnd.a1111 else None,
             upsclr=UpScalerName.nearest_exact if self.backend_type == BackEnd.comfy_ui else None,
-        )
-
-    def reserve_txt2img_task(self, positive: str, negative: str) -> None:
-        """
-        新しいタスクを生成し, タスクリストに予約する\n
-        ただしプロンプト生成に十分なステータスが記録されていない,\n
-        すでにリストに存在する, あるいは作業中のタスクの場合は何もしない
-        """
-        if self.is_switching_backend:
-            return
-
-        self.generator.reserve_txt2img(
-            pos=positive,
-            neg=negative,
-            seed=-1,
-            stps=self.crnt_configs.sd_steps,
-            b_size=self.crnt_configs.sd_batch_size,
-            smplr=SamplerName.dpmpp_2m,
-            schdlr=SchedulerName.karras,
-            cfg=7.0,
-            w=self.crnt_configs.sd_width,
-            h=self.crnt_configs.sd_height,
-            d_addr=self.crnt_configs.srv_ipaddr,
-            d_port=self.crnt_configs.srv_port,
         )
 
     def refresh_pic_randomly(self, construct_window=False) -> None:

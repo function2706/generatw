@@ -45,6 +45,16 @@ class OnFlushTasks(DisplayerEvent):
 
 
 @dataclass
+class OnFlushTxt2ImgTasks(DisplayerEvent):
+    pass
+
+
+@dataclass
+class OnFlushImg2ImgTasks(DisplayerEvent):
+    pass
+
+
+@dataclass
 class OnSelectYaml(DisplayerEvent):
     path: Path
 
