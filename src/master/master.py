@@ -251,6 +251,10 @@ class Master(MasterIF):
                 self.generator.reserve_interrupt()
             if isinstance(event, master.events.OnFlushTasks):
                 self.generator.clear()
+            if isinstance(event, master.events.OnFlushTxt2ImgTasks):
+                self.generator.clear_of(TaskBlueprintTxt2Img)
+            if isinstance(event, master.events.OnFlushImg2ImgTasks):
+                self.generator.clear_of(TaskBlueprintImg2Img)
             if isinstance(event, master.events.OnSelectYaml):
                 self.switch_frontend(Path(event.path))
             if isinstance(event, master.events.OnReloadYaml):

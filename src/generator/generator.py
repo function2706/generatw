@@ -400,6 +400,18 @@ class Generator(ABC, Generic[TaskProgress]):
             self.tasks.clear()
             self.to_master.enclose(master.events.ChangeTasks(0 if self.crnt_task is None else 1))
 
+    def clear_of(self, task_type: type) -> None:
+        """
+        タスクリストを空にする
+        """
+        with self.tasks_lock:
+            self.tasks.clear_type(task_type)
+            self.to_master.enclose(
+                master.events.ChangeTasks(
+                    len(self.tasks) if self.crnt_task is None else len(self.tasks) + 1
+                )
+            )
+
     def is_crnt_task_none(self) -> bool:
         """
         現在のタスクが存在するか
