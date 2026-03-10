@@ -225,6 +225,9 @@ class Master(MasterIF):
                     elif isinstance(event.next_picstats, PicStats):
                         print(f"{event.next_picstats.name}")
                 self.displayer.update_pic_window(event.next_picstats)
+            if isinstance(event, master.events.DetectPicsChanges):
+                print(f"type={event.type}")
+                self.displayer.update_main_window(rest_capacity=self.rest_files_in_crnt_dir)
 
     def operate_from_displayer(self) -> None:
         """
@@ -268,6 +271,7 @@ class Master(MasterIF):
                 self.archiver.remove_crnt_picstats()
             if isinstance(event, master.events.OnChangeConfig):
                 self.crnt_configs = event.new_config
+                self.displayer.update_main_window(rest_capacity=self.rest_files_in_crnt_dir)
             if isinstance(event, master.events.OnSwitchBackend):
                 self.switch_backend(event.new_backend)
 
@@ -373,6 +377,33 @@ class Master(MasterIF):
         """
         return self.crnt_configs
 
+    @property
+    def files_in_crnt_dir(self) -> int:
+        """
+        記録中プロンプトに紐づくディレクトリ内の画像枚数を取得する
+
+        Returns:
+            int: 枚数
+        """
+        return (
+            self.archiver.count_files_in(self.parser.crnt_prompt_dir)
+            if self.parser.crnt_prompt_dir is not None
+            else None
+        )
+
+    @property
+    def rest_files_in_crnt_dir(self) -> int:
+        """
+        記録中プロンプトに紐づくディレクトリの枚数残り容量を取得する
+
+        Returns:
+            int: 残り枚数
+        """
+        if self.files_in_crnt_dir is None:
+            return None
+        rest = self.crnt_gui_configs.each_max_pics - self.files_in_crnt_dir
+        return rest if rest >= 0 else 0
+
     def log_nothit_reports(self, nothit_reports: list[Report]) -> None:
         """
         無ヒットレポートをロギングする
@@ -400,15 +431,14 @@ class Master(MasterIF):
         生成数上限到達時, あるいはバックエンド変更中の場合は何もしない\n
         バッチサイズが残り容量より大きい場合, その差だけ生成する(すり切りいっぱい)
         """
-        rest_capacity = self.crnt_gui_configs.each_max_pics - self.archiver.count_files_in(
-            self.parser.crnt_prompt_dir
-        )
-        if rest_capacity <= 0 or self.is_switching_backend:
+        if (
+            self.rest_files_in_crnt_dir is not None and self.rest_files_in_crnt_dir <= 0
+        ) or self.is_switching_backend:
             return
 
         batch_size = (
-            rest_capacity
-            if (rest_capacity < self.crnt_configs.sd_batch_size)
+            self.rest_files_in_crnt_dir
+            if (self.rest_files_in_crnt_dir < self.crnt_configs.sd_batch_size)
             else self.crnt_configs.sd_batch_size
         )
 
@@ -462,7 +492,7 @@ class Master(MasterIF):
         if construct_window:
             self.displayer.pic_window.construct(fix_position=True)
 
-        if self.archiver.count_files_in(self.parser.crnt_prompt_dir) == 0:
+        if self.files_in_crnt_dir == 0:
             # 記録中ステータスに紐づくディレクトリ内に画像がない
             self.archiver.drop_picstats()
             return

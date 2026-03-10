@@ -281,6 +281,14 @@ class MainTab:
                 sticky="w",
                 on_change=owner.super_owner.super_owner.update_configs,
             )
+            self.rest_capacity = put_textlabel(
+                frame=self.gen_ctrl_config_frame,
+                name="現在のディレクトリの残り容量(枚):",
+                row=0,
+                col=2,
+                default="",
+                sticky="w",
+            )
 
     class SellectFrame:
         """
@@ -633,7 +641,7 @@ class Displayer:
         except TclError:
             return False
 
-    def destroy(self, fix_position=False) -> None:
+    def destroy(self) -> None:
         """
         設定ウィンドウのクローズ時のハンドラ
         """
@@ -641,6 +649,20 @@ class Displayer:
         self.info_window.destroy()
         if self.exists():
             self.master.root.destroy()
+
+    def update_main_window(self, rest_capacity: int | None) -> None:
+        """
+        メインウィンドウを更新する\n
+        None が指定されている場合は N/A 相当の表示を行う
+
+        Args:
+            rest_capacity (int): 現在のディレクトリの残り容量
+        """
+        from displayer.info_window import Consts
+
+        self.main_window.main_tab_obj.gen_ctrl_config_frame.rest_capacity.set(
+            rest_capacity if rest_capacity is not None else Consts.not_available_text
+        )
 
     def update_pic_window(self, picstats: PicStats = None) -> None:
         """

@@ -25,6 +25,11 @@ class NewPicStats(ArchiverEvent):
 
 
 @dataclass
+class DetectPicsChanges(ArchiverEvent):
+    type: str
+
+
+@dataclass
 class DisplayerEvent:
     pass
 

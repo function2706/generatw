@@ -295,6 +295,7 @@ class Archiver:
             if eventtype == EventType.created:
                 # 追加: リストにも追加
                 self.archive.add(path)
+                self.to_master.enclose(master.events.DetectPicsChanges(type="created"))
             elif eventtype == EventType.deleted:
                 # 削除: リストからも削除, さらにまだ注目中なら他へ移す
                 # もしディレクトリが空ならこれも削除し, まだ注目中なら注目を解除する
@@ -306,5 +307,7 @@ class Archiver:
                     os.rmdir(path.parent)
                     if self.crnt_picstats.path == path:
                         self.drop_picstats()
+                self.to_master.enclose(master.events.DetectPicsChanges(type="deleted"))
             elif eventtype == EventType.moved:
                 print("T.B.D.")
+                self.to_master.enclose(master.events.DetectPicsChanges(type="moved"))

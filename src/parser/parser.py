@@ -140,12 +140,13 @@ class Parser:
 
         self.interpreter_cache = deepcopy(self.interpreter)
 
-    def make_prompt_strs(self) -> tuple[str, str]:
+    def make_prompt_strs(self) -> tuple[str, str] | None:
         """
-        現在の Prompter 成果物からプロンプト文字列を生成する
+        現在の Prompter 成果物からプロンプト文字列を生成する\n
+        現在のプロンプトが未指定 (None) の場合は None を返す
 
         Returns:
-            str: プロンプト文字列
+            str | None: プロンプト文字列
         """
         if self.crnt_prompt is None:
             return None
@@ -162,13 +163,14 @@ class Parser:
     @property
     def crnt_prompt_dir(self) -> str:
         """
-        記録中プロンプトに適合するディレクトリ名を返す
+        記録中プロンプトに適合するディレクトリ名を返す\n
+        現在のプロンプトが未指定 (None) の場合は None を返す
 
         Returns:
-            str: ディレクトリ名
+            str | None: ディレクトリ名
         """
-        pos, neg = self.make_prompt_strs()
-        return dirname_by_prompts(pos, neg)
+        strs = self.make_prompt_strs()
+        return dirname_by_prompts(strs[0], strs[1]) if strs is not None else None
 
     def is_enough_prompt(self) -> bool:
         """
