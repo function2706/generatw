@@ -861,7 +861,7 @@ name: Fugami, season: 11, vitality: 50, upper: Shirt, lower: Pants,
 
 ### 10.1 正規表現
 
-- 可変長後読み `(?<=pattern*)` は使用不可 (ython re 制限)
+- 可変長後読み `(?<=pattern*)` は使用不可 (python re 制限)
 - バックスラッシュは必ずエスケープ (AML 仕様: `\\` で記述)
 - キャプチャグループの番号は左から順に自動採番(`(a)(b)` なら 1, 2)
 
