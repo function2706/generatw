@@ -61,6 +61,50 @@ def find_nodes(data: dict, class_type: str):
     ]
 
 
+def gen_images(width: int, height: int, batch_size: int, top_seed: int, prompt) -> list[dict]:
+    seeds = [top_seed + i for i in range(batch_size)]
+    images: list[dict] = []
+
+    for idx, s in enumerate(seeds):
+        rng = random.Random(s)
+        color = (rng.randint(0, 255), rng.randint(0, 255), rng.randint(0, 255))
+        img = Image.new("RGB", (width, height), color=color)
+        try:
+            font = ImageFont.truetype("arial.ttf", 24)
+        except IOError:
+            font = ImageFont.load_default()
+        draw = ImageDraw.Draw(img)
+        text = f"{idx=}, seed={s}, time={datetime.datetime.now().strftime('%H:%M:%S')}"
+        for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            draw.text((10 + dx, 10 + dy), text, fill=(0, 0, 0), font=font)
+        draw.text((10, 10), text, fill=(255, 255, 255), font=font)
+        meta = PngImagePlugin.PngInfo()
+        meta.add_text("prompt", json.dumps(prompt))
+        buffer = BytesIO()
+        img.save(buffer, format="PNG", pnginfo=meta)
+        buffer.seek(0)
+        filename = f"{uuid.uuid4()}.png"
+        IMAGES[filename] = buffer.getvalue()
+        images.append({"filename": filename, "subfolder": "", "type": "output"})
+
+    return images
+
+
+def upscale(path: str, new_width: int, new_height: int, prompt) -> list[dict]:
+    img = Image.open(path)
+    w, h = img.size
+    resized = img.resize((new_width, new_height), Image.LANCZOS)
+
+    meta = PngImagePlugin.PngInfo()
+    meta.add_text("prompt", json.dumps(prompt))
+    buffer = BytesIO()
+    resized.save(buffer, format="PNG", pnginfo=meta)
+    buffer.seek(0)
+    filename = f"{uuid.uuid4()}.png"
+    IMAGES[filename] = buffer.getvalue()
+    return [{"filename": filename, "subfolder": "", "type": "output"}]
+
+
 async def simulate_generation(prompt_id: str):
     """ComfyUI の WebSocket イベントを模倣する"""
     try:
@@ -84,13 +128,14 @@ async def simulate_generation(prompt_id: str):
         ksampler_nodes = find_nodes(prompt, "KSampler")
         empty_latent_nodes = find_nodes(prompt, "EmptyLatentImage")
         preview_nodes = find_nodes(prompt, "PreviewImage")
+        load_image_nodes = find_nodes(prompt, "UnlimitLoadImage")
+        latent_upscale_nodes = find_nodes(prompt, "LatentUpscale")
 
-        if not ksampler_nodes or not empty_latent_nodes or not preview_nodes:
+        if not ksampler_nodes or not preview_nodes:
             print("[ERROR] Missing required nodes in workflow")
             return
 
         ksampler_id, ksampler = ksampler_nodes[0]
-        _, empty_latent_image = empty_latent_nodes[0]
         preview_image_id, _ = preview_nodes[0]
 
         seed = ksampler["inputs"]["seed"]
@@ -120,39 +165,23 @@ async def simulate_generation(prompt_id: str):
 
         await asyncio.sleep(0.3)
 
-        # 画像生成
-        seeds: list[int] = []
-        batch_size = empty_latent_image["inputs"]["batch_size"]
-        width = empty_latent_image["inputs"]["width"] & -8
-        height = empty_latent_image["inputs"]["height"] & -8
-        seeds = [seed + i for i in range(batch_size)]
-        images = []
-        for idx, s in enumerate(seeds):
-            rng = random.Random(s)
-            color = (rng.randint(0, 255), rng.randint(0, 255), rng.randint(0, 255))
-            img = Image.new("RGB", (width, height), color=color)
-
-            try:
-                font = ImageFont.truetype("arial.ttf", 24)
-            except IOError:
-                font = ImageFont.load_default()
-            draw = ImageDraw.Draw(img)
-            text = f"{idx=}, seed={s}, time={datetime.datetime.now().strftime('%H:%M:%S')}"
-            for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-                draw.text((10 + dx, 10 + dy), text, fill=(0, 0, 0), font=font)
-            draw.text((10, 10), text, fill=(255, 255, 255), font=font)
-
-            meta = PngImagePlugin.PngInfo()
-            meta.add_text("prompt", json.dumps(prompt))
-
-            buffer = BytesIO()
-            img.save(buffer, format="PNG", pnginfo=meta)
-            buffer.seek(0)
-
-            filename = f"{uuid.uuid4()}.png"
-            IMAGES[filename] = buffer.getvalue()
-
-            images.append({"filename": filename, "subfolder": "", "type": "output"})
+        # 画像生成 or 拡大
+        if empty_latent_nodes:
+            _, empty_latent_image = empty_latent_nodes[0]
+            batch_size = empty_latent_image["inputs"]["batch_size"]
+            width = empty_latent_image["inputs"]["width"] & -8
+            height = empty_latent_image["inputs"]["height"] & -8
+            images = gen_images(width, height, batch_size, seed, prompt)
+        elif load_image_nodes and latent_upscale_nodes:
+            _, load_image = load_image_nodes[0]
+            _, latent_upscale = latent_upscale_nodes[0]
+            path = load_image["inputs"]["path"]
+            width = latent_upscale["inputs"]["width"]
+            height = latent_upscale["inputs"]["height"]
+            images = upscale(path, width, height, prompt)
+        else:
+            print("[ERROR] Missing required nodes in workflow on generating or upscaling")
+            return
 
         # PreviewImage ノードの出力として複数画像を返す
         PROMPTS[prompt_id]["outputs"] = {preview_image_id: {"images": images}}

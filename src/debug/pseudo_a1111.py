@@ -288,6 +288,20 @@ async def txt2img(req: Txt2ImgRequest):
     }
 
 
+def decode_base64_image(b64str: str) -> bytes:
+    if b64str.startswith("data:image"):
+        b64str = b64str.split(",", 1)[1]
+    b64str = b64str.strip().replace("\n", "").replace("\r", "")
+    missing = len(b64str) % 4
+    if missing:
+        b64str += "=" * (4 - missing)
+
+    try:
+        return base64.b64decode(b64str)
+    except Exception:
+        return base64.urlsafe_b64decode(b64str)
+
+
 @app.post("/sdapi/v1/img2img")
 async def img2img(req: Img2ImgRequest):
     app.state.active = True
@@ -298,7 +312,7 @@ async def img2img(req: Img2ImgRequest):
     app.state.job = "img2img"
 
     try:
-        init_bytes = base64.b64decode(req.init_images[0])
+        init_bytes = decode_base64_image(req.init_images[0])
         base_img = Image.open(io.BytesIO(init_bytes)).convert("RGB")
     except Exception as e:
         return {"error": f"invalid init_images: {e}"}
@@ -326,24 +340,13 @@ async def img2img(req: Img2ImgRequest):
         cooldown = float(getattr(app.state, "cooldown", 0)) / app.state.sampling_steps
         await asyncio.sleep(cooldown)
 
-    for idx, s in enumerate(seeds):
+    new_width = req.width
+    new_height = req.height
+    for _, _ in enumerate(seeds):
         img = base_img.copy()
-        draw = ImageDraw.Draw(img)
-
-        try:
-            font = ImageFont.truetype("arial.ttf", 24)
-        except IOError:
-            font = ImageFont.load_default()
-
-        draw.text(
-            (10, 10),
-            f"img2img idx={idx}\nseed={s}\ndenoise={req.denoising_strength}",
-            fill=(255, 255, 255),
-            font=font,
-        )
-
+        resized = img.resize((new_width, new_height), Image.LANCZOS)
         buf = io.BytesIO()
-        img.save(buf, format="PNG")
+        resized.save(buf, format="PNG")
         images_b64.append(base64.b64encode(buf.getvalue()).decode("ascii"))
 
     prompt = req.prompt or ""
@@ -356,7 +359,7 @@ async def img2img(req: Img2ImgRequest):
     for i in range(total_images):
         seed_val = seeds[i]
         infotexts.append(
-            make_infotext(req, prompt, neg, seed_val, width, height)
+            make_infotext(req, prompt, neg, seed_val, new_width, new_height)
             + f", Denoising strength: {req.denoising_strength}"
         )
         all_prompts.append(prompt)
@@ -375,8 +378,8 @@ async def img2img(req: Img2ImgRequest):
         "subseed": seeds[0],
         "all_subseeds": seeds,
         "subseed_strength": 0,
-        "width": width,
-        "height": height,
+        "width": new_width,
+        "height": new_height,
         "denoising_strength": req.denoising_strength,
         "sampler_name": req.sampler_name or req.sampler_index,
         "cfg_scale": req.cfg_scale,
