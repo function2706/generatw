@@ -364,16 +364,6 @@ class Master(MasterIF):
         return self.backend
 
     @property
-    def backend_name(self) -> str:
-        """
-        バックエンド名
-
-        Returns:
-            str: バックエンド名
-        """
-        return self.backend.value
-
-    @property
     def crnt_gui_configs(self) -> GUIConfigs:
         """
         現在の GUI 上の設定値
