@@ -31,6 +31,27 @@ INTERPRETER_LIST: list[type[Interpreter]] = [
 ]
 
 
+def safe_paste(retry: int = 5, delay: float = 0.1) -> str | None:
+    """
+    クリップボードから文字列を取得する\n
+    PyperclipWindowsException (pyperclip が Windows 上でクリップボードを open できない)については\n
+    delay 秒ごとに retry 回再試行し, すべてに失敗した場合に None を返す
+
+    Args:
+        retry (int, optional): リトライ回数. Defaults to 5.
+        delay (float, optional): リトライ間隔. Defaults to 0.1.
+
+    Returns:
+        str | None: 文字列, 失敗時に None
+    """
+    for _ in range(retry):
+        try:
+            return pyperclip.paste()
+        except pyperclip.PyperclipWindowsException:
+            time.sleep(delay)
+    return None
+
+
 @dataclass(frozen=True)
 class Consts:
     """
@@ -248,7 +269,11 @@ class Parser:
         while not self.event.shutdown.is_set():
             time.sleep(Consts.thread_interval_sec)
             try:
-                new_clipboard = pyperclip.paste()
+                new_clipboard = safe_paste()
+                if new_clipboard is None:
+                    print("Clipboard unavailable, retrying...")
+                    continue
+
                 if self.crnt_clipboard == new_clipboard:
                     continue
 
