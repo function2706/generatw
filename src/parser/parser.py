@@ -132,7 +132,7 @@ class Parser:
             yamlpath (Path): YAML パス
         """
         keyword = None
-        with open(yamlpath, "r", encoding="utf-8") as f:
+        with open(yamlpath, encoding="utf-8") as f:
             yamldict: dict = yaml.safe_load(f)
             keyword = yamldict.get("interpreter")
 

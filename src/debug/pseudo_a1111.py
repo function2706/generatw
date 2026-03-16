@@ -182,9 +182,9 @@ async def txt2img(req: Txt2ImgRequest):
     app.state.sampling_steps = req.steps or 20
     app.state.job = "txt2img"
 
-    MAX_SIDE = 8192
-    width = max(1, min(req.width, MAX_SIDE)) & -8
-    height = max(1, min(req.height, MAX_SIDE)) & -8
+    max_side = 8192
+    width = max(1, min(req.width, max_side)) & -8
+    height = max(1, min(req.height, max_side)) & -8
     batch_size = max(1, req.batch_size or 1)
     n_iter = max(1, req.n_iter or 1)
 
@@ -217,7 +217,7 @@ async def txt2img(req: Txt2ImgRequest):
 
         try:
             font = ImageFont.truetype("arial.ttf", 24)
-        except IOError:
+        except OSError:
             font = ImageFont.load_default()
         draw = ImageDraw.Draw(img)
         text = f"{idx=}, seed={s}, time={datetime.datetime.now().strftime('%H:%M:%S')}"

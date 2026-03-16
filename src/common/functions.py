@@ -13,7 +13,7 @@ from copy import deepcopy
 from dataclasses import asdict, dataclass, is_dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Generic, TypeVar
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -35,7 +35,7 @@ class BackEnd(Enum):
     comfy_ui = "ComfyUI"
 
 
-def xxxDEBUGxxx() -> None:
+def xxxDEBUGxxx() -> None:  # noqa: N802
     """
     行を表示
     """
@@ -124,10 +124,7 @@ def dirname_by_prompts(pos_prompt: str, neg_prompt: str) -> str:
     return hashlib.md5(dirpath_raw.encode()).hexdigest()
 
 
-Message = TypeVar("Message")
-
-
-class BottleMail(Generic[Message]):
+class BottleMail[Message]:
     def __init__(self):
         self._q: deque[Message] = deque()
 

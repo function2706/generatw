@@ -5,12 +5,12 @@
 from __future__ import annotations
 
 from collections import deque
-from typing import Deque, Dict, Generic, TypeVarTuple
+from typing import TypeVarTuple
 
 Ts = TypeVarTuple("Ts")
 
 
-class multideque(Generic[*Ts]):
+class MultiDeque[*Ts]:
     """
     オブジェクトごとの FIFO を管理するキュー\n
     multideque[A, B] のとき, A1,A2,...An,B1,B2,...,Bm という状態であるとして\n
@@ -29,7 +29,7 @@ class multideque(Generic[*Ts]):
         if not types:
             raise ValueError("At least one type must be specified")
         self._types: list[type] = list(types)
-        self._queues: Dict[type, Deque[object]] = {t: deque() for t in types}
+        self._queues: dict[type, deque[object]] = {t: deque() for t in types}
 
     def push(self, item: object) -> None:
         """
@@ -177,8 +177,7 @@ class multideque(Generic[*Ts]):
         イテレータ
         """
         for t in self._types:
-            for item in self._queues[t]:
-                yield item
+            yield from self._queues[t]
 
     def __repr__(self) -> str:
         """

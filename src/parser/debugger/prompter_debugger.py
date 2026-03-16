@@ -1163,7 +1163,7 @@ class PrompterDebugger:
         return obj
 
     def set(self, yamlpath: Path):
-        with open(yamlpath, "r", encoding="utf-8") as f:
+        with open(yamlpath, encoding="utf-8") as f:
             self.yamldict = yaml.safe_load(f)
         self.prompter = Prompter.make(yamlpath)
 

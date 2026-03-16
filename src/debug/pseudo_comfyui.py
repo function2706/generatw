@@ -5,7 +5,7 @@ import json
 import random
 import uuid
 from io import BytesIO
-from typing import Any, Dict
+from typing import Any
 
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -15,14 +15,14 @@ from PIL import Image, ImageDraw, ImageFont, PngImagePlugin
 app = FastAPI(title="Mock ComfyUI sdapi/v1")
 app.state.cooldown = 0
 
-PROMPTS: Dict[str, Any] = {}
-IMAGES: Dict[str, bytes] = {}
-WS_CLIENTS: Dict[str, WebSocket] = {}
-RUNNING_TASKS: Dict[str, asyncio.Task] = {}
+PROMPTS: dict[str, Any] = {}
+IMAGES: dict[str, bytes] = {}
+WS_CLIENTS: dict[str, WebSocket] = {}
+RUNNING_TASKS: dict[str, asyncio.Task] = {}
 
 
 @app.post("/prompt")
-async def prompt(req: Dict[str, Any]):
+async def prompt(req: dict[str, Any]):
     prompt = req.get("prompt", {})
     client_id = req.get("client_id")
     prompt_id = str(uuid.uuid4())
@@ -71,7 +71,7 @@ def gen_images(width: int, height: int, batch_size: int, top_seed: int, prompt) 
         img = Image.new("RGB", (width, height), color=color)
         try:
             font = ImageFont.truetype("arial.ttf", 24)
-        except IOError:
+        except OSError:
             font = ImageFont.load_default()
         draw = ImageDraw.Draw(img)
         text = f"{idx=}, seed={s}, time={datetime.datetime.now().strftime('%H:%M:%S')}"
@@ -261,7 +261,7 @@ async def websocket_endpoint(ws: WebSocket):
         while True:
             try:
                 await asyncio.wait_for(ws.receive_text(), timeout=1.0)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 continue
     except WebSocketDisconnect:
         print(f"[DEBUG] WebSocket disconnected: {client_id}")

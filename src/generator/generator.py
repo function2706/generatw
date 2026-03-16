@@ -8,19 +8,20 @@ import os
 import threading
 import time
 from abc import ABC, abstractmethod
+from collections.abc import Iterable, Mapping
 from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from threading import Lock
-from typing import Any, Generic, Iterable, Mapping, Protocol, TypeVar
+from typing import Any, Protocol
 
 from PIL import ImageFile
 
 import master.events
 from archiver.dataclasses import PicInfo, PicStats
 from common.functions import BackEnd, BottleMail, PathConsts, dirname_by_prompts, dump_json
-from common.multideque import multideque
+from common.multideque import MultiDeque
 from generator.dataclasses import (
     ResizeMode,
     SamplerName,
@@ -37,17 +38,14 @@ class Consts:
     thread_interval_sec = 0.1
 
 
-NameEnum = TypeVar("NameEnum")
-
-
 @dataclass(frozen=True)
-class NamesOnBackend(Generic[NameEnum]):
+class NamesOnBackend[NameEnum]:
     name: NameEnum
     a1111: str | None
     comfy_ui: str | None
 
 
-class Parser(ABC, Generic[NameEnum]):
+class Parser[NameEnum](ABC):
     table: Iterable[NamesOnBackend[NameEnum]]
     by_type: Mapping[NameEnum, NamesOnBackend[NameEnum]]
 
@@ -203,10 +201,7 @@ class Event:
     interrupt: threading.Event = field(default_factory=threading.Event)  # 中断処理実行予定
 
 
-TaskProgress = TypeVar("TaskProgress", bound=HasCommonMembers)
-
-
-class Generator(ABC, Generic[TaskProgress]):
+class Generator[TaskProgress](ABC):
     """
     ファイル生成クラス\n
     タスク設計図をもとにサーバへ非同期にポストし, ファイル保存をする
@@ -223,7 +218,7 @@ class Generator(ABC, Generic[TaskProgress]):
 
         self.event = Event()
 
-        self.tasks: multideque[TaskBlueprintTxt2Img, TaskBlueprintImg2Img] = multideque(
+        self.tasks: MultiDeque[TaskBlueprintTxt2Img, TaskBlueprintImg2Img] = MultiDeque(
             TaskBlueprintTxt2Img, TaskBlueprintImg2Img
         )
         self.tasks_lock = Lock()

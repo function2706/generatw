@@ -8,7 +8,6 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
-from typing import TypeAlias
 
 from common.expr import Has
 from parser.interpreter.interpreter import Interpreter, Memory, MemoryEntry, ScreenConfig
@@ -83,7 +82,8 @@ class FashionSet:
     accessories: MemoryEntry = field(default_factory=MemoryEntry)
 
 
-FashionList: TypeAlias = list[FashionSet]
+class FashionList(list[FashionSet]):
+    pass
 
 
 class TheWorldInterpreter(Interpreter):

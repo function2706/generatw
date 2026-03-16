@@ -6,12 +6,9 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Generic, TypeVar
-
-Type = TypeVar("Type")
 
 
-class Expr(ABC, Generic[Type]):
+class Expr[Type](ABC):
     @abstractmethod
     def eval(self, objset: set[Type]) -> bool:
         raise NotImplementedError
@@ -27,7 +24,7 @@ class Expr(ABC, Generic[Type]):
 
 
 @dataclass(frozen=True)
-class Has(Expr[Type]):
+class Has[Type](Expr[Type]):
     obj: Type
 
     def eval(self, objset: set[Type]) -> bool:
@@ -35,7 +32,7 @@ class Has(Expr[Type]):
 
 
 @dataclass(frozen=True)
-class And(Expr[Type]):
+class And[Type](Expr[Type]):
     left: Expr[Type]
     right: Expr[Type]
 
@@ -44,7 +41,7 @@ class And(Expr[Type]):
 
 
 @dataclass(frozen=True)
-class Or(Expr[Type]):
+class Or[Type](Expr[Type]):
     left: Expr[Type]
     right: Expr[Type]
 
@@ -53,7 +50,7 @@ class Or(Expr[Type]):
 
 
 @dataclass(frozen=True)
-class Not(Expr[Type]):
+class Not[Type](Expr[Type]):
     expr: Expr[Type]
 
     def eval(self, objset: set[Type]) -> bool:
@@ -61,12 +58,12 @@ class Not(Expr[Type]):
 
 
 @dataclass(frozen=True)
-class TrueExpr(Expr[Type]):
+class TrueExpr[Type](Expr[Type]):
     def eval(self, objset: set[Type]) -> bool:
         return True
 
 
 @dataclass(frozen=True)
-class FalseExpr(Expr[Type]):
+class FalseExpr[Type](Expr[Type]):
     def eval(self, objset: set[Type]) -> bool:
         return False

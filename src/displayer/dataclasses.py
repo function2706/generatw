@@ -37,7 +37,7 @@ class GUIConfigs:
 
     @classmethod
     def fromjson(cls, path: Path) -> GUIConfigs:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             return cls(**json.load(f))
 
     def tojson(self, path: Path) -> None:

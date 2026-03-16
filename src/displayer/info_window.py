@@ -419,14 +419,8 @@ class InfoWindow:
         self.info_window = tkinter.Toplevel(self.super_owner.master.root)
         if fix_position:
             self.info_window.geometry(
-                (
-                    f"+{self.super_owner.config_window_x}"
-                    f"+{
-                        self.super_owner.config_window_y
-                        + self.super_owner.config_window_height
-                        + 50
-                    }"
-                )
+                f"+{self.super_owner.config_window_x}"
+                f"+{self.super_owner.config_window_y + self.super_owner.config_window_height + 50}"
             )
         self.info_window.title("picmaker - 情報")
         self.info_window.protocol("WM_DELETE_WINDOW", self.destroy)

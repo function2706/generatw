@@ -118,12 +118,8 @@ class PicWindow:
         self.pic_window = tkinter.Toplevel(self.super_owner.master.root)
         if fix_position:
             self.pic_window.geometry(
-                (
-                    f"-{
-                        self.super_owner.config_window_x + self.super_owner.config_window_width + 50
-                    }"
-                    f"+{self.super_owner.config_window_y}"
-                )
+                f"-{self.super_owner.config_window_x + self.super_owner.config_window_width + 50}"
+                f"+{self.super_owner.config_window_y}"
             )
         self.pic_window.title("picmaker - 画像")
         self.pic_window.protocol("WM_DELETE_WINDOW", self.destroy)

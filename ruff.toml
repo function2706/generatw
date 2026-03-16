@@ -3,7 +3,7 @@ indent-width = 4
 target-version = "py312"
 
 [lint]
-select = ["E", "F", "I", "B"]
+select = ["F", "E", "W", "I", "UP", "B", "N"]
 ignore = []
 unfixable = ["F401"]
 

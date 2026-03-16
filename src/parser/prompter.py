@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, TypeAlias
+from typing import Any
 
 import yaml
 
@@ -99,7 +99,8 @@ def make_tokens(text: str | None = None) -> list[Token]:
     return [Token.make(p) for p in parts]
 
 
-CategoryPath: TypeAlias = tuple[str, ...]
+class CategoryPath(tuple[str, ...]):
+    pass
 
 
 @dataclass
@@ -484,7 +485,7 @@ class Reports:
             self.append(nothit_report, False)
 
     @property
-    def stripped_nothit_reports(reports: Reports) -> list[Report]:
+    def stripped_nothit_reports(self) -> list[Report]:
         """
         nothit_reports から\n
         「同一パターン, 同一 matched で hit_reports にも存在するもの」を除去して返す
@@ -503,7 +504,7 @@ class Reports:
         """
         # hit_reports から {pattern: set(matched)} の辞書を構築
         hit_patterns_dict: dict[str, set[str]] = {}
-        for report in reports.hit_reports:
+        for report in self.hit_reports:
             if report.pattern in hit_patterns_dict:
                 hit_patterns_dict[report.pattern].add(report.matched)
             else:
@@ -511,7 +512,7 @@ class Reports:
 
         # hit_reports に存在しない (pattern, matched) の組み合わせのみ残す
         new_reports = []
-        for report in reports.nothit_reports:
+        for report in self.nothit_reports:
             if (
                 report.pattern not in hit_patterns_dict
                 or report.matched not in hit_patterns_dict[report.pattern]
@@ -835,7 +836,7 @@ class Screen:
             return
 
         for k, v in node.items():
-            self.collect_categories(v, (category_path + (k,)), catreg_dict)
+            self.collect_categories(v, category_path + (k,), catreg_dict)
 
     @classmethod
     def make(
@@ -965,7 +966,7 @@ class Prompter:
         obj = cls()
 
         obj.yamlpath = Path(yamlpath)
-        with open(yamlpath, "r", encoding="utf-8") as f:
+        with open(yamlpath, encoding="utf-8") as f:
             yamldict: dict = yaml.safe_load(f)
 
         catreg_dict: dict[CategoryPath, CategoryRegister] = {}

@@ -5,9 +5,9 @@ Prompt 解釈クラス
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, TypeAlias
 
 import yaml
 
@@ -21,12 +21,9 @@ class MemoryEntry:
     ポジティブ・ネガティブを CategoryPath でまとめて記憶するためのデータ定義
     """
 
-    path: CategoryPath = field(default_factory=CategoryPath)
+    path: CategoryPath = field(default_factory=CategoryPath, compare=False)
     pos_tokens: list[Token] = field(default_factory=list)
     neg_tokens: list[Token] = field(default_factory=list)
-
-    def __eq__(self, other: MemoryEntry):
-        return self.pos_tokens == other.pos_tokens and self.neg_tokens == other.neg_tokens
 
 
 @dataclass
@@ -83,7 +80,7 @@ class CategoryConfig:
     log_report: bool  # Report を残すか
 
 
-PrimitiveCategoryConfig: TypeAlias = tuple[CategoryPath, Expr | None, bool]
+type PrimitiveCategoryConfig = tuple[CategoryPath, Expr | None, bool]
 
 
 @dataclass(frozen=True)
@@ -144,7 +141,7 @@ class ScreenConfig:
         return False
 
 
-ScreenTable: TypeAlias = dict[
+type ScreenTable = dict[
     str,  # Screen ID
     ScreenConfig,
 ]
@@ -190,7 +187,7 @@ class Interpreter(ABC):
         """
         yamlpath = Path(yamlpath)
         if yamlpath.exists():
-            with open(yamlpath, "r", encoding="utf-8") as f:
+            with open(yamlpath, encoding="utf-8") as f:
                 yamldict: dict = yaml.safe_load(f)
                 keyword = yamldict.get("interpreter")
             if keyword == self.keyword():
@@ -344,9 +341,9 @@ class Interpreter(ABC):
             return None
 
         category_list = list(screen_config.cat_configs.keys())
-        category_list.append(CategoryPath())  # common 用に末尾に空の Path を追加
+        category_list.append(())  # common 用に末尾に空の Path を追加
 
-        Best: TypeAlias = dict[str, tuple[Token, set[tuple[CategoryPath, int]]]]
+        type Best = dict[str, tuple[Token, set[tuple[CategoryPath, int]]]]
 
         def make_best_(parts_list: list[PromptParts]) -> Best:
             """
