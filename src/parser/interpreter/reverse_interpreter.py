@@ -10,13 +10,7 @@ from enum import StrEnum
 from pathlib import Path
 
 from common.expr import Has
-from parser.interpreter.interpreter import (
-    Interpreter,
-    Memory,
-    MemoryEntry,
-    ScreenConfig,
-    ScreenTable,
-)
+from parser.interpreter.interpreter import Interpreter, Memory, MemoryEntry, ScreenConfig
 
 
 class ScreenName(StrEnum):
@@ -61,8 +55,6 @@ class ReverseInterpreter(Interpreter):
         self.name_on_main: MemoryEntry = MemoryEntry()
         self.fashion_set: FashionSet = FashionSet()
 
-    @property
-    def screen_table(self) -> ScreenTable:
         expr_no_upper_costumes = ~Has(
             (
                 CategoryName.character,
@@ -79,9 +71,9 @@ class ReverseInterpreter(Interpreter):
         )
 
         # 単項タプルの ',' を忘れないように!!
-        return {
+        self.screen_table = {
             ScreenName.main: ScreenConfig.set(
-                primitive_enhanced_category=[
+                primitive_category_configs=[
                     ((CategoryName.character, CategoryName.name_n), None, True),
                     ((CategoryName.character, CategoryName.vibe), None, False),
                     (
@@ -131,7 +123,7 @@ class ReverseInterpreter(Interpreter):
                 syncer=self.sync_on_main,
             ),
             ScreenName.action: ScreenConfig.set(
-                primitive_enhanced_category=[
+                primitive_category_configs=[
                     ((CategoryName.character, CategoryName.name_n), None, True),
                     ((CategoryName.asking,), None, False),
                     ((CategoryName.rope,), None, False),

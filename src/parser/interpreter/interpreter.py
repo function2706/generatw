@@ -59,6 +59,7 @@ def prompt_to_memory(prompt: Prompt | None) -> Memory | None:
     """
     if prompt is None:
         return None
+
     memory = Memory()
     for parts in prompt.positive:
         memory.entries.append(MemoryEntry(path=parts.path, pos_tokens=parts.tokens))
@@ -77,36 +78,70 @@ def prompt_to_memory(prompt: Prompt | None) -> Memory | None:
 
 
 @dataclass(frozen=True)
-class EnhancedCategory:
-    category_path: CategoryPath  # カテゴリーパス
+class CategoryConfig:
     sift_condition: Expr | None  # ふるいがけ条件 (None = 恒真)
     log_report: bool  # Report を残すか
 
 
-PrimitiveEnhancedCategory: TypeAlias = tuple[CategoryPath, Expr | None, bool]
+PrimitiveCategoryConfig: TypeAlias = tuple[CategoryPath, Expr | None, bool]
 
 
 @dataclass(frozen=True)
 class ScreenConfig:
-    enhanced_categories: list[EnhancedCategory]  # カテゴリーリスト(兼優先順位)
+    cat_configs: dict[CategoryPath, CategoryConfig]  # カテゴリーコンフィグ
     essential_condition: Expr | None  # 充足条件 (None = 恒真)
     syncer: Callable[[Memory], Memory] | None  # 同期処理定義
 
     @classmethod
     def set(
         cls,
-        primitive_enhanced_category: list[PrimitiveEnhancedCategory],
+        primitive_category_configs: list[PrimitiveCategoryConfig],
         essential_condition: Expr | None,
         syncer: Callable[[Memory], Memory] | None,
     ):
         return cls(
-            enhanced_categories=[
-                EnhancedCategory(encat[0], encat[1], encat[2])
-                for encat in primitive_enhanced_category
-            ],
+            cat_configs={
+                path: CategoryConfig(sift_condition=sift_cond, log_report=log_report)
+                for path, sift_cond, log_report in primitive_category_configs
+            },
             essential_condition=essential_condition,
             syncer=syncer,
         )
+
+    def sift_condition_of(self, category_path: CategoryPath) -> Expr | None:
+        """
+        指定の category_path とペアの sift_condition を取得する\n
+        category_path にあたるものが存在しない場合は None を返す\n
+        sift_condition に None が指定されている場合は恒真とする
+
+        Args:
+            category_path (CategoryPath): CategoryPath
+
+        Returns:
+            Expr | None: sift_condition
+        """
+        cat_config = self.cat_configs.get(category_path)
+        if cat_config is None:
+            return None
+
+        return cat_config.sift_condition if cat_config.sift_condition is not None else TrueExpr()
+
+    def should_leave_report_of(self, category_paths: set[CategoryPath]) -> bool:
+        """
+        指定の category_paths をもつ Report を残すべきか\n
+        条件が定義されている CategoryPath を1つでも持つ場合はその条件を返す\n
+        そうでない場合は False
+
+        Args:
+            category_path (CategoryPath): CategoryPath
+
+        Returns:
+            bool: True: 残すべき
+        """
+        for cat_path, cat_config in self.cat_configs.items():
+            if cat_path in category_paths:
+                return cat_config.log_report
+        return False
 
 
 ScreenTable: TypeAlias = dict[
@@ -120,18 +155,18 @@ class Interpreter(ABC):
     クリップボード監視, ステータス記録クラス
     """
 
-    def __init__(
-        self,
-        yamlpath: Path,
-    ):
+    def __init__(self, yamlpath: Path):
         """
         コンストラクタ
+
+        ScreenTable: Screen ID の順序はプロンプト化における優先順位を表す
 
         Args:
             yamlpath (Path): YAML パス
         """
         self.prompter: Prompter = None
         self.yamlpath = yamlpath
+        self.screen_table: ScreenTable = {}
 
         self.switch_prompter(yamlpath)
 
@@ -190,55 +225,6 @@ class Interpreter(ABC):
         """
         pass
 
-    @property
-    @abstractmethod
-    def screen_table(self) -> ScreenTable:
-        """
-        ScreenTable を取得する\n
-        Screen ID ごとの list[CategoryPath] の順序はプロンプト化における優先順位を表す
-
-        Returns:
-            ScreenTable: ScreenTable
-        """
-        pass
-
-    def category_list_on(self, screen_id: str) -> list[CategoryPath] | None:
-        """
-        ScreenTable から指定の Screen ID とペアの list[CategoryPath] を取得する\n
-        指定の Screen ID にあたるものが存在しない場合は None を返す
-
-        Args:
-            screen_id (str): Screen ID
-
-        Returns:
-            list[CategoryPath] | None: list[CategoryPath]
-        """
-        for sid, config in self.screen_table.items():
-            if sid == screen_id:
-                return [encat.category_path for encat in config.enhanced_categories]
-        return None
-
-    def condition_of(self, screen_id: str, category_path: CategoryPath) -> Expr | None:
-        """
-        ScreenTable から指定の Screen ID, CategoryPath とペアの Expr を取得する\n
-        指定の Screen ID, CategoryPath にあたるものが存在しない場合は None を返す\n
-        None が指定されている場合は恒真とする
-
-        Args:
-            screen_id (str): Screen ID
-            category_path (CategoryPath): CategoryPath
-
-        Returns:
-            Expr | None: Expr
-        """
-        for sid, config in self.screen_table.items():
-            if sid != screen_id:
-                continue
-            for encat in config.enhanced_categories:
-                if encat.category_path == category_path:
-                    return encat.sift_condition if encat.sift_condition is not None else TrueExpr()
-        return None
-
     def essential_of(self, screen_id: str) -> Expr | None:
         """
         ScreenTable から指定の Screen ID の Essential CategoryPath のリストを取得する\n
@@ -251,34 +237,15 @@ class Interpreter(ABC):
         Returns:
             list[CategoryPath] | None: Essential CategoryPath のリスト
         """
-        for sid, config in self.screen_table.items():
-            if sid == screen_id:
-                return (
-                    config.essential_condition
-                    if config.essential_condition is not None
-                    else TrueExpr()
-                )
-        return None
+        screen_config = self.screen_table.get(screen_id)
+        if screen_config is None:
+            return None
 
-    def should_leave_report_of(self, screen_id: str, category_paths: set[CategoryPath]) -> bool:
-        """
-        ScreenTable における指定の Screen ID, CategoryPath にあたる Report を残すべきか\n
-        指定の Screen ID, CategoryPath にあたるものが存在しない場合は False を返す\n
-
-        Args:
-            screen_id (str): Screen ID
-            category_path (CategoryPath): CategoryPath
-
-        Returns:
-            bool: True: 残すべき
-        """
-        for sid, config in self.screen_table.items():
-            if sid != screen_id:
-                continue
-            for encat in config.enhanced_categories:
-                if encat.category_path in category_paths:
-                    return encat.log_report
-        return False
+        return (
+            screen_config.essential_condition
+            if screen_config.essential_condition is not None
+            else TrueExpr()
+        )
 
     def sync(self, prompt: Prompt) -> Prompt | None:
         """
@@ -295,15 +262,16 @@ class Interpreter(ABC):
         if prompt is None:
             return None
 
-        for sid, config in self.screen_table.items():
-            if sid == prompt.screen_id:
-                if config.syncer is None:
-                    return prompt
+        screen_config = self.screen_table.get(prompt.screen_id)
+        if screen_config is None:
+            return None
+        elif screen_config.syncer is None:
+            return prompt
 
-                memory = prompt_to_memory(prompt)
-                if memory is None:
-                    return None
-                return config.syncer(memory).to_prompt(sid)
+        memory = prompt_to_memory(prompt)
+        if memory is None:
+            return None
+        return screen_config.syncer(memory).to_prompt(prompt.screen_id)
 
     def strip(self, prompt: Prompt | None) -> Prompt | None:
         """
@@ -321,8 +289,8 @@ class Interpreter(ABC):
         if prompt is None:
             return None
 
-        category_list = self.category_list_on(prompt.screen_id)
-        if category_list is None:
+        screen_config = self.screen_table.get(prompt.screen_id)
+        if screen_config is None:
             return None
 
         def strip_(parts_list: list[PromptParts]) -> list[PromptParts]:
@@ -333,7 +301,7 @@ class Interpreter(ABC):
                     result.append(parts)
                     continue
 
-                if parts.path in category_list:
+                if parts.path in screen_config.cat_configs:
                     # CategoryPath がリスト内にある
                     result.append(parts)
             return result
@@ -371,9 +339,11 @@ class Interpreter(ABC):
         if prompt is None:
             return None
 
-        category_list = list(self.category_list_on(prompt.screen_id))
-        if category_list is None:
+        screen_config = self.screen_table.get(prompt.screen_id)
+        if screen_config is None:
             return None
+
+        category_list = list(screen_config.cat_configs.keys())
         category_list.append(CategoryPath())  # common 用に末尾に空の Path を追加
 
         Best: TypeAlias = dict[str, tuple[Token, set[tuple[CategoryPath, int]]]]
@@ -458,6 +428,10 @@ class Interpreter(ABC):
         if prompt is None:
             return None
 
+        screen_config = self.screen_table.get(prompt.screen_id)
+        if screen_config is None:
+            return None
+
         def sift_(parts_list: list[PromptParts]) -> list[PromptParts]:
             existing_paths: set[CategoryPath] = set()
             for parts in parts_list:
@@ -469,8 +443,8 @@ class Interpreter(ABC):
                     new_parts_list.append(parts)
                     continue
 
-                formula = self.condition_of(prompt.screen_id, parts.path)
-                if formula is not None and formula.eval(existing_paths):
+                cond = screen_config.sift_condition_of(parts.path)
+                if cond is not None and cond.eval(existing_paths):
                     new_parts_list.append(parts)
             return new_parts_list
 
@@ -499,14 +473,14 @@ class Interpreter(ABC):
         if prompt is None:
             return None
 
-        category_list = self.category_list_on(prompt.screen_id)
-        if category_list is None:
+        screen_config = self.screen_table.get(prompt.screen_id)
+        if screen_config is None:
             return None
 
         def sort_(parts_list: list[PromptParts]) -> list[PromptParts]:
             order_index: dict[CategoryPath, int] = {}
             i = 0
-            for path in category_list:
+            for path in screen_config.cat_configs:
                 order_index[path] = i
                 i += 1
             return sorted(parts_list, key=lambda c: order_index.get(c.path, float("inf")))
@@ -545,7 +519,11 @@ class Interpreter(ABC):
         """
         new_reports: list[Report] = []
         for report in reports:
-            if self.should_leave_report_of(report.screen_id, report.paths):
+            screen_config = self.screen_table.get(report.screen_id)
+            if screen_config is None:
+                continue
+
+            if screen_config.should_leave_report_of(report.paths):
                 new_reports.append(report)
         return new_reports
 
@@ -571,7 +549,7 @@ class Interpreter(ABC):
     def check_essentiality_of(self, prompt: Prompt) -> bool:
         """
         指定の Prompt が生成に十分な情報を持っているか\n
-        EnhancedCategoryPath 上で指定された不可欠 CategoryPath をすべて持っているかを確認する\n
+        ScreenConfig 上で指定された不可欠 CategoryPath をすべて持っているかを確認する\n
         指定の CategoryPath はポジティブ・ネガティブプロンプトの一方に存在すればよいものとする\n
         None であったり, 両プロンプトが空である場合は False\n
         本関数は make_prompt() にて得られた Prompt を対象とすることを想定している(特に strip())

@@ -7,12 +7,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from common.expr import Expr
-from parser.interpreter.interpreter import (
-    Interpreter,
-    PrimitiveEnhancedCategory,
-    ScreenConfig,
-    ScreenTable,
-)
+from parser.interpreter.interpreter import Interpreter, PrimitiveCategoryConfig, ScreenConfig
 
 
 class TestInterpreter(Interpreter):
@@ -22,21 +17,20 @@ class TestInterpreter(Interpreter):
 
     def __init__(self, yamlpath: Path):
         super().__init__(yamlpath)
-        self.screen_table_v: ScreenTable = {}
 
     def restore_screen_config(
-        self, screen_id: str, pencats: list[PrimitiveEnhancedCategory], essential: Expr
+        self, screen_id: str, pcatcfg: list[PrimitiveCategoryConfig], essential: Expr
     ) -> None:
         """
         指定の Screen ID の ScreenConfig を更新する
 
         Args:
             screen_id (str): Screen ID
-            encats (list[PrimitiveEnhancedCategory]): PrimitiveEnhancedCategory のリスト
+            pcatcfg (list[PrimitiveCategoryConfig]): PrimitiveCategoryConfig のリスト
             essential (Expr): 充足条件
         """
-        self.screen_table_v[screen_id] = ScreenConfig.set(
-            primitive_enhanced_category=pencats, essential_condition=essential, syncer=None
+        self.screen_table[screen_id] = ScreenConfig.set(
+            primitive_category_configs=pcatcfg, essential_condition=essential, syncer=None
         )
 
     def save_state(self) -> dict:
@@ -58,7 +52,3 @@ class TestInterpreter(Interpreter):
             state (dict): 保存された状態 (無視される)
         """
         return
-
-    @property
-    def screen_table(self) -> ScreenTable:
-        return self.screen_table_v

@@ -11,13 +11,7 @@ from pathlib import Path
 from typing import TypeAlias
 
 from common.expr import Has
-from parser.interpreter.interpreter import (
-    Interpreter,
-    Memory,
-    MemoryEntry,
-    ScreenConfig,
-    ScreenTable,
-)
+from parser.interpreter.interpreter import Interpreter, Memory, MemoryEntry, ScreenConfig
 
 
 class ScreenName(StrEnum):
@@ -103,8 +97,6 @@ class TheWorldInterpreter(Interpreter):
         self.name_on_main: MemoryEntry = MemoryEntry()
         self.fashion_list: FashionList = FashionList()
 
-    @property
-    def screen_table(self) -> ScreenTable:
         expr_no_upper_costumes = (
             ~Has((CategoryName.outers,))
             & ~Has((CategoryName.upper_cloths,))
@@ -145,9 +137,9 @@ class TheWorldInterpreter(Interpreter):
         )
 
         # 単項タプルの ',' を忘れないように!!
-        return {
+        self.screen_table = {
             ScreenName.main: ScreenConfig.set(
-                primitive_enhanced_category=[
+                primitive_category_configs=[
                     ((CategoryName.character, CategoryName.name_n), None, True),
                     ((CategoryName.character, CategoryName.vibe), None, False),
                     ((CategoryName.character, CategoryName.affection), None, False),
@@ -252,7 +244,7 @@ class TheWorldInterpreter(Interpreter):
                 syncer=self.sync_on_main,
             ),
             ScreenName.status: ScreenConfig.set(
-                primitive_enhanced_category=[
+                primitive_category_configs=[
                     ((CategoryName.name_n,), None, True),
                     ((CategoryName.affection,), None, True),
                     ((CategoryName.trust,), None, True),
@@ -276,7 +268,7 @@ class TheWorldInterpreter(Interpreter):
                 syncer=None,
             ),
             ScreenName.fashion: ScreenConfig.set(
-                primitive_enhanced_category=[
+                primitive_category_configs=[
                     ((CategoryName.character, CategoryName.name_n), None, True),
                     ((CategoryName.caps,), None, True),
                     ((CategoryName.hands,), None, True),
