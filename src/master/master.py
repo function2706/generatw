@@ -430,6 +430,7 @@ class Master(MasterIF):
         if (
             self.rest_files_in_crnt_dir is not None and self.rest_files_in_crnt_dir <= 0
         ) or self.is_switching_backend:
+            self.displayer.update_main_window(rest_capacity=self.rest_files_in_crnt_dir)
             return
 
         batch_size = (
