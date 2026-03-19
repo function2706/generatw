@@ -25,7 +25,7 @@ class DebugInterpreter(Interpreter):
                     (("character", "upper"), None, False),
                     (("character", "lower"), None, False),
                 ],
-                essential_condition=None,
+                sufficiency=None,
                 syncer=None,
             )
         }

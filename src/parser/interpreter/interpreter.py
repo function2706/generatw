@@ -86,14 +86,14 @@ type PrimitiveCategoryConfig = tuple[CategoryPath, Expr | None, bool]
 @dataclass(frozen=True)
 class ScreenConfig:
     cat_configs: dict[CategoryPath, CategoryConfig]  # カテゴリーコンフィグ
-    essential_condition: Expr | None  # 充足条件 (None = 恒真)
+    sufficiency: Expr | None  # 充足条件 (None = 恒真)
     syncer: Callable[[Memory], Memory] | None  # 同期処理定義
 
     @classmethod
     def set(
         cls,
         primitive_category_configs: list[PrimitiveCategoryConfig],
-        essential_condition: Expr | None,
+        sufficiency: Expr | None,
         syncer: Callable[[Memory], Memory] | None,
     ):
         return cls(
@@ -101,7 +101,7 @@ class ScreenConfig:
                 path: CategoryConfig(sift_condition=sift_cond, log_report=log_report)
                 for path, sift_cond, log_report in primitive_category_configs
             },
-            essential_condition=essential_condition,
+            sufficiency=sufficiency,
             syncer=syncer,
         )
 
@@ -222,9 +222,9 @@ class Interpreter(ABC):
         """
         pass
 
-    def essential_of(self, screen_id: str) -> Expr | None:
+    def sufficiency_of(self, screen_id: str) -> Expr | None:
         """
-        ScreenTable から指定の Screen ID の Essential CategoryPath のリストを取得する\n
+        ScreenTable から指定の Screen ID の充足条件を取得する\n
         指定の Screen ID にあたるものが存在しない場合は None を返す\n
         None が指定されている場合は恒真とする
 
@@ -232,17 +232,13 @@ class Interpreter(ABC):
             screen_id (str): Screen ID
 
         Returns:
-            list[CategoryPath] | None: Essential CategoryPath のリスト
+            Expr | None: 充足条件
         """
         screen_config = self.screen_table.get(screen_id)
         if screen_config is None:
             return None
 
-        return (
-            screen_config.essential_condition
-            if screen_config.essential_condition is not None
-            else TrueExpr()
-        )
+        return screen_config.sufficiency if screen_config.sufficiency is not None else TrueExpr()
 
     def sync(self, prompt: Prompt) -> Prompt | None:
         """
@@ -543,7 +539,7 @@ class Interpreter(ABC):
         prompt, reports = self.prompter.to_prompt(text)
         return self.edit(prompt), self.strip_reports(reports)
 
-    def check_essentiality_of(self, prompt: Prompt) -> bool:
+    def check_sufficiency_of(self, prompt: Prompt) -> bool:
         """
         指定の Prompt が生成に十分な情報を持っているか\n
         ScreenConfig 上で指定された不可欠 CategoryPath をすべて持っているかを確認する\n
@@ -566,4 +562,4 @@ class Interpreter(ABC):
         for parts in prompt.negative:
             existing_paths.add(parts.path)
 
-        return self.essential_of(prompt.screen_id).eval(existing_paths)
+        return self.sufficiency_of(prompt.screen_id).eval(existing_paths)

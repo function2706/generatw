@@ -19,7 +19,7 @@ class TestInterpreter(Interpreter):
         super().__init__(yamlpath)
 
     def restore_screen_config(
-        self, screen_id: str, pcatcfg: list[PrimitiveCategoryConfig], essential: Expr
+        self, screen_id: str, pcatcfg: list[PrimitiveCategoryConfig], sufficiency: Expr
     ) -> None:
         """
         指定の Screen ID の ScreenConfig を更新する
@@ -27,10 +27,10 @@ class TestInterpreter(Interpreter):
         Args:
             screen_id (str): Screen ID
             pcatcfg (list[PrimitiveCategoryConfig]): PrimitiveCategoryConfig のリスト
-            essential (Expr): 充足条件
+            sufficiency (Expr): 充足条件
         """
         self.screen_table[screen_id] = ScreenConfig.set(
-            primitive_category_configs=pcatcfg, essential_condition=essential, syncer=None
+            primitive_category_configs=pcatcfg, sufficiency=sufficiency, syncer=None
         )
 
     def save_state(self) -> dict:

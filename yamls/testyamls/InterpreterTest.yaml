@@ -98,8 +98,8 @@ sort:
   common:
     positive: sort_common_pos
     negative: sort_common_neg
-essential:
-  ignition: "essential"
+sufficiency:
+  ignition: "sufficiency"
   need1:
     pattern: "(A)"
     maps:
@@ -134,8 +134,8 @@ essential:
         positive: NEED3
         negative: need3
   common:
-    positive: essential_common_pos
-    negative: essential_common_neg
+    positive: sufficiency_common_pos
+    negative: sufficiency_common_neg
 expr1:
   ignition: "expr1"
   location:

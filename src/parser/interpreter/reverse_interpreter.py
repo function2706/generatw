@@ -119,7 +119,7 @@ class ReverseInterpreter(Interpreter):
                         False,
                     ),
                 ],
-                essential_condition=Has((CategoryName.character, CategoryName.name_n)),
+                sufficiency=Has((CategoryName.character, CategoryName.name_n)),
                 syncer=self.sync_on_main,
             ),
             ScreenName.action: ScreenConfig.set(
@@ -171,7 +171,7 @@ class ReverseInterpreter(Interpreter):
                         False,
                     ),
                 ],
-                essential_condition=Has((CategoryName.character, CategoryName.name_n)),
+                sufficiency=Has((CategoryName.character, CategoryName.name_n)),
                 syncer=self.sync_on_action,
             ),
         }

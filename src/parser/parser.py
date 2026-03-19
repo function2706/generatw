@@ -201,9 +201,9 @@ class Parser:
             bool: True: 十分, False: 不十分(空文字列)
         """
         if self.event.in_debugging.is_set():
-            return self.debug_interpreter.check_essentiality_of(self.crnt_prompt)
+            return self.debug_interpreter.check_sufficiency_of(self.crnt_prompt)
         elif self.interpreter is not None:
-            return self.interpreter.check_essentiality_of(self.crnt_prompt)
+            return self.interpreter.check_sufficiency_of(self.crnt_prompt)
         return False
 
     def inform_new_prompt(self, prompt: Prompt) -> None:

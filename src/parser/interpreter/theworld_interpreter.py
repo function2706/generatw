@@ -240,7 +240,7 @@ class TheWorldInterpreter(Interpreter):
                     ),
                     ((CategoryName.meta, CategoryName.weather), expr_outdoors, False),
                 ],
-                essential_condition=Has((CategoryName.character, CategoryName.name_n)),
+                sufficiency=Has((CategoryName.character, CategoryName.name_n)),
                 syncer=self.sync_on_main,
             ),
             ScreenName.status: ScreenConfig.set(
@@ -264,7 +264,7 @@ class TheWorldInterpreter(Interpreter):
                     ((CategoryName.equipments,), None, True),
                     ((CategoryName.accessories,), None, True),
                 ],
-                essential_condition=Has((CategoryName.name_n,)),
+                sufficiency=Has((CategoryName.name_n,)),
                 syncer=None,
             ),
             ScreenName.fashion: ScreenConfig.set(
@@ -286,7 +286,7 @@ class TheWorldInterpreter(Interpreter):
                     ((CategoryName.equipments,), None, True),
                     ((CategoryName.accessories,), None, True),
                 ],
-                essential_condition=Has((CategoryName.character, CategoryName.name_n)),
+                sufficiency=Has((CategoryName.character, CategoryName.name_n)),
                 syncer=self.sync_on_fashion,
             ),
         }

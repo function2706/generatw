@@ -40,7 +40,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "OK1,OK2,strip_common_pos", "NEG": "ok1,ok2,strip_common_neg"},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         }
     },
@@ -87,7 +87,7 @@ CORRECT_RESULT = {
                 "POS": "MAP1,(dedupe:2.5),MAP2,MAP3',MAP3,MAP4,dedupe_common_pos",
                 "NEG": "(dedupe:0.15),map1,map2,map3,map4,dedupe_common_neg",
             },
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         }
     },
@@ -137,7 +137,7 @@ CORRECT_RESULT = {
                 "POS": "MAP5,MAP1,(dedupe:2.5),MAP2,MAP3',MAP3,MAP4,dedupe_common_pos",
                 "NEG": "map5,(dedupe:0.15),map5',map1,map2,map3,map4,dedupe_common_neg",
             },
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         }
     },
@@ -179,7 +179,7 @@ CORRECT_RESULT = {
                 "POS": "MAP5,MAP1,(dedupe:2.5),MAP2,MAP4,dedupe_common_pos",
                 "NEG": "map5,(dedupe:0.5),map5',map1,map2,map4,dedupe_common_neg",
             },
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         }
     },
@@ -221,7 +221,7 @@ CORRECT_RESULT = {
                 "POS": "MAP5,MAP1,(dedupe:2.5),MAP2,MAP4,dedupe_common_pos",
                 "NEG": "map5,(dedupe:0.5),map5',map1,map2,map4,dedupe_common_neg",
             },
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         }
     },
@@ -250,120 +250,147 @@ CORRECT_RESULT = {
                 "POS": "MAP3,MAP2,MAP4,MAP1,sort_common_pos",
                 "NEG": "map3,map2,map4,map1,sort_common_neg",
             },
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         }
     },
-    "CASE 'essential'": {
-        "InterpreterTest-1: 'essential BD'": {
+    "CASE 'sufficiency'": {
+        "InterpreterTest-1: 'sufficiency BD'": {
             "dataclass": [
                 {
-                    "screen_id": "essential",
+                    "screen_id": "sufficiency",
                     "positive": [
                         {"path": ["notneed1"], "tokens": [{"token": "NOTNEED1", "weight": 1.0}]},
                         {"path": ["notneed2"], "tokens": [{"token": "NOTNEED2", "weight": 1.0}]},
-                        {"path": [], "tokens": [{"token": "essential_common_pos", "weight": 1.0}]},
+                        {
+                            "path": [],
+                            "tokens": [{"token": "sufficiency_common_pos", "weight": 1.0}],
+                        },
                     ],
                     "negative": [
                         {"path": ["notneed1"], "tokens": [{"token": "notneed1", "weight": 1.0}]},
                         {"path": ["notneed2"], "tokens": [{"token": "notneed2", "weight": 1.0}]},
-                        {"path": [], "tokens": [{"token": "essential_common_neg", "weight": 1.0}]},
+                        {
+                            "path": [],
+                            "tokens": [{"token": "sufficiency_common_neg", "weight": 1.0}],
+                        },
                     ],
                 }
             ],
             "string": {
-                "POS": "NOTNEED1,NOTNEED2,essential_common_pos",
-                "NEG": "notneed1,notneed2,essential_common_neg",
+                "POS": "NOTNEED1,NOTNEED2,sufficiency_common_pos",
+                "NEG": "notneed1,notneed2,sufficiency_common_neg",
             },
-            "essentiality": False,
+            "sufficiency": False,
             "reports": [],
         },
-        "InterpreterTest-2: 'essential ABD'": {
+        "InterpreterTest-2: 'sufficiency ABD'": {
             "dataclass": [
                 {
-                    "screen_id": "essential",
+                    "screen_id": "sufficiency",
                     "positive": [
                         {"path": ["need1"], "tokens": [{"token": "NEED1", "weight": 1.0}]},
                         {"path": ["notneed1"], "tokens": [{"token": "NOTNEED1", "weight": 1.0}]},
                         {"path": ["notneed2"], "tokens": [{"token": "NOTNEED2", "weight": 1.0}]},
-                        {"path": [], "tokens": [{"token": "essential_common_pos", "weight": 1.0}]},
+                        {
+                            "path": [],
+                            "tokens": [{"token": "sufficiency_common_pos", "weight": 1.0}],
+                        },
                     ],
                     "negative": [
                         {"path": ["need1"], "tokens": [{"token": "need1", "weight": 1.0}]},
                         {"path": ["notneed1"], "tokens": [{"token": "notneed1", "weight": 1.0}]},
                         {"path": ["notneed2"], "tokens": [{"token": "notneed2", "weight": 1.0}]},
-                        {"path": [], "tokens": [{"token": "essential_common_neg", "weight": 1.0}]},
+                        {
+                            "path": [],
+                            "tokens": [{"token": "sufficiency_common_neg", "weight": 1.0}],
+                        },
                     ],
                 }
             ],
             "string": {
-                "POS": "NEED1,NOTNEED1,NOTNEED2,essential_common_pos",
-                "NEG": "need1,notneed1,notneed2,essential_common_neg",
+                "POS": "NEED1,NOTNEED1,NOTNEED2,sufficiency_common_pos",
+                "NEG": "need1,notneed1,notneed2,sufficiency_common_neg",
             },
-            "essentiality": False,
+            "sufficiency": False,
             "reports": [],
         },
-        "InterpreterTest-3: 'essential BCD'": {
+        "InterpreterTest-3: 'sufficiency BCD'": {
             "dataclass": [
                 {
-                    "screen_id": "essential",
+                    "screen_id": "sufficiency",
                     "positive": [
                         {"path": ["need2"], "tokens": [{"token": "NEED2", "weight": 1.0}]},
                         {"path": ["notneed1"], "tokens": [{"token": "NOTNEED1", "weight": 1.0}]},
                         {"path": ["notneed2"], "tokens": [{"token": "NOTNEED2", "weight": 1.0}]},
-                        {"path": [], "tokens": [{"token": "essential_common_pos", "weight": 1.0}]},
+                        {
+                            "path": [],
+                            "tokens": [{"token": "sufficiency_common_pos", "weight": 1.0}],
+                        },
                     ],
                     "negative": [
                         {"path": ["need2"], "tokens": [{"token": "need2", "weight": 1.0}]},
                         {"path": ["notneed1"], "tokens": [{"token": "notneed1", "weight": 1.0}]},
                         {"path": ["notneed2"], "tokens": [{"token": "notneed2", "weight": 1.0}]},
-                        {"path": [], "tokens": [{"token": "essential_common_neg", "weight": 1.0}]},
+                        {
+                            "path": [],
+                            "tokens": [{"token": "sufficiency_common_neg", "weight": 1.0}],
+                        },
                     ],
                 }
             ],
             "string": {
-                "POS": "NEED2,NOTNEED1,NOTNEED2,essential_common_pos",
-                "NEG": "need2,notneed1,notneed2,essential_common_neg",
+                "POS": "NEED2,NOTNEED1,NOTNEED2,sufficiency_common_pos",
+                "NEG": "need2,notneed1,notneed2,sufficiency_common_neg",
             },
-            "essentiality": False,
+            "sufficiency": False,
             "reports": [],
         },
-        "InterpreterTest-4: 'essential BDE'": {
+        "InterpreterTest-4: 'sufficiency BDE'": {
             "dataclass": [
                 {
-                    "screen_id": "essential",
+                    "screen_id": "sufficiency",
                     "positive": [
                         {"path": ["need3"], "tokens": [{"token": "NEED3", "weight": 1.0}]},
                         {"path": ["notneed1"], "tokens": [{"token": "NOTNEED1", "weight": 1.0}]},
                         {"path": ["notneed2"], "tokens": [{"token": "NOTNEED2", "weight": 1.0}]},
-                        {"path": [], "tokens": [{"token": "essential_common_pos", "weight": 1.0}]},
+                        {
+                            "path": [],
+                            "tokens": [{"token": "sufficiency_common_pos", "weight": 1.0}],
+                        },
                     ],
                     "negative": [
                         {"path": ["need3"], "tokens": [{"token": "need3", "weight": 1.0}]},
                         {"path": ["notneed1"], "tokens": [{"token": "notneed1", "weight": 1.0}]},
                         {"path": ["notneed2"], "tokens": [{"token": "notneed2", "weight": 1.0}]},
-                        {"path": [], "tokens": [{"token": "essential_common_neg", "weight": 1.0}]},
+                        {
+                            "path": [],
+                            "tokens": [{"token": "sufficiency_common_neg", "weight": 1.0}],
+                        },
                     ],
                 }
             ],
             "string": {
-                "POS": "NEED3,NOTNEED1,NOTNEED2,essential_common_pos",
-                "NEG": "need3,notneed1,notneed2,essential_common_neg",
+                "POS": "NEED3,NOTNEED1,NOTNEED2,sufficiency_common_pos",
+                "NEG": "need3,notneed1,notneed2,sufficiency_common_neg",
             },
-            "essentiality": False,
+            "sufficiency": False,
             "reports": [],
         },
-        "InterpreterTest-5: 'essential ABCDE'": {
+        "InterpreterTest-5: 'sufficiency ABCDE'": {
             "dataclass": [
                 {
-                    "screen_id": "essential",
+                    "screen_id": "sufficiency",
                     "positive": [
                         {"path": ["need1"], "tokens": [{"token": "NEED1", "weight": 1.0}]},
                         {"path": ["need2"], "tokens": [{"token": "NEED2", "weight": 1.0}]},
                         {"path": ["need3"], "tokens": [{"token": "NEED3", "weight": 1.0}]},
                         {"path": ["notneed1"], "tokens": [{"token": "NOTNEED1", "weight": 1.0}]},
                         {"path": ["notneed2"], "tokens": [{"token": "NOTNEED2", "weight": 1.0}]},
-                        {"path": [], "tokens": [{"token": "essential_common_pos", "weight": 1.0}]},
+                        {
+                            "path": [],
+                            "tokens": [{"token": "sufficiency_common_pos", "weight": 1.0}],
+                        },
                     ],
                     "negative": [
                         {"path": ["need1"], "tokens": [{"token": "need1", "weight": 1.0}]},
@@ -371,28 +398,34 @@ CORRECT_RESULT = {
                         {"path": ["need3"], "tokens": [{"token": "need3", "weight": 1.0}]},
                         {"path": ["notneed1"], "tokens": [{"token": "notneed1", "weight": 1.0}]},
                         {"path": ["notneed2"], "tokens": [{"token": "notneed2", "weight": 1.0}]},
-                        {"path": [], "tokens": [{"token": "essential_common_neg", "weight": 1.0}]},
+                        {
+                            "path": [],
+                            "tokens": [{"token": "sufficiency_common_neg", "weight": 1.0}],
+                        },
                     ],
                 }
             ],
             "string": {
-                "POS": "NEED1,NEED2,NEED3,NOTNEED1,NOTNEED2,essential_common_pos",
-                "NEG": "need1,need2,need3,notneed1,notneed2,essential_common_neg",
+                "POS": "NEED1,NEED2,NEED3,NOTNEED1,NOTNEED2,sufficiency_common_pos",
+                "NEG": "need1,need2,need3,notneed1,notneed2,sufficiency_common_neg",
             },
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         },
-        "InterpreterTest-6: 'essential ABXDE'": {
+        "InterpreterTest-6: 'sufficiency ABXDE'": {
             "dataclass": [
                 {
-                    "screen_id": "essential",
+                    "screen_id": "sufficiency",
                     "positive": [
                         {"path": ["need1"], "tokens": [{"token": "NEED1", "weight": 1.0}]},
                         {"path": ["need2"], "tokens": [{"token": "DEFAULT", "weight": 1.0}]},
                         {"path": ["need3"], "tokens": [{"token": "NEED3", "weight": 1.0}]},
                         {"path": ["notneed1"], "tokens": [{"token": "NOTNEED1", "weight": 1.0}]},
                         {"path": ["notneed2"], "tokens": [{"token": "NOTNEED2", "weight": 1.0}]},
-                        {"path": [], "tokens": [{"token": "essential_common_pos", "weight": 1.0}]},
+                        {
+                            "path": [],
+                            "tokens": [{"token": "sufficiency_common_pos", "weight": 1.0}],
+                        },
                     ],
                     "negative": [
                         {"path": ["need1"], "tokens": [{"token": "need1", "weight": 1.0}]},
@@ -400,21 +433,24 @@ CORRECT_RESULT = {
                         {"path": ["need3"], "tokens": [{"token": "need3", "weight": 1.0}]},
                         {"path": ["notneed1"], "tokens": [{"token": "notneed1", "weight": 1.0}]},
                         {"path": ["notneed2"], "tokens": [{"token": "notneed2", "weight": 1.0}]},
-                        {"path": [], "tokens": [{"token": "essential_common_neg", "weight": 1.0}]},
+                        {
+                            "path": [],
+                            "tokens": [{"token": "sufficiency_common_neg", "weight": 1.0}],
+                        },
                     ],
                 }
             ],
             "string": {
-                "POS": "NEED1,DEFAULT,NEED3,NOTNEED1,NOTNEED2,essential_common_pos",
-                "NEG": "need1,default,need3,notneed1,notneed2,essential_common_neg",
+                "POS": "NEED1,DEFAULT,NEED3,NOTNEED1,NOTNEED2,sufficiency_common_pos",
+                "NEG": "need1,default,need3,notneed1,notneed2,sufficiency_common_neg",
             },
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [
                 {
                     "matched": "X",
                     "pattern": "(C|X)",
                     "capturegrp": 0,
-                    "screen_id": "essential",
+                    "screen_id": "sufficiency",
                     "paths": [["need2"]],
                 }
             ],
@@ -424,13 +460,13 @@ CORRECT_RESULT = {
         "InterpreterTest-1: 'expr1 room city'": {
             "dataclass": [{"screen_id": "expr1", "positive": [], "negative": []}],
             "string": {"POS": "", "NEG": ""},
-            "essentiality": False,
+            "sufficiency": False,
             "reports": [],
         },
         "InterpreterTest-2: 'expr1 city room'": {
             "dataclass": [{"screen_id": "expr1", "positive": [], "negative": []}],
             "string": {"POS": "", "NEG": ""},
-            "essentiality": False,
+            "sufficiency": False,
             "reports": [],
         },
         "InterpreterTest-3: 'expr1 room sunny'": {
@@ -447,7 +483,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "room", "NEG": ""},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         },
         "InterpreterTest-4: 'expr1 city sunny'": {
@@ -465,7 +501,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "city,sunny", "NEG": ""},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         },
     },
@@ -473,7 +509,7 @@ CORRECT_RESULT = {
         "InterpreterTest-1: 'expr2 checkHas'": {
             "dataclass": [{"screen_id": "expr2", "positive": [], "negative": []}],
             "string": {"POS": "", "NEG": ""},
-            "essentiality": False,
+            "sufficiency": False,
             "reports": [],
         },
         "InterpreterTest-2: 'expr2 P checkHas'": {
@@ -488,7 +524,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "P,checkHas", "NEG": ""},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         },
         "InterpreterTest-3: 'expr2 PQR checkHas'": {
@@ -505,7 +541,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "P,Q,R,checkHas", "NEG": ""},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         },
         "InterpreterTest-4: 'expr2 QR checkHas'": {
@@ -520,13 +556,13 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "Q,R", "NEG": ""},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         },
         "InterpreterTest-5: 'expr2 checkAnd'": {
             "dataclass": [{"screen_id": "expr2", "positive": [], "negative": []}],
             "string": {"POS": "", "NEG": ""},
-            "essentiality": False,
+            "sufficiency": False,
             "reports": [],
         },
         "InterpreterTest-6: 'expr2 P checkAnd'": {
@@ -538,7 +574,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "P", "NEG": ""},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         },
         "InterpreterTest-7: 'expr2 Q checkAnd'": {
@@ -550,7 +586,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "Q", "NEG": ""},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         },
         "InterpreterTest-8: 'expr2 PQ checkAnd'": {
@@ -566,7 +602,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "P,Q,checkAnd", "NEG": ""},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         },
         "InterpreterTest-9: 'expr2 PQR checkAnd'": {
@@ -583,13 +619,13 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "P,Q,R,checkAnd", "NEG": ""},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         },
         "InterpreterTest-10: 'expr2 checkOr'": {
             "dataclass": [{"screen_id": "expr2", "positive": [], "negative": []}],
             "string": {"POS": "", "NEG": ""},
-            "essentiality": False,
+            "sufficiency": False,
             "reports": [],
         },
         "InterpreterTest-11: 'expr2 P checkOr'": {
@@ -604,7 +640,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "P,checkOr", "NEG": ""},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         },
         "InterpreterTest-12: 'expr2 Q checkOr'": {
@@ -619,7 +655,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "Q,checkOr", "NEG": ""},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         },
         "InterpreterTest-13: 'expr2 PQ checkOr'": {
@@ -635,7 +671,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "P,Q,checkOr", "NEG": ""},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         },
         "InterpreterTest-14: 'expr2 PQR checkOr'": {
@@ -652,7 +688,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "P,Q,R,checkOr", "NEG": ""},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         },
         "InterpreterTest-15: 'expr2 checkNot'": {
@@ -666,7 +702,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "checkNot", "NEG": ""},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         },
         "InterpreterTest-16: 'expr2 P checkNot'": {
@@ -678,7 +714,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "P", "NEG": ""},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         },
         "InterpreterTest-17: 'expr2 PQR checkNot'": {
@@ -694,7 +730,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "P,Q,R", "NEG": ""},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         },
         "InterpreterTest-18: 'expr2 QR checkNot'": {
@@ -710,7 +746,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "Q,R,checkNot", "NEG": ""},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         },
         "InterpreterTest-19: 'expr2 QR checkComplex'": {
@@ -725,7 +761,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "Q,R", "NEG": ""},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         },
         "InterpreterTest-20: 'expr2 PQ checkComplex'": {
@@ -744,7 +780,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "P,Q,checkComplex", "NEG": ""},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         },
         "InterpreterTest-21: 'expr2 PR checkComplex'": {
@@ -759,7 +795,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "P,R", "NEG": ""},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         },
         "InterpreterTest-22: 'expr2 checkTrue'": {
@@ -773,7 +809,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "checkTrue", "NEG": ""},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         },
         "InterpreterTest-23: 'expr2 PQR checkTrue'": {
@@ -790,13 +826,13 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "P,Q,R,checkTrue", "NEG": ""},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         },
         "InterpreterTest-24: 'expr2 checkFalse'": {
             "dataclass": [{"screen_id": "expr2", "positive": [], "negative": []}],
             "string": {"POS": "", "NEG": ""},
-            "essentiality": False,
+            "sufficiency": False,
             "reports": [],
         },
         "InterpreterTest-25: 'expr2 PQR checkFalse'": {
@@ -812,7 +848,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "P,Q,R", "NEG": ""},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         },
         "InterpreterTest-26: 'expr2 checkNone'": {
@@ -826,7 +862,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "checkNone", "NEG": ""},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         },
         "InterpreterTest-27: 'expr2 PQR checkNone'": {
@@ -843,15 +879,15 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "P,Q,R,checkNone", "NEG": ""},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         },
     },
-    "CASE 'essential & expr'": {
+    "CASE 'sufficiency & expr'": {
         "InterpreterTest-1: 'expr2'": {
             "dataclass": [{"screen_id": "expr2", "positive": [], "negative": []}],
             "string": {"POS": "", "NEG": ""},
-            "essentiality": False,
+            "sufficiency": False,
             "reports": [],
         },
         "InterpreterTest-2: 'expr2 P'": {
@@ -863,13 +899,13 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "P", "NEG": ""},
-            "essentiality": False,
+            "sufficiency": False,
             "reports": [],
         },
         "InterpreterTest-3: 'expr2 Q'": {
             "dataclass": [{"screen_id": "expr2", "positive": [], "negative": []}],
             "string": {"POS": "", "NEG": ""},
-            "essentiality": False,
+            "sufficiency": False,
             "reports": [],
         },
         "InterpreterTest-4: 'expr2 PQ'": {
@@ -884,7 +920,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "P,Q", "NEG": ""},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         },
     },
@@ -902,7 +938,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "maps", "NEG": "neg_maps"},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [
                 {
                     "matched": "None",
@@ -929,7 +965,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "ranges", "NEG": "neg_ranges"},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [
                 {
                     "matched": "None",
@@ -959,7 +995,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "intervals", "NEG": "neg_intervals"},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [
                 {
                     "matched": "100",
@@ -984,7 +1020,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "recurses1", "NEG": ""},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [
                 {
                     "matched": "REC2",
@@ -1016,7 +1052,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "recurses2", "NEG": ""},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [
                 {
                     "matched": "{REC1}",
@@ -1074,7 +1110,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "recurses3", "NEG": ""},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [
                 {
                     "matched": "{(REC1)}",
@@ -1154,7 +1190,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "maps", "NEG": "neg_maps"},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         },
         "InterpreterTest-8: 'report no-report_ranges:RANGEs;no-report_ranges:nRANGEs;no-report_ranges:None;'": {  # noqa: E501
@@ -1176,7 +1212,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "ranges", "NEG": "neg_ranges"},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         },
         "InterpreterTest-9: 'report no-report_intervals:5;no-report_intervals:-5;no-report_intervals:100;'": {  # noqa: E501
@@ -1198,7 +1234,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {"POS": "intervals", "NEG": "neg_intervals"},
-            "essentiality": True,
+            "sufficiency": True,
             "reports": [],
         },
     },
@@ -1223,7 +1259,7 @@ class KeyName(StrEnum):
     texts = "texts"
     screen_id = "screen_id"
     primitive_category_config_list = "primitive_category_config_list"
-    essential = "essential"
+    sufficiency = "sufficiency"
 
 
 class InterpreterDebugger(Parser):
@@ -1235,7 +1271,7 @@ class InterpreterDebugger(Parser):
         texts: list[str],
         screen_id: str = None,
         pcatcfg: list[PrimitiveCategoryConfig] = None,
-        essential: Expr = None,
+        sufficiency: Expr = None,
         with_texts: bool = True,
     ) -> dict[str, dict[str, Any]]:
         """
@@ -1254,7 +1290,7 @@ class InterpreterDebugger(Parser):
                     and screen_id is not None
                     and pcatcfg is not None
                 ):
-                    self.interpreter.restore_screen_config(screen_id, pcatcfg, essential)
+                    self.interpreter.restore_screen_config(screen_id, pcatcfg, sufficiency)
                 self.crnt_prompt, reports = self.interpreter.make_prompt(text)
                 major = f"{yamlname}-{i + 1}: '{text}'" if with_texts else f"{yamlname}-{i + 1}"
                 posneg = self.make_prompt_strs()
@@ -1266,7 +1302,7 @@ class InterpreterDebugger(Parser):
                 result[major] = {
                     "dataclass": (self.crnt_prompt,),
                     "string": {"POS": pos, "NEG": neg},
-                    "essentiality": self.interpreter.check_essentiality_of(self.crnt_prompt),
+                    "sufficiency": self.interpreter.check_sufficiency_of(self.crnt_prompt),
                     "reports": reports,
                 }
             except Exception as e:
@@ -1288,7 +1324,7 @@ class InterpreterDebugger(Parser):
             texts = []
             screen_id = None
             pcatcfg = None
-            essential = None
+            sufficiency = None
             for key, val in testcase.items():
                 if key == KeyName.yamlpath:
                     yamlpath = val
@@ -1298,15 +1334,15 @@ class InterpreterDebugger(Parser):
                     screen_id = val
                 elif key == KeyName.primitive_category_config_list:
                     pcatcfg = val
-                elif key == KeyName.essential:
-                    essential = val
+                elif key == KeyName.sufficiency:
+                    sufficiency = val
             try:
                 self.switch_interpreter(Path(yamlpath))
                 result_by_texts = self.debug_texts(
                     texts=texts,
                     screen_id=screen_id,
                     pcatcfg=pcatcfg,
-                    essential=essential,
+                    sufficiency=sufficiency,
                     with_texts=with_texts,
                 )
             except Exception as e:
@@ -1342,14 +1378,14 @@ def make_testcase(
     texts: list[str],
     screen_id: str,
     pcatcfg: list[PrimitiveCategoryConfig],
-    essential: Expr,
+    sufficiency: Expr,
 ):
     return {
         KeyName.yamlpath: yamlpath,
         KeyName.texts: texts,
         KeyName.screen_id: screen_id,
         KeyName.primitive_category_config_list: pcatcfg,
-        KeyName.essential: essential,
+        KeyName.sufficiency: sufficiency,
     }
 
 
@@ -1388,7 +1424,7 @@ def debug_interpreter() -> None:
                     (("ok1",), None, True),
                     (("ok2",), None, True),
                 ],
-                essential=None,
+                sufficiency=None,
             ),
             "dedupe": make_testcase(
                 yamlpath="yamls/testyamls/InterpreterTest.yaml",
@@ -1400,7 +1436,7 @@ def debug_interpreter() -> None:
                     (("map3",), None, True),
                     (("map4",), None, True),
                 ],
-                essential=None,
+                sufficiency=None,
             ),
             "dedupe2": make_testcase(
                 yamlpath="yamls/testyamls/InterpreterTest.yaml",
@@ -1413,7 +1449,7 @@ def debug_interpreter() -> None:
                     (("map3",), None, True),
                     (("map4",), None, True),
                 ],
-                essential=None,
+                sufficiency=None,
             ),
             "dedupe3": make_testcase(
                 yamlpath="yamls/testyamls/InterpreterTest.yaml",
@@ -1425,7 +1461,7 @@ def debug_interpreter() -> None:
                     (("map2",), None, True),
                     (("map4",), None, True),
                 ],
-                essential=None,
+                sufficiency=None,
             ),
             "dedupe4": make_testcase(
                 yamlpath="yamls/testyamls/InterpreterTest.yaml",
@@ -1438,7 +1474,7 @@ def debug_interpreter() -> None:
                     (("map2",), None, True),
                     (("map4",), None, True),
                 ],
-                essential=None,
+                sufficiency=None,
             ),
             "sort": make_testcase(
                 yamlpath="yamls/testyamls/InterpreterTest.yaml",
@@ -1450,19 +1486,19 @@ def debug_interpreter() -> None:
                     (("map4",), None, True),
                     (("map1",), None, True),
                 ],
-                essential=None,
+                sufficiency=None,
             ),
-            "essential": make_testcase(
+            "sufficiency": make_testcase(
                 yamlpath="yamls/testyamls/InterpreterTest.yaml",
                 texts=[
-                    "essential BD",
-                    "essential ABD",
-                    "essential BCD",
-                    "essential BDE",
-                    "essential ABCDE",
-                    "essential ABXDE",  # default で満たす場合
+                    "sufficiency BD",
+                    "sufficiency ABD",
+                    "sufficiency BCD",
+                    "sufficiency BDE",
+                    "sufficiency ABCDE",
+                    "sufficiency ABXDE",  # default で満たす場合
                 ],
-                screen_id="essential",
+                screen_id="sufficiency",
                 pcatcfg=[
                     (("need1",), None, True),
                     (("need2",), None, True),
@@ -1470,7 +1506,7 @@ def debug_interpreter() -> None:
                     (("notneed1",), None, True),
                     (("notneed2",), None, True),
                 ],
-                essential=Has(("need1",)) & Has(("need2",)) & Has(("need3",)),
+                sufficiency=Has(("need1",)) & Has(("need2",)) & Has(("need3",)),
             ),
             "expr1": make_testcase(
                 yamlpath="yamls/testyamls/InterpreterTest.yaml",
@@ -1490,7 +1526,7 @@ def debug_interpreter() -> None:
                         True,
                     ),
                 ],
-                essential=None,
+                sufficiency=None,
             ),
             "expr2": make_testcase(
                 yamlpath="yamls/testyamls/InterpreterTest.yaml",
@@ -1537,9 +1573,9 @@ def debug_interpreter() -> None:
                     (("checkFalse",), FalseExpr(), True),  # 恒偽
                     (("checkNone",), None, True),  # None = 恒真
                 ],
-                essential=None,
+                sufficiency=None,
             ),
-            "essential & expr": make_testcase(
+            "sufficiency & expr": make_testcase(
                 yamlpath="yamls/testyamls/InterpreterTest.yaml",
                 texts=[
                     "expr2",  # ("q",) がないので False
@@ -1552,7 +1588,7 @@ def debug_interpreter() -> None:
                     (("p",), TrueExpr(), True),
                     (("q",), Has(("p",)), True),
                 ],
-                essential=Has(("q",)),
+                sufficiency=Has(("q",)),
             ),
             "report": make_testcase(
                 yamlpath="yamls/testyamls/InterpreterTest.yaml",
@@ -1583,7 +1619,7 @@ def debug_interpreter() -> None:
                     (("no-report_ranges",), TrueExpr(), False),  # ranges, レポートしない
                     (("no-report_intervals",), TrueExpr(), False),  # interval, レポートしない
                 ],
-                essential=None,
+                sufficiency=None,
             ),
         }
     )
