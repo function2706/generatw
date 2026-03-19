@@ -1,9 +1,0 @@
-parser: SampleParser
-main:
-  ignition: "go"
-  f:
-    test:
-      pattern: "id:(\\d+)"
-      capturegrp: 1
-      maps:
-        "10": ten

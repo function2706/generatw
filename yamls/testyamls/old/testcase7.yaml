@@ -1,9 +1,0 @@
-parser: SampleParser
-main:
-  ignition: "go"
-  t:
-    a:
-      pattern: "(x)"
-      maps:
-        x: foo
-  common: common
