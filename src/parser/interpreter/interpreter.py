@@ -4,8 +4,7 @@ Prompt 解釈クラス
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from collections.abc import Callable
+from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -15,15 +14,26 @@ from common.expr import Expr, TrueExpr
 from parser.prompter import CategoryPath, Prompt, Prompter, PromptParts, Report, Token
 
 
+@dataclass(frozen=True)
+class KeyEntry:
+    pos_tokens: tuple[tuple[str, float], ...]
+    neg_tokens: tuple[tuple[str, float], ...]
+
+
 @dataclass
 class MemoryEntry:
     """
     ポジティブ・ネガティブを CategoryPath でまとめて記憶するためのデータ定義
     """
 
-    path: CategoryPath = field(default_factory=CategoryPath, compare=False)
     pos_tokens: list[Token] = field(default_factory=list)
     neg_tokens: list[Token] = field(default_factory=list)
+
+    def to_key_entry(self) -> KeyEntry:
+        return KeyEntry(
+            pos_tokens=tuple((t.token, t.weight) for t in self.pos_tokens),
+            neg_tokens=tuple((t.token, t.weight) for t in self.neg_tokens),
+        )
 
 
 @dataclass
@@ -32,259 +42,130 @@ class Memory:
     ポジティブプロンプトとネガティブプロンプトを CategoryPath ごとに束ねたデータ
     """
 
-    entries: list[MemoryEntry] = field(default_factory=list)
+    screen_id: str = ""
+    entries: dict[CategoryPath, MemoryEntry] = field(default_factory=dict)
 
-    def to_prompt(self, screen_id: str) -> Prompt:
-        prompt_set = Prompt(screen_id=screen_id)
-        for entry in self.entries:
-            if entry.pos_tokens:
-                prompt_set.positive.append(PromptParts(path=entry.path, tokens=entry.pos_tokens))
-            if entry.neg_tokens:
-                prompt_set.negative.append(PromptParts(path=entry.path, tokens=entry.neg_tokens))
+    def get_key_entry(self, keyname: str) -> KeyEntry | None:
+        """
+        キーカテゴリー名にあたる KeyEntry を取得する\n
+        存在しない場合は None を返す
 
-        return prompt_set
+        Args:
+            keyname (str): キーカテゴリー名
 
-
-def prompt_to_memory(prompt: Prompt | None) -> Memory | None:
-    """
-    指定の Prompt から Memory を得る\n
-    None についてはそのまま None を返す
-    Args:
-        prompt (Prompt | None): Prompt
-    Returns:
-        Memory | None: Memory
-    """
-    if prompt is None:
+        Returns:
+            KeyEntry | None: MemoryEntry
+        """
+        for path, entry in self.entries.items():
+            if len(path) > 0 and path[-1] == keyname:
+                return entry.to_key_entry()
         return None
 
-    memory = Memory()
-    for parts in prompt.positive:
-        memory.entries.append(MemoryEntry(path=parts.path, pos_tokens=parts.tokens))
-    for parts in prompt.negative:
-        exists = False
-        for entry in memory.entries:
-            if parts.path != entry.path:
-                continue
-            # dedupe されている場合は代入と変わらない
-            entry.neg_tokens.extend(parts.tokens)
-            exists = True
-        if not exists:
-            # ポジティブ側になかった場合は単独で登録
-            memory.entries.append(MemoryEntry(parts.path, neg_tokens=parts.tokens))
-    return memory
+    def to_prompt(self) -> Prompt:
+        """
+        Prompt への変換
+
+        Returns:
+            Prompt: Prompt
+        """
+        prompt = Prompt(screen_id=self.screen_id)
+        for path, entry in self.entries.items():
+            if entry.pos_tokens:
+                prompt.positive.append(PromptParts(path=path, tokens=entry.pos_tokens))
+            if entry.neg_tokens:
+                prompt.negative.append(PromptParts(path=path, tokens=entry.neg_tokens))
+        return prompt
+
+
+# キーカテゴリーごとの Memory
+type Record = dict[
+    KeyEntry,  # キーカテゴリーにあたる MemoryEntry (immutable)
+    Memory,
+]
+
+
+@dataclass
+class PromptContainer:
+    prompt: Prompt
+    records: dict[str, Record]
+    last_memory: Memory
+    keyname: str
+
+
+@dataclass
+class CompatiblePrompt(Prompt):
+    """
+    Memory との相互互換性を持つ Prompt
+    """
+
+    def to_memory(self) -> Memory:
+        """
+        Memory への変換
+
+        Returns:
+            Memory: Memory
+        """
+        memory = Memory(screen_id=self.screen_id)
+        for parts in self.positive:
+            memory.entries[parts.path] = MemoryEntry(pos_tokens=list(parts.tokens))
+        for parts in self.negative:
+            if parts.path in memory.entries:
+                entry = memory.entries.get(parts.path)
+                # dedupe されている場合は代入と変わらない
+                entry.neg_tokens.extend(list(parts.tokens))
+            else:
+                # ポジティブ側になかった場合は単独で登録
+                memory.entries[parts.path] = MemoryEntry(neg_tokens=list(parts.tokens))
+        return memory
 
 
 @dataclass(frozen=True)
 class CategoryConfig:
-    sift_condition: Expr | None  # ふるいがけ条件 (None = 恒真)
+    sift_condition: Expr  # ふるいがけ条件
     log_report: bool  # Report を残すか
 
-
-type PrimitiveCategoryConfig = tuple[CategoryPath, Expr | None, bool]
+    @classmethod
+    def set(
+        cls,
+        sift_condition: Expr | None,  # None = 恒真
+        log_report: bool,
+    ):
+        return cls(
+            sift_condition=sift_condition if sift_condition is not None else TrueExpr(),
+            log_report=log_report,
+        )
 
 
 @dataclass(frozen=True)
 class ScreenConfig:
     cat_configs: dict[CategoryPath, CategoryConfig]  # カテゴリーコンフィグ
-    sufficiency: Expr | None  # 充足条件 (None = 恒真)
-    syncer: Callable[[Memory], Memory] | None  # 同期処理定義
+    sufficiency: Expr  # 充足条件
+    request_cats: dict[str, list[CategoryPath]]  # 他の Screen から要求するカテゴリーの一覧
+    takeover_cats: list[CategoryPath]  # 直前 Screen から引き継ぐカテゴリーの一覧
 
     @classmethod
     def set(
         cls,
-        primitive_category_configs: list[PrimitiveCategoryConfig],
-        sufficiency: Expr | None,
-        syncer: Callable[[Memory], Memory] | None,
+        cat_configs: dict[CategoryPath, tuple[Expr | None, bool]],
+        sufficiency: Expr | None = None,  # None = 恒真
+        request_cats: dict[str, list[CategoryPath]] | None = None,  # None = 無指定
+        takeover_cats: list[CategoryPath] | None = None,  # None = 無指定
     ):
         return cls(
-            cat_configs={
-                path: CategoryConfig(sift_condition=sift_cond, log_report=log_report)
-                for path, sift_cond, log_report in primitive_category_configs
-            },
-            sufficiency=sufficiency,
-            syncer=syncer,
+            cat_configs={cat: CategoryConfig.set(cc[0], cc[1]) for cat, cc in cat_configs.items()},
+            sufficiency=sufficiency if sufficiency is not None else TrueExpr(),
+            request_cats=request_cats if request_cats is not None else {},
+            takeover_cats=takeover_cats if takeover_cats is not None else [],
         )
 
-    def sift_condition_of(self, category_path: CategoryPath) -> Expr | None:
-        """
-        指定の category_path とペアの sift_condition を取得する\n
-        category_path にあたるものが存在しない場合は None を返す\n
-        sift_condition に None が指定されている場合は恒真とする
-
-        Args:
-            category_path (CategoryPath): CategoryPath
-
-        Returns:
-            Expr | None: sift_condition
-        """
-        cat_config = self.cat_configs.get(category_path)
-        if cat_config is None:
-            return None
-
-        return cat_config.sift_condition if cat_config.sift_condition is not None else TrueExpr()
-
-    def should_leave_report_of(self, category_paths: set[CategoryPath]) -> bool:
-        """
-        指定の category_paths をもつ Report を残すべきか\n
-        条件が定義されている CategoryPath を1つでも持つ場合はその条件を返す\n
-        そうでない場合は False
-
-        Args:
-            category_path (CategoryPath): CategoryPath
-
-        Returns:
-            bool: True: 残すべき
-        """
-        for cat_path, cat_config in self.cat_configs.items():
-            if cat_path in category_paths:
-                return cat_config.log_report
-        return False
-
-
-type ScreenTable = dict[
-    str,  # Screen ID
-    ScreenConfig,
-]
-
-
-class Interpreter(ABC):
-    """
-    クリップボード監視, ステータス記録クラス
-    """
-
-    def __init__(self, yamlpath: Path):
-        """
-        コンストラクタ
-
-        ScreenTable: Screen ID の順序はプロンプト化における優先順位を表す
-
-        Args:
-            yamlpath (Path): YAML パス
-        """
-        self.prompter: Prompter = None
-        self.yamlpath = yamlpath
-        self.screen_table: ScreenTable = {}
-
-        self.switch_prompter(yamlpath)
-
-    @classmethod
-    def keyword(cls) -> str:
-        """
-        キーワード (YAML の "interpreter" キーの値との照合値)を取得する
-
-        Returns:
-            str: キーワード_
-        """
-        return cls.__name__
-
-    def switch_prompter(self, yamlpath: Path) -> None:
-        """
-        指定の YAML を Prompter として設定する\n
-        "interpreter" キーワードと一致しない場合は何もしない(そのまま)
-
-        Args:
-            yamlpath (Path): YAML パス
-        """
-        yamlpath = Path(yamlpath)
-        if yamlpath.exists():
-            with open(yamlpath, encoding="utf-8") as f:
-                yamldict: dict = yaml.safe_load(f)
-                keyword = yamldict.get("interpreter")
-            if keyword == self.keyword():
-                self.prompter = Prompter.make(yamlpath)
-                self.yamlpath = yamlpath
-
-    def reload_prompter(self) -> None:
-        """
-        設定している YAML によって Prompter を開き直す
-        """
-        self.switch_prompter(self.yamlpath)
-
-    @abstractmethod
-    def save_state(self) -> dict:
-        """
-        このインスタンスの状態を保存可能な形式で返す\n
-        記憶がない場合は空の dict を返す
-
-        Returns:
-            dict: 状態を表す辞書
-        """
-        pass
-
-    @abstractmethod
-    def restore_state(self, state: dict) -> None:
-        """
-        指定の状態から記憶を復元する\n
-        不正な状態が渡された場合は無視する(何もしない)
-
-        Args:
-            state (dict): 保存された状態
-        """
-        pass
-
-    def sufficiency_of(self, screen_id: str) -> Expr | None:
-        """
-        ScreenTable から指定の Screen ID の充足条件を取得する\n
-        指定の Screen ID にあたるものが存在しない場合は None を返す\n
-        None が指定されている場合は恒真とする
-
-        Args:
-            screen_id (str): Screen ID
-
-        Returns:
-            Expr | None: 充足条件
-        """
-        screen_config = self.screen_table.get(screen_id)
-        if screen_config is None:
-            return None
-
-        return screen_config.sufficiency if screen_config.sufficiency is not None else TrueExpr()
-
-    def sync(self, prompt: Prompt) -> Prompt | None:
-        """
-        Screen を貫通して記憶するデータと, 記憶中のデータの同期を行う\n
-        各派生クラスで定義された Screen ID ごとの処理を実施\n
-        定義されていない(None)場合は何もしない\n
-        初めて一致した Screen ID についてのみ実施\n
-        None についてはそのまま None を返す\n
-        本関数は非破壊的である
-
-        Args:
-            prompt (Prompt): プロンプト
-        """
-        if prompt is None:
-            return None
-
-        screen_config = self.screen_table.get(prompt.screen_id)
-        if screen_config is None:
-            return None
-        elif screen_config.syncer is None:
-            return prompt
-
-        memory = prompt_to_memory(prompt)
-        if memory is None:
-            return None
-        return screen_config.syncer(memory).to_prompt(prompt.screen_id)
-
-    def strip(self, prompt: Prompt | None) -> Prompt | None:
+    def strip(self, container: PromptContainer) -> None:
         """
         カテゴリーリストに存在しない PromptParts を削ぎ落とす\n
-        ただし common は必ず結果に含める\n
-        None についてはそのまま None を返す\n
-        本関数は非破壊的である
+        ただし common は必ず結果に含める
 
         Args:
-            prompt (Prompt | None): Prompt
-
-        Returns:
-            Prompt | None: Prompt
+            container (PromptContainer): PromptContainer
         """
-        if prompt is None:
-            return None
-
-        screen_config = self.screen_table.get(prompt.screen_id)
-        if screen_config is None:
-            return None
 
         def strip_(parts_list: list[PromptParts]) -> list[PromptParts]:
             result: list[PromptParts] = []
@@ -294,49 +175,37 @@ class Interpreter(ABC):
                     result.append(parts)
                     continue
 
-                if parts.path in screen_config.cat_configs:
+                if parts.path in self.cat_configs:
                     # CategoryPath がリスト内にある
                     result.append(parts)
             return result
 
-        result = Prompt(screen_id=prompt.screen_id)
-        result.positive = strip_(prompt.positive)
-        result.negative = strip_(prompt.negative)
+        container.prompt = Prompt(
+            screen_id=container.prompt.screen_id,
+            positive=strip_(container.prompt.positive),
+            negative=strip_(container.prompt.negative),
+        )
 
-        return result
-
-    def dedupe(self, prompt: Prompt | None) -> Prompt | None:
+    def dedupe(self, container: PromptContainer) -> None:
         """
         Prompt 内の重複トークンを排除し, 単一の正規トークンに統合する\n
         同一の token 文字列を持つ Token が複数の PromptParts にまたがって存在する場合,
-        以下のルールに従って一つに絞り込む：\n
-        **採用するトークン (weight の選択)**:
+        以下のルールに従って一つに絞り込む:\n
+        1. 採用するトークン (weight の選択):\n
             |weight - 1| が最大のもの, すなわち強調・減衰度合いが最も強いものを採用する
             同点の場合は前に出現したものが優先される\n
-        **配置先の CategoryPath (位置の選択)**:
+        2. 配置先の CategoryPath (位置の選択):\n
             重複するトークンを含む CategoryPath 群のうち, `category_list` において
             最も早く登場するものに統一する
             ただし common (path が空) は配置先候補から除外され, 常に他の明示的な Path が優先される\n
-        **出現順序の保持**:
+        3. 出現順序の保持:\n
             配置先 Path が決定した後, 元の PromptParts 内での出現インデックス (idx) を
             基準として昇順に並べ直すことで, 元の順序感を可能な限り維持する\n
-        本関数は非破壊的である\n
-        prompt が None の場合はそのまま None を返す
 
         Args:
-            prompt (Prompt | None): 重複排除対象の Prompt
-
-        Returns:
-            Prompt | None: 重複排除済みの新しい Prompt
+            container (PromptContainer): 重複排除対象の PromptContainer
         """
-        if prompt is None:
-            return None
-
-        screen_config = self.screen_table.get(prompt.screen_id)
-        if screen_config is None:
-            return None
-
-        category_list = list(screen_config.cat_configs.keys())
+        category_list = list(self.cat_configs.keys())
         category_list.append(())  # common 用に末尾に空の Path を追加
 
         type Best = dict[str, tuple[Token, set[tuple[CategoryPath, int]]]]
@@ -398,32 +267,21 @@ class Interpreter(ABC):
 
             return new_parts_list
 
-        return Prompt(
-            screen_id=prompt.screen_id,
-            positive=make_new_parts_(make_best_(prompt.positive)),
-            negative=make_new_parts_(make_best_(prompt.negative)),
+        container.prompt = Prompt(
+            screen_id=container.prompt.screen_id,
+            positive=make_new_parts_(make_best_(container.prompt.positive)),
+            negative=make_new_parts_(make_best_(container.prompt.negative)),
         )
 
-    def sift(self, prompt: Prompt | None) -> Prompt | None:
+    def sift(self, container: PromptContainer) -> None:
         """
         CategoryPath ごとに存在適性を確認し, 適するもののみとなるようふるいがけする\n
         ふるいがけルールはカテゴリーリストの各 Path に紐づくものによる\n
-        ただし common は必ず結果に含める\n
-        None についてはそのまま None を返す\n
-        本関数は非破壊的である
+        ただし common は必ず結果に含める
 
         Args:
-            prompt (Prompt | None): ふるいがけ対象の Prompt
-
-        Returns:
-            Prompt | None: ふるいがけ済みの新しい Prompt
+            prompt (PromptContainer): ふるいがけ対象の PromptContainer
         """
-        if prompt is None:
-            return None
-
-        screen_config = self.screen_table.get(prompt.screen_id)
-        if screen_config is None:
-            return None
 
         def sift_(parts_list: list[PromptParts]) -> list[PromptParts]:
             existing_paths: set[CategoryPath] = set()
@@ -436,55 +294,98 @@ class Interpreter(ABC):
                     new_parts_list.append(parts)
                     continue
 
-                cond = screen_config.sift_condition_of(parts.path)
-                if cond is not None and cond.eval(existing_paths):
+                cat_config = self.cat_configs.get(parts.path)
+                if cat_config is None:
+                    raise ValueError(f"No such category, '{parts.path}'.")
+
+                if cat_config.sift_condition.eval(existing_paths):
                     new_parts_list.append(parts)
             return new_parts_list
 
-        return Prompt(
-            screen_id=prompt.screen_id,
-            positive=sift_(prompt.positive),
-            negative=sift_(prompt.negative),
+        container.prompt = Prompt(
+            screen_id=container.prompt.screen_id,
+            positive=sift_(container.prompt.positive),
+            negative=sift_(container.prompt.negative),
         )
 
-    def sort(self, prompt: Prompt | None) -> Prompt | None:
+    def sync(self, container: PromptContainer) -> None:
+        """
+        Screen を貫通して記憶するデータと, 記憶中のデータの同期を行う\n
+        TakeOver: 直前の Screen からキーカテゴリーをもとに求めるカテゴリー群を追加\n
+                  (キーカテゴリーにあたるエントリーが存在しない場合も補填)\n
+        Request: 各 Screen の最新の記憶からキーカテゴリーをもとに求めるカテゴリー群を追加\n
+        Offer: 自身の Screen に紐づくエントリーをすべて提供
+
+        Args:
+            container (PromptContainer): PromptContainer
+        """
+        memory = CompatiblePrompt(
+            screen_id=container.prompt.screen_id,
+            positive=container.prompt.positive,
+            negative=container.prompt.negative,
+        ).to_memory()
+
+        # TakeOver: キーカテゴリーを引き継ぐことも想定して Request 前に実施
+        if container.last_memory is not None:
+            for path in self.takeover_cats:
+                last_mem_entry = container.last_memory.entries.get(path)
+                if last_mem_entry is not None:
+                    memory.entries[path] = last_mem_entry
+
+        # Request: キーカテゴリーが合致する Memory を要求
+        for screen_id, paths in self.request_cats.items():
+            record = container.records.get(screen_id)
+            if record is None:
+                continue
+
+            rec_memory = record.get(memory.get_key_entry(container.keyname))
+            if rec_memory is None:
+                continue
+
+            for path in paths:
+                if path in rec_memory.entries:
+                    memory.entries[path] = deepcopy(rec_memory.entries[path])
+        container.prompt = memory.to_prompt()
+
+        # Offer: Memory 上のすべての MemoryEntry をキーカテゴリーと紐づけて提供
+        key_entry = memory.get_key_entry(container.keyname)
+        if key_entry is not None:
+            if container.prompt.screen_id in container.records:
+                container.records[container.prompt.screen_id][key_entry] = memory
+            else:
+                container.records[container.prompt.screen_id] = {key_entry: memory}
+        container.last_memory.screen_id = memory.screen_id
+        container.last_memory.entries = deepcopy(memory.entries)
+
+    def sort(self, container: PromptContainer) -> None:
         """
         PromptBase を適切にソートする\n
         ソートルールはカテゴリーリスト内の CategoryPath の順序に従う\n
         リスト内にない CategoryPath は順に最後尾に置き換えられ,\n
         リスト内の存在しない CategoryPath は無視される\n
-        また(通常は誤って)同じ CategoryPath がリスト内に存在する場合, 比べて後ろの位置となる\n
-        None についてはそのまま None を返す\n
-        本関数は非破壊的である
+        また(通常は誤って)同じ CategoryPath がリスト内に存在する場合, 比べて後ろの位置となる
 
         Args:
-            prompt (Prompt | None): ソート対象の Prompt
-
-        Returns:
-            Prompt | None: ソート済みの新しい Prompt
+            container (PromptContainer): ソート対象の PromptContainer
         """
-        if prompt is None:
-            return None
-
-        screen_config = self.screen_table.get(prompt.screen_id)
-        if screen_config is None:
-            return None
 
         def sort_(parts_list: list[PromptParts]) -> list[PromptParts]:
             order_index: dict[CategoryPath, int] = {}
             i = 0
-            for path in screen_config.cat_configs:
+            for path in self.cat_configs:
                 order_index[path] = i
                 i += 1
             return sorted(parts_list, key=lambda c: order_index.get(c.path, float("inf")))
 
-        return Prompt(
-            screen_id=prompt.screen_id,
-            positive=sort_(prompt.positive),
-            negative=sort_(prompt.negative),
+        container.prompt = Prompt(
+            screen_id=container.prompt.screen_id,
+            positive=sort_(container.prompt.positive),
+            negative=sort_(container.prompt.negative),
         )
 
-    def edit(self, prompt: Prompt | None) -> Prompt | None:
+    def edit(
+        self, prompt: Prompt | None, records: dict[str, Record], last_memory: Memory, keyname: str
+    ) -> Prompt | None:
         """
         非破壊的に prompt を編集, 記録する\n
         None についてはそのまま None を返す
@@ -498,7 +399,15 @@ class Interpreter(ABC):
         if prompt is None:
             return None
 
-        return self.sort(self.sync(self.sift(self.dedupe(self.strip(prompt)))))
+        container = PromptContainer(
+            prompt=prompt, records=records, last_memory=last_memory, keyname=keyname
+        )
+        self.strip(container)
+        self.dedupe(container)
+        self.sift(container)
+        self.sync(container)
+        self.sort(container)
+        return container.prompt
 
     def strip_reports(self, reports: list[Report]) -> list[Report]:
         """
@@ -512,13 +421,95 @@ class Interpreter(ABC):
         """
         new_reports: list[Report] = []
         for report in reports:
-            screen_config = self.screen_table.get(report.screen_id)
-            if screen_config is None:
-                continue
-
-            if screen_config.should_leave_report_of(report.paths):
+            should_append = False
+            for cat_path, cat_config in self.cat_configs.items():
+                if cat_path in report.paths:
+                    should_append = cat_config.log_report
+            if should_append:
                 new_reports.append(report)
         return new_reports
+
+
+type ScreenTable = dict[
+    str,  # Screen ID
+    ScreenConfig,
+]
+
+
+class Interpreter:
+    """
+    クリップボード監視, ステータス記録クラス
+    """
+
+    def __init__(self, yamlpath: Path, keyname: str):
+        """
+        コンストラクタ
+
+        ScreenTable: Screen ID の順序はプロンプト化における優先順位を表す
+
+        Args:
+            yamlpath (Path): YAML パス
+        """
+        self.prompter: Prompter = None
+        self.yamlpath = yamlpath
+        self.screen_table: ScreenTable = {}
+        self.records: dict[str, Record] = {}  # Screen ごとの Record
+        self.last_memory = Memory()
+        self.keyname: str = keyname
+
+        self.switch_prompter(yamlpath)
+
+    @classmethod
+    def keyword(cls) -> str:
+        """
+        キーワード (YAML の "interpreter" キーの値との照合値)を取得する
+
+        Returns:
+            str: キーワード_
+        """
+        return cls.__name__
+
+    def switch_prompter(self, yamlpath: Path) -> None:
+        """
+        指定の YAML を Prompter として設定する\n
+        "interpreter" キーワードと一致しない場合は何もしない(そのまま)
+
+        Args:
+            yamlpath (Path): YAML パス
+        """
+        yamlpath = Path(yamlpath)
+        if yamlpath.exists():
+            with open(yamlpath, encoding="utf-8") as f:
+                yamldict: dict = yaml.safe_load(f)
+                keyword = yamldict.get("interpreter")
+            if keyword == self.keyword():
+                self.prompter = Prompter.make(yamlpath)
+                self.yamlpath = yamlpath
+
+    def reload_prompter(self) -> None:
+        """
+        設定している YAML によって Prompter を開き直す
+        """
+        self.switch_prompter(self.yamlpath)
+
+    def export_state(self) -> dict[str, Record]:
+        """
+        Screen ごとの Record をエクスポートする\n
+        記憶がない場合は空の dict を返す
+
+        Returns:
+            dict[str, Record]: Screen ごとの Record
+        """
+        return self.records
+
+    def import_state(self, records: dict[str, Record]) -> None:
+        """
+        Screen ごとの Record をインポートする
+
+        Args:
+            records (dict[str, Record]): Screen ごとの Record
+        """
+        self.records = records
 
     def make_prompt(self, text: str) -> tuple[Prompt | None, list[Report]]:
         """
@@ -534,10 +525,18 @@ class Interpreter(ABC):
             及び Prompt 化の際のレポート
         """
         if self.prompter is None:
-            return None
+            return None, []
 
         prompt, reports = self.prompter.to_prompt(text)
-        return self.edit(prompt), self.strip_reports(reports)
+        if prompt.screen_id is None:
+            return None, []
+
+        screen_config = self.screen_table.get(prompt.screen_id)
+        if screen_config is None:
+            raise ValueError(f"No such screen, '{prompt.screen_id}'.")
+
+        edited = screen_config.edit(prompt, self.records, self.last_memory, self.keyname)
+        return edited, screen_config.strip_reports(reports)
 
     def check_sufficiency_of(self, prompt: Prompt) -> bool:
         """
@@ -562,4 +561,8 @@ class Interpreter(ABC):
         for parts in prompt.negative:
             existing_paths.add(parts.path)
 
-        return self.sufficiency_of(prompt.screen_id).eval(existing_paths)
+        screen_config = self.screen_table.get(prompt.screen_id)
+        if screen_config is None:
+            raise ValueError(f"No such screen, '{prompt.screen_id}'.")
+
+        return screen_config.sufficiency.eval(existing_paths)

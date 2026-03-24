@@ -15,37 +15,15 @@ class DebugInterpreter(Interpreter):
     """
 
     def __init__(self, yamlpath: Path):
-        super().__init__(yamlpath)
+        super().__init__(yamlpath, "name")
 
         self.screen_table = {
             "main": ScreenConfig.set(
-                primitive_category_configs=[
-                    (("character", "name"), None, False),
-                    (("character", "vibe"), None, False),
-                    (("character", "upper"), None, False),
-                    (("character", "lower"), None, False),
-                ],
-                sufficiency=None,
-                syncer=None,
+                cat_configs={
+                    ("character", "name"): (None, False),
+                    ("character", "vibe"): (None, False),
+                    ("character", "upper"): (None, False),
+                    ("character", "lower"): (None, False),
+                }
             )
         }
-
-    def save_state(self) -> dict:
-        """
-        このインスタンスの状態を保存可能な形式で返す\n
-        DebugInterpreter は記憶を持たない
-
-        Returns:
-            dict: 常に空の辞書
-        """
-        return {}
-
-    def restore_state(self, state: dict) -> None:
-        """
-        指定の状態から記憶を復元する\n
-        DebugInterpreter は記憶がないため何もしない
-
-        Args:
-            state (dict): 保存された状態 (無視される)
-        """
-        return

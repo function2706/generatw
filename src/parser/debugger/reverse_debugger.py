@@ -116,6 +116,104 @@ CORRECT_RESULT = {
         "Reverse-2": {
             "dataclass": [
                 {
+                    "screen_id": "action",
+                    "positive": [
+                        {
+                            "path": ["character", "name"],
+                            "tokens": [{"token": "houjuu nue", "weight": 1.0}],
+                        },
+                        {
+                            "path": ["character", "vibe"],
+                            "tokens": [{"token": "expressionless", "weight": 0.8}],
+                        },
+                        {
+                            "path": ["rope"],
+                            "tokens": [
+                                {"token": "holding rope", "weight": 1.0},
+                                {"token": "looking at viewer", "weight": 1.0},
+                            ],
+                        },
+                        {
+                            "path": ["character", "fashion", "dresses"],
+                            "tokens": [{"token": "one-piece dress", "weight": 1.0}],
+                        },
+                        {
+                            "path": ["character", "fashion", "socks"],
+                            "tokens": [{"token": "thighhighs", "weight": 1.0}],
+                        },
+                        {
+                            "path": [],
+                            "tokens": [
+                                {"token": "best quality", "weight": 1.0},
+                                {"token": "masterpiece", "weight": 1.0},
+                                {"token": "absurdres", "weight": 1.0},
+                                {"token": "1girl", "weight": 1.0},
+                                {"token": "solo", "weight": 1.0},
+                            ],
+                        },
+                    ],
+                    "negative": [
+                        {"path": ["rope"], "tokens": [{"token": "bondage", "weight": 1.0}]},
+                        {
+                            "path": ["character", "fashion", "socks"],
+                            "tokens": [{"token": "barefoot", "weight": 1.0}],
+                        },
+                        {
+                            "path": [],
+                            "tokens": [
+                                {"token": "amputee", "weight": 1.1},
+                                {"token": "bad anatomy", "weight": 1.1},
+                                {"token": "extra limbs", "weight": 1.1},
+                                {"token": "missing limb", "weight": 1.1},
+                                {"token": "multiple heads", "weight": 1.0},
+                                {"token": "worst quality", "weight": 1.0},
+                                {"token": "low quality", "weight": 1.0},
+                                {"token": "motion lines", "weight": 1.0},
+                                {"token": "speed lines", "weight": 1.0},
+                                {"token": "3d", "weight": 1.0},
+                                {"token": "shiny skin", "weight": 1.2},
+                                {"token": "worst detail", "weight": 1.0},
+                                {"token": "text", "weight": 1.0},
+                                {"token": "logo", "weight": 1.0},
+                                {"token": "cropped", "weight": 1.0},
+                                {"token": "deformed", "weight": 1.0},
+                                {"token": "blurry", "weight": 1.0},
+                                {"token": "extra digits", "weight": 1.0},
+                                {"token": "fewer digits", "weight": 1.0},
+                                {"token": "missing digits", "weight": 1.0},
+                                {"token": "bad hands", "weight": 1.0},
+                                {"token": "mutated hands", "weight": 1.0},
+                                {"token": "six toes", "weight": 1.0},
+                                {"token": "extra toes", "weight": 1.0},
+                                {"token": "fewer toes", "weight": 1.0},
+                                {"token": "missing toes", "weight": 1.0},
+                                {"token": "bad feet", "weight": 1.0},
+                                {"token": "mutated feet", "weight": 1.0},
+                                {"token": "extra feet", "weight": 1.0},
+                                {"token": "missing foot", "weight": 1.0},
+                                {"token": "bad leg", "weight": 1.0},
+                                {"token": "extra legs", "weight": 1.0},
+                                {"token": "missing leg", "weight": 1.0},
+                                {"token": "extra hands", "weight": 1.0},
+                                {"token": "missing hand", "weight": 1.0},
+                                {"token": "bad arm", "weight": 1.0},
+                                {"token": "extra arms", "weight": 1.0},
+                                {"token": "missing arm", "weight": 1.0},
+                            ],
+                        },
+                    ],
+                }
+            ],
+            "string": {
+                "POS": "houjuu nue,(expressionless:0.8),holding rope,looking at viewer,one-piece dress,thighhighs,best quality,masterpiece,absurdres,1girl,solo",  # noqa: E501
+                "NEG": "bondage,barefoot,(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
+            },
+            "sufficiency": True,
+            "reports": [],
+        },
+        "Reverse-3": {
+            "dataclass": [
+                {
                     "screen_id": "main",
                     "positive": [
                         {
@@ -275,6 +373,9 @@ def debug_r_interpreter() -> None:
                     "現在の姿勢：[xxx：楽にしている][ぬえ：xxxを観察]\r\n"
                     "使用中　[ペニスバンド]",
                     # No.2
+                    "現在の姿勢：[xxx：座っている][ぬえ：xxxの背後]\r\n"
+                    "ぬえはxxxを縄で縛ろうとした…",
+                    # No.3
                     "6日目(昼)　経過時間[0]\r\n"
                     "ぬ [LV 3  EXP 529/540] がxxx [LV 3  EXP 278/540] を調教中\r\n"
                     "ぬえの状態:[通常]                                      xxxの状態:[通常]\r\n"

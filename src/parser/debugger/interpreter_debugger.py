@@ -15,10 +15,8 @@ if parent_dir not in sys.path:
 
 from common.expr import Expr, FalseExpr, Has, TrueExpr  # noqa: E402
 from common.functions import dump_json  # noqa: E402
-from parser.interpreter.test_interpreter import (  # noqa: E402
-    PrimitiveCategoryConfig,
-    TestInterpreter,
-)
+from parser.interpreter.interpreter import CategoryConfig, CategoryPath  # noqa: E402
+from parser.interpreter.test_interpreter import TestInterpreter  # noqa: E402
 from parser.parser import Parser  # noqa: E402
 
 CORRECT_RESULT = {
@@ -1258,8 +1256,10 @@ class KeyName(StrEnum):
     yamlpath = "yamlpath"
     texts = "texts"
     screen_id = "screen_id"
-    primitive_category_config_list = "primitive_category_config_list"
+    category_configs = "category_configs"
     sufficiency = "sufficiency"
+    request_cats = "request_cats"
+    takeover_cat = "takeover_cat"
 
 
 class InterpreterDebugger(Parser):
@@ -1270,8 +1270,10 @@ class InterpreterDebugger(Parser):
         self,
         texts: list[str],
         screen_id: str = None,
-        pcatcfg: list[PrimitiveCategoryConfig] = None,
+        catcfgs: dict[CategoryPath, CategoryConfig] = None,
         sufficiency: Expr = None,
+        request_cats: dict[str, list[CategoryPath]] = None,
+        takeover_cat: list[CategoryPath] = None,
         with_texts: bool = True,
     ) -> dict[str, dict[str, Any]]:
         """
@@ -1288,9 +1290,16 @@ class InterpreterDebugger(Parser):
                 if (
                     isinstance(self.interpreter, TestInterpreter)
                     and screen_id is not None
-                    and pcatcfg is not None
+                    and catcfgs is not None
                 ):
-                    self.interpreter.restore_screen_config(screen_id, pcatcfg, sufficiency)
+                    self.interpreter.restore_screen_config(
+                        screen_id=screen_id,
+                        cat_cfgs=catcfgs,
+                        sufficiency=sufficiency,
+                        request_cats=request_cats,
+                        takeover_cat=takeover_cat,
+                    )
+
                 self.crnt_prompt, reports = self.interpreter.make_prompt(text)
                 major = f"{yamlname}-{i + 1}: '{text}'" if with_texts else f"{yamlname}-{i + 1}"
                 posneg = self.make_prompt_strs()
@@ -1311,7 +1320,7 @@ class InterpreterDebugger(Parser):
 
     def debug_cases(
         self,
-        testcases: dict[str, dict[str, str | list | Expr]],
+        testcases: dict[str, dict[str, str | list | Expr | tuple]],
         with_texts: bool = True,
     ) -> dict[str, dict[str, dict[str, Any]]]:
         """
@@ -1323,8 +1332,10 @@ class InterpreterDebugger(Parser):
             result_by_texts = {}
             texts = []
             screen_id = None
-            pcatcfg = None
+            catcfgs = None
             sufficiency = None
+            request_cats = None
+            takeover_cat = None
             for key, val in testcase.items():
                 if key == KeyName.yamlpath:
                     yamlpath = val
@@ -1332,17 +1343,23 @@ class InterpreterDebugger(Parser):
                     texts = val
                 elif key == KeyName.screen_id:
                     screen_id = val
-                elif key == KeyName.primitive_category_config_list:
-                    pcatcfg = val
+                elif key == KeyName.category_configs:
+                    catcfgs = val
                 elif key == KeyName.sufficiency:
                     sufficiency = val
+                elif key == KeyName.request_cats:
+                    request_cats = val
+                elif key == KeyName.takeover_cat:
+                    takeover_cat = val
             try:
                 self.switch_interpreter(Path(yamlpath))
                 result_by_texts = self.debug_texts(
                     texts=texts,
                     screen_id=screen_id,
-                    pcatcfg=pcatcfg,
+                    catcfgs=catcfgs,
                     sufficiency=sufficiency,
+                    request_cats=request_cats,
+                    takeover_cat=takeover_cat,
                     with_texts=with_texts,
                 )
             except Exception as e:
@@ -1377,15 +1394,19 @@ def make_testcase(
     yamlpath: Path,
     texts: list[str],
     screen_id: str,
-    pcatcfg: list[PrimitiveCategoryConfig],
+    cat_cfgs: dict[CategoryPath, tuple[Expr | None, bool]],
     sufficiency: Expr,
+    request_cats: dict[str, list[CategoryPath]],
+    takeover_cat: list[CategoryPath],
 ):
     return {
         KeyName.yamlpath: yamlpath,
         KeyName.texts: texts,
         KeyName.screen_id: screen_id,
-        KeyName.primitive_category_config_list: pcatcfg,
+        KeyName.category_configs: cat_cfgs,
         KeyName.sufficiency: sufficiency,
+        KeyName.request_cats: request_cats,
+        KeyName.takeover_cat: takeover_cat,
     }
 
 
@@ -1420,73 +1441,85 @@ def debug_interpreter() -> None:
                 yamlpath="yamls/testyamls/InterpreterTest.yaml",
                 texts=["strip xxx"],
                 screen_id="strip",
-                pcatcfg=[
-                    (("ok1",), None, True),
-                    (("ok2",), None, True),
-                ],
+                cat_cfgs={
+                    ("ok1",): (None, True),
+                    ("ok2",): (None, True),
+                },
                 sufficiency=None,
+                request_cats=None,
+                takeover_cat=None,
             ),
             "dedupe": make_testcase(
                 yamlpath="yamls/testyamls/InterpreterTest.yaml",
                 texts=["dedupe xxx"],
                 screen_id="dedupe",
-                pcatcfg=[
-                    (("map1",), None, True),
-                    (("map2",), None, True),
-                    (("map3",), None, True),
-                    (("map4",), None, True),
-                ],
+                cat_cfgs={
+                    ("map1",): (None, True),
+                    ("map2",): (None, True),
+                    ("map3",): (None, True),
+                    ("map4",): (None, True),
+                },
                 sufficiency=None,
+                request_cats=None,
+                takeover_cat=None,
             ),
             "dedupe2": make_testcase(
                 yamlpath="yamls/testyamls/InterpreterTest.yaml",
                 texts=["dedupe xxx"],
                 screen_id="dedupe",
-                pcatcfg=[
-                    (("map5",), None, True),
-                    (("map1",), None, True),
-                    (("map2",), None, True),
-                    (("map3",), None, True),
-                    (("map4",), None, True),
-                ],
+                cat_cfgs={
+                    ("map5",): (None, True),
+                    ("map1",): (None, True),
+                    ("map2",): (None, True),
+                    ("map3",): (None, True),
+                    ("map4",): (None, True),
+                },
                 sufficiency=None,
+                request_cats=None,
+                takeover_cat=None,
             ),
             "dedupe3": make_testcase(
                 yamlpath="yamls/testyamls/InterpreterTest.yaml",
                 texts=["dedupe xxx"],
                 screen_id="dedupe",
-                pcatcfg=[
-                    (("map5",), None, True),
-                    (("map1",), None, True),
-                    (("map2",), None, True),
-                    (("map4",), None, True),
-                ],
+                cat_cfgs={
+                    ("map5",): (None, True),
+                    ("map1",): (None, True),
+                    ("map2",): (None, True),
+                    ("map4",): (None, True),
+                },
                 sufficiency=None,
+                request_cats=None,
+                takeover_cat=None,
             ),
             "dedupe4": make_testcase(
                 yamlpath="yamls/testyamls/InterpreterTest.yaml",
                 texts=["dedupe xxx"],
                 screen_id="dedupe",
-                pcatcfg=[
-                    (("map5",), None, True),
-                    (("map1",), None, True),
-                    (("dummy"), None, True),
-                    (("map2",), None, True),
-                    (("map4",), None, True),
-                ],
+                cat_cfgs={
+                    ("map5",): (None, True),
+                    ("map1",): (None, True),
+                    ("dummy"): (None, True),
+                    ("map2",): (None, True),
+                    ("map4",): (None, True),
+                },
                 sufficiency=None,
+                request_cats=None,
+                takeover_cat=None,
             ),
             "sort": make_testcase(
                 yamlpath="yamls/testyamls/InterpreterTest.yaml",
                 texts=["sort xxx"],
                 screen_id="sort",
-                pcatcfg=[
-                    (("map3",), None, True),
-                    (("map2",), None, True),
-                    (("map4",), None, True),
-                    (("map1",), None, True),
-                ],
+                cat_cfgs={
+                    ("map3",): (None, True),
+                    ("map2",): (None, True),
+                    ("map4",): (None, True),
+                    ("map1",): (None, True),
+                },
                 sufficiency=None,
+                request_cats=None,
+                takeover_cat=None,
             ),
             "sufficiency": make_testcase(
                 yamlpath="yamls/testyamls/InterpreterTest.yaml",
@@ -1499,14 +1532,16 @@ def debug_interpreter() -> None:
                     "sufficiency ABXDE",  # default で満たす場合
                 ],
                 screen_id="sufficiency",
-                pcatcfg=[
-                    (("need1",), None, True),
-                    (("need2",), None, True),
-                    (("need3",), None, True),
-                    (("notneed1",), None, True),
-                    (("notneed2",), None, True),
-                ],
+                cat_cfgs={
+                    ("need1",): (None, True),
+                    ("need2",): (None, True),
+                    ("need3",): (None, True),
+                    ("notneed1",): (None, True),
+                    ("notneed2",): (None, True),
+                },
                 sufficiency=Has(("need1",)) & Has(("need2",)) & Has(("need3",)),
+                request_cats=None,
+                takeover_cat=None,
             ),
             "expr1": make_testcase(
                 yamlpath="yamls/testyamls/InterpreterTest.yaml",
@@ -1517,16 +1552,17 @@ def debug_interpreter() -> None:
                     "expr1 city sunny",
                 ],
                 screen_id="expr1",
-                pcatcfg=[
-                    (("location", "outdoors"), ~Has(("location", "indoors")), True),
-                    (("location", "indoors"), ~Has(("location", "outdoors")), True),
-                    (
-                        ("weather",),
+                cat_cfgs={
+                    ("location", "outdoors"): (~Has(("location", "indoors")), True),
+                    ("location", "indoors"): (~Has(("location", "outdoors")), True),
+                    ("weather",): (
                         Has(("location", "outdoors")) | ~Has(("location", "indoors")),
                         True,
                     ),
-                ],
+                },
                 sufficiency=None,
+                request_cats=None,
+                takeover_cat=None,
             ),
             "expr2": make_testcase(
                 yamlpath="yamls/testyamls/InterpreterTest.yaml",
@@ -1560,20 +1596,22 @@ def debug_interpreter() -> None:
                     "expr2 PQR checkNone",
                 ],
                 screen_id="expr2",
-                pcatcfg=[
-                    (("p",), TrueExpr(), True),
-                    (("q",), TrueExpr(), True),
-                    (("r",), TrueExpr(), True),
-                    (("checkHas",), Has(("p",)), True),  # 単項
-                    (("checkAnd",), Has(("p",)) & Has(("q",)), True),  # And
-                    (("checkOr",), Has(("p",)) | Has(("q",)), True),  # Or
-                    (("checkNot",), ~Has(("p",)), True),  # Not
-                    (("checkComplex",), Has(("p",)) & (Has(("q",)) | ~Has(("r",))), True),  # 複合
-                    (("checkTrue",), TrueExpr(), True),  # 恒真
-                    (("checkFalse",), FalseExpr(), True),  # 恒偽
-                    (("checkNone",), None, True),  # None = 恒真
-                ],
+                cat_cfgs={
+                    ("p",): (TrueExpr(), True),
+                    ("q",): (TrueExpr(), True),
+                    ("r",): (TrueExpr(), True),
+                    ("checkHas",): (Has(("p",)), True),  # 単項
+                    ("checkAnd",): (Has(("p",)) & Has(("q",)), True),  # And
+                    ("checkOr",): (Has(("p",)) | Has(("q",)), True),  # Or
+                    ("checkNot",): (~Has(("p",)), True),  # Not
+                    ("checkComplex",): (Has(("p",)) & (Has(("q",)) | ~Has(("r",))), True),  # 複合
+                    ("checkTrue",): (TrueExpr(), True),  # 恒真
+                    ("checkFalse",): (FalseExpr(), True),  # 恒偽
+                    ("checkNone",): (None, True),  # None = 恒真
+                },
                 sufficiency=None,
+                request_cats=None,
+                takeover_cat=None,
             ),
             "sufficiency & expr": make_testcase(
                 yamlpath="yamls/testyamls/InterpreterTest.yaml",
@@ -1584,11 +1622,13 @@ def debug_interpreter() -> None:
                     "expr2 PQ",  # ("p",) があり ("q",) が適用されるので True
                 ],
                 screen_id="expr2",
-                pcatcfg=[
-                    (("p",), TrueExpr(), True),
-                    (("q",), Has(("p",)), True),
-                ],
+                cat_cfgs={
+                    ("p",): (TrueExpr(), True),
+                    ("q",): (Has(("p",)), True),
+                },
                 sufficiency=Has(("q",)),
+                request_cats=None,
+                takeover_cat=None,
             ),
             "report": make_testcase(
                 yamlpath="yamls/testyamls/InterpreterTest.yaml",
@@ -1604,22 +1644,23 @@ def debug_interpreter() -> None:
                     "report no-report_intervals:5;no-report_intervals:-5;no-report_intervals:100;",  # noqa: E501
                 ],
                 screen_id="report",
-                pcatcfg=[
-                    (("rules_maps",), TrueExpr(), True),  # maps と neg 有効時
-                    (("rules_ranges",), TrueExpr(), True),  # ranges と neg 有効時
-                    (("rules_intervals",), TrueExpr(), True),  # interval と neg 有効時
-                    (("recurses", "recurses_parts_1"), TrueExpr(), True),
-                    (("recurses", "recurses_parts_2", "recurses_parts_2'"), TrueExpr(), True),
-                    (
-                        ("recurses", "recurses_parts_3", "recurses_parts_3'", "recurses_parts_3''"),
+                cat_cfgs={
+                    ("rules_maps",): (TrueExpr(), True),  # maps と neg 有効時
+                    ("rules_ranges",): (TrueExpr(), True),  # ranges と neg 有効時
+                    ("rules_intervals",): (TrueExpr(), True),  # interval と neg 有効時
+                    ("recurses", "recurses_parts_1"): (TrueExpr(), True),
+                    ("recurses", "recurses_parts_2", "recurses_parts_2'"): (TrueExpr(), True),
+                    ("recurses", "recurses_parts_3", "recurses_parts_3'", "recurses_parts_3''"): (
                         TrueExpr(),
                         True,
                     ),
-                    (("no-report_maps",), TrueExpr(), False),  # maps, レポートしない
-                    (("no-report_ranges",), TrueExpr(), False),  # ranges, レポートしない
-                    (("no-report_intervals",), TrueExpr(), False),  # interval, レポートしない
-                ],
+                    ("no-report_maps",): (TrueExpr(), False),  # maps, レポートしない
+                    ("no-report_ranges",): (TrueExpr(), False),  # ranges, レポートしない
+                    ("no-report_intervals",): (TrueExpr(), False),  # interval, レポートしない
+                },
                 sufficiency=None,
+                request_cats=None,
+                takeover_cat=None,
             ),
         }
     )

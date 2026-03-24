@@ -7,7 +7,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from common.expr import Expr
-from parser.interpreter.interpreter import Interpreter, PrimitiveCategoryConfig, ScreenConfig
+from parser.interpreter.interpreter import CategoryPath, Interpreter, ScreenConfig
 
 
 class TestInterpreter(Interpreter):
@@ -16,10 +16,15 @@ class TestInterpreter(Interpreter):
     """
 
     def __init__(self, yamlpath: Path):
-        super().__init__(yamlpath)
+        super().__init__(yamlpath, "KEY")
 
     def restore_screen_config(
-        self, screen_id: str, pcatcfg: list[PrimitiveCategoryConfig], sufficiency: Expr
+        self,
+        screen_id: str,
+        cat_cfgs: dict[CategoryPath, tuple[Expr | None, bool]],
+        sufficiency: Expr | None,
+        request_cats: dict[str, list[CategoryPath]],
+        takeover_cat: CategoryPath,
     ) -> None:
         """
         指定の Screen ID の ScreenConfig を更新する
@@ -30,25 +35,8 @@ class TestInterpreter(Interpreter):
             sufficiency (Expr): 充足条件
         """
         self.screen_table[screen_id] = ScreenConfig.set(
-            primitive_category_configs=pcatcfg, sufficiency=sufficiency, syncer=None
+            cat_configs=cat_cfgs,
+            sufficiency=sufficiency,
+            request_cats=request_cats,
+            takeover_cats=takeover_cat,
         )
-
-    def save_state(self) -> dict:
-        """
-        このインスタンスの状態を保存可能な形式で返す\n
-        TestInterpreter は記憶を持たない
-
-        Returns:
-            dict: 常に空の辞書
-        """
-        return {}
-
-    def restore_state(self, state: dict) -> None:
-        """
-        指定の状態から記憶を復元する\n
-        TestInterpreter は記憶がないため何もしない
-
-        Args:
-            state (dict): 保存された状態 (無視される)
-        """
-        return

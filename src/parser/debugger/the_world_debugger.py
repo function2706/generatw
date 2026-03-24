@@ -1154,6 +1154,697 @@ CORRECT_RESULT = {
             "sufficiency": True,
             "reports": [],
         },
+        "The World-4": {
+            "dataclass": [
+                {
+                    "screen_id": "main",
+                    "positive": [
+                        {
+                            "path": ["character", "name"],
+                            "tokens": [{"token": "chen", "weight": 1.0}],
+                        },
+                        {
+                            "path": ["character", "affection"],
+                            "tokens": [{"token": "looking at viewer", "weight": 1.0}],
+                        },
+                        {
+                            "path": ["character", "frustration"],
+                            "tokens": [{"token": "blush", "weight": 1.0}],
+                        },
+                        {
+                            "path": [],
+                            "tokens": [
+                                {"token": "best quality", "weight": 1.0},
+                                {"token": "masterpiece", "weight": 1.0},
+                                {"token": "absurdres", "weight": 1.0},
+                                {"token": "1girl", "weight": 1.0},
+                                {"token": "solo", "weight": 1.0},
+                            ],
+                        },
+                    ],
+                    "negative": [
+                        {
+                            "path": ["character", "trust"],
+                            "tokens": [{"token": "disgusting", "weight": 1.0}],
+                        },
+                        {
+                            "path": ["character", "reason"],
+                            "tokens": [
+                                {"token": "in heat", "weight": 1.2},
+                                {"token": "blush", "weight": 1.2},
+                            ],
+                        },
+                        {
+                            "path": [],
+                            "tokens": [
+                                {"token": "amputee", "weight": 1.1},
+                                {"token": "bad anatomy", "weight": 1.1},
+                                {"token": "extra limbs", "weight": 1.1},
+                                {"token": "missing limb", "weight": 1.1},
+                                {"token": "multiple heads", "weight": 1.0},
+                                {"token": "worst quality", "weight": 1.0},
+                                {"token": "low quality", "weight": 1.0},
+                                {"token": "motion lines", "weight": 1.0},
+                                {"token": "speed lines", "weight": 1.0},
+                                {"token": "3d", "weight": 1.0},
+                                {"token": "shiny skin", "weight": 1.2},
+                                {"token": "worst detail", "weight": 1.0},
+                                {"token": "text", "weight": 1.0},
+                                {"token": "logo", "weight": 1.0},
+                                {"token": "cropped", "weight": 1.0},
+                                {"token": "deformed", "weight": 1.0},
+                                {"token": "blurry", "weight": 1.0},
+                                {"token": "extra digits", "weight": 1.0},
+                                {"token": "fewer digits", "weight": 1.0},
+                                {"token": "missing digits", "weight": 1.0},
+                                {"token": "bad hands", "weight": 1.0},
+                                {"token": "mutated hands", "weight": 1.0},
+                                {"token": "six toes", "weight": 1.0},
+                                {"token": "extra toes", "weight": 1.0},
+                                {"token": "fewer toes", "weight": 1.0},
+                                {"token": "missing toes", "weight": 1.0},
+                                {"token": "bad feet", "weight": 1.0},
+                                {"token": "mutated feet", "weight": 1.0},
+                                {"token": "extra feet", "weight": 1.0},
+                                {"token": "missing foot", "weight": 1.0},
+                                {"token": "bad leg", "weight": 1.0},
+                                {"token": "extra legs", "weight": 1.0},
+                                {"token": "missing leg", "weight": 1.0},
+                                {"token": "extra hands", "weight": 1.0},
+                                {"token": "missing hand", "weight": 1.0},
+                                {"token": "bad arm", "weight": 1.0},
+                                {"token": "extra arms", "weight": 1.0},
+                                {"token": "missing arm", "weight": 1.0},
+                            ],
+                        },
+                    ],
+                }
+            ],
+            "string": {
+                "POS": "chen,looking at viewer,blush,best quality,masterpiece,absurdres,1girl,solo",  # noqa: E501
+                "NEG": "disgusting,(in heat:1.2),(blush:1.2),(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
+            },
+            "sufficiency": True,
+            "reports": [],
+        },
+        "The World-5": {
+            "dataclass": [
+                {
+                    "screen_id": "fashion",
+                    "positive": [
+                        {
+                            "path": ["character", "name"],
+                            "tokens": [{"token": "chen", "weight": 1.0}],
+                        },
+                        {"path": ["caps"], "tokens": [{"token": "hair ribbon", "weight": 1.0}]},
+                        {"path": ["upper_cloths"], "tokens": [{"token": "t-shirt", "weight": 1.0}]},
+                        {"path": ["lower_cloths"], "tokens": [{"token": "shorts", "weight": 1.0}]},
+                        {"path": ["socks"], "tokens": [{"token": "socks", "weight": 1.0}]},
+                        {"path": ["shoes"], "tokens": [{"token": "boots", "weight": 1.0}]},
+                        {
+                            "path": [],
+                            "tokens": [
+                                {"token": "full body", "weight": 1.0},
+                                {"token": "white background", "weight": 1.0},
+                                {"token": "contrapposto", "weight": 1.0},
+                                {"token": "light smile", "weight": 1.0},
+                                {"token": "best quality", "weight": 1.0},
+                                {"token": "masterpiece", "weight": 1.0},
+                                {"token": "absurdres", "weight": 1.0},
+                                {"token": "1girl", "weight": 1.0},
+                                {"token": "solo", "weight": 1.0},
+                            ],
+                        },
+                    ],
+                    "negative": [
+                        {
+                            "path": ["caps"],
+                            "tokens": [
+                                {"token": "caps", "weight": 1.0},
+                                {"token": "hat", "weight": 1.0},
+                            ],
+                        },
+                        {
+                            "path": [],
+                            "tokens": [
+                                {"token": "amputee", "weight": 1.1},
+                                {"token": "bad anatomy", "weight": 1.1},
+                                {"token": "extra limbs", "weight": 1.1},
+                                {"token": "missing limb", "weight": 1.1},
+                                {"token": "multiple heads", "weight": 1.0},
+                                {"token": "worst quality", "weight": 1.0},
+                                {"token": "low quality", "weight": 1.0},
+                                {"token": "motion lines", "weight": 1.0},
+                                {"token": "speed lines", "weight": 1.0},
+                                {"token": "3d", "weight": 1.0},
+                                {"token": "shiny skin", "weight": 1.2},
+                                {"token": "worst detail", "weight": 1.0},
+                                {"token": "text", "weight": 1.0},
+                                {"token": "logo", "weight": 1.0},
+                                {"token": "cropped", "weight": 1.0},
+                                {"token": "deformed", "weight": 1.0},
+                                {"token": "blurry", "weight": 1.0},
+                                {"token": "extra digits", "weight": 1.0},
+                                {"token": "fewer digits", "weight": 1.0},
+                                {"token": "missing digits", "weight": 1.0},
+                                {"token": "bad hands", "weight": 1.0},
+                                {"token": "mutated hands", "weight": 1.0},
+                                {"token": "six toes", "weight": 1.0},
+                                {"token": "extra toes", "weight": 1.0},
+                                {"token": "fewer toes", "weight": 1.0},
+                                {"token": "missing toes", "weight": 1.0},
+                                {"token": "bad feet", "weight": 1.0},
+                                {"token": "mutated feet", "weight": 1.0},
+                                {"token": "extra feet", "weight": 1.0},
+                                {"token": "missing foot", "weight": 1.0},
+                                {"token": "bad leg", "weight": 1.0},
+                                {"token": "extra legs", "weight": 1.0},
+                                {"token": "missing leg", "weight": 1.0},
+                                {"token": "extra hands", "weight": 1.0},
+                                {"token": "missing hand", "weight": 1.0},
+                                {"token": "bad arm", "weight": 1.0},
+                                {"token": "extra arms", "weight": 1.0},
+                                {"token": "missing arm", "weight": 1.0},
+                            ],
+                        },
+                    ],
+                }
+            ],
+            "string": {
+                "POS": "chen,hair ribbon,t-shirt,shorts,socks,boots,full body,white background,contrapposto,light smile,best quality,masterpiece,absurdres,1girl,solo",  # noqa: E501
+                "NEG": "caps,hat,(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
+            },
+            "sufficiency": True,
+            "reports": [
+                {
+                    "matched": "？？？？？",
+                    "pattern": "装備:下着\\s*\\[(.+?)\\]",
+                    "capturegrp": 1,
+                    "screen_id": "fashion",
+                    "paths": [["lingeries"]],
+                }
+            ],
+        },
+        "The World-6": {
+            "dataclass": [
+                {
+                    "screen_id": "main",
+                    "positive": [
+                        {
+                            "path": ["character", "name"],
+                            "tokens": [{"token": "chen", "weight": 1.0}],
+                        },
+                        {
+                            "path": ["character", "affection"],
+                            "tokens": [{"token": "looking at viewer", "weight": 1.0}],
+                        },
+                        {
+                            "path": ["character", "frustration"],
+                            "tokens": [{"token": "blush", "weight": 1.0}],
+                        },
+                        {"path": ["caps"], "tokens": [{"token": "hair ribbon", "weight": 1.0}]},
+                        {"path": ["upper_cloths"], "tokens": [{"token": "t-shirt", "weight": 1.0}]},
+                        {"path": ["lower_cloths"], "tokens": [{"token": "shorts", "weight": 1.0}]},
+                        {"path": ["socks"], "tokens": [{"token": "socks", "weight": 1.0}]},
+                        {"path": ["shoes"], "tokens": [{"token": "boots", "weight": 1.0}]},
+                        {
+                            "path": [],
+                            "tokens": [
+                                {"token": "best quality", "weight": 1.0},
+                                {"token": "masterpiece", "weight": 1.0},
+                                {"token": "absurdres", "weight": 1.0},
+                                {"token": "1girl", "weight": 1.0},
+                                {"token": "solo", "weight": 1.0},
+                            ],
+                        },
+                    ],
+                    "negative": [
+                        {
+                            "path": ["character", "trust"],
+                            "tokens": [{"token": "disgusting", "weight": 1.0}],
+                        },
+                        {
+                            "path": ["character", "reason"],
+                            "tokens": [
+                                {"token": "in heat", "weight": 1.2},
+                                {"token": "blush", "weight": 1.2},
+                            ],
+                        },
+                        {
+                            "path": ["caps"],
+                            "tokens": [
+                                {"token": "caps", "weight": 1.0},
+                                {"token": "hat", "weight": 1.0},
+                            ],
+                        },
+                        {
+                            "path": [],
+                            "tokens": [
+                                {"token": "amputee", "weight": 1.1},
+                                {"token": "bad anatomy", "weight": 1.1},
+                                {"token": "extra limbs", "weight": 1.1},
+                                {"token": "missing limb", "weight": 1.1},
+                                {"token": "multiple heads", "weight": 1.0},
+                                {"token": "worst quality", "weight": 1.0},
+                                {"token": "low quality", "weight": 1.0},
+                                {"token": "motion lines", "weight": 1.0},
+                                {"token": "speed lines", "weight": 1.0},
+                                {"token": "3d", "weight": 1.0},
+                                {"token": "shiny skin", "weight": 1.2},
+                                {"token": "worst detail", "weight": 1.0},
+                                {"token": "text", "weight": 1.0},
+                                {"token": "logo", "weight": 1.0},
+                                {"token": "cropped", "weight": 1.0},
+                                {"token": "deformed", "weight": 1.0},
+                                {"token": "blurry", "weight": 1.0},
+                                {"token": "extra digits", "weight": 1.0},
+                                {"token": "fewer digits", "weight": 1.0},
+                                {"token": "missing digits", "weight": 1.0},
+                                {"token": "bad hands", "weight": 1.0},
+                                {"token": "mutated hands", "weight": 1.0},
+                                {"token": "six toes", "weight": 1.0},
+                                {"token": "extra toes", "weight": 1.0},
+                                {"token": "fewer toes", "weight": 1.0},
+                                {"token": "missing toes", "weight": 1.0},
+                                {"token": "bad feet", "weight": 1.0},
+                                {"token": "mutated feet", "weight": 1.0},
+                                {"token": "extra feet", "weight": 1.0},
+                                {"token": "missing foot", "weight": 1.0},
+                                {"token": "bad leg", "weight": 1.0},
+                                {"token": "extra legs", "weight": 1.0},
+                                {"token": "missing leg", "weight": 1.0},
+                                {"token": "extra hands", "weight": 1.0},
+                                {"token": "missing hand", "weight": 1.0},
+                                {"token": "bad arm", "weight": 1.0},
+                                {"token": "extra arms", "weight": 1.0},
+                                {"token": "missing arm", "weight": 1.0},
+                            ],
+                        },
+                    ],
+                }
+            ],
+            "string": {
+                "POS": "chen,looking at viewer,blush,hair ribbon,t-shirt,shorts,socks,boots,best quality,masterpiece,absurdres,1girl,solo",  # noqa: E501
+                "NEG": "disgusting,(in heat:1.2),(blush:1.2),caps,hat,(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
+            },
+            "sufficiency": True,
+            "reports": [],
+        },
+        "The World-7": {
+            "dataclass": [
+                {
+                    "screen_id": "main",
+                    "positive": [
+                        {
+                            "path": ["character", "name"],
+                            "tokens": [{"token": "remilia scarlet", "weight": 1.0}],
+                        },
+                        {
+                            "path": ["character", "affection"],
+                            "tokens": [{"token": "looking at viewer", "weight": 1.0}],
+                        },
+                        {
+                            "path": ["character", "frustration"],
+                            "tokens": [{"token": "blush", "weight": 1.0}],
+                        },
+                        {"path": ["caps"], "tokens": [{"token": "hat", "weight": 1.0}]},
+                        {"path": ["upper_cloths"], "tokens": [{"token": "blouse", "weight": 1.0}]},
+                        {
+                            "path": ["lower_cloths"],
+                            "tokens": [{"token": "long skirt", "weight": 1.0}],
+                        },
+                        {"path": ["socks"], "tokens": [{"token": "socks", "weight": 1.0}]},
+                        {"path": ["shoes"], "tokens": [{"token": "shoes", "weight": 1.0}]},
+                        {
+                            "path": [],
+                            "tokens": [
+                                {"token": "best quality", "weight": 1.0},
+                                {"token": "masterpiece", "weight": 1.0},
+                                {"token": "absurdres", "weight": 1.0},
+                                {"token": "1girl", "weight": 1.0},
+                                {"token": "solo", "weight": 1.0},
+                            ],
+                        },
+                    ],
+                    "negative": [
+                        {
+                            "path": ["character", "trust"],
+                            "tokens": [{"token": "disgusting", "weight": 1.0}],
+                        },
+                        {
+                            "path": ["character", "reason"],
+                            "tokens": [
+                                {"token": "in heat", "weight": 1.2},
+                                {"token": "blush", "weight": 1.2},
+                            ],
+                        },
+                        {
+                            "path": [],
+                            "tokens": [
+                                {"token": "amputee", "weight": 1.1},
+                                {"token": "bad anatomy", "weight": 1.1},
+                                {"token": "extra limbs", "weight": 1.1},
+                                {"token": "missing limb", "weight": 1.1},
+                                {"token": "multiple heads", "weight": 1.0},
+                                {"token": "worst quality", "weight": 1.0},
+                                {"token": "low quality", "weight": 1.0},
+                                {"token": "motion lines", "weight": 1.0},
+                                {"token": "speed lines", "weight": 1.0},
+                                {"token": "3d", "weight": 1.0},
+                                {"token": "shiny skin", "weight": 1.2},
+                                {"token": "worst detail", "weight": 1.0},
+                                {"token": "text", "weight": 1.0},
+                                {"token": "logo", "weight": 1.0},
+                                {"token": "cropped", "weight": 1.0},
+                                {"token": "deformed", "weight": 1.0},
+                                {"token": "blurry", "weight": 1.0},
+                                {"token": "extra digits", "weight": 1.0},
+                                {"token": "fewer digits", "weight": 1.0},
+                                {"token": "missing digits", "weight": 1.0},
+                                {"token": "bad hands", "weight": 1.0},
+                                {"token": "mutated hands", "weight": 1.0},
+                                {"token": "six toes", "weight": 1.0},
+                                {"token": "extra toes", "weight": 1.0},
+                                {"token": "fewer toes", "weight": 1.0},
+                                {"token": "missing toes", "weight": 1.0},
+                                {"token": "bad feet", "weight": 1.0},
+                                {"token": "mutated feet", "weight": 1.0},
+                                {"token": "extra feet", "weight": 1.0},
+                                {"token": "missing foot", "weight": 1.0},
+                                {"token": "bad leg", "weight": 1.0},
+                                {"token": "extra legs", "weight": 1.0},
+                                {"token": "missing leg", "weight": 1.0},
+                                {"token": "extra hands", "weight": 1.0},
+                                {"token": "missing hand", "weight": 1.0},
+                                {"token": "bad arm", "weight": 1.0},
+                                {"token": "extra arms", "weight": 1.0},
+                                {"token": "missing arm", "weight": 1.0},
+                            ],
+                        },
+                    ],
+                }
+            ],
+            "string": {
+                "POS": "remilia scarlet,looking at viewer,blush,hat,blouse,long skirt,socks,shoes,best quality,masterpiece,absurdres,1girl,solo",  # noqa: E501
+                "NEG": "disgusting,(in heat:1.2),(blush:1.2),(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
+            },
+            "sufficiency": True,
+            "reports": [],
+        },
+        "The World-8": {
+            "dataclass": [
+                {
+                    "screen_id": "fashion",
+                    "positive": [
+                        {
+                            "path": ["character", "name"],
+                            "tokens": [{"token": "remilia scarlet", "weight": 1.0}],
+                        },
+                        {"path": ["caps"], "tokens": [{"token": "newsboy cap", "weight": 1.0}]},
+                        {"path": ["upper_cloths"], "tokens": [{"token": "jacket", "weight": 1.0}]},
+                        {"path": ["lower_cloths"], "tokens": [{"token": "pants", "weight": 1.0}]},
+                        {"path": ["socks"], "tokens": [{"token": "socks", "weight": 1.0}]},
+                        {"path": ["shoes"], "tokens": [{"token": "shoes", "weight": 1.0}]},
+                        {
+                            "path": [],
+                            "tokens": [
+                                {"token": "full body", "weight": 1.0},
+                                {"token": "white background", "weight": 1.0},
+                                {"token": "contrapposto", "weight": 1.0},
+                                {"token": "light smile", "weight": 1.0},
+                                {"token": "best quality", "weight": 1.0},
+                                {"token": "masterpiece", "weight": 1.0},
+                                {"token": "absurdres", "weight": 1.0},
+                                {"token": "1girl", "weight": 1.0},
+                                {"token": "solo", "weight": 1.0},
+                            ],
+                        },
+                    ],
+                    "negative": [
+                        {
+                            "path": [],
+                            "tokens": [
+                                {"token": "amputee", "weight": 1.1},
+                                {"token": "bad anatomy", "weight": 1.1},
+                                {"token": "extra limbs", "weight": 1.1},
+                                {"token": "missing limb", "weight": 1.1},
+                                {"token": "multiple heads", "weight": 1.0},
+                                {"token": "worst quality", "weight": 1.0},
+                                {"token": "low quality", "weight": 1.0},
+                                {"token": "motion lines", "weight": 1.0},
+                                {"token": "speed lines", "weight": 1.0},
+                                {"token": "3d", "weight": 1.0},
+                                {"token": "shiny skin", "weight": 1.2},
+                                {"token": "worst detail", "weight": 1.0},
+                                {"token": "text", "weight": 1.0},
+                                {"token": "logo", "weight": 1.0},
+                                {"token": "cropped", "weight": 1.0},
+                                {"token": "deformed", "weight": 1.0},
+                                {"token": "blurry", "weight": 1.0},
+                                {"token": "extra digits", "weight": 1.0},
+                                {"token": "fewer digits", "weight": 1.0},
+                                {"token": "missing digits", "weight": 1.0},
+                                {"token": "bad hands", "weight": 1.0},
+                                {"token": "mutated hands", "weight": 1.0},
+                                {"token": "six toes", "weight": 1.0},
+                                {"token": "extra toes", "weight": 1.0},
+                                {"token": "fewer toes", "weight": 1.0},
+                                {"token": "missing toes", "weight": 1.0},
+                                {"token": "bad feet", "weight": 1.0},
+                                {"token": "mutated feet", "weight": 1.0},
+                                {"token": "extra feet", "weight": 1.0},
+                                {"token": "missing foot", "weight": 1.0},
+                                {"token": "bad leg", "weight": 1.0},
+                                {"token": "extra legs", "weight": 1.0},
+                                {"token": "missing leg", "weight": 1.0},
+                                {"token": "extra hands", "weight": 1.0},
+                                {"token": "missing hand", "weight": 1.0},
+                                {"token": "bad arm", "weight": 1.0},
+                                {"token": "extra arms", "weight": 1.0},
+                                {"token": "missing arm", "weight": 1.0},
+                            ],
+                        }
+                    ],
+                }
+            ],
+            "string": {
+                "POS": "remilia scarlet,newsboy cap,jacket,pants,socks,shoes,full body,white background,contrapposto,light smile,best quality,masterpiece,absurdres,1girl,solo",  # noqa: E501
+                "NEG": "(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
+            },
+            "sufficiency": True,
+            "reports": [
+                {
+                    "matched": "？？？？？",
+                    "pattern": "装備:下着\\s*\\[(.+?)\\]",
+                    "capturegrp": 1,
+                    "screen_id": "fashion",
+                    "paths": [["lingeries"]],
+                }
+            ],
+        },
+        "The World-9": {
+            "dataclass": [
+                {
+                    "screen_id": "main",
+                    "positive": [
+                        {
+                            "path": ["character", "name"],
+                            "tokens": [{"token": "remilia scarlet", "weight": 1.0}],
+                        },
+                        {
+                            "path": ["character", "affection"],
+                            "tokens": [{"token": "looking at viewer", "weight": 1.0}],
+                        },
+                        {
+                            "path": ["character", "frustration"],
+                            "tokens": [{"token": "blush", "weight": 1.0}],
+                        },
+                        {"path": ["caps"], "tokens": [{"token": "newsboy cap", "weight": 1.0}]},
+                        {"path": ["upper_cloths"], "tokens": [{"token": "jacket", "weight": 1.0}]},
+                        {"path": ["lower_cloths"], "tokens": [{"token": "pants", "weight": 1.0}]},
+                        {"path": ["socks"], "tokens": [{"token": "socks", "weight": 1.0}]},
+                        {"path": ["shoes"], "tokens": [{"token": "shoes", "weight": 1.0}]},
+                        {
+                            "path": [],
+                            "tokens": [
+                                {"token": "best quality", "weight": 1.0},
+                                {"token": "masterpiece", "weight": 1.0},
+                                {"token": "absurdres", "weight": 1.0},
+                                {"token": "1girl", "weight": 1.0},
+                                {"token": "solo", "weight": 1.0},
+                            ],
+                        },
+                    ],
+                    "negative": [
+                        {
+                            "path": ["character", "trust"],
+                            "tokens": [{"token": "disgusting", "weight": 1.0}],
+                        },
+                        {
+                            "path": ["character", "reason"],
+                            "tokens": [
+                                {"token": "in heat", "weight": 1.2},
+                                {"token": "blush", "weight": 1.2},
+                            ],
+                        },
+                        {
+                            "path": [],
+                            "tokens": [
+                                {"token": "amputee", "weight": 1.1},
+                                {"token": "bad anatomy", "weight": 1.1},
+                                {"token": "extra limbs", "weight": 1.1},
+                                {"token": "missing limb", "weight": 1.1},
+                                {"token": "multiple heads", "weight": 1.0},
+                                {"token": "worst quality", "weight": 1.0},
+                                {"token": "low quality", "weight": 1.0},
+                                {"token": "motion lines", "weight": 1.0},
+                                {"token": "speed lines", "weight": 1.0},
+                                {"token": "3d", "weight": 1.0},
+                                {"token": "shiny skin", "weight": 1.2},
+                                {"token": "worst detail", "weight": 1.0},
+                                {"token": "text", "weight": 1.0},
+                                {"token": "logo", "weight": 1.0},
+                                {"token": "cropped", "weight": 1.0},
+                                {"token": "deformed", "weight": 1.0},
+                                {"token": "blurry", "weight": 1.0},
+                                {"token": "extra digits", "weight": 1.0},
+                                {"token": "fewer digits", "weight": 1.0},
+                                {"token": "missing digits", "weight": 1.0},
+                                {"token": "bad hands", "weight": 1.0},
+                                {"token": "mutated hands", "weight": 1.0},
+                                {"token": "six toes", "weight": 1.0},
+                                {"token": "extra toes", "weight": 1.0},
+                                {"token": "fewer toes", "weight": 1.0},
+                                {"token": "missing toes", "weight": 1.0},
+                                {"token": "bad feet", "weight": 1.0},
+                                {"token": "mutated feet", "weight": 1.0},
+                                {"token": "extra feet", "weight": 1.0},
+                                {"token": "missing foot", "weight": 1.0},
+                                {"token": "bad leg", "weight": 1.0},
+                                {"token": "extra legs", "weight": 1.0},
+                                {"token": "missing leg", "weight": 1.0},
+                                {"token": "extra hands", "weight": 1.0},
+                                {"token": "missing hand", "weight": 1.0},
+                                {"token": "bad arm", "weight": 1.0},
+                                {"token": "extra arms", "weight": 1.0},
+                                {"token": "missing arm", "weight": 1.0},
+                            ],
+                        },
+                    ],
+                }
+            ],
+            "string": {
+                "POS": "remilia scarlet,looking at viewer,blush,newsboy cap,jacket,pants,socks,shoes,best quality,masterpiece,absurdres,1girl,solo",  # noqa: E501
+                "NEG": "disgusting,(in heat:1.2),(blush:1.2),(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
+            },
+            "sufficiency": True,
+            "reports": [],
+        },
+        "The World-10": {
+            "dataclass": [
+                {
+                    "screen_id": "main",
+                    "positive": [
+                        {
+                            "path": ["character", "name"],
+                            "tokens": [{"token": "chen", "weight": 1.0}],
+                        },
+                        {
+                            "path": ["character", "affection"],
+                            "tokens": [{"token": "looking at viewer", "weight": 1.0}],
+                        },
+                        {
+                            "path": ["character", "frustration"],
+                            "tokens": [{"token": "blush", "weight": 1.0}],
+                        },
+                        {"path": ["caps"], "tokens": [{"token": "hair ribbon", "weight": 1.0}]},
+                        {"path": ["upper_cloths"], "tokens": [{"token": "t-shirt", "weight": 1.0}]},
+                        {"path": ["lower_cloths"], "tokens": [{"token": "shorts", "weight": 1.0}]},
+                        {"path": ["socks"], "tokens": [{"token": "socks", "weight": 1.0}]},
+                        {"path": ["shoes"], "tokens": [{"token": "boots", "weight": 1.0}]},
+                        {
+                            "path": [],
+                            "tokens": [
+                                {"token": "best quality", "weight": 1.0},
+                                {"token": "masterpiece", "weight": 1.0},
+                                {"token": "absurdres", "weight": 1.0},
+                                {"token": "1girl", "weight": 1.0},
+                                {"token": "solo", "weight": 1.0},
+                            ],
+                        },
+                    ],
+                    "negative": [
+                        {
+                            "path": ["character", "trust"],
+                            "tokens": [{"token": "disgusting", "weight": 1.0}],
+                        },
+                        {
+                            "path": ["character", "reason"],
+                            "tokens": [
+                                {"token": "in heat", "weight": 1.2},
+                                {"token": "blush", "weight": 1.2},
+                            ],
+                        },
+                        {
+                            "path": ["caps"],
+                            "tokens": [
+                                {"token": "caps", "weight": 1.0},
+                                {"token": "hat", "weight": 1.0},
+                            ],
+                        },
+                        {
+                            "path": [],
+                            "tokens": [
+                                {"token": "amputee", "weight": 1.1},
+                                {"token": "bad anatomy", "weight": 1.1},
+                                {"token": "extra limbs", "weight": 1.1},
+                                {"token": "missing limb", "weight": 1.1},
+                                {"token": "multiple heads", "weight": 1.0},
+                                {"token": "worst quality", "weight": 1.0},
+                                {"token": "low quality", "weight": 1.0},
+                                {"token": "motion lines", "weight": 1.0},
+                                {"token": "speed lines", "weight": 1.0},
+                                {"token": "3d", "weight": 1.0},
+                                {"token": "shiny skin", "weight": 1.2},
+                                {"token": "worst detail", "weight": 1.0},
+                                {"token": "text", "weight": 1.0},
+                                {"token": "logo", "weight": 1.0},
+                                {"token": "cropped", "weight": 1.0},
+                                {"token": "deformed", "weight": 1.0},
+                                {"token": "blurry", "weight": 1.0},
+                                {"token": "extra digits", "weight": 1.0},
+                                {"token": "fewer digits", "weight": 1.0},
+                                {"token": "missing digits", "weight": 1.0},
+                                {"token": "bad hands", "weight": 1.0},
+                                {"token": "mutated hands", "weight": 1.0},
+                                {"token": "six toes", "weight": 1.0},
+                                {"token": "extra toes", "weight": 1.0},
+                                {"token": "fewer toes", "weight": 1.0},
+                                {"token": "missing toes", "weight": 1.0},
+                                {"token": "bad feet", "weight": 1.0},
+                                {"token": "mutated feet", "weight": 1.0},
+                                {"token": "extra feet", "weight": 1.0},
+                                {"token": "missing foot", "weight": 1.0},
+                                {"token": "bad leg", "weight": 1.0},
+                                {"token": "extra legs", "weight": 1.0},
+                                {"token": "missing leg", "weight": 1.0},
+                                {"token": "extra hands", "weight": 1.0},
+                                {"token": "missing hand", "weight": 1.0},
+                                {"token": "bad arm", "weight": 1.0},
+                                {"token": "extra arms", "weight": 1.0},
+                                {"token": "missing arm", "weight": 1.0},
+                            ],
+                        },
+                    ],
+                }
+            ],
+            "string": {
+                "POS": "chen,looking at viewer,blush,hair ribbon,t-shirt,shorts,socks,boots,best quality,masterpiece,absurdres,1girl,solo",  # noqa: E501
+                "NEG": "disgusting,(in heat:1.2),(blush:1.2),caps,hat,(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
+            },
+            "sufficiency": True,
+            "reports": [],
+        },
     },
 }
 
@@ -1223,7 +1914,8 @@ def debug_tw_interpreter() -> None:
                     "レミリア スカーレット(好感度: S 27183, 信頼度: S 4962,　欲求不満度:68％,)　怒り:  　　　　　\n"  # noqa E501
                     "ムード:             理性:★★★★★    ？？？ ",
                     # No.2
-                    "　装備:頭　　　[帽子]\n　装備:上衣　　[ブラウス]\n"
+                    "　装備:頭　　　[帽子]\n　"
+                    "　装備:上衣　　[ブラウス]\n"
                     "　装備:下衣　　[ロングスカート]\n"
                     "　装備:下着　　[？？？？？]\n"
                     "　装備:靴下　　[靴下]\n"
@@ -1232,6 +1924,42 @@ def debug_tw_interpreter() -> None:
                     # No.3
                     "夏の月 7日目(火)七夕21時33分 ― 快晴 ― ☪　気温20.0℃　<食事可>\n"
                     "レミリア スカーレット(好感度: S 27183, 信頼度: S 4962,　欲求不満度:68％,)　怒り:  　　　　　\n"  # noqa E501
+                    "ムード:             理性:★★★★★    ？？？ ",
+                    # No.4
+                    "夏の月 7日目(火)七夕21時33分 ― 快晴 ― ☪　気温20.0℃　<食事可>\n"
+                    "橙(好感度: S 27183, 信頼度: S 4962,　欲求不満度:68％,)　怒り:  　　　　　\n"  # noqa E501
+                    "ムード:             理性:★★★★★    ？？？ ",
+                    # No.5
+                    "　装備:頭　　　[リボン]\n"
+                    "　装備:上衣　　[Ｔシャツ]\n"
+                    "　装備:下衣　　[ハーフパンツ]\n"
+                    "　装備:下着　　[？？？？？]\n"
+                    "　装備:靴下　　[靴下]\n"
+                    "　装備:靴　　　[ブーツ]\n"
+                    "橙のお着替え中",
+                    # No.6
+                    "夏の月 7日目(火)七夕21時33分 ― 快晴 ― ☪　気温20.0℃　<食事可>\n"
+                    "橙(好感度: S 27183, 信頼度: S 4962,　欲求不満度:68％,)　怒り:  　　　　　\n"  # noqa E501
+                    "ムード:             理性:★★★★★    ？？？ ",
+                    # No.7
+                    "夏の月 7日目(火)七夕21時33分 ― 快晴 ― ☪　気温20.0℃　<食事可>\n"
+                    "レミリア スカーレット(好感度: S 27183, 信頼度: S 4962,　欲求不満度:68％,)　怒り:  　　　　　\n"  # noqa E501
+                    "ムード:             理性:★★★★★    ？？？ ",
+                    # No.8
+                    "　装備:頭　　　[キャスケット]\n"
+                    "　装備:上衣　　[上着]\n"
+                    "　装備:下衣　　[ズボン]\n"
+                    "　装備:下着　　[？？？？？]\n"
+                    "　装備:靴下　　[靴下]\n"
+                    "　装備:靴　　　[靴]\n"
+                    "レミリアのお着替え中",
+                    # No.9
+                    "夏の月 7日目(火)七夕21時33分 ― 快晴 ― ☪　気温20.0℃　<食事可>\n"
+                    "レミリア スカーレット(好感度: S 27183, 信頼度: S 4962,　欲求不満度:68％,)　怒り:  　　　　　\n"  # noqa E501
+                    "ムード:             理性:★★★★★    ？？？ ",
+                    # No.10
+                    "夏の月 7日目(火)七夕21時33分 ― 快晴 ― ☪　気温20.0℃　<食事可>\n"
+                    "橙(好感度: S 27183, 信頼度: S 4962,　欲求不満度:68％,)　怒り:  　　　　　\n"  # noqa E501
                     "ムード:             理性:★★★★★    ？？？ ",
                 ],
             ),

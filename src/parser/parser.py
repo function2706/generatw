@@ -153,11 +153,11 @@ class Parser:
 
         saved_state = None
         if carry_over:
-            saved_state = self.interpreter.save_state()
+            saved_state = self.interpreter.export_state()
 
         self.interpreter.reload_prompter()
         if carry_over and saved_state is not None:
-            self.interpreter.restore_state(saved_state)
+            self.interpreter.import_state(saved_state)
 
         self.interpreter_cache = deepcopy(self.interpreter)
 
