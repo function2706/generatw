@@ -18,7 +18,7 @@ import master.events
 from common.functions import BottleMail, dirname_by_prompts, dump_json
 from master.interfaces import MasterIF
 from parser.interpreter.debug_interpreter import DebugInterpreter
-from parser.interpreter.interpreter import Interpreter
+from parser.interpreter.interpreter import Interpreter, MemoryEntry
 from parser.interpreter.reverse_interpreter import ReverseInterpreter
 from parser.interpreter.test_interpreter import TestInterpreter
 from parser.interpreter.theworld_interpreter import TheWorldInterpreter
@@ -297,3 +297,18 @@ class Parser:
                 raise Exception(
                     f"Any exception occurred in {threading.current_thread().name}: "
                 ) from e
+
+    def dump_memory(self) -> None:
+        """
+        現在の記憶をダンプする
+        """
+        stringfied_records: dict[str, dict[str, dict[str, MemoryEntry]]] = {
+            screen_id: {
+                key_entry.stringfy(): memory.stringfy() for key_entry, memory in record.items()
+            }
+            for screen_id, record in self.interpreter.records.items()
+        }
+
+        dump_json(stringfied_records, "records")
+        print("\n")
+        dump_json(self.interpreter.last_memory.stringfy(), "last_memory")

@@ -19,6 +19,17 @@ class KeyEntry:
     pos_tokens: tuple[tuple[str, float], ...]
     neg_tokens: tuple[tuple[str, float], ...]
 
+    def stringfy(self) -> str:
+        """
+        ラベル文字列用にポジティブプロンプトの先頭トークンのみを文字列化する\n
+        ポジティブプロンプトが空ならネガティブプロンプトの先頭トークンを用いる\n
+        重さは付与しない
+
+        Returns:
+            str: 重さがないトークン文字列
+        """
+        return f"{self.pos_tokens[0][0]}" if self.pos_tokens else f"{self.neg_tokens[0][0]}"
+
 
 @dataclass
 class MemoryEntry:
@@ -75,6 +86,14 @@ class Memory:
             if entry.neg_tokens:
                 prompt.negative.append(PromptParts(path=path, tokens=entry.neg_tokens))
         return prompt
+
+    def stringfy(self) -> dict[str, dict[str, MemoryEntry]]:
+        return {
+            self.screen_id: {
+                (path if isinstance(path, CategoryPath) else CategoryPath(path)).stringfy(): entry
+                for path, entry in self.entries.items()
+            }
+        }
 
 
 # キーカテゴリーごとの Memory
@@ -349,13 +368,17 @@ class ScreenConfig:
 
         # Offer: Memory 上のすべての MemoryEntry をキーカテゴリーと紐づけて提供
         key_entry = memory.get_key_entry(container.keyname)
+        common_purged_memory = Memory(
+            screen_id=memory.screen_id,
+            entries={path: entry for path, entry in memory.entries.items() if path},
+        )
         if key_entry is not None:
             if container.prompt.screen_id in container.records:
-                container.records[container.prompt.screen_id][key_entry] = memory
+                container.records[container.prompt.screen_id][key_entry] = common_purged_memory
             else:
-                container.records[container.prompt.screen_id] = {key_entry: memory}
-        container.last_memory.screen_id = memory.screen_id
-        container.last_memory.entries = deepcopy(memory.entries)
+                container.records[container.prompt.screen_id] = {key_entry: common_purged_memory}
+        container.last_memory.screen_id = common_purged_memory.screen_id
+        container.last_memory.entries = deepcopy(common_purged_memory.entries)
 
     def sort(self, container: PromptContainer) -> None:
         """
@@ -492,24 +515,25 @@ class Interpreter:
         """
         self.switch_prompter(self.yamlpath)
 
-    def export_state(self) -> dict[str, Record]:
+    def export_state(self) -> tuple[dict[str, Record], Memory]:
         """
-        Screen ごとの Record をエクスポートする\n
-        記憶がない場合は空の dict を返す
+        Screen ごとの Record と 直前 Screen の Memory をエクスポートする\n
+        記憶がない場合は空の dict と Memory を返す
 
         Returns:
             dict[str, Record]: Screen ごとの Record
         """
-        return self.records
+        return self.records, self.last_memory
 
-    def import_state(self, records: dict[str, Record]) -> None:
+    def import_state(self, saved: tuple[dict[str, Record], Memory]) -> None:
         """
-        Screen ごとの Record をインポートする
+        Screen ごとの Record と 直前 Screen の Memory をインポートする
 
         Args:
-            records (dict[str, Record]): Screen ごとの Record
+            saved (dict[stuple[dict[str, Record], Memory]): Record と Memory
         """
-        self.records = records
+        self.records = saved[0]
+        self.last_memory = saved[1]
 
     def make_prompt(self, text: str) -> tuple[Prompt | None, list[Report]]:
         """

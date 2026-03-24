@@ -417,29 +417,27 @@ class DebugTab:
                 command=owner.super_owner.super_owner.on_debug,
             )
             self.debug_button.grid(row=0, column=0, padx=6, pady=6, sticky="w")
-            # チェックボックス(クリップボードの更新)
-            self.allow_edit_clipboard_check = tkinter.BooleanVar()
-            ttk.Checkbutton(
-                self.exe_debug_frame,
-                text="クリップボードの更新",
-                variable=self.allow_edit_clipboard_check,
-                command=self.super_owner.super_owner.super_owner.update_configs,
-            ).grid(row=0, column=1, padx=6, pady=6, sticky="w")
-            self.allow_edit_clipboard_check.set(init_configs.allow_edit_clipboard)
-            # ボタン(アーカイブ出力ダンプ)
+            # ボタン(アーカイブ出力)
             self.debug_button = ttk.Button(
                 self.exe_debug_frame,
                 text="アーカイブ出力",
                 command=owner.super_owner.super_owner.on_dump_archiver,
             )
             self.debug_button.grid(row=1, column=0, padx=6, pady=6, sticky="w")
-            # ボタン(タスクリストダンプ)
+            # ボタン(タスクリスト)
             self.debug_button = ttk.Button(
                 self.exe_debug_frame,
                 text="タスクリスト",
                 command=owner.super_owner.super_owner.on_dump_tasklist,
             )
             self.debug_button.grid(row=1, column=1, padx=6, pady=6, sticky="w")
+            # ボタン(現在の記憶)
+            self.debug_button = ttk.Button(
+                self.exe_debug_frame,
+                text="現在の記憶",
+                command=owner.super_owner.super_owner.on_dump_memory,
+            )
+            self.debug_button.grid(row=1, column=2, padx=6, pady=6, sticky="w")
 
     class ToggleFrame:
         """
@@ -457,6 +455,15 @@ class DebugTab:
 
             self.toggle_frame = ttk.Frame(owner.main_frame)
             self.toggle_frame.grid(row=1, column=0, sticky="w")
+            # チェックボックス(クリップボードの更新)
+            self.allow_edit_clipboard_check = tkinter.BooleanVar()
+            ttk.Checkbutton(
+                self.toggle_frame,
+                text="クリップボードの更新",
+                variable=self.allow_edit_clipboard_check,
+                command=self.super_owner.super_owner.super_owner.update_configs,
+            ).grid(row=0, column=0, padx=6, pady=6, sticky="w")
+            self.allow_edit_clipboard_check.set(init_configs.allow_edit_clipboard)
             # Parser レポートのロギング
             self.log_parser_reports_check = tkinter.BooleanVar()
             ttk.Checkbutton(
@@ -464,7 +471,7 @@ class DebugTab:
                 text="Parser レポートのロギング",
                 variable=self.log_parser_reports_check,
                 command=self.super_owner.super_owner.super_owner.update_configs,
-            ).grid(row=0, column=0, padx=6, pady=6, sticky="w")
+            ).grid(row=0, column=1, padx=6, pady=6, sticky="w")
             self.log_parser_reports_check.set(init_configs.log_parser_reports)
 
     class VerboseFrame:
@@ -807,6 +814,12 @@ class Displayer:
         """
         self.to_master.enclose(master.events.OnDumpTaskList())
 
+    def on_dump_memory(self) -> None:
+        """
+        現在の記憶ダンプボタンハンドラ
+        """
+        self.to_master.enclose(master.events.OnDumpMemory())
+
     def on_backward(self) -> None:
         """
         < ボタンハンドラ
@@ -883,7 +896,7 @@ class Displayer:
                 self.main_window.main_tab_obj.sellect_frame.allow_carryover_yaml_record.get()
             ),
             allow_edit_clipboard=bool(
-                self.main_window.debug_tab_obj.exe_debug_frame.allow_edit_clipboard_check.get()
+                self.main_window.debug_tab_obj.toggle_frame.allow_edit_clipboard_check.get()
             ),
             log_parser_reports=bool(
                 self.main_window.debug_tab_obj.toggle_frame.log_parser_reports_check.get()

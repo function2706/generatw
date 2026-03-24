@@ -100,7 +100,8 @@ def make_tokens(text: str | None = None) -> list[Token]:
 
 
 class CategoryPath(tuple[str, ...]):
-    pass
+    def stringfy(self) -> str:
+        return str(self)
 
 
 @dataclass

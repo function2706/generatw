@@ -85,6 +85,11 @@ class OnDumpTaskList(DisplayerEvent):
 
 
 @dataclass
+class OnDumpMemory(DisplayerEvent):
+    pass
+
+
+@dataclass
 class OnBackward(DisplayerEvent):
     pass
 
