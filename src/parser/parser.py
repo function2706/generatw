@@ -4,10 +4,10 @@
 
 from __future__ import annotations
 
+import pickle
 import random
 import threading
 import time
-from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -15,7 +15,7 @@ import pyperclip
 import yaml
 
 import master.events
-from common.functions import BottleMail, dirname_by_prompts, dump_json
+from common.functions import BottleMail, PathConsts, dirname_by_prompts, dump_json
 from master.interfaces import MasterIF
 from parser.interpreter.debug_interpreter import DebugInterpreter
 from parser.interpreter.interpreter import Interpreter, MemoryEntry
@@ -92,7 +92,6 @@ class Parser:
         self.to_master = to_master
 
         self.interpreter: Interpreter = None
-        self.interpreter_cache: Interpreter = None
         self.debug_interpreter: DebugInterpreter = DebugInterpreter(Consts.debug_yamlpath)
 
         self.crnt_clipboard = ""
@@ -118,13 +117,43 @@ class Parser:
             return
         self.parser_thread.join()
 
+    def save_memory(self) -> None:
+        """
+        記憶をセーブする\n
+        セーブ先は現在の interpreter に紐づく記憶ファイル\n
+        interpreter が None の場合は何もしない
+        """
+        if self.interpreter is None:
+            return
+
+        exported = self.interpreter.export_memory()
+        PathConsts.mem_dir.mkdir(exist_ok=True)
+        with open(PathConsts.mem_dir / Path(f"{self.interpreter.keyword()}.pkl"), "wb") as f:
+            pickle.dump(exported, f)
+
+    def load_memory(self) -> None:
+        """
+        記憶をロードする\n
+        ロード先は現在の interpreter に紐づく記憶ファイル\n
+        interpreter が None, または記憶データが存在しない場合は何もしない
+        """
+        if self.interpreter is None:
+            return
+
+        memory_pkl = PathConsts.mem_dir / Path(f"{self.interpreter.keyword()}.pkl")
+        if memory_pkl.exists():
+            with open(memory_pkl, "rb") as f:
+                loaded = pickle.load(f)
+            self.interpreter.import_memory(loaded)
+
     def finalize(self) -> None:
         """
         終了処理
         """
         self.event.shutdown.set()
+        self.save_memory()
 
-    def switch_interpreter(self, yamlpath: Path) -> None:
+    def switch_interpreter(self, yamlpath: Path, load_memory: bool = False) -> None:
         """
         指定の YAML に記載された "interpreter" キーに紐づく Interpreter を起動する
 
@@ -138,8 +167,10 @@ class Parser:
 
         for interpreter in INTERPRETER_LIST:
             if keyword is not None and interpreter.keyword() == keyword:
+                self.save_memory()
                 self.interpreter = interpreter(yamlpath)
-                self.interpreter_cache = deepcopy(self.interpreter)
+                if load_memory:
+                    self.load_memory()
 
     def reload_interpreter(self, carry_over: bool = False) -> None:
         """
@@ -151,15 +182,13 @@ class Parser:
         if self.interpreter is None:
             return
 
-        saved_state = None
+        saved_memory = None
         if carry_over:
-            saved_state = self.interpreter.export_state()
+            saved_memory = self.interpreter.export_memory()
 
         self.interpreter.reload_prompter()
-        if carry_over and saved_state is not None:
-            self.interpreter.import_state(saved_state)
-
-        self.interpreter_cache = deepcopy(self.interpreter)
+        if carry_over and saved_memory is not None:
+            self.interpreter.import_memory(saved_memory)
 
     def make_prompt_strs(self) -> tuple[str, str] | None:
         """

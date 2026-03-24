@@ -24,6 +24,8 @@ class PathConsts:
     pic_dir: Path = Path("pics")
     # ログ保存先ディレクトリ
     log_dir: Path = Path("logs")
+    # 記憶保存先ディレクトリ
+    mem_dir: Path = Path("memories")
 
 
 class BackEnd(Enum):

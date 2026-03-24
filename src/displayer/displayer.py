@@ -473,6 +473,15 @@ class DebugTab:
                 command=self.super_owner.super_owner.super_owner.update_configs,
             ).grid(row=0, column=1, padx=6, pady=6, sticky="w")
             self.log_parser_reports_check.set(init_configs.log_parser_reports)
+            # 記憶の復元
+            self.load_memory_check = tkinter.BooleanVar()
+            ttk.Checkbutton(
+                self.toggle_frame,
+                text="記憶の復元",
+                variable=self.load_memory_check,
+                command=self.super_owner.super_owner.super_owner.update_configs,
+            ).grid(row=0, column=2, padx=6, pady=6, sticky="w")
+            self.load_memory_check.set(init_configs.load_memory)
 
     class VerboseFrame:
         """
@@ -901,6 +910,7 @@ class Displayer:
             log_parser_reports=bool(
                 self.main_window.debug_tab_obj.toggle_frame.log_parser_reports_check.get()
             ),
+            load_memory=bool(self.main_window.debug_tab_obj.toggle_frame.load_memory_check.get()),
             print_new_clipboard=bool(
                 self.main_window.debug_tab_obj.verbose_frame.verbose_clipboard_check.get()
             ),

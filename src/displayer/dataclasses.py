@@ -28,6 +28,7 @@ class GUIConfigs:
     allow_carryover_yaml_record: bool = False
     allow_edit_clipboard: bool = False
     log_parser_reports: bool = False
+    load_memory: bool = False
     print_new_clipboard: bool = False
     print_new_prompt_set: bool = False
     print_new_prompt: bool = False

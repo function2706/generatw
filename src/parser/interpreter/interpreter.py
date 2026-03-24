@@ -515,7 +515,7 @@ class Interpreter:
         """
         self.switch_prompter(self.yamlpath)
 
-    def export_state(self) -> tuple[dict[str, Record], Memory]:
+    def export_memory(self) -> tuple[dict[str, Record], Memory]:
         """
         Screen ごとの Record と 直前 Screen の Memory をエクスポートする\n
         記憶がない場合は空の dict と Memory を返す
@@ -525,7 +525,7 @@ class Interpreter:
         """
         return self.records, self.last_memory
 
-    def import_state(self, saved: tuple[dict[str, Record], Memory]) -> None:
+    def import_memory(self, saved: tuple[dict[str, Record], Memory]) -> None:
         """
         Screen ごとの Record と 直前 Screen の Memory をインポートする
 

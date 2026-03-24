@@ -63,20 +63,16 @@ class Master(MasterIF):
                 sd_height=960,
                 sd_scaleby=2.0,
                 each_max_pics=8,
-                yamlpath=None,
                 backend=BackEnd.a1111.value,
-                allow_edit_clipboard=False,
-                print_new_clipboard=False,
-                print_new_prompt=False,
-                print_picinfo=False,
-                print_event=False,
             )
         )
 
         self.parser: Parser = Parser(self, self.from_parser)
         self.is_switching_frontend = False
         if self.crnt_configs.yamlpath is not None:
-            self.parser.switch_interpreter(Path(self.crnt_configs.yamlpath))
+            self.parser.switch_interpreter(
+                Path(self.crnt_configs.yamlpath), load_memory=self.crnt_configs.load_memory
+            )
 
         self.archiver = Archiver(self.from_archiver)
 
@@ -148,7 +144,7 @@ class Master(MasterIF):
         self.is_switching_frontend = True
 
         def worker():
-            self.parser.switch_interpreter(new_yamlpath)
+            self.parser.switch_interpreter(new_yamlpath, load_memory=self.crnt_configs.load_memory)
             self.is_switching_frontend = False
 
         self.root.after(0, worker)
