@@ -51,8 +51,8 @@ class Master(MasterIF):
         self.from_parser: BottleMail[master.events.ParserEvent] = BottleMail()
 
         self.crnt_configs: GUIConfigs = (
-            GUIConfigs.fromjson(PathConsts.config_path)
-            if PathConsts.config_path.exists()
+            GUIConfigs.fromjson(PathConsts.config_json)
+            if PathConsts.config_json.exists()
             else GUIConfigs(
                 # コンフィグファイルがない場合は A1111 をバックエンドとして起動
                 srv_ipaddr="127.0.0.1",
@@ -108,7 +108,7 @@ class Master(MasterIF):
         終了処理
         """
 
-        self.crnt_configs.tojson(PathConsts.config_path)
+        self.crnt_configs.tojson(PathConsts.config_json)
 
         if self.after_id:
             self.root.after_cancel(self.after_id)

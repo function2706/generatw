@@ -19,7 +19,7 @@ from typing import Any
 @dataclass(frozen=True)
 class PathConsts:
     # コンフィグファイル
-    config_path: Path = Path("config.json")
+    config_json: Path = Path("config.json")
     # 画像保存先ディレクトリ
     pic_dir: Path = Path("pics")
     # ログ保存先ディレクトリ
