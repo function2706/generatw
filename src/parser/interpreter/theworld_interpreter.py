@@ -13,6 +13,7 @@ from parser.interpreter.interpreter import Interpreter, ScreenConfig
 
 class Scr(StrEnum):
     main = "main"
+    action = "action"
     status = "status"
     fashion = "fashion"
 
@@ -43,6 +44,7 @@ class Cat(StrEnum):
     type2 = "type2"
     type3 = "type3"
     weather = "weather"
+    action = "action"
     caps = "caps"
     hands = "hands"
     dresses = "dresses"
@@ -88,6 +90,7 @@ class TheWorldInterpreter(Interpreter):
         self.screen_table = {
             Scr.main: ScreenConfig.set(
                 cat_configs={
+                    (Cat.action,): (None, True),
                     (Cat.character, Cat.name_n): (None, True),
                     (Cat.character, Cat.vibe): (None, False),
                     (Cat.character, Cat.affection): (None, False),
@@ -128,6 +131,9 @@ class TheWorldInterpreter(Interpreter):
                 },
                 sufficiency=Has((Cat.character, Cat.name_n)),
                 request_cats={
+                    Scr.action: [
+                        (Cat.action,),
+                    ],
                     Scr.fashion: [
                         (Cat.caps,),
                         (Cat.hands,),
@@ -144,8 +150,94 @@ class TheWorldInterpreter(Interpreter):
                         (Cat.shoes,),
                         (Cat.equipments,),
                         (Cat.accessories,),
+                    ],
+                },
+            ),
+            Scr.action: ScreenConfig.set(
+                cat_configs={
+                    (Cat.action,): (None, True),
+                    (Cat.character, Cat.name_n): (None, True),
+                    (Cat.character, Cat.vibe): (None, False),
+                    (Cat.character, Cat.affection): (None, False),
+                    (Cat.character, Cat.trust): (None, False),
+                    (Cat.character, Cat.frustration): (None, False),
+                    (Cat.character, Cat.angry): (None, False),
+                    (Cat.character, Cat.in_heat): (None, False),
+                    (Cat.character, Cat.mood): (None, False),
+                    (Cat.character, Cat.reason): (None, False),
+                    (Cat.character, Cat.upper_n): (None, False),
+                    (Cat.character, Cat.upper_state): (None, False),
+                    (Cat.character, Cat.lower_n): (None, False),
+                    (Cat.character, Cat.lower_state): (None, False),
+                    (Cat.caps,): (None, True),
+                    (Cat.hands,): (None, True),
+                    (Cat.dresses,): (None, True),
+                    (Cat.kimonos,): (None, True),
+                    (Cat.outers,): (None, True),
+                    (Cat.upper_cloths,): (None, True),
+                    (Cat.lower_cloths,): (None, True),
+                    (Cat.lingeries,): (expr_no_costumes, True),
+                    (Cat.whole_lingeries,): (expr_no_costumes, True),
+                    (Cat.upper_lingeries,): (expr_no_upper_costumes, True),
+                    (Cat.lower_lingeries,): (expr_no_lower_costumes, True),
+                    (Cat.socks,): (None, True),
+                    (Cat.shoes,): (None, True),
+                    (Cat.equipments,): (None, True),
+                    (Cat.accessories,): (None, True),
+                    (Cat.meta, Cat.time, Cat.day): (expr_outdoors, False),
+                    (Cat.meta, Cat.time, Cat.night): (expr_outdoors, False),
+                    (Cat.meta, Cat.location, Cat.indoors, Cat.type1): (None, True),
+                    (Cat.meta, Cat.location, Cat.indoors, Cat.type2): (None, True),
+                    (Cat.meta, Cat.location, Cat.indoors, Cat.type3): (None, False),
+                    (Cat.meta, Cat.location, Cat.outdoors, Cat.type1): (None, True),
+                    (Cat.meta, Cat.location, Cat.outdoors, Cat.type2): (None, True),
+                    (Cat.meta, Cat.location, Cat.outdoors, Cat.type3): (None, False),
+                    (Cat.meta, Cat.weather): (expr_outdoors, False),
+                },
+                sufficiency=Has((Cat.character, Cat.name_n)),
+                request_cats={
+                    Scr.main: [
+                        (Cat.character, Cat.vibe),
+                        (Cat.character, Cat.affection),
+                        (Cat.character, Cat.trust),
+                        (Cat.character, Cat.frustration),
+                        (Cat.character, Cat.angry),
+                        (Cat.character, Cat.in_heat),
+                        (Cat.character, Cat.mood),
+                        (Cat.character, Cat.reason),
+                        (Cat.character, Cat.upper_n),
+                        (Cat.character, Cat.upper_state),
+                        (Cat.character, Cat.lower_n),
+                        (Cat.character, Cat.lower_state),
+                        (Cat.caps,),
+                        (Cat.hands,),
+                        (Cat.dresses,),
+                        (Cat.kimonos,),
+                        (Cat.outers,),
+                        (Cat.upper_cloths,),
+                        (Cat.lower_cloths,),
+                        (Cat.lingeries,),
+                        (Cat.whole_lingeries,),
+                        (Cat.upper_lingeries,),
+                        (Cat.lower_lingeries,),
+                        (Cat.socks,),
+                        (Cat.shoes,),
+                        (Cat.equipments,),
+                        (Cat.accessories,),
+                        (Cat.meta, Cat.time, Cat.day),
+                        (Cat.meta, Cat.time, Cat.night),
+                        (Cat.meta, Cat.location, Cat.indoors, Cat.type1),
+                        (Cat.meta, Cat.location, Cat.indoors, Cat.type2),
+                        (Cat.meta, Cat.location, Cat.indoors, Cat.type3),
+                        (Cat.meta, Cat.location, Cat.outdoors, Cat.type1),
+                        (Cat.meta, Cat.location, Cat.outdoors, Cat.type2),
+                        (Cat.meta, Cat.location, Cat.outdoors, Cat.type3),
+                        (Cat.meta, Cat.weather),
                     ]
                 },
+                takeover_cats=[
+                    (Cat.character, Cat.name_n),
+                ],
             ),
             Scr.status: ScreenConfig.set(
                 cat_configs={
