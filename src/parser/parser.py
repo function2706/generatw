@@ -146,14 +146,28 @@ class Parser:
                 loaded = pickle.load(f)
             self.interpreter.import_memory(loaded)
 
-    def finalize(self) -> None:
+    def forget_memory(self) -> None:
+        """
+        記憶を忘却する\n
+        保存中の記憶ファイルには何も作用しない\n
+        interpreter が None の場合は何もしない
+        """
+        if self.interpreter is None:
+            return
+
+        self.interpreter.clear_memory()
+
+    def finalize(self, save_memory_end: bool) -> None:
         """
         終了処理
         """
         self.event.shutdown.set()
-        self.save_memory()
+        if save_memory_end:
+            self.save_memory()
 
-    def switch_interpreter(self, yamlpath: Path, load_memory: bool = False) -> None:
+    def switch_interpreter(
+        self, yamlpath: Path, load_memory_start: bool = False, save_memory_end: bool = False
+    ) -> None:
         """
         指定の YAML に記載された "interpreter" キーに紐づく Interpreter を起動する
 
@@ -167,28 +181,18 @@ class Parser:
 
         for interpreter in INTERPRETER_LIST:
             if keyword is not None and interpreter.keyword() == keyword:
-                self.save_memory()
+                if save_memory_end:
+                    self.save_memory()
                 self.interpreter = interpreter(yamlpath)
-                if load_memory:
+                if load_memory_start:
                     self.load_memory()
 
-    def reload_interpreter(self, carry_over: bool = False) -> None:
+    def reload_interpreter(self) -> None:
         """
         YAML の再読み込みを実施する
-
-        Args:
-            carry_over (bool, optional): インスタンスに記憶データがある場合持ち越すか
         """
-        if self.interpreter is None:
-            return
-
-        saved_memory = None
-        if carry_over:
-            saved_memory = self.interpreter.export_memory()
-
-        self.interpreter.reload_prompter()
-        if carry_over and saved_memory is not None:
-            self.interpreter.import_memory(saved_memory)
+        if self.interpreter is not None:
+            self.interpreter.reload_prompter()
 
     def make_prompt_strs(self) -> tuple[str, str] | None:
         """

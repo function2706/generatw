@@ -535,6 +535,13 @@ class Interpreter:
         self.records = saved[0]
         self.last_memory = saved[1]
 
+    def clear_memory(self) -> None:
+        """
+        Screen ごとの Record と 直前 Screen の Memory をクリアする
+        """
+        self.records = {}
+        self.last_memory = Memory()
+
     def make_prompt(self, text: str) -> tuple[Prompt | None, list[Report]]:
         """
         テキストをもとに Prompter によって Prompt を得る\n

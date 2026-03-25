@@ -71,7 +71,8 @@ class Master(MasterIF):
         self.is_switching_frontend = False
         if self.crnt_configs.yamlpath is not None:
             self.parser.switch_interpreter(
-                Path(self.crnt_configs.yamlpath), load_memory=self.crnt_configs.load_memory
+                Path(self.crnt_configs.yamlpath),
+                load_memory_start=self.crnt_configs.load_memory_start,
             )
 
         self.archiver = Archiver(self.from_archiver)
@@ -111,7 +112,7 @@ class Master(MasterIF):
             self.after_id = ""
 
         self.generator.finalize()
-        self.parser.finalize()
+        self.parser.finalize(self.crnt_configs.save_memory_end)
 
         def worker():
             self.generator.join()
@@ -144,17 +145,18 @@ class Master(MasterIF):
         self.is_switching_frontend = True
 
         def worker():
-            self.parser.switch_interpreter(new_yamlpath, load_memory=self.crnt_configs.load_memory)
+            self.parser.switch_interpreter(
+                new_yamlpath,
+                load_memory_start=self.crnt_configs.load_memory_start,
+                save_memory_end=self.crnt_configs.save_memory_end,
+            )
             self.is_switching_frontend = False
 
         self.root.after(0, worker)
 
-    def reload_frontend(self, carry_over: bool = False) -> None:
+    def reload_frontend(self) -> None:
         """
-        フロントエンドを再起動する\n
-
-        Args:
-            carry_over (bool): 記憶データを引き継ぐ
+        フロントエンドを再起動する
         """
         if self.is_switching_frontend:
             return
@@ -162,7 +164,7 @@ class Master(MasterIF):
         self.is_switching_frontend = True
 
         def worker():
-            self.parser.reload_interpreter(carry_over)
+            self.parser.reload_interpreter()
             self.is_switching_frontend = False
 
         self.root.after(0, worker)
@@ -253,10 +255,16 @@ class Master(MasterIF):
                 self.generator.clear_of(TaskBlueprintTxt2Img)
             if isinstance(event, master.events.OnFlushImg2ImgTasks):
                 self.generator.clear_of(TaskBlueprintImg2Img)
+            if isinstance(event, master.events.OnSaveMemory):
+                self.parser.save_memory()
+            if isinstance(event, master.events.OnLoadMemory):
+                self.parser.load_memory()
+            if isinstance(event, master.events.OnForgetMemory):
+                self.parser.forget_memory()
             if isinstance(event, master.events.OnSelectYaml):
                 self.switch_frontend(Path(event.path))
             if isinstance(event, master.events.OnReloadYaml):
-                self.reload_frontend(self.crnt_configs.allow_carryover_yaml_record)
+                self.reload_frontend()
             if isinstance(event, master.events.OnDebug):
                 self.parser.ready_for_debug()
             if isinstance(event, master.events.OnDumpArchiver):

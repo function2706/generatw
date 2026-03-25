@@ -79,6 +79,26 @@ def put_textlabel(
     return strvar
 
 
+class HorizontalSeparator:
+    """
+    ラベル付き区切り線
+    """
+
+    def __init__(self, frame: ttk.Frame, row: int, column: int, name: str):
+        self.local_frame = ttk.Frame(frame)
+        self.local_frame.grid(row=row, column=column, sticky="ew")
+        self.local_frame.columnconfigure(0, weight=1)
+        self.local_frame.columnconfigure(2, weight=16)
+
+        ttk.Separator(self.local_frame, orient="horizontal").grid(
+            row=1, column=0, sticky="ew", padx=(0, 10)
+        )
+        ttk.Label(self.local_frame, text=name).grid(row=1, column=1)
+        ttk.Separator(self.local_frame, orient="horizontal").grid(
+            row=1, column=2, sticky="ew", padx=(10, 0)
+        )
+
+
 class MainTab:
     """
     メインタブ
@@ -89,7 +109,7 @@ class MainTab:
         ボタンフレーム
         """
 
-        def __init__(self, owner: MainTab):
+        def __init__(self, owner: MainTab, row: int, column: int):
             """
             ボタンフレームコンストラクタ
 
@@ -99,64 +119,139 @@ class MainTab:
             self.super_owner = owner
 
             self.button_frame = ttk.Frame(owner.main_frame)
-            self.button_frame.grid(row=0, column=0, sticky="w")
+            self.button_frame.grid(row=row, column=column, sticky="w")
 
+            ttk.Label(self.button_frame, text="タスク").grid(
+                row=0, column=0, padx=6, pady=6, sticky="w"
+            )
             # ボタン(再実行)
             self.repeat_button = ttk.Button(
                 self.button_frame,
                 text="再実行",
                 command=owner.super_owner.super_owner.on_repeat_task,
             )
-            self.repeat_button.grid(row=0, column=0, padx=6, pady=6, sticky="w")
+            self.repeat_button.grid(row=0, column=1, padx=6, pady=6, sticky="w")
             # ボタン(中断)
             self.interrupt_button = ttk.Button(
                 self.button_frame,
                 text="中断",
                 command=owner.super_owner.super_owner.on_interrput_task,
             )
-            self.interrupt_button.grid(row=0, column=1, padx=6, pady=6, sticky="w")
+            self.interrupt_button.grid(row=0, column=2, padx=6, pady=6, sticky="w")
+
+            ttk.Label(self.button_frame, text="キュークリア").grid(
+                row=1, column=0, padx=6, pady=6, sticky="w"
+            )
             # 全タスククリア
             self.clear_button = ttk.Button(
                 self.button_frame,
-                text="全タスククリア",
+                text="全タスク",
                 command=owner.super_owner.super_owner.on_flush_tasks,
             )
-            self.clear_button.grid(row=0, column=2, padx=6, pady=6, sticky="w")
+            self.clear_button.grid(row=1, column=1, padx=6, pady=6, sticky="w")
             # 生成タスククリア
             self.clear_txt2img_button = ttk.Button(
                 self.button_frame,
-                text="生成タスククリア",
+                text="生成タスク",
                 command=owner.super_owner.super_owner.on_flush_txt2img_tasks,
             )
-            self.clear_txt2img_button.grid(row=0, column=3, padx=6, pady=6, sticky="w")
+            self.clear_txt2img_button.grid(row=1, column=2, padx=6, pady=6, sticky="w")
             # 拡大タスククリア
             self.clear_img2img_button = ttk.Button(
                 self.button_frame,
-                text="拡大タスククリア",
+                text="拡大タスク",
                 command=owner.super_owner.super_owner.on_flush_img2img_tasks,
             )
-            self.clear_img2img_button.grid(row=0, column=4, padx=6, pady=6, sticky="w")
+            self.clear_img2img_button.grid(row=1, column=3, padx=6, pady=6, sticky="w")
+
+            ttk.Label(self.button_frame, text="表示").grid(
+                row=2, column=0, padx=6, pady=6, sticky="w"
+            )
             # ボタン(画像を表示)
             self.output_button = ttk.Button(
                 self.button_frame,
-                text="画像を表示",
+                text="画像",
                 command=owner.super_owner.super_owner.on_open_pic_window,
             )
-            self.output_button.grid(row=1, column=0, padx=6, pady=6, sticky="w")
+            self.output_button.grid(row=2, column=1, padx=6, pady=6, sticky="w")
             # ボタン(情報を表示)
             self.open_info_button = ttk.Button(
                 self.button_frame,
-                text="情報を表示",
+                text="情報",
                 command=owner.super_owner.super_owner.on_open_info_window,
             )
-            self.open_info_button.grid(row=1, column=1, padx=6, pady=6, sticky="w")
+            self.open_info_button.grid(row=2, column=2, padx=6, pady=6, sticky="w")
+
+            ttk.Label(self.button_frame, text="記憶").grid(
+                row=3, column=0, padx=6, pady=6, sticky="w"
+            )
+            # ボタン(記憶を保存)
+            self.save_memory_button = ttk.Button(
+                self.button_frame,
+                text="保存",
+                command=owner.super_owner.super_owner.on_save_memory,
+            )
+            self.save_memory_button.grid(row=3, column=1, padx=6, pady=6, sticky="w")
+            # ボタン(記憶を復元)
+            self.load_memory_button = ttk.Button(
+                self.button_frame,
+                text="復元",
+                command=owner.super_owner.super_owner.on_load_memory,
+            )
+            self.load_memory_button.grid(row=3, column=2, padx=6, pady=6, sticky="w")
+            # ボタン(記憶を忘却)
+            self.forget_memory_button = ttk.Button(
+                self.button_frame,
+                text="忘却",
+                command=owner.super_owner.super_owner.on_forget_memory,
+            )
+            self.forget_memory_button.grid(row=3, column=3, padx=6, pady=6, sticky="w")
+
+    class ToggleFrame:
+        """
+        トグルフレーム
+        """
+
+        def __init__(self, owner: DebugTab, init_configs: GUIConfigs, row: int, column: int):
+            """
+            トグルフレームコンストラクタ
+
+            Args:
+                owner (ConfigWindow.DebugTab): DebugTab インスタンス
+            """
+            self.super_owner = owner
+
+            self.toggle_frame = ttk.Frame(owner.main_frame)
+            self.toggle_frame.grid(row=row, column=column, sticky="w")
+
+            ttk.Label(self.toggle_frame, text="記憶").grid(
+                row=0, column=0, padx=6, pady=6, sticky="w"
+            )
+            # 終了時に記憶を保存
+            self.save_memory_end_check = tkinter.BooleanVar()
+            ttk.Checkbutton(
+                self.toggle_frame,
+                text="終了時に保存",
+                variable=self.save_memory_end_check,
+                command=self.super_owner.super_owner.super_owner.update_configs,
+            ).grid(row=0, column=1, padx=6, pady=6, sticky="w")
+            self.save_memory_end_check.set(init_configs.save_memory_end)
+            # 開始時に記憶を復元
+            self.load_memory_start_check = tkinter.BooleanVar()
+            ttk.Checkbutton(
+                self.toggle_frame,
+                text="開始時に復元",
+                variable=self.load_memory_start_check,
+                command=self.super_owner.super_owner.super_owner.update_configs,
+            ).grid(row=0, column=2, padx=6, pady=6, sticky="w")
+            self.load_memory_start_check.set(init_configs.load_memory_start)
 
     class SDInteriorConfigFrame:
         """
         SD 内部設定フレーム
         """
 
-        def __init__(self, owner: MainTab, init_configs: GUIConfigs):
+        def __init__(self, owner: MainTab, init_configs: GUIConfigs, row: int, column: int):
             """
             SD 内部設定フレームコンストラクタ
 
@@ -166,7 +261,7 @@ class MainTab:
             self.super_owner = owner
 
             self.sd_interior_config_frame = ttk.Frame(owner.main_frame)
-            self.sd_interior_config_frame.grid(row=1, column=0, sticky="w")
+            self.sd_interior_config_frame.grid(row=row, column=column, sticky="w")
 
             # テキストボックス(幅)
             self.width_entry = put_textbox(
@@ -229,7 +324,7 @@ class MainTab:
         SD 外部設定フレーム
         """
 
-        def __init__(self, owner: MainTab, init_configs: GUIConfigs):
+        def __init__(self, owner: MainTab, init_configs: GUIConfigs, row: int, column: int):
             """
             SD 外部設定フレームコンストラクタ
 
@@ -239,7 +334,7 @@ class MainTab:
             self.super_owner = owner
 
             self.sd_exterior_config_frame = ttk.Frame(owner.main_frame)
-            self.sd_exterior_config_frame.grid(row=2, column=0, sticky="w")
+            self.sd_exterior_config_frame.grid(row=row, column=column, sticky="w")
 
             # テキストボックス(IPアドレス)
             self.ipaddr_entry = put_textbox(
@@ -269,7 +364,7 @@ class MainTab:
         生成制御設定フレーム
         """
 
-        def __init__(self, owner: MainTab, init_configs: GUIConfigs):
+        def __init__(self, owner: MainTab, init_configs: GUIConfigs, row: int, column: int):
             """
             生成制御設定フレーム
 
@@ -279,7 +374,7 @@ class MainTab:
             self.super_owner = owner
 
             self.gen_ctrl_config_frame = ttk.Frame(owner.main_frame)
-            self.gen_ctrl_config_frame.grid(row=3, column=0, sticky="w")
+            self.gen_ctrl_config_frame.grid(row=row, column=column, sticky="w")
 
             # テキストボックス(プロンプトごとの生成上限)
             self.each_max_pics_entry = put_textbox(
@@ -306,10 +401,10 @@ class MainTab:
         エンドポイント選択フレーム
         """
 
-        def __init__(self, owner: MainTab, init_configs: GUIConfigs):
+        def __init__(self, owner: MainTab, init_configs: GUIConfigs, row: int, column: int):
             self.super_owner = owner
             self.thread_sellect_frame = ttk.Frame(owner.main_frame)
-            self.thread_sellect_frame.grid(row=4, column=0, sticky="w")
+            self.thread_sellect_frame.grid(row=row, column=column, sticky="w")
 
             # YAML 選択
             ttk.Label(self.thread_sellect_frame, text="選択中のYAML").grid(
@@ -340,15 +435,6 @@ class MainTab:
                 command=owner.super_owner.super_owner.on_reload_yaml,
             )
             self.debug_button.grid(row=0, column=3, padx=6, pady=6, sticky="w")
-            # チェックボックス(記憶の継続)
-            self.allow_carryover_yaml_record = tkinter.BooleanVar()
-            ttk.Checkbutton(
-                self.thread_sellect_frame,
-                text="記憶の継続",
-                variable=self.allow_carryover_yaml_record,
-                command=self.super_owner.super_owner.super_owner.update_configs,
-            ).grid(row=0, column=4, padx=6, pady=6, sticky="w")
-            self.allow_carryover_yaml_record.set(init_configs.allow_carryover_yaml_record)
 
             # バックエンド
             ttk.Label(self.thread_sellect_frame, text="バックエンド").grid(
@@ -382,11 +468,14 @@ class MainTab:
         self.main_frame = ttk.Frame(owner.main_tab)
         self.main_frame.grid(row=0, column=0, sticky="nsew")
 
-        self.button_frame = self.ButtonFrame(self)
-        self.sd_interior_config_frame = self.SDInteriorConfigFrame(self, init_configs)
-        self.sd_exterior_config_frame = self.SDExteriorConfigFrame(self, init_configs)
-        self.gen_ctrl_config_frame = self.GenCtrlConfigFrame(self, init_configs)
-        self.sellect_frame = self.SellectFrame(self, init_configs)
+        HorizontalSeparator(self.main_frame, 0, 0, "操作")
+        self.button_frame = self.ButtonFrame(self, 1, 0)
+        HorizontalSeparator(self.main_frame, 2, 0, "設定")
+        self.toggle_frame = self.ToggleFrame(self, init_configs, 3, 0)
+        self.sd_interior_config_frame = self.SDInteriorConfigFrame(self, init_configs, 4, 0)
+        self.sd_exterior_config_frame = self.SDExteriorConfigFrame(self, init_configs, 5, 0)
+        self.gen_ctrl_config_frame = self.GenCtrlConfigFrame(self, init_configs, 6, 0)
+        self.sellect_frame = self.SellectFrame(self, init_configs, 7, 0)
 
 
 class DebugTab:
@@ -399,7 +488,7 @@ class DebugTab:
         デバッグ実行フレーム
         """
 
-        def __init__(self, owner: DebugTab, init_configs: GUIConfigs):
+        def __init__(self, owner: DebugTab, init_configs: GUIConfigs, row: int, column: int):
             """
             デバッグ実行フレームコンストラクタ
 
@@ -409,7 +498,7 @@ class DebugTab:
             self.super_owner = owner
 
             self.exe_debug_frame = ttk.Frame(owner.main_frame)
-            self.exe_debug_frame.grid(row=0, column=0, sticky="w")
+            self.exe_debug_frame.grid(row=row, column=column, sticky="w")
             # ボタン(デバッグ)
             self.debug_button = ttk.Button(
                 self.exe_debug_frame,
@@ -444,7 +533,7 @@ class DebugTab:
         トグルフレーム
         """
 
-        def __init__(self, owner: DebugTab, init_configs: GUIConfigs):
+        def __init__(self, owner: DebugTab, init_configs: GUIConfigs, row: int, column: int):
             """
             トグルフレームコンストラクタ
 
@@ -454,7 +543,7 @@ class DebugTab:
             self.super_owner = owner
 
             self.toggle_frame = ttk.Frame(owner.main_frame)
-            self.toggle_frame.grid(row=1, column=0, sticky="w")
+            self.toggle_frame.grid(row=row, column=column, sticky="w")
             # チェックボックス(クリップボードの更新)
             self.allow_edit_clipboard_check = tkinter.BooleanVar()
             ttk.Checkbutton(
@@ -473,22 +562,13 @@ class DebugTab:
                 command=self.super_owner.super_owner.super_owner.update_configs,
             ).grid(row=0, column=1, padx=6, pady=6, sticky="w")
             self.log_parser_reports_check.set(init_configs.log_parser_reports)
-            # 記憶の復元
-            self.load_memory_check = tkinter.BooleanVar()
-            ttk.Checkbutton(
-                self.toggle_frame,
-                text="記憶の復元",
-                variable=self.load_memory_check,
-                command=self.super_owner.super_owner.super_owner.update_configs,
-            ).grid(row=0, column=2, padx=6, pady=6, sticky="w")
-            self.load_memory_check.set(init_configs.load_memory)
 
     class VerboseFrame:
         """
         表示設定フレーム
         """
 
-        def __init__(self, owner: DebugTab, init_configs: GUIConfigs):
+        def __init__(self, owner: DebugTab, init_configs: GUIConfigs, row: int, column: int):
             """
             表示設定フレームコンストラクタ
 
@@ -498,7 +578,7 @@ class DebugTab:
             self.super_owner = owner
 
             self.verbose_frame = ttk.Frame(owner.main_frame)
-            self.verbose_frame.grid(row=2, column=0, sticky="w")
+            self.verbose_frame.grid(row=row, column=column, sticky="w")
             # クリップボードの表示
             self.verbose_clipboard_check = tkinter.BooleanVar()
             ttk.Checkbutton(
@@ -564,11 +644,15 @@ class DebugTab:
         self.super_owner = owner
 
         self.main_frame = ttk.Frame(owner.debug_tab)
+        self.main_frame.columnconfigure(0, weight=1)
         self.main_frame.grid(row=0, column=0, sticky="nsew")
 
-        self.exe_debug_frame = self.ExeDebugFrame(self, init_configs)
-        self.toggle_frame = self.ToggleFrame(self, init_configs)
-        self.verbose_frame = self.VerboseFrame(self, init_configs)
+        HorizontalSeparator(self.main_frame, 0, 0, "操作と出力")
+        self.exe_debug_frame = self.ExeDebugFrame(self, init_configs, 1, 0)
+        HorizontalSeparator(self.main_frame, 2, 0, "動作トグル")
+        self.toggle_frame = self.ToggleFrame(self, init_configs, 3, 0)
+        HorizontalSeparator(self.main_frame, 4, 0, "表示トグル")
+        self.verbose_frame = self.VerboseFrame(self, init_configs, 5, 0)
 
 
 class MainWindow:
@@ -599,6 +683,7 @@ class MainWindow:
         self.main_tab_obj = MainTab(self, init_configs)
         # デバッグタブ
         self.debug_tab = ttk.Frame(self.notebook, padding=12)
+        self.debug_tab.columnconfigure(0, weight=1)
         self.notebook.add(self.debug_tab, text="デバッグ")
         self.debug_tab_obj = DebugTab(self, init_configs)
 
@@ -786,6 +871,24 @@ class Displayer:
         self.info_window.update_taskinfo_tab(task=self.last_task)
         self.info_window.update_picinfo_tab(self.last_picstats)
 
+    def on_save_memory(self) -> None:
+        """
+        記憶保存ハンドラ
+        """
+        self.to_master.enclose(master.events.OnSaveMemory())
+
+    def on_load_memory(self) -> None:
+        """
+        記憶復元ハンドラ
+        """
+        self.to_master.enclose(master.events.OnLoadMemory())
+
+    def on_forget_memory(self) -> None:
+        """
+        記憶忘却ハンドラ
+        """
+        self.to_master.enclose(master.events.OnForgetMemory())
+
     def on_select_yaml(self) -> None:
         """
         YAML選択ボタンハンドラ
@@ -901,16 +1004,18 @@ class Displayer:
             if self.main_window.main_tab_obj.sellect_frame.yamlpath is not None
             else None,
             backend=self.main_window.main_tab_obj.sellect_frame.backend_combo.get(),
-            allow_carryover_yaml_record=bool(
-                self.main_window.main_tab_obj.sellect_frame.allow_carryover_yaml_record.get()
-            ),
             allow_edit_clipboard=bool(
                 self.main_window.debug_tab_obj.toggle_frame.allow_edit_clipboard_check.get()
             ),
             log_parser_reports=bool(
                 self.main_window.debug_tab_obj.toggle_frame.log_parser_reports_check.get()
             ),
-            load_memory=bool(self.main_window.debug_tab_obj.toggle_frame.load_memory_check.get()),
+            save_memory_end=bool(
+                self.main_window.main_tab_obj.toggle_frame.save_memory_end_check.get()
+            ),
+            load_memory_start=bool(
+                self.main_window.main_tab_obj.toggle_frame.load_memory_start_check.get()
+            ),
             print_new_clipboard=bool(
                 self.main_window.debug_tab_obj.verbose_frame.verbose_clipboard_check.get()
             ),

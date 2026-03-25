@@ -60,6 +60,21 @@ class OnFlushImg2ImgTasks(DisplayerEvent):
 
 
 @dataclass
+class OnSaveMemory(DisplayerEvent):
+    pass
+
+
+@dataclass
+class OnLoadMemory(DisplayerEvent):
+    pass
+
+
+@dataclass
+class OnForgetMemory(DisplayerEvent):
+    pass
+
+
+@dataclass
 class OnSelectYaml(DisplayerEvent):
     path: Path
 
