@@ -90,7 +90,6 @@ class TheWorldInterpreter(Interpreter):
         self.screen_table = {
             Scr.main: ScreenConfig.set(
                 cat_configs={
-                    (Cat.action,): (None, True),
                     (Cat.character, Cat.name_n): (None, True),
                     (Cat.character, Cat.vibe): (None, False),
                     (Cat.character, Cat.affection): (None, False),
@@ -131,9 +130,6 @@ class TheWorldInterpreter(Interpreter):
                 },
                 sufficiency=Has((Cat.character, Cat.name_n)),
                 request_cats={
-                    Scr.action: [
-                        (Cat.action,),
-                    ],
                     Scr.fashion: [
                         (Cat.caps,),
                         (Cat.hands,),
@@ -194,7 +190,7 @@ class TheWorldInterpreter(Interpreter):
                     (Cat.meta, Cat.location, Cat.outdoors, Cat.type3): (None, False),
                     (Cat.meta, Cat.weather): (expr_outdoors, False),
                 },
-                sufficiency=Has((Cat.character, Cat.name_n)),
+                sufficiency=Has((Cat.character, Cat.name_n)) & Has((Cat.action,)),
                 request_cats={
                     Scr.main: [
                         (Cat.character, Cat.vibe),
