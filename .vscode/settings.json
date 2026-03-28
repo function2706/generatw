@@ -48,6 +48,46 @@
                 "settings": {
                     "fontStyle": "italic"
                 }
+            },
+            {
+                /* 文字列系 */
+                "scope": [
+                    "string.quoted",
+                ],
+                "settings": {
+                    "foreground": "#ce9178"
+                }
+            },
+            {
+                /* コメントライン('#' から始まるコメント) */
+                "scope": [
+                    "comment.line",
+                    "punctuation.definition.comment"
+                ],
+                "settings": {
+                    "foreground": "#6a9955"
+                }
+            },
+            {
+                /* def, class 等 */
+                "scope": [
+                    "storage.type.type.python",
+                    "storage.type.function.python",
+                    "storage.type.class.python",
+                    "storage.type.function.lambda.python"
+                ],
+                "settings": {
+                    "foreground": "#569cd6",
+                }
+            },
+            {
+                /* @decorator */
+                "scope": [
+                    "punctuation.definition.decorator.python",
+                ],
+                "settings": {
+                    "foreground": "#e6e67e",
+                }
             }
         ]
     },
