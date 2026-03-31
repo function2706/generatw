@@ -22,7 +22,7 @@ from parser.interpreter.interpreter import Interpreter, MemoryEntry
 from parser.interpreter.reverse_interpreter import ReverseInterpreter
 from parser.interpreter.test_interpreter import TestInterpreter
 from parser.interpreter.theworld_interpreter import TheWorldInterpreter
-from parser.prompter import Prompt
+from parser.prompter.atoms import Prompt
 
 INTERPRETER_LIST: list[type[Interpreter]] = [
     TestInterpreter,

@@ -11,7 +11,8 @@ from pathlib import Path
 import yaml
 
 from common.expr import Expr, TrueExpr
-from parser.prompter import CategoryPath, Prompt, Prompter, PromptParts, Report, Token
+from parser.prompter.atoms import CategoryPath, Prompt, PromptParts, Report, Token
+from parser.prompter.prompter import Prompter
 
 
 @dataclass(frozen=True)

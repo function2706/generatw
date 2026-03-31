@@ -21,7 +21,7 @@ from generator.comfyui_generator import ComfyUIGenerator
 from generator.dataclasses import TaskBlueprintImg2Img, TaskBlueprintTxt2Img
 from master.interfaces import MasterIF
 from parser.parser import Parser
-from parser.prompter import Report
+from parser.prompter.atoms import Report
 
 
 @dataclass(frozen=True)

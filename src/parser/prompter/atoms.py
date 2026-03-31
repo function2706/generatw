@@ -298,9 +298,9 @@ def parse_options(text: str) -> list[tuple[list[str], float]]:
 
 
 @dataclass
-class UnconfirmedChunk:
+class TokenExpr:
     """
-    未確定状態を含めたトークンチャンク定義クラス\n
+    未確定状態を含めたトークン定義クラス\n
     カンマ区切り・`<>` ネスト・インライン埋め込みを含む複合表現を保持し,
     `confirm()` によって確定したトークン列を返す
 
@@ -322,12 +322,12 @@ class UnconfirmedChunk:
     Attributes:
         token_opts (list[tuple[list[Token], float]]): (確定トークン列, 相対重み) のリスト
         prob_total (float): confirm 時に用いる prob の合計値
-        chunk_key (str): confirm 時に用いるオブジェクト固有の文字列
+        key (str): confirm 時に用いるオブジェクト固有の文字列
     """
 
     token_opts: list[tuple[list[Token], float]] = field(default_factory=list)
     prob_total: float = 0
-    chunk_key: str = ""
+    key: str = ""
 
     @classmethod
     def make(cls, text: str):
@@ -353,8 +353,8 @@ class UnconfirmedChunk:
 
         opts = [([Token.make(t) for t in tok_list], w) for tok_list, w in sequences]
         total = sum(w for _, w in opts)
-        chunk_key = "|".join(",".join(tok.token for tok in toks) for toks, _ in opts)
-        return cls(token_opts=opts, prob_total=total, chunk_key=chunk_key)
+        key = "|".join(",".join(tok.token for tok in toks) for toks, _ in opts)
+        return cls(token_opts=opts, prob_total=total, key=key)
 
     def confirm(self, seed: str) -> list[Token]:
         """
@@ -381,8 +381,8 @@ class UnconfirmedChunk:
                 return toks
 
         # SHA-256 ハッシュを [0, prob_total) の範囲の乱数として使用
-        # chunk_key はオブジェクトごとに異なる値を算出するために使用
-        h = int(sha256(f"{seed}|{self.chunk_key}".encode()).hexdigest(), 16)
+        # key はオブジェクトごとに異なる値を算出するために使用
+        h = int(sha256(f"{seed}|{self.key}".encode()).hexdigest(), 16)
         r = (h / 2**256) * self.prob_total
 
         acc_prob = 0.0
@@ -393,3 +393,172 @@ class UnconfirmedChunk:
 
         # 浮動小数誤差対策: 最後の選択肢を返す
         return return_(self.token_opts[-1][0])
+
+
+class CategoryPath(tuple[str, ...]):
+    def stringfy(self) -> str:
+        return str(self)
+
+
+@dataclass
+class PromptParts:
+    """
+    Cartegory パスごとにまとめられたトークン
+
+    Attributes:
+        path (CategoryPath): Category パス
+        tokens (list[Token | UnconfirmedToken]): トークンのリスト
+    """
+
+    path: CategoryPath = field(default_factory=tuple)
+    tokens: list[Token] = field(default_factory=list)
+
+
+@dataclass
+class Prompt:
+    """
+    Screen ごとにまとめられた PromptParts
+
+    Attributes:
+        screen_id (str): Screen ID
+        positive (list[PromptParts]): ポジティブプロンプト
+        negative (list[PromptParts]): ネガティブプロンプト
+    """
+
+    screen_id: str | None = None
+    positive: list[PromptParts] = field(default_factory=list)
+    negative: list[PromptParts] = field(default_factory=list)
+
+
+@dataclass
+class Report:
+    """
+    1回のパターンマッチング結果を記録するクラス\n
+    末端 Category でのみ生成される(再帰 Category 階層では生成されない)
+
+    同一性は (matched, pattern, capturegrp) の3つで判断される\n
+    screen_id や paths は同一性に含まれない
+
+    Attributes:
+        matched (str): キャプチャグループで取得したマッチ文字列
+        pattern (str): マッチに使用した正規表現パターン文字列
+        capturegrp (int): 使用したキャプチャグループ番号
+        screen_id (str): このマッチが発生した Screen の ID
+        paths (set[CategoryPath]): このマッチに関連する CategoryPath の集合\n
+            同一マッチが複数の CategoryPath に属する場合（import/recurse で
+            同パターンを複数箇所で使う場合など）に複数要素を持つ
+    """
+
+    matched: str = ""
+    pattern: str = ""
+    capturegrp: int = 0
+    screen_id: str = ""
+    paths: set[CategoryPath] = field(default_factory=set)
+
+    def __eq__(self, other: Report) -> bool:
+        """
+        screen_id, paths は同一性判定に含めない\n
+        (同じパターンで同じ文字列にマッチした Report は paths のマージ対象として扱うため)
+
+        Args:
+            other (Report): 比較対象 Report
+
+        Returns:
+            bool: (matched, pattern, capturegrp) が一致するなら True
+        """
+        return (self.matched, self.pattern, self.capturegrp) == (
+            other.matched,
+            other.pattern,
+            other.capturegrp,
+        )
+
+
+@dataclass
+class Reports:
+    """
+    ヒット/未ヒットの Report をまとめて管理するクラス
+
+    hit_reports:
+        いずれかの Rule にヒットした (Token が生成された)マッチの記録
+
+    nothit_reports:
+        パターンにはマッチしたが, どの Rule にもヒットしなかったマッチの記録
+        * パターン自体がマッチしなかった場合は記録されない
+        * default が適用された場合も記録されない
+
+    Attributes:
+        hit_reports (list[Report]): Rule にヒットした記録
+        nothit_reports (list[Report]): ヒットしなかった記録
+    """
+
+    hit_reports: list[Report] = field(default_factory=list)
+    nothit_reports: list[Report] = field(default_factory=list)
+
+    def append(self, report: Report, is_hit_report: bool) -> None:
+        """
+        Report を追加する\n
+        同一 Reportが既に存在する場合は新規追加せず paths を union でマージする\n
+        これにより, 同じパターンで同じ文字列にマッチした記録が重複して増えることを防ぐ
+
+        Args:
+            report (Report): 追加する Report
+            is_hit_report (bool): True なら hit_reports, False なら nothit_reports に追加
+        """
+        target_list = self.hit_reports if is_hit_report else self.nothit_reports
+        for appended_report in target_list:
+            if report == appended_report:
+                # 同一 Report が既存 -> paths だけ広げて終了
+                appended_report.paths = appended_report.paths | report.paths
+                break
+        else:
+            target_list.append(report)
+
+    def extend(self, other: Reports) -> None:
+        """
+        別の Reports を取り込む\n
+        再帰的な Category 処理で子の結果を親に集約する際に使用する\n
+        hit/nothit それぞれを append で追加するため, paths のマージも適用される
+
+        Args:
+            other (Reports): 取り込む Reports
+        """
+        for hit_report in other.hit_reports:
+            self.append(hit_report, True)
+        for nothit_report in other.nothit_reports:
+            self.append(nothit_report, False)
+
+    @property
+    def stripped_nothit_reports(self) -> list[Report]:
+        """
+        nothit_reports から\n
+        「同一パターン, 同一 matched で hit_reports にも存在するもの」を除去して返す
+
+        同一 matched が hit_reports と nothit_reports の両方に存在するケース:\n
+            ある Rule ではヒット, 別の Rule ではヒットしない状況で両方に記録される\n
+            この場合, ヒット済みの nothit_report はノイズになるため除去する
+
+        例:
+            pattern: (aaa|bbb), maps: {aaa: pos1}  で text="aaa bbb" の場合
+                hit_reports:    [Report(matched="aaa")]
+                nothit_reports: [Report(matched="bbb")]  # aaa は除去済み
+
+        Returns:
+            list[Report]: フィルタ後の nothit_reports
+        """
+        # hit_reports から {pattern: set(matched)} の辞書を構築
+        hit_patterns_dict: dict[str, set[str]] = {}
+        for report in self.hit_reports:
+            if report.pattern in hit_patterns_dict:
+                hit_patterns_dict[report.pattern].add(report.matched)
+            else:
+                hit_patterns_dict[report.pattern] = {report.matched}
+
+        # hit_reports に存在しない (pattern, matched) の組み合わせのみ残す
+        new_reports = []
+        for report in self.nothit_reports:
+            if (
+                report.pattern not in hit_patterns_dict
+                or report.matched not in hit_patterns_dict[report.pattern]
+            ):
+                new_reports.append(report)
+        return new_reports

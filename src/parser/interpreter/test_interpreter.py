@@ -7,7 +7,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from common.expr import Expr
-from parser.interpreter.interpreter import CategoryPath, Interpreter, ScreenConfig
+from parser.interpreter.interpreter import Interpreter, ScreenConfig
+from parser.prompter.atoms import CategoryPath
 
 
 class TestInterpreter(Interpreter):

@@ -15,9 +15,10 @@ if parent_dir not in sys.path:
 
 from common.expr import Expr, FalseExpr, Has, TrueExpr  # noqa: E402
 from common.functions import dump_json  # noqa: E402
-from parser.interpreter.interpreter import CategoryConfig, CategoryPath  # noqa: E402
+from parser.interpreter.interpreter import CategoryConfig  # noqa: E402
 from parser.interpreter.test_interpreter import TestInterpreter  # noqa: E402
 from parser.parser import Parser  # noqa: E402
+from parser.prompter.atoms import CategoryPath  # noqa: E402
 
 CORRECT_RESULT = {
     "CASE 'strip'": {

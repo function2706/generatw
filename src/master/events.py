@@ -11,7 +11,7 @@ from archiver.dataclasses import NoImageStats, PicStats
 from common.functions import BackEnd
 from displayer.dataclasses import GUIConfigs
 from generator.dataclasses import TaskBlueprint
-from parser.prompter import Report
+from parser.prompter.atoms import Report
 
 
 @dataclass

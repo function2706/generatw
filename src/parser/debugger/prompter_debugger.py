@@ -14,7 +14,7 @@ if parent_dir not in sys.path:
 
 
 from common.functions import dump_json  # noqa: E402
-from parser.prompter import Prompter  # noqa: E402
+from parser.prompter.prompter import Prompter  # noqa: E402
 
 CORRECT_RESULT = {
     "CASE 'empty definition'": {"Empty-1: 'go'": {"SID": "main", "POS": [], "NEG": [], "REP": []}},

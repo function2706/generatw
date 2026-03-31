@@ -9,7 +9,15 @@ from typing import Any
 
 import yaml
 
-from parser.tokens import Token, UnconfirmedChunk
+from parser.prompter.atoms import (
+    CategoryPath,
+    Prompt,
+    PromptParts,
+    Report,
+    Reports,
+    Token,
+    TokenExpr,
+)
 
 
 class KeyName(StrEnum):
@@ -30,41 +38,6 @@ class KeyName(StrEnum):
     negative = "negative"
 
 
-class CategoryPath(tuple[str, ...]):
-    def stringfy(self) -> str:
-        return str(self)
-
-
-@dataclass
-class PromptParts:
-    """
-    Cartegory パスごとにまとめられたトークン
-
-    Attributes:
-        path (CategoryPath): Category パス
-        tokens (list[Token | UnconfirmedToken]): トークンのリスト
-    """
-
-    path: CategoryPath = field(default_factory=tuple)
-    tokens: list[Token] = field(default_factory=list)
-
-
-@dataclass
-class Prompt:
-    """
-    Screen ごとにまとめられた PromptParts
-
-    Attributes:
-        screen_id (str): Screen ID
-        positive (list[PromptParts]): ポジティブプロンプト
-        negative (list[PromptParts]): ネガティブプロンプト
-    """
-
-    screen_id: str | None = None
-    positive: list[PromptParts] = field(default_factory=list)
-    negative: list[PromptParts] = field(default_factory=list)
-
-
 @dataclass
 class Rule(ABC):
     """
@@ -75,8 +48,8 @@ class Rule(ABC):
         negative_tokens (list[UnconfirmedToken]): ネガティブプロンプトのトークン集合
     """
 
-    positive_tokens: UnconfirmedChunk = field(default_factory=UnconfirmedChunk)
-    negative_tokens: UnconfirmedChunk = field(default_factory=UnconfirmedChunk)
+    positive_tokens: TokenExpr = field(default_factory=TokenExpr)
+    negative_tokens: TokenExpr = field(default_factory=TokenExpr)
 
     @classmethod
     @abstractmethod
@@ -150,11 +123,11 @@ class MapsRule(Rule):
         obj.matches = {str(key)}
         if isinstance(val, str):
             # {'xxx': 'pos1,(pos2:1.2)'} 型
-            obj.positive_tokens = UnconfirmedChunk.make(val)
-            obj.negative_tokens = UnconfirmedChunk()
+            obj.positive_tokens = TokenExpr.make(val)
+            obj.negative_tokens = TokenExpr()
         elif isinstance(val, dict):
-            obj.positive_tokens = UnconfirmedChunk.make(val.get(KeyName.positive))
-            obj.negative_tokens = UnconfirmedChunk.make(val.get(KeyName.negative))
+            obj.positive_tokens = TokenExpr.make(val.get(KeyName.positive))
+            obj.negative_tokens = TokenExpr.make(val.get(KeyName.negative))
         else:
             raise ValueError(
                 f"Rule '{key}' in 'maps' must be a string or dict, but {type(val).__name__}."
@@ -189,19 +162,19 @@ class RangesRule(Rule):
         if isinstance(val, list):
             # {'pos1,(pos2:1.2)': ['con1', 'con2']} 型
             obj.matches = {str(i) for i in val}
-            obj.positive_tokens = UnconfirmedChunk.make(key_str)
-            obj.negative_tokens = UnconfirmedChunk()
+            obj.positive_tokens = TokenExpr.make(key_str)
+            obj.negative_tokens = TokenExpr()
         elif isinstance(val, dict):
             if isinstance(val.get(KeyName.positive), list):
                 # {'pos1,(pos2:1.2)': {'positive': ['con1', 'con2'], 'negative': 'neg1'}} 型
                 obj.matches = {str(i) for i in val.get(KeyName.positive, [])}
-                obj.positive_tokens = UnconfirmedChunk.make(key_str)
-                obj.negative_tokens = UnconfirmedChunk.make(val.get(KeyName.negative))
+                obj.positive_tokens = TokenExpr.make(key_str)
+                obj.negative_tokens = TokenExpr.make(val.get(KeyName.negative))
             elif isinstance(val.get(KeyName.negative), list):
                 # {'pos1,(pos2:1.2)': {'positive': 'pos1', 'negative': ['con1', 'con2'], }} 型
                 obj.matches = {str(i) for i in val.get(KeyName.negative, [])}
-                obj.positive_tokens = UnconfirmedChunk.make(val.get(KeyName.positive))
-                obj.negative_tokens = UnconfirmedChunk.make(key_str)
+                obj.positive_tokens = TokenExpr.make(val.get(KeyName.positive))
+                obj.negative_tokens = TokenExpr.make(key_str)
             else:
                 raise ValueError(
                     f"Rule '{key}' in 'ranges' must have 'positive' or 'negative' label."
@@ -251,19 +224,19 @@ class IntervalsRule(Rule):
         if isinstance(val, list):
             # {'pos1,(pos2:1.2)': [min, max]} 型
             min, max = check_list(val)
-            obj.positive_tokens = UnconfirmedChunk.make(key_str)
-            obj.negative_tokens = UnconfirmedChunk()
+            obj.positive_tokens = TokenExpr.make(key_str)
+            obj.negative_tokens = TokenExpr()
         elif isinstance(val, dict):
             if isinstance(val.get(KeyName.positive), list):
                 # {'pos1,(pos2:1.2)': {'positive': [min, max], 'negative': 'neg1'}} 型
                 min, max = check_list(val.get(KeyName.positive))
-                obj.positive_tokens = UnconfirmedChunk.make(key_str)
-                obj.negative_tokens = UnconfirmedChunk.make(val.get(KeyName.negative))
+                obj.positive_tokens = TokenExpr.make(key_str)
+                obj.negative_tokens = TokenExpr.make(val.get(KeyName.negative))
             elif isinstance(val.get(KeyName.negative), list):
                 # {'pos1,(pos2:1.2)': {'positive': 'pos1', 'negative': [min, max], }} 型
                 min, max = check_list(val.get(KeyName.negative))
-                obj.positive_tokens = UnconfirmedChunk.make(val.get(KeyName.positive))
-                obj.negative_tokens = UnconfirmedChunk.make(key_str)
+                obj.positive_tokens = TokenExpr.make(val.get(KeyName.positive))
+                obj.negative_tokens = TokenExpr.make(key_str)
             else:
                 raise ValueError(
                     f"Rule '{key}' in 'intervals' must have 'positive' or 'negative' label."
@@ -296,11 +269,11 @@ class DefaultRule(Rule):
         obj = cls()
 
         if isinstance(val, str):
-            obj.positive_tokens = UnconfirmedChunk.make(val)
-            obj.negative_tokens = UnconfirmedChunk()
+            obj.positive_tokens = TokenExpr.make(val)
+            obj.negative_tokens = TokenExpr()
         elif isinstance(val, dict):
-            obj.positive_tokens = UnconfirmedChunk.make(val.get(KeyName.positive))
-            obj.negative_tokens = UnconfirmedChunk.make(val.get(KeyName.negative))
+            obj.positive_tokens = TokenExpr.make(val.get(KeyName.positive))
+            obj.negative_tokens = TokenExpr.make(val.get(KeyName.negative))
         else:
             raise ValueError("Syntax of 'default' is invalid.")
 
@@ -320,140 +293,6 @@ class CategoryRegister:
     capturegrp: int = 0
     rules: list[Rule] = field(default_factory=list)
     children: list[Category] = field(default_factory=list)
-
-
-@dataclass
-class Report:
-    """
-    1回のパターンマッチング結果を記録するクラス\n
-    末端 Category でのみ生成される(再帰 Category 階層では生成されない)
-
-    同一性は (matched, pattern, capturegrp) の3つで判断される\n
-    screen_id や paths は同一性に含まれない
-
-    Attributes:
-        matched (str): キャプチャグループで取得したマッチ文字列
-        pattern (str): マッチに使用した正規表現パターン文字列
-        capturegrp (int): 使用したキャプチャグループ番号
-        screen_id (str): このマッチが発生した Screen の ID
-        paths (set[CategoryPath]): このマッチに関連する CategoryPath の集合\n
-            同一マッチが複数の CategoryPath に属する場合（import/recurse で
-            同パターンを複数箇所で使う場合など）に複数要素を持つ
-    """
-
-    matched: str = ""
-    pattern: str = ""
-    capturegrp: int = 0
-    screen_id: str = ""
-    paths: set[CategoryPath] = field(default_factory=set)
-
-    def __eq__(self, other: Report) -> bool:
-        """
-        screen_id, paths は同一性判定に含めない\n
-        (同じパターンで同じ文字列にマッチした Report は paths のマージ対象として扱うため)
-
-        Args:
-            other (Report): 比較対象 Report
-
-        Returns:
-            bool: (matched, pattern, capturegrp) が一致するなら True
-        """
-        return (self.matched, self.pattern, self.capturegrp) == (
-            other.matched,
-            other.pattern,
-            other.capturegrp,
-        )
-
-
-@dataclass
-class Reports:
-    """
-    ヒット/未ヒットの Report をまとめて管理するクラス
-
-    hit_reports:
-        いずれかの Rule にヒットした (Token が生成された)マッチの記録
-
-    nothit_reports:
-        パターンにはマッチしたが, どの Rule にもヒットしなかったマッチの記録
-        * パターン自体がマッチしなかった場合は記録されない
-        * default が適用された場合も記録されない
-
-    Attributes:
-        hit_reports (list[Report]): Rule にヒットした記録
-        nothit_reports (list[Report]): ヒットしなかった記録
-    """
-
-    hit_reports: list[Report] = field(default_factory=list)
-    nothit_reports: list[Report] = field(default_factory=list)
-
-    def append(self, report: Report, is_hit_report: bool) -> None:
-        """
-        Report を追加する\n
-        同一 Reportが既に存在する場合は新規追加せず paths を union でマージする\n
-        これにより, 同じパターンで同じ文字列にマッチした記録が重複して増えることを防ぐ
-
-        Args:
-            report (Report): 追加する Report
-            is_hit_report (bool): True なら hit_reports, False なら nothit_reports に追加
-        """
-        target_list = self.hit_reports if is_hit_report else self.nothit_reports
-        for appended_report in target_list:
-            if report == appended_report:
-                # 同一 Report が既存 -> paths だけ広げて終了
-                appended_report.paths = appended_report.paths | report.paths
-                break
-        else:
-            target_list.append(report)
-
-    def extend(self, other: Reports) -> None:
-        """
-        別の Reports を取り込む\n
-        再帰的な Category 処理で子の結果を親に集約する際に使用する\n
-        hit/nothit それぞれを append で追加するため, paths のマージも適用される
-
-        Args:
-            other (Reports): 取り込む Reports
-        """
-        for hit_report in other.hit_reports:
-            self.append(hit_report, True)
-        for nothit_report in other.nothit_reports:
-            self.append(nothit_report, False)
-
-    @property
-    def stripped_nothit_reports(self) -> list[Report]:
-        """
-        nothit_reports から\n
-        「同一パターン, 同一 matched で hit_reports にも存在するもの」を除去して返す
-
-        同一 matched が hit_reports と nothit_reports の両方に存在するケース:\n
-            ある Rule ではヒット, 別の Rule ではヒットしない状況で両方に記録される\n
-            この場合, ヒット済みの nothit_report はノイズになるため除去する
-
-        例:
-            pattern: (aaa|bbb), maps: {aaa: pos1}  で text="aaa bbb" の場合
-                hit_reports:    [Report(matched="aaa")]
-                nothit_reports: [Report(matched="bbb")]  # aaa は除去済み
-
-        Returns:
-            list[Report]: フィルタ後の nothit_reports
-        """
-        # hit_reports から {pattern: set(matched)} の辞書を構築
-        hit_patterns_dict: dict[str, set[str]] = {}
-        for report in self.hit_reports:
-            if report.pattern in hit_patterns_dict:
-                hit_patterns_dict[report.pattern].add(report.matched)
-            else:
-                hit_patterns_dict[report.pattern] = {report.matched}
-
-        # hit_reports に存在しない (pattern, matched) の組み合わせのみ残す
-        new_reports = []
-        for report in self.nothit_reports:
-            if (
-                report.pattern not in hit_patterns_dict
-                or report.matched not in hit_patterns_dict[report.pattern]
-            ):
-                new_reports.append(report)
-        return new_reports
 
 
 @dataclass
@@ -743,8 +582,8 @@ class Screen:
     screen_id: str = ""
     ignition: re.Pattern[str] = field(default=None, init=False, repr=False, compare=False)
     categories: list[Category] = field(default_factory=list)
-    common_positive: UnconfirmedChunk = field(default_factory=UnconfirmedChunk)
-    common_negative: UnconfirmedChunk = field(default_factory=UnconfirmedChunk)
+    common_positive: TokenExpr = field(default_factory=TokenExpr)
+    common_negative: TokenExpr = field(default_factory=TokenExpr)
 
     def collect_categories(
         self,
@@ -804,11 +643,11 @@ class Screen:
                 obj.ignition = re.compile(str(val))
             elif key == KeyName.common:
                 if isinstance(val, str):
-                    obj.common_positive = UnconfirmedChunk.make(val)
-                    obj.common_negative = UnconfirmedChunk()
+                    obj.common_positive = TokenExpr.make(val)
+                    obj.common_negative = TokenExpr()
                 elif isinstance(val, dict):
-                    obj.common_positive = UnconfirmedChunk.make(val.get(KeyName.positive))
-                    obj.common_negative = UnconfirmedChunk.make(val.get(KeyName.negative))
+                    obj.common_positive = TokenExpr.make(val.get(KeyName.positive))
+                    obj.common_negative = TokenExpr.make(val.get(KeyName.negative))
                 elif isinstance(val, list):
                     # import
                     src_screen_id = val[0]
