@@ -2166,11 +2166,10 @@ CORRECT_RESULT = {
                             "path": ["lower_cloths"],
                             "tokens": [{"token": "long skirt", "weight": 1.0}],
                         },
-                        {"path": ["socks"], "tokens": [{"token": "socks", "weight": 1.0}]},
-                        {"path": ["shoes"], "tokens": [{"token": "shoes", "weight": 1.0}]},
                         {
                             "path": [],
                             "tokens": [
+                                {"token": "standing", "weight": 1.0},
                                 {"token": "best quality", "weight": 1.0},
                                 {"token": "masterpiece", "weight": 1.0},
                                 {"token": "absurdres", "weight": 1.0},
@@ -2236,7 +2235,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {
-                "POS": "holding tea,1girl,solo,remilia scarlet,looking at viewer,blush,hat,blouse,long skirt,socks,shoes,best quality,masterpiece,absurdres",  # noqa: E501
+                "POS": "holding tea,1girl,solo,remilia scarlet,looking at viewer,blush,hat,blouse,long skirt,standing,best quality,masterpiece,absurdres",  # noqa: E501
                 "NEG": "disgusting,(in heat:1.2),(blush:1.2),(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
             },
             "sufficiency": True,
@@ -2366,11 +2365,10 @@ CORRECT_RESULT = {
                             "path": ["lower_cloths"],
                             "tokens": [{"token": "long skirt", "weight": 1.0}],
                         },
-                        {"path": ["socks"], "tokens": [{"token": "socks", "weight": 1.0}]},
-                        {"path": ["shoes"], "tokens": [{"token": "shoes", "weight": 1.0}]},
                         {
                             "path": [],
                             "tokens": [
+                                {"token": "standing", "weight": 1.0},
                                 {"token": "best quality", "weight": 1.0},
                                 {"token": "masterpiece", "weight": 1.0},
                                 {"token": "absurdres", "weight": 1.0},
@@ -2436,7 +2434,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {
-                "POS": "remilia scarlet,looking at viewer,blush,hat,blouse,long skirt,socks,shoes,best quality,masterpiece,absurdres",  # noqa: E501
+                "POS": "remilia scarlet,looking at viewer,blush,hat,blouse,long skirt,standing,best quality,masterpiece,absurdres",  # noqa: E501
                 "NEG": "disgusting,(in heat:1.2),(blush:1.2),(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
             },
             "sufficiency": False,
