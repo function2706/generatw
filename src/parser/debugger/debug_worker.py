@@ -12,7 +12,11 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 from parser.debugger.interpreter_debugger import debug_interpreter  # noqa: E402
-from parser.debugger.prompter_debugger import debug_prompter, print_yamldict  # noqa: E402
+from parser.debugger.prompter_debugger import (  # noqa: E402
+    debug_prompter,
+    print_yamldict,
+    test_prob,
+)
 from parser.debugger.reverse_debugger import debug_r_interpreter  # noqa: E402
 from parser.debugger.the_world_debugger import debug_tw_interpreter  # noqa: E402
 
@@ -29,6 +33,7 @@ args = parser.parse_args()
 
 if args.prompter:
     debug_prompter()
+    test_prob()
 elif args.yaml:
     print_yamldict(args.yaml)
 elif args.interpreter:

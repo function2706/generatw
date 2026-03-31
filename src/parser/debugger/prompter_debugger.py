@@ -1135,6 +1135,637 @@ CORRECT_RESULT = {
             ],
         },
     },
+    "CASE 'dynamic'": {
+        "PrompterTest-1: 'dynamic maps:standard;'": {
+            "SID": "dynamic",
+            "POS": [
+                {
+                    "path": ["maps"],
+                    "tokens": [
+                        {"token": "head", "weight": 1.0},
+                        {"token": "standard", "weight": 1.0},
+                        {"token": "tail", "weight": 1.0},
+                    ],
+                },
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common", "weight": 1.0},
+                        {"token": "com", "weight": 1.0},
+                        {"token": "COMMON", "weight": 1.0},
+                    ],
+                },
+            ],
+            "NEG": [
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common_neg", "weight": 1.0},
+                        {"token": "COM_NEG", "weight": 1.0},
+                        {"token": "COMMON_NEG", "weight": 1.0},
+                    ],
+                }
+            ],
+            "REP": [],
+        },
+        "PrompterTest-2: 'dynamic maps:posneg;'": {
+            "SID": "dynamic",
+            "POS": [
+                {
+                    "path": ["maps"],
+                    "tokens": [
+                        {"token": "head", "weight": 1.0},
+                        {"token": "POS", "weight": 1.0},
+                        {"token": "tail", "weight": 1.0},
+                    ],
+                },
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common", "weight": 1.0},
+                        {"token": "COM", "weight": 1.0},
+                        {"token": "COMMON", "weight": 1.0},
+                    ],
+                },
+            ],
+            "NEG": [
+                {
+                    "path": ["maps"],
+                    "tokens": [
+                        {"token": "HEAD", "weight": 1.0},
+                        {"token": "NEG", "weight": 1.0},
+                        {"token": "TAIL", "weight": 1.0},
+                    ],
+                },
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common_neg", "weight": 1.0},
+                        {"token": "com_neg", "weight": 1.0},
+                        {"token": "COMMON_NEG", "weight": 1.0},
+                    ],
+                },
+            ],
+            "REP": [],
+        },
+        "PrompterTest-3: 'dynamic maps:prob;'": {
+            "SID": "dynamic",
+            "POS": [
+                {
+                    "path": ["maps"],
+                    "tokens": [
+                        {"token": "head", "weight": 1.0},
+                        {"token": "prob", "weight": 1.0},
+                        {"token": "tail", "weight": 1.0},
+                    ],
+                },
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common", "weight": 1.0},
+                        {"token": "COM", "weight": 1.0},
+                        {"token": "COMMON", "weight": 1.0},
+                    ],
+                },
+            ],
+            "NEG": [
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common_neg", "weight": 1.0},
+                        {"token": "com_neg", "weight": 1.0},
+                        {"token": "COMMON_NEG", "weight": 1.0},
+                    ],
+                }
+            ],
+            "REP": [],
+        },
+        "PrompterTest-4: 'dynamic maps:weight;'": {
+            "SID": "dynamic",
+            "POS": [
+                {
+                    "path": ["maps"],
+                    "tokens": [
+                        {"token": "head", "weight": 1.0},
+                        {"token": "weight", "weight": 1.2},
+                        {"token": "tail", "weight": 1.0},
+                    ],
+                },
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common", "weight": 1.0},
+                        {"token": "com", "weight": 1.0},
+                        {"token": "COMMON", "weight": 1.0},
+                    ],
+                },
+            ],
+            "NEG": [
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common_neg", "weight": 1.0},
+                        {"token": "COM_NEG", "weight": 1.0},
+                        {"token": "COMMON_NEG", "weight": 1.0},
+                    ],
+                }
+            ],
+            "REP": [],
+        },
+        "PrompterTest-5: 'dynamic maps:probweight;'": {
+            "SID": "dynamic",
+            "POS": [
+                {
+                    "path": ["maps"],
+                    "tokens": [
+                        {"token": "head", "weight": 1.0},
+                        {"token": "PROBWEIGHT", "weight": 1.2},
+                        {"token": "tail", "weight": 1.0},
+                    ],
+                },
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common", "weight": 1.0},
+                        {"token": "COM", "weight": 1.0},
+                        {"token": "COMMON", "weight": 1.0},
+                    ],
+                },
+            ],
+            "NEG": [
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common_neg", "weight": 1.0},
+                        {"token": "com_neg", "weight": 1.0},
+                        {"token": "COMMON_NEG", "weight": 1.0},
+                    ],
+                }
+            ],
+            "REP": [],
+        },
+        "PrompterTest-6: 'dynamic maps:sentence;'": {
+            "SID": "dynamic",
+            "POS": [
+                {
+                    "path": ["maps"],
+                    "tokens": [
+                        {"token": "head", "weight": 1.0},
+                        {"token": "SENTENCE", "weight": 1.0},
+                        {"token": "BODY", "weight": 1.0},
+                        {"token": "tail", "weight": 1.0},
+                    ],
+                },
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common", "weight": 1.0},
+                        {"token": "com", "weight": 1.0},
+                        {"token": "COMMON", "weight": 1.0},
+                    ],
+                },
+            ],
+            "NEG": [
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common_neg", "weight": 1.0},
+                        {"token": "com_neg", "weight": 1.0},
+                        {"token": "COMMON_NEG", "weight": 1.0},
+                    ],
+                }
+            ],
+            "REP": [],
+        },
+        "PrompterTest-7: 'dynamic maps:default;'": {
+            "SID": "dynamic",
+            "POS": [
+                {
+                    "path": ["maps"],
+                    "tokens": [
+                        {"token": "defmaps", "weight": 1.0},
+                        {"token": "DEF", "weight": 1.0},
+                        {"token": "DEFMAPS", "weight": 1.0},
+                    ],
+                },
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common", "weight": 1.0},
+                        {"token": "com", "weight": 1.0},
+                        {"token": "COMMON", "weight": 1.0},
+                    ],
+                },
+            ],
+            "NEG": [
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common_neg", "weight": 1.0},
+                        {"token": "com_neg", "weight": 1.0},
+                        {"token": "COMMON_NEG", "weight": 1.0},
+                    ],
+                }
+            ],
+            "REP": [
+                {
+                    "matched": "default",
+                    "pattern": "maps:(.+?);",
+                    "capturegrp": 1,
+                    "screen_id": "dynamic",
+                    "paths": [["maps"]],
+                }
+            ],
+        },
+        "PrompterTest-8: 'dynamic ranges:posonly;'": {
+            "SID": "dynamic",
+            "POS": [
+                {
+                    "path": ["ranges"],
+                    "tokens": [
+                        {"token": "head", "weight": 1.0},
+                        {"token": "POS", "weight": 1.0},
+                        {"token": "tail", "weight": 1.0},
+                    ],
+                },
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common", "weight": 1.0},
+                        {"token": "COM", "weight": 1.0},
+                        {"token": "COMMON", "weight": 1.0},
+                    ],
+                },
+            ],
+            "NEG": [
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common_neg", "weight": 1.0},
+                        {"token": "com_neg", "weight": 1.0},
+                        {"token": "COMMON_NEG", "weight": 1.0},
+                    ],
+                }
+            ],
+            "REP": [],
+        },
+        "PrompterTest-9: 'dynamic ranges:posnegpos;'": {
+            "SID": "dynamic",
+            "POS": [
+                {
+                    "path": ["ranges"],
+                    "tokens": [
+                        {"token": "head", "weight": 1.0},
+                        {"token": "posnegpos", "weight": 1.0},
+                        {"token": "tail", "weight": 1.0},
+                    ],
+                },
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common", "weight": 1.0},
+                        {"token": "com", "weight": 1.0},
+                        {"token": "COMMON", "weight": 1.0},
+                    ],
+                },
+            ],
+            "NEG": [
+                {
+                    "path": ["ranges"],
+                    "tokens": [
+                        {"token": "HEAD", "weight": 1.0},
+                        {"token": "neg", "weight": 1.0},
+                        {"token": "TAIL", "weight": 1.0},
+                    ],
+                },
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common_neg", "weight": 1.0},
+                        {"token": "com_neg", "weight": 1.0},
+                        {"token": "COMMON_NEG", "weight": 1.0},
+                    ],
+                },
+            ],
+            "REP": [],
+        },
+        "PrompterTest-10: 'dynamic ranges:posnegneg;'": {
+            "SID": "dynamic",
+            "POS": [
+                {
+                    "path": ["ranges"],
+                    "tokens": [
+                        {"token": "head", "weight": 1.0},
+                        {"token": "POS", "weight": 1.0},
+                        {"token": "tail", "weight": 1.0},
+                    ],
+                },
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common", "weight": 1.0},
+                        {"token": "COM", "weight": 1.0},
+                        {"token": "COMMON", "weight": 1.0},
+                    ],
+                },
+            ],
+            "NEG": [
+                {
+                    "path": ["ranges"],
+                    "tokens": [
+                        {"token": "HEAD", "weight": 1.0},
+                        {"token": "POSNEGNEG", "weight": 1.0},
+                        {"token": "TAIL", "weight": 1.0},
+                    ],
+                },
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common_neg", "weight": 1.0},
+                        {"token": "com_neg", "weight": 1.0},
+                        {"token": "COMMON_NEG", "weight": 1.0},
+                    ],
+                },
+            ],
+            "REP": [],
+        },
+        "PrompterTest-11: 'dynamic ranges:default;'": {
+            "SID": "dynamic",
+            "POS": [
+                {
+                    "path": ["ranges"],
+                    "tokens": [
+                        {"token": "defposranges", "weight": 1.0},
+                        {"token": "def", "weight": 1.0},
+                        {"token": "DEFPOSRANGES", "weight": 1.0},
+                    ],
+                },
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common", "weight": 1.0},
+                        {"token": "COM", "weight": 1.0},
+                        {"token": "COMMON", "weight": 1.0},
+                    ],
+                },
+            ],
+            "NEG": [
+                {
+                    "path": ["ranges"],
+                    "tokens": [
+                        {"token": "defnegranges", "weight": 1.0},
+                        {"token": "DEF", "weight": 1.0},
+                        {"token": "DEFNEGRANGES", "weight": 1.0},
+                    ],
+                },
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common_neg", "weight": 1.0},
+                        {"token": "com_neg", "weight": 1.0},
+                        {"token": "COMMON_NEG", "weight": 1.0},
+                    ],
+                },
+            ],
+            "REP": [
+                {
+                    "matched": "default",
+                    "pattern": "ranges:(.+?);",
+                    "capturegrp": 1,
+                    "screen_id": "dynamic",
+                    "paths": [["ranges"]],
+                }
+            ],
+        },
+        "PrompterTest-12: 'dynamic intervals:25;'": {
+            "SID": "dynamic",
+            "POS": [
+                {
+                    "path": ["intervals"],
+                    "tokens": [
+                        {"token": "head", "weight": 1.0},
+                        {"token": "POS", "weight": 1.0},
+                        {"token": "tail", "weight": 1.0},
+                    ],
+                },
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common", "weight": 1.0},
+                        {"token": "COM", "weight": 1.0},
+                        {"token": "COMMON", "weight": 1.0},
+                    ],
+                },
+            ],
+            "NEG": [
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common_neg", "weight": 1.0},
+                        {"token": "com_neg", "weight": 1.0},
+                        {"token": "COMMON_NEG", "weight": 1.0},
+                    ],
+                }
+            ],
+            "REP": [],
+        },
+        "PrompterTest-13: 'dynamic intervals:60;'": {
+            "SID": "dynamic",
+            "POS": [
+                {
+                    "path": ["intervals"],
+                    "tokens": [
+                        {"token": "head", "weight": 1.0},
+                        {"token": "POSNEGPOS", "weight": 1.0},
+                        {"token": "tail", "weight": 1.0},
+                    ],
+                },
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common", "weight": 1.0},
+                        {"token": "COM", "weight": 1.0},
+                        {"token": "COMMON", "weight": 1.0},
+                    ],
+                },
+            ],
+            "NEG": [
+                {
+                    "path": ["intervals"],
+                    "tokens": [
+                        {"token": "HEAD", "weight": 1.0},
+                        {"token": "NEG", "weight": 1.0},
+                        {"token": "TAIL", "weight": 1.0},
+                    ],
+                },
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common_neg", "weight": 1.0},
+                        {"token": "COM_NEG", "weight": 1.0},
+                        {"token": "COMMON_NEG", "weight": 1.0},
+                    ],
+                },
+            ],
+            "REP": [],
+        },
+        "PrompterTest-14: 'dynamic intervals:80;'": {
+            "SID": "dynamic",
+            "POS": [
+                {
+                    "path": ["intervals"],
+                    "tokens": [
+                        {"token": "head", "weight": 1.0},
+                        {"token": "POS", "weight": 1.0},
+                        {"token": "tail", "weight": 1.0},
+                    ],
+                },
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common", "weight": 1.0},
+                        {"token": "com", "weight": 1.0},
+                        {"token": "COMMON", "weight": 1.0},
+                    ],
+                },
+            ],
+            "NEG": [
+                {
+                    "path": ["intervals"],
+                    "tokens": [
+                        {"token": "HEAD", "weight": 1.0},
+                        {"token": "POSNEGNEG", "weight": 1.0},
+                        {"token": "TAIL", "weight": 1.0},
+                    ],
+                },
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common_neg", "weight": 1.0},
+                        {"token": "com_neg", "weight": 1.0},
+                        {"token": "COMMON_NEG", "weight": 1.0},
+                    ],
+                },
+            ],
+            "REP": [],
+        },
+        "PrompterTest-15: 'dynamic complex:nest;'": {
+            "SID": "dynamic",
+            "POS": [
+                {
+                    "path": ["complex"],
+                    "tokens": [{"token": "a", "weight": 1.2}, {"token": "k", "weight": 1.4}],
+                },
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common", "weight": 1.0},
+                        {"token": "com", "weight": 1.0},
+                        {"token": "COMMON", "weight": 1.0},
+                    ],
+                },
+            ],
+            "NEG": [
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common_neg", "weight": 1.0},
+                        {"token": "COM_NEG", "weight": 1.0},
+                        {"token": "COMMON_NEG", "weight": 1.0},
+                    ],
+                }
+            ],
+            "REP": [],
+        },
+        "PrompterTest-16: 'dynamic complex:composition;'": {
+            "SID": "dynamic",
+            "POS": [
+                {
+                    "path": ["complex"],
+                    "tokens": [{"token": "xz", "weight": 1.0}, {"token": "Bw", "weight": 1.0}],
+                },
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common", "weight": 1.0},
+                        {"token": "com", "weight": 1.0},
+                        {"token": "COMMON", "weight": 1.0},
+                    ],
+                },
+            ],
+            "NEG": [
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common_neg", "weight": 1.0},
+                        {"token": "com_neg", "weight": 1.0},
+                        {"token": "COMMON_NEG", "weight": 1.0},
+                    ],
+                }
+            ],
+            "REP": [],
+        },
+        "PrompterTest-17: 'dynamic import:standard;'": {
+            "SID": "dynamic",
+            "POS": [
+                {
+                    "path": ["import_dynamic", "without_pattern"],
+                    "tokens": [
+                        {"token": "head", "weight": 1.0},
+                        {"token": "STANDARD", "weight": 1.0},
+                        {"token": "tail", "weight": 1.0},
+                    ],
+                },
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common", "weight": 1.0},
+                        {"token": "com", "weight": 1.0},
+                        {"token": "COMMON", "weight": 1.0},
+                    ],
+                },
+            ],
+            "NEG": [
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common_neg", "weight": 1.0},
+                        {"token": "com_neg", "weight": 1.0},
+                        {"token": "COMMON_NEG", "weight": 1.0},
+                    ],
+                }
+            ],
+            "REP": [],
+        },
+        "PrompterTest-18: 'dynamic recurse:[here];'": {
+            "SID": "dynamic",
+            "POS": [
+                {
+                    "path": ["recursive-1", "recursive-2"],
+                    "tokens": [{"token": "here", "weight": 1.0}],
+                },
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common", "weight": 1.0},
+                        {"token": "com", "weight": 1.0},
+                        {"token": "COMMON", "weight": 1.0},
+                    ],
+                },
+            ],
+            "NEG": [
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common_neg", "weight": 1.0},
+                        {"token": "com_neg", "weight": 1.0},
+                        {"token": "COMMON_NEG", "weight": 1.0},
+                    ],
+                }
+            ],
+            "REP": [],
+        },
+    },
 }
 
 
@@ -1385,6 +2016,34 @@ def debug_prompter() -> None:
                     "recursive_report one's equip:[EQUIP5][EQUIP6][EQUIP3][EQUIP4]",
                 ]
             },
+            "dynamic": {
+                "yamls/testyamls/PrompterTest.yaml": [
+                    # maps
+                    "dynamic maps:standard;",
+                    "dynamic maps:posneg;",
+                    "dynamic maps:prob;",
+                    "dynamic maps:weight;",
+                    "dynamic maps:probweight;",
+                    "dynamic maps:sentence;",
+                    "dynamic maps:default;",
+                    # ranges
+                    "dynamic ranges:posonly;",
+                    "dynamic ranges:posnegpos;",
+                    "dynamic ranges:posnegneg;",
+                    "dynamic ranges:default;",
+                    # intervals
+                    "dynamic intervals:25;",
+                    "dynamic intervals:60;",
+                    "dynamic intervals:80;",
+                    # complex
+                    "dynamic complex:nest;",
+                    "dynamic complex:composition;",
+                    # import
+                    "dynamic import:standard;",
+                    # recursive
+                    "dynamic recurse:[here];",
+                ]
+            },
         }
     )
 
@@ -1409,3 +2068,31 @@ def debug_prompter() -> None:
 def print_yamldict(path: Path) -> None:
     debugger = PrompterDebugger.make(Path(path))
     debugger.dump_normalized_yamldict()
+
+
+def test_prob() -> None:
+    def print_(result: dict[str, dict[str, dict[str, Any]]], case_name: str) -> None:
+        result_body = result[f"CASE '{case_name}'"]
+        whole = len(result_body.keys())
+        trues = sum(
+            1
+            for item in result_body.values()
+            for pos in item["POS"]
+            for t in pos.tokens
+            if t.token == "true"
+        )
+        print(f"Trues={trues}, Whole={whole}, ratio={float(trues) / float(whole) * 100}%")
+
+    debugger = PrompterDebugger()
+    texts = [f"dyprob #{i};" for i in range(0, 1000)]
+    result = debugger.debug_cases({"dyprob": {"yamls/testyamls/PrompterTest.yaml": texts}})
+    print_(result, "dyprob")
+    texts = [f"dyprob #{i};" for i in range(10000, 11000)]
+    result = debugger.debug_cases({"dyprob": {"yamls/testyamls/PrompterTest.yaml": texts}})
+    print_(result, "dyprob")
+    texts = [f"dyprob #{i};" for i in range(20000, 21000)]
+    result = debugger.debug_cases({"dyprob": {"yamls/testyamls/PrompterTest.yaml": texts}})
+    print_(result, "dyprob")
+    texts = [f"dyprob #{i};" for i in range(30000, 31000)]
+    result = debugger.debug_cases({"dyprob": {"yamls/testyamls/PrompterTest.yaml": texts}})
+    print_(result, "dyprob")

@@ -308,3 +308,76 @@ recursive_report:
         capturegrp: 1
         maps:
           EQUIP4: equip4
+dynamic:
+  ignition: "dynamic"
+  maps:
+    pattern: "maps:(.+?);"
+    capturegrp: 1
+    maps:
+      standard: head,<standard|STANDARD>,tail
+      posneg:
+        positive: head,<pos|POS>,tail
+        negative: HEAD,<neg|NEG>,TAIL
+      prob: head,<1::prob|2::PROB>,tail
+      weight: head,<(weight:1.2)|(WEIGHT:1.2)>,tail
+      probweight: head,<1::(probweight:1.2)|3::(PROBWEIGHT:1.2)>,tail
+      sentence: head,<sentence,body|SENTENCE,BODY>,tail
+    default: defmaps,<def|DEF>,DEFMAPS
+  ranges:
+    pattern: "ranges:(.+?);"
+    capturegrp: 1
+    ranges:
+      head,<pos|POS>,tail: ["posonly"]
+      head,<posnegpos|POSNEGPOS>,tail:
+        positive: ["posnegpos"]
+        negative: HEAD,<neg|NEG>,TAIL
+      HEAD,<posnegneg|POSNEGNEG>,TAIL:
+        positive: head,<pos|POS>,tail
+        negative: ["posnegneg"]
+    default:
+      positive: defposranges,<def|DEF>,DEFPOSRANGES
+      negative: defnegranges,<def|DEF>,DEFNEGRANGES
+  intervals:
+    pattern: "intervals:(.+?);"
+    capturegrp: 1
+    intervals:
+      head,<pos|POS>,tail: [0, 50]
+      head,<posnegpos|POSNEGPOS>,tail:
+        positive: [50, 75]
+        negative: HEAD,<neg|NEG>,TAIL
+      HEAD,<posnegneg|POSNEGNEG>,TAIL:
+        positive: head,<pos|POS>,tail
+        negative: [75, 100]
+  complex:
+    pattern: "complex:(.+?);"
+    capturegrp: 1
+    maps:
+      nest: (a:1.2),<b,<(c:0.3),<d,<e|(f:1.8)>|(g:1.7)>|(h:1.1)>|<(i:0.7)|(j:0.9)>|(k:1.4)>
+      composition: x<y,A|z,B>w
+  import_dynamic:
+    without_pattern:
+      pattern: "import:(.+?);"
+      capturegrp: 1
+      import: ["dynamic", "maps"]
+  recursive-1:
+    pattern: "recurse:(.+?);"
+    capturegrp: 1
+    recurse:
+      recursive-2:
+        pattern: '\[([^\[\]]+?)\]'
+        capturegrp: 1
+        maps:
+          here: <here|HERE>
+  common:
+    positive: common,<com|COM>,COMMON
+    negative: common_neg,<com_neg|COM_NEG>,COMMON_NEG
+dynamic_prob:
+  ignition: "dyprob"
+  main:
+    pattern: "dyprob #([0-9]+?);"
+    capturegrp: 1
+    intervals:
+      <true|false>: [0, 9999]
+      <0.2::(true:0.2)|0.5::(false:0.5)>: [10000, 19999]
+      <1::true|100::(false:100)>: [20000, 29999]
+      <true|0.5::(false:0.5)>: [30000, 39999]

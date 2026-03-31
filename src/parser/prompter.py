@@ -9,6 +9,8 @@ from typing import Any
 
 import yaml
 
+from parser.tokens import Token, UnconfirmedChunk
+
 
 class KeyName(StrEnum):
     """YAML設定ファイルで使用されるキー名の定数"""
@@ -28,77 +30,6 @@ class KeyName(StrEnum):
     negative = "negative"
 
 
-@dataclass
-class Token:
-    """
-    重み付きトークンを表すクラス\n
-    例: '(foo:1.2)' -> Token(token='foo', weight=1.2)
-
-    Attributes:
-        token (str): トークン文字列
-        weight (float): トークンの重み
-    """
-
-    token: str = ""
-    weight: float = 1.0
-
-    @classmethod
-    def make(cls, original_token: str):
-        """
-        文字列から Token インスタンスを生成する
-
-        Args:
-            original_token (str): 元のトークン文字列('word' または '(word:1.2)' 形式)
-
-        Returns:
-            Token: 生成された Token インスタンス
-
-        Raises:
-            ValueError: トークンの形式が不正な場合
-        """
-        m = re.fullmatch(r"\(?([\w\s\-\(\)\\'.]+)(?::([0-9.]+))?\)?", original_token.strip())
-        if not m:
-            raise ValueError(
-                f"Invalid token format: '{original_token}'. Expected 'word' or '(word:1.2)'."
-            )
-
-        token, weight_str = m.groups()
-        try:
-            weight = float(weight_str) if weight_str is not None else 1.0
-        except ValueError:
-            weight = 1.0
-
-        return cls(token=token, weight=weight)
-
-    def to_str(self) -> str:
-        """
-        プロンプト文字列に変換する
-
-        Returns:
-            str: プロンプト文字列('token' または '(token:weight)' 形式)
-        """
-        return f"({self.token}:{self.weight})" if self.weight != 1.0 else self.token
-
-
-def make_tokens(text: str | None = None) -> list[Token]:
-    """
-    カンマ区切りの文字列から list[Token] インスタンスを生成する\n
-    text が None の場合は空リストを返す
-
-    Args:
-        text (str|None): カンマ区切りのトークン文字列
-
-    Returns:
-        list[Token]: 生成された list[Token] インスタンス
-    """
-    if text is None:
-        return []
-
-    text_str = str(text)
-    parts = [p.strip() for p in text_str.split(",") if p.strip()]
-    return [Token.make(p) for p in parts]
-
-
 class CategoryPath(tuple[str, ...]):
     def stringfy(self) -> str:
         return str(self)
@@ -111,7 +42,7 @@ class PromptParts:
 
     Attributes:
         path (CategoryPath): Category パス
-        tokens (list[Token]): トークンのリスト
+        tokens (list[Token | UnconfirmedToken]): トークンのリスト
     """
 
     path: CategoryPath = field(default_factory=tuple)
@@ -140,12 +71,12 @@ class Rule(ABC):
     マッチ条件とプロンプトの対応関係を定義するクラス
 
     Attributes:
-        positive_tokens (list[Token]): ポジティブプロンプトのトークン集合
-        negative_tokens (list[Token]): ネガティブプロンプトのトークン集合
+        positive_tokens (list[UnconfirmedToken]): ポジティブプロンプトのトークン集合
+        negative_tokens (list[UnconfirmedToken]): ネガティブプロンプトのトークン集合
     """
 
-    positive_tokens: list[Token] = field(default_factory=list)
-    negative_tokens: list[Token] = field(default_factory=list)
+    positive_tokens: UnconfirmedChunk = field(default_factory=UnconfirmedChunk)
+    negative_tokens: UnconfirmedChunk = field(default_factory=UnconfirmedChunk)
 
     @classmethod
     @abstractmethod
@@ -178,21 +109,24 @@ class Rule(ABC):
         """
         pass
 
-    def to_tokenlists(self, match: str | None = None) -> tuple[list[Token], list[Token]] | None:
+    def to_tokenlists(
+        self, seed: str, match: str | None = None
+    ) -> tuple[list[Token], list[Token]] | None:
         """
-        マッチ文字列が条件を満たす場合に list[Token] を生成する
+        マッチ文字列が条件を満たす場合に list[Token] を返す
 
         Args:
             match (str, optional): マッチした文字列
 
         Returns:
-            tuple[list[Token], list[Token]] | None: ポジティブ/ネガティブプロンプト用
+            tuple[list[Token], list[Token]] | None:
+            ポジティブ/ネガティブプロンプト用
             ヒットしなかった場合に None
         """
         if not self.check_hit(match):
             return None
 
-        return list(self.positive_tokens), list(self.negative_tokens)
+        return self.positive_tokens.confirm(seed), self.negative_tokens.confirm(seed)
 
 
 @dataclass
@@ -216,11 +150,11 @@ class MapsRule(Rule):
         obj.matches = {str(key)}
         if isinstance(val, str):
             # {'xxx': 'pos1,(pos2:1.2)'} 型
-            obj.positive_tokens = make_tokens(val)
-            obj.negative_tokens = make_tokens()
+            obj.positive_tokens = UnconfirmedChunk.make(val)
+            obj.negative_tokens = UnconfirmedChunk()
         elif isinstance(val, dict):
-            obj.positive_tokens = make_tokens(val.get(KeyName.positive))
-            obj.negative_tokens = make_tokens(val.get(KeyName.negative))
+            obj.positive_tokens = UnconfirmedChunk.make(val.get(KeyName.positive))
+            obj.negative_tokens = UnconfirmedChunk.make(val.get(KeyName.negative))
         else:
             raise ValueError(
                 f"Rule '{key}' in 'maps' must be a string or dict, but {type(val).__name__}."
@@ -255,19 +189,19 @@ class RangesRule(Rule):
         if isinstance(val, list):
             # {'pos1,(pos2:1.2)': ['con1', 'con2']} 型
             obj.matches = {str(i) for i in val}
-            obj.positive_tokens = make_tokens(key_str)
-            obj.negative_tokens = make_tokens()
+            obj.positive_tokens = UnconfirmedChunk.make(key_str)
+            obj.negative_tokens = UnconfirmedChunk()
         elif isinstance(val, dict):
             if isinstance(val.get(KeyName.positive), list):
                 # {'pos1,(pos2:1.2)': {'positive': ['con1', 'con2'], 'negative': 'neg1'}} 型
                 obj.matches = {str(i) for i in val.get(KeyName.positive, [])}
-                obj.positive_tokens = make_tokens(key_str)
-                obj.negative_tokens = make_tokens(val.get(KeyName.negative))
+                obj.positive_tokens = UnconfirmedChunk.make(key_str)
+                obj.negative_tokens = UnconfirmedChunk.make(val.get(KeyName.negative))
             elif isinstance(val.get(KeyName.negative), list):
                 # {'pos1,(pos2:1.2)': {'positive': 'pos1', 'negative': ['con1', 'con2'], }} 型
                 obj.matches = {str(i) for i in val.get(KeyName.negative, [])}
-                obj.positive_tokens = make_tokens(val.get(KeyName.positive))
-                obj.negative_tokens = make_tokens(key_str)
+                obj.positive_tokens = UnconfirmedChunk.make(val.get(KeyName.positive))
+                obj.negative_tokens = UnconfirmedChunk.make(key_str)
             else:
                 raise ValueError(
                     f"Rule '{key}' in 'ranges' must have 'positive' or 'negative' label."
@@ -317,19 +251,19 @@ class IntervalsRule(Rule):
         if isinstance(val, list):
             # {'pos1,(pos2:1.2)': [min, max]} 型
             min, max = check_list(val)
-            obj.positive_tokens = make_tokens(key_str)
-            obj.negative_tokens = make_tokens()
+            obj.positive_tokens = UnconfirmedChunk.make(key_str)
+            obj.negative_tokens = UnconfirmedChunk()
         elif isinstance(val, dict):
             if isinstance(val.get(KeyName.positive), list):
                 # {'pos1,(pos2:1.2)': {'positive': [min, max], 'negative': 'neg1'}} 型
                 min, max = check_list(val.get(KeyName.positive))
-                obj.positive_tokens = make_tokens(key_str)
-                obj.negative_tokens = make_tokens(val.get(KeyName.negative))
+                obj.positive_tokens = UnconfirmedChunk.make(key_str)
+                obj.negative_tokens = UnconfirmedChunk.make(val.get(KeyName.negative))
             elif isinstance(val.get(KeyName.negative), list):
                 # {'pos1,(pos2:1.2)': {'positive': 'pos1', 'negative': [min, max], }} 型
                 min, max = check_list(val.get(KeyName.negative))
-                obj.positive_tokens = make_tokens(val.get(KeyName.positive))
-                obj.negative_tokens = make_tokens(key_str)
+                obj.positive_tokens = UnconfirmedChunk.make(val.get(KeyName.positive))
+                obj.negative_tokens = UnconfirmedChunk.make(key_str)
             else:
                 raise ValueError(
                     f"Rule '{key}' in 'intervals' must have 'positive' or 'negative' label."
@@ -362,11 +296,11 @@ class DefaultRule(Rule):
         obj = cls()
 
         if isinstance(val, str):
-            obj.positive_tokens = make_tokens(val)
-            obj.negative_tokens = make_tokens()
+            obj.positive_tokens = UnconfirmedChunk.make(val)
+            obj.negative_tokens = UnconfirmedChunk()
         elif isinstance(val, dict):
-            obj.positive_tokens = make_tokens(val.get(KeyName.positive))
-            obj.negative_tokens = make_tokens(val.get(KeyName.negative))
+            obj.positive_tokens = UnconfirmedChunk.make(val.get(KeyName.positive))
+            obj.negative_tokens = UnconfirmedChunk.make(val.get(KeyName.negative))
         else:
             raise ValueError("Syntax of 'default' is invalid.")
 
@@ -687,7 +621,7 @@ class Category:
         return self.children and not self.rules
 
     def to_prompts(
-        self, text: str, screen_id: str
+        self, text: str, screen_id: str, seed: str
     ) -> tuple[list[tuple[PromptParts, PromptParts]] | None, Reports]:
         """
         指定の text から PromptParts を生成する
@@ -729,7 +663,7 @@ class Category:
             has_matched = True
             if self.has_children():
                 for child_category in self.children:
-                    child_results, child_reports = child_category.to_prompts(match, screen_id)
+                    child_results, child_reports = child_category.to_prompts(match, screen_id, seed)
                     reports.extend(child_reports)
 
                     if child_results is None:
@@ -742,7 +676,7 @@ class Category:
             else:
                 hit = False
                 for rule in self.rules:
-                    result_hit = rule.to_tokenlists(match=match)
+                    result_hit = rule.to_tokenlists(seed=seed, match=match)
                     if result_hit is None:
                         continue
 
@@ -779,7 +713,7 @@ class Category:
                 if self.default is not None:
                     # 未ヒット = どの Rule でもポジティブ/ネガティブともにトークンが追加されなかった
                     #   -> default
-                    pos, neg = self.default.to_tokenlists()
+                    pos, neg = self.default.to_tokenlists(seed=seed)
                     dst_pos, dst_neg = get_or_create(self.category_path)
                     dst_pos.tokens.extend(pos)
                     dst_neg.tokens.extend(neg)
@@ -809,8 +743,8 @@ class Screen:
     screen_id: str = ""
     ignition: re.Pattern[str] = field(default=None, init=False, repr=False, compare=False)
     categories: list[Category] = field(default_factory=list)
-    common_positive: list[Token] = field(default_factory=list)
-    common_negative: list[Token] = field(default_factory=list)
+    common_positive: UnconfirmedChunk = field(default_factory=UnconfirmedChunk)
+    common_negative: UnconfirmedChunk = field(default_factory=UnconfirmedChunk)
 
     def collect_categories(
         self,
@@ -870,11 +804,11 @@ class Screen:
                 obj.ignition = re.compile(str(val))
             elif key == KeyName.common:
                 if isinstance(val, str):
-                    obj.common_positive = make_tokens(val)
-                    obj.common_negative = make_tokens()
+                    obj.common_positive = UnconfirmedChunk.make(val)
+                    obj.common_negative = UnconfirmedChunk()
                 elif isinstance(val, dict):
-                    obj.common_positive = make_tokens(val.get(KeyName.positive))
-                    obj.common_negative = make_tokens(val.get(KeyName.negative))
+                    obj.common_positive = UnconfirmedChunk.make(val.get(KeyName.positive))
+                    obj.common_negative = UnconfirmedChunk.make(val.get(KeyName.negative))
                 elif isinstance(val, list):
                     # import
                     src_screen_id = val[0]
@@ -919,7 +853,7 @@ class Screen:
         prompt = Prompt(screen_id=self.screen_id)
         reports = Reports()
         for category in self.categories:
-            results, rprts = category.to_prompts(text, self.screen_id)
+            results, rprts = category.to_prompts(text, self.screen_id, text)
             reports.extend(rprts)
             if results is None:
                 # tokens が空の場合は追加しない
@@ -931,10 +865,12 @@ class Screen:
                 if neg_parts.tokens:
                     prompt.negative.append(neg_parts)
 
-        if self.common_positive:
-            prompt.positive.append(PromptParts(tokens=self.common_positive))
-        if self.common_negative:
-            prompt.negative.append(PromptParts(tokens=self.common_negative))
+        com_pos = self.common_positive.confirm(text)
+        com_neg = self.common_negative.confirm(text)
+        if com_pos:
+            prompt.positive.append(PromptParts(tokens=com_pos))
+        if com_neg:
+            prompt.negative.append(PromptParts(tokens=com_neg))
 
         return prompt, reports
 
