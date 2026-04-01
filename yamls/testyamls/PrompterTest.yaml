@@ -354,6 +354,7 @@ dynamic:
     maps:
       nest: (a:1.2),<b,<(c:0.3),<d,<e|(f:1.8)>|(g:1.7)>|(h:1.1)>|<(i:0.7)|(j:0.9)>|(k:1.4)>
       composition: x<y,A|z,B>w
+      enormous: <a|b|c|d|e|f|g|h|i|j>,<a|b|c|d|e|f|g|h|i|j>,<a|b|c|d|e|f|g|h|i|j>,<a|b|c|d|e|f|g|h|i|j>,<a|b|c|d|e|f|g|h|i|j>,<a|b|c|d|e|f|g|h|i|j>,<a|b|c|d|e|f|g|h|i|j>,<a|b|c|d|e|f|g|h|i|j>,<a|b|c|d|e|f|g|h|i|j>,<a|b|c|d|e|f|g|h|i|j>
   import_dynamic:
     without_pattern:
       pattern: "import:(.+?);"
@@ -381,3 +382,4 @@ dynamic_prob:
       <0.2::(true:0.2)|0.5::(false:0.5)>: [10000, 19999]
       <1::true|100::(false:100)>: [20000, 29999]
       <true|0.5::(false:0.5)>: [30000, 39999]
+      <2::false|3::<4::false|5::false|6::<7::false|8::true>>>: [40000, 49999]

@@ -1143,7 +1143,7 @@ CORRECT_RESULT = {
                     "path": ["maps"],
                     "tokens": [
                         {"token": "head", "weight": 1.0},
-                        {"token": "standard", "weight": 1.0},
+                        {"token": "STANDARD", "weight": 1.0},
                         {"token": "tail", "weight": 1.0},
                     ],
                 },
@@ -1161,7 +1161,7 @@ CORRECT_RESULT = {
                     "path": [],
                     "tokens": [
                         {"token": "common_neg", "weight": 1.0},
-                        {"token": "COM_NEG", "weight": 1.0},
+                        {"token": "com_neg", "weight": 1.0},
                         {"token": "COMMON_NEG", "weight": 1.0},
                     ],
                 }
@@ -1175,7 +1175,7 @@ CORRECT_RESULT = {
                     "path": ["maps"],
                     "tokens": [
                         {"token": "head", "weight": 1.0},
-                        {"token": "POS", "weight": 1.0},
+                        {"token": "pos", "weight": 1.0},
                         {"token": "tail", "weight": 1.0},
                     ],
                 },
@@ -1193,7 +1193,7 @@ CORRECT_RESULT = {
                     "path": ["maps"],
                     "tokens": [
                         {"token": "HEAD", "weight": 1.0},
-                        {"token": "NEG", "weight": 1.0},
+                        {"token": "neg", "weight": 1.0},
                         {"token": "TAIL", "weight": 1.0},
                     ],
                 },
@@ -1215,7 +1215,7 @@ CORRECT_RESULT = {
                     "path": ["maps"],
                     "tokens": [
                         {"token": "head", "weight": 1.0},
-                        {"token": "prob", "weight": 1.0},
+                        {"token": "PROB", "weight": 1.0},
                         {"token": "tail", "weight": 1.0},
                     ],
                 },
@@ -1255,7 +1255,7 @@ CORRECT_RESULT = {
                     "path": [],
                     "tokens": [
                         {"token": "common", "weight": 1.0},
-                        {"token": "com", "weight": 1.0},
+                        {"token": "COM", "weight": 1.0},
                         {"token": "COMMON", "weight": 1.0},
                     ],
                 },
@@ -1265,7 +1265,7 @@ CORRECT_RESULT = {
                     "path": [],
                     "tokens": [
                         {"token": "common_neg", "weight": 1.0},
-                        {"token": "COM_NEG", "weight": 1.0},
+                        {"token": "com_neg", "weight": 1.0},
                         {"token": "COMMON_NEG", "weight": 1.0},
                     ],
                 }
@@ -1297,7 +1297,7 @@ CORRECT_RESULT = {
                     "path": [],
                     "tokens": [
                         {"token": "common_neg", "weight": 1.0},
-                        {"token": "com_neg", "weight": 1.0},
+                        {"token": "COM_NEG", "weight": 1.0},
                         {"token": "COMMON_NEG", "weight": 1.0},
                     ],
                 }
@@ -1320,7 +1320,7 @@ CORRECT_RESULT = {
                     "path": [],
                     "tokens": [
                         {"token": "common", "weight": 1.0},
-                        {"token": "com", "weight": 1.0},
+                        {"token": "COM", "weight": 1.0},
                         {"token": "COMMON", "weight": 1.0},
                     ],
                 },
@@ -1344,7 +1344,7 @@ CORRECT_RESULT = {
                     "path": ["maps"],
                     "tokens": [
                         {"token": "defmaps", "weight": 1.0},
-                        {"token": "DEF", "weight": 1.0},
+                        {"token": "def", "weight": 1.0},
                         {"token": "DEFMAPS", "weight": 1.0},
                     ],
                 },
@@ -1352,7 +1352,7 @@ CORRECT_RESULT = {
                     "path": [],
                     "tokens": [
                         {"token": "common", "weight": 1.0},
-                        {"token": "com", "weight": 1.0},
+                        {"token": "COM", "weight": 1.0},
                         {"token": "COMMON", "weight": 1.0},
                     ],
                 },
@@ -1384,7 +1384,7 @@ CORRECT_RESULT = {
                     "path": ["ranges"],
                     "tokens": [
                         {"token": "head", "weight": 1.0},
-                        {"token": "POS", "weight": 1.0},
+                        {"token": "pos", "weight": 1.0},
                         {"token": "tail", "weight": 1.0},
                     ],
                 },
@@ -1392,7 +1392,7 @@ CORRECT_RESULT = {
                     "path": [],
                     "tokens": [
                         {"token": "common", "weight": 1.0},
-                        {"token": "COM", "weight": 1.0},
+                        {"token": "com", "weight": 1.0},
                         {"token": "COMMON", "weight": 1.0},
                     ],
                 },
@@ -1416,7 +1416,7 @@ CORRECT_RESULT = {
                     "path": ["ranges"],
                     "tokens": [
                         {"token": "head", "weight": 1.0},
-                        {"token": "posnegpos", "weight": 1.0},
+                        {"token": "POSNEGPOS", "weight": 1.0},
                         {"token": "tail", "weight": 1.0},
                     ],
                 },
@@ -1456,7 +1456,7 @@ CORRECT_RESULT = {
                     "path": ["ranges"],
                     "tokens": [
                         {"token": "head", "weight": 1.0},
-                        {"token": "POS", "weight": 1.0},
+                        {"token": "pos", "weight": 1.0},
                         {"token": "tail", "weight": 1.0},
                     ],
                 },
@@ -1464,7 +1464,7 @@ CORRECT_RESULT = {
                     "path": [],
                     "tokens": [
                         {"token": "common", "weight": 1.0},
-                        {"token": "COM", "weight": 1.0},
+                        {"token": "com", "weight": 1.0},
                         {"token": "COMMON", "weight": 1.0},
                     ],
                 },
@@ -1482,7 +1482,7 @@ CORRECT_RESULT = {
                     "path": [],
                     "tokens": [
                         {"token": "common_neg", "weight": 1.0},
-                        {"token": "com_neg", "weight": 1.0},
+                        {"token": "COM_NEG", "weight": 1.0},
                         {"token": "COMMON_NEG", "weight": 1.0},
                     ],
                 },
@@ -1522,7 +1522,7 @@ CORRECT_RESULT = {
                     "path": [],
                     "tokens": [
                         {"token": "common_neg", "weight": 1.0},
-                        {"token": "com_neg", "weight": 1.0},
+                        {"token": "COM_NEG", "weight": 1.0},
                         {"token": "COMMON_NEG", "weight": 1.0},
                     ],
                 },
@@ -1552,7 +1552,7 @@ CORRECT_RESULT = {
                     "path": [],
                     "tokens": [
                         {"token": "common", "weight": 1.0},
-                        {"token": "COM", "weight": 1.0},
+                        {"token": "com", "weight": 1.0},
                         {"token": "COMMON", "weight": 1.0},
                     ],
                 },
@@ -1562,7 +1562,7 @@ CORRECT_RESULT = {
                     "path": [],
                     "tokens": [
                         {"token": "common_neg", "weight": 1.0},
-                        {"token": "com_neg", "weight": 1.0},
+                        {"token": "COM_NEG", "weight": 1.0},
                         {"token": "COMMON_NEG", "weight": 1.0},
                     ],
                 }
@@ -1616,7 +1616,7 @@ CORRECT_RESULT = {
                     "path": ["intervals"],
                     "tokens": [
                         {"token": "head", "weight": 1.0},
-                        {"token": "POS", "weight": 1.0},
+                        {"token": "pos", "weight": 1.0},
                         {"token": "tail", "weight": 1.0},
                     ],
                 },
@@ -1624,7 +1624,7 @@ CORRECT_RESULT = {
                     "path": [],
                     "tokens": [
                         {"token": "common", "weight": 1.0},
-                        {"token": "com", "weight": 1.0},
+                        {"token": "COM", "weight": 1.0},
                         {"token": "COMMON", "weight": 1.0},
                     ],
                 },
@@ -1634,7 +1634,7 @@ CORRECT_RESULT = {
                     "path": ["intervals"],
                     "tokens": [
                         {"token": "HEAD", "weight": 1.0},
-                        {"token": "POSNEGNEG", "weight": 1.0},
+                        {"token": "posnegneg", "weight": 1.0},
                         {"token": "TAIL", "weight": 1.0},
                     ],
                 },
@@ -1642,7 +1642,7 @@ CORRECT_RESULT = {
                     "path": [],
                     "tokens": [
                         {"token": "common_neg", "weight": 1.0},
-                        {"token": "com_neg", "weight": 1.0},
+                        {"token": "COM_NEG", "weight": 1.0},
                         {"token": "COMMON_NEG", "weight": 1.0},
                     ],
                 },
@@ -1670,7 +1670,7 @@ CORRECT_RESULT = {
                     "path": [],
                     "tokens": [
                         {"token": "common_neg", "weight": 1.0},
-                        {"token": "COM_NEG", "weight": 1.0},
+                        {"token": "com_neg", "weight": 1.0},
                         {"token": "COMMON_NEG", "weight": 1.0},
                     ],
                 }
@@ -1705,15 +1705,22 @@ CORRECT_RESULT = {
             ],
             "REP": [],
         },
-        "PrompterTest-17: 'dynamic import:standard;'": {
+        "PrompterTest-17: 'dynamic complex:enormous;'": {
             "SID": "dynamic",
             "POS": [
                 {
-                    "path": ["import_dynamic", "without_pattern"],
+                    "path": ["complex"],
                     "tokens": [
-                        {"token": "head", "weight": 1.0},
-                        {"token": "STANDARD", "weight": 1.0},
-                        {"token": "tail", "weight": 1.0},
+                        {"token": "i", "weight": 1.0},
+                        {"token": "j", "weight": 1.0},
+                        {"token": "h", "weight": 1.0},
+                        {"token": "c", "weight": 1.0},
+                        {"token": "c", "weight": 1.0},
+                        {"token": "b", "weight": 1.0},
+                        {"token": "i", "weight": 1.0},
+                        {"token": "a", "weight": 1.0},
+                        {"token": "d", "weight": 1.0},
+                        {"token": "i", "weight": 1.0},
                     ],
                 },
                 {
@@ -1737,7 +1744,39 @@ CORRECT_RESULT = {
             ],
             "REP": [],
         },
-        "PrompterTest-18: 'dynamic recurse:[here];'": {
+        "PrompterTest-18: 'dynamic import:standard;'": {
+            "SID": "dynamic",
+            "POS": [
+                {
+                    "path": ["import_dynamic", "without_pattern"],
+                    "tokens": [
+                        {"token": "head", "weight": 1.0},
+                        {"token": "STANDARD", "weight": 1.0},
+                        {"token": "tail", "weight": 1.0},
+                    ],
+                },
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common", "weight": 1.0},
+                        {"token": "COM", "weight": 1.0},
+                        {"token": "COMMON", "weight": 1.0},
+                    ],
+                },
+            ],
+            "NEG": [
+                {
+                    "path": [],
+                    "tokens": [
+                        {"token": "common_neg", "weight": 1.0},
+                        {"token": "COM_NEG", "weight": 1.0},
+                        {"token": "COMMON_NEG", "weight": 1.0},
+                    ],
+                }
+            ],
+            "REP": [],
+        },
+        "PrompterTest-19: 'dynamic recurse:[here];'": {
             "SID": "dynamic",
             "POS": [
                 {
@@ -1748,7 +1787,7 @@ CORRECT_RESULT = {
                     "path": [],
                     "tokens": [
                         {"token": "common", "weight": 1.0},
-                        {"token": "com", "weight": 1.0},
+                        {"token": "COM", "weight": 1.0},
                         {"token": "COMMON", "weight": 1.0},
                     ],
                 },
@@ -2038,6 +2077,7 @@ def debug_prompter() -> None:
                     # complex
                     "dynamic complex:nest;",
                     "dynamic complex:composition;",
+                    "dynamic complex:enormous;",
                     # import
                     "dynamic import:standard;",
                     # recursive
@@ -2084,15 +2124,8 @@ def test_prob() -> None:
         print(f"Trues={trues}, Whole={whole}, ratio={float(trues) / float(whole) * 100}%")
 
     debugger = PrompterDebugger()
-    texts = [f"dyprob #{i};" for i in range(0, 1000)]
-    result = debugger.debug_cases({"dyprob": {"yamls/testyamls/PrompterTest.yaml": texts}})
-    print_(result, "dyprob")
-    texts = [f"dyprob #{i};" for i in range(10000, 11000)]
-    result = debugger.debug_cases({"dyprob": {"yamls/testyamls/PrompterTest.yaml": texts}})
-    print_(result, "dyprob")
-    texts = [f"dyprob #{i};" for i in range(20000, 21000)]
-    result = debugger.debug_cases({"dyprob": {"yamls/testyamls/PrompterTest.yaml": texts}})
-    print_(result, "dyprob")
-    texts = [f"dyprob #{i};" for i in range(30000, 31000)]
-    result = debugger.debug_cases({"dyprob": {"yamls/testyamls/PrompterTest.yaml": texts}})
-    print_(result, "dyprob")
+    for case in range(0, 5):
+        head = case * 10000
+        texts = [f"dyprob #{i};" for i in range(head, head + 1000)]
+        result = debugger.debug_cases({"dyprob": {"yamls/testyamls/PrompterTest.yaml": texts}})
+        print_(result, "dyprob")

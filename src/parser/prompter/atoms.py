@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from enum import StrEnum
 from hashlib import sha256
 
 
@@ -88,7 +89,7 @@ def split_top_level(s: str, sep: str = "|") -> list[str]:
             paren_depth -= 1
             current.append(ch)
         elif ch == sep and angle_depth == 0 and paren_depth == 0:
-            # ネスト外のセパレータ → 分割ポイント
+            # ネスト外のセパレータ -> 分割ポイント
             parts.append("".join(current))
             current = []
         else:
@@ -112,7 +113,7 @@ def split_prob_and_token(part: str) -> tuple[float, str]:
     Returns:
         tuple[float, str]: (確率, トークン部分文字列)
     """
-    # <...> で始まる場合はネストされた選択肢ブロック → prob は外側から与えられる
+    # <...> で始まる場合はネストされた選択肢ブロック -> prob は外側から与えられる
     if part.startswith("<"):
         return 1.0, part
 
@@ -124,237 +125,306 @@ def split_prob_and_token(part: str) -> tuple[float, str]:
     return float(part[:idx]), part[idx + 2 :]
 
 
-def parse_inline_options(text: str) -> list[tuple[list[str], float]]:
-    """
-    トークン文字列に埋め込まれた `<...>` 選択肢を展開する\n
-    `<...>` の前後にある prefix/suffix 文字列を, 展開後の先頭・末尾トークンに結合する
-
-    例:\n
-    `x<y,A|z,B>` → `[(['xy', 'A'], 1.0), (['xz', 'B'], 1.0)]`\n
-    `<a|b>_sfx`  → `[(['a_sfx'], 1.0), (['b_sfx'], 1.0)]`
-
-    **制限事項**\n
-    prefix/suffix への重み付けには対応しない\n
-    重み付けが必要な場合は `<(prefix_x:1.2)|(prefix_y:1.5)>` 等のリテラル形式で記述すること
-
-    Args:
-        text (str): `<...>` を含むトークン文字列
-
-    Returns:
-        list[tuple[list[str], float]]: [(トークン文字列リスト, 重み), ...]
-    """
-    # 最初の < の位置を特定
-    start = text.find("<")
-
-    # 対応する > を探す (ネスト考慮)
-    depth = 0
-    end = -1
-    for i, ch in enumerate(text[start:], start):
-        if ch == "<":
-            depth += 1
-        elif ch == ">":
-            depth -= 1
-            if depth == 0:
-                end = i
-                break
-
-    prefix = text[:start]  # <...> より前の文字列
-    suffix = text[end + 1 :]  # <...> より後の文字列
-    inner_block = text[start : end + 1]  # <...> 部分
-
-    # 内側の選択肢を展開
-    inner_sequences = parse_options(inner_block)
-
-    result = []
-    for tok_list, w in inner_sequences:
-        if not tok_list:
-            # トークンが空の場合は prefix+suffix を単一トークンとして扱う
-            new_list = [prefix + suffix] if (prefix or suffix) else []
-        elif len(tok_list) == 1:
-            # 単一トークン → prefix と suffix を両端に結合
-            new_list = [prefix + tok_list[0] + suffix]
-        else:
-            # 複数トークン → 先頭に prefix, 末尾に suffix を結合
-            new_list = [prefix + tok_list[0]] + tok_list[1:-1] + [tok_list[-1] + suffix]
-        result.append((new_list, w))
-
-    return result
-
-
-def parse_sequence(text: str) -> list[tuple[list[str], float]]:
-    """
-    カンマ区切りのトークン連結シーケンスを直積展開し, 全組み合わせを返す\n
-    各パーツは以下のいずれかとして処理される:\n
-    - `<...>` 形式: `_parse_options` で再帰展開\n
-    - `word<...>` 等の埋め込み形式: `_parse_inline_options` で展開\n
-    - リテラル文字列: そのまま単一トークンとして扱う
-
-    例: `t2,<3::t3|4::t4>` → `[([t2,t3], 3.0), ([t2,t4], 4.0)]`
-
-    Args:
-        text (str): カンマ区切りのシーケンス文字列
-
-    Returns:
-        list[tuple[list[str], float]]: [(トークン文字列リスト, 重み), ...]
-    """
-    # 最上位の , でパーツに分割
-    parts = split_top_level(text, sep=",")
-
-    all_candidates: list[list[tuple[list[str], float]]] = []
-
-    for part in parts:
-        if not part:
-            continue
-
-        if part.startswith("<") and part.endswith(">"):
-            # 純粋な選択肢ブロック
-            all_candidates.append(parse_options(part))
-        elif "<" in part:
-            # prefix/suffix を持つ埋め込み選択肢 (例: "word<a|b>suffix")
-            all_candidates.append(parse_inline_options(part))
-        else:
-            # リテラルトークン
-            all_candidates.append([([part], 1.0)])
-
-    if not all_candidates:
-        return [([], 1.0)]
-
-    # 直積: 全パーツの組み合わせを列挙し, 重みは積を取る
-    result: list[tuple[list[str], float]] = [([], 1.0)]
-    for candidates in all_candidates:
-        new_result = []
-        for existing_list, existing_w in result:
-            for tok_list, w in candidates:
-                new_result.append((existing_list + tok_list, existing_w * w))
-        result = new_result
-
-    return result
-
-
-def parse_options(text: str) -> list[tuple[list[str], float]]:
-    """
-    `<...>` 形式の選択肢ブロックをパースし, 展開済みの選択肢リストを返す\n
-    `|` 区切りで選択肢を分割し, 各選択肢を `_parse_sequence` で再帰的に展開する
-
-    **重みの正規化について**\n
-    選択肢間の重み比率を正しく保つため, 各選択肢の有効重み (prob * 内側合計) を揃える必要がある\n
-    具体的には全選択肢の内側合計の積を共通分母として利用する\n
-    例: `<2::hoge|<3::fuga|4::hogefuga>>` の場合\n
-    - `hoge` の内側合計=1, `<3::fuga|4::hogefuga>` の内側合計=7\n
-    - all_nt = 1 * 7 = 7\n
-    - hoge: prob=2, w=1, nt=1 → 2 * 1 * (7/1) = 14\n
-    - fuga: prob=1, w=3, nt=7 → 1 * 3 * (7/7) = 3\n
-    - hogefuga: prob=1, w=4, nt=7 → 1 * 4 * (7/7) = 4\n
-    - 結果: [(hoge,14), (fuga,3), (hogefuga,4)]
-
-    **制限事項**\n
-    `<x|y>z` のような後置文字列への重み付けには対応しない\n
-    この場合は `<(xz:1.2)|(yz:1.5)>` 等のリテラル形式で記述すること
-
-    Args:
-        text (str): `<...>` 形式の文字列
-
-    Returns:
-        list[tuple[list[str], float]]: [(トークン文字列リスト, 重み), ...]
-    """
-    assert text.startswith("<") and text.endswith(">")
-    inner = text[1:-1]
-
-    # 最上位の | で選択肢を分割
-    parts = split_top_level(inner, sep="|")
-
-    raw: list[tuple[float, list[tuple[list[str], float]]]] = []
-    for part in parts:
-        if not part:
-            continue
-
-        prob, token_part = split_prob_and_token(part)
-
-        if prob <= 0:
-            raise ValueError(f"Weight must be positive: {part}")
-
-        # token_part はカンマ連結を含む可能性があるため _parse_sequence で展開
-        sequences = parse_sequence(token_part)
-        raw.append((prob, sequences))
-
-    if not raw:
-        raise ValueError("Empty options.")
-
-    # 各選択肢の内側合計重みを計算
-    effective = [(prob, seqs, sum(w for _, w in seqs)) for prob, seqs in raw]
-
-    # 全選択肢の内側合計の積 → 共通分母として使用
-    all_nt = 1.0
-    for _, _, nt in effective:
-        all_nt *= nt
-
-    # 各トークンの最終重み = prob * inner_w * (all_nt / 自分の nt)
-    opts: list[tuple[list[str], float]] = []
-    for prob, seqs, nt in effective:
-        for tok_list, w in seqs:
-            opts.append((tok_list, prob * w * (all_nt / nt)))
-
-    return opts
+class TokenExprType(StrEnum):
+    leaf = "leaf"  # リテラルトークン1つ
+    choice = "choice"  # `<a|b>` 形式の選択ノード
+    seq = "seq"  # カンマ連結の順序ノード
+    none = "none"  # 未初期化
 
 
 @dataclass
 class TokenExpr:
     """
-    未確定状態を含めたトークン定義クラス\n
-    カンマ区切り・`<>` ネスト・インライン埋め込みを含む複合表現を保持し,
-    `confirm()` によって確定したトークン列を返す
-
-    **書式**\n
-    - リテラル: `word` または `(word:1.2)`\n
-    - 選択: `<2::a|3::b>` (重み付き選択, 省略時は重み=1.0)\n
-    - 連結: `a,b,<c|d>` (カンマ区切りで複数トークンを連結)\n
-    - ネスト: `<2::a|3::<4::b|5::c>>` (選択肢内に選択肢)\n
-    - インライン: `pre<a|b>suf` (トークン内に選択肢を埋め込み)
-
-    **重みの意味**\n
-    `token_opts` 内の float は相対的な採用確率を表す\n
-    `confirm()` では合計重みで正規化した上で確率的に1つの選択肢を返す
-
-    **制限事項**\n
-    `<x|y>z` のような後置文字列への重み付けには対応しない\n
-    重み付けが必要な場合は `<(xz:1.2)|(yz:1.5)>` 等と記述すること
+    プロンプト文字列の構文木ノード\n
+    `make()` によってテキストをパースし, `confirm()` によって確定したトークン列を返す
 
     Attributes:
-        token_opts (list[tuple[list[Token], float]]): (確定トークン列, 相対重み) のリスト
-        prob_total (float): confirm 時に用いる prob の合計値
-        key (str): confirm 時に用いるオブジェクト固有の文字列
+        kind (TokenExprType): ノード種別
+        children (list[TokenExpr]): 子ノードリスト (leaf の場合は空)
+        pweight (float): 親 choice ノードから与えられる相対重み
+        token (Token | None): leaf ノードが保持するトークン (leaf 以外は None)
+        total (float): compute_total() で算出される重みの合計
+        norm (list[tuple[TokenExpr, float]]): choice ノードの (子, 重み) リスト
+        key (str | None): next_seed() で用いるノード固有キー (make() 時に text から生成)
     """
 
-    token_opts: list[tuple[list[Token], float]] = field(default_factory=list)
-    prob_total: float = 0
-    key: str = ""
+    kind: TokenExprType = TokenExprType.none
+    children: list[TokenExpr] = field(default_factory=list)
+    pweight: float = 1.0
+    token: Token | None = None
+    total: float = 0.0
+    norm: list[tuple[TokenExpr, float]] = field(default_factory=list)
+    key: str | None = None
 
     @classmethod
-    def make(cls, text: str):
+    def parse_sequence_node(cls, text: str) -> TokenExpr:
         """
-        文字列から UnconfirmedToken インスタンスを生成する\n
-        `_parse_sequence` を通じてカンマ連結・選択・ネストを再帰的に展開する
+        カンマ区切りの連結シーケンスをパースして seq または leaf ノードを返す\n
+        カンマが1つもなければ単一ノードとして返す
 
         Args:
-            text (str): トークン定義文字列
+            text (str): カンマ区切りのシーケンス文字列
 
         Returns:
-            UnconfirmedToken: 生成された UnconfirmedToken インスタンス
+            TokenExpr: seq ノード (要素が2つ以上) または単一子ノード
+        """
+        parts = split_top_level(text, ",")
 
-        Raises:
-            ValueError: 空の選択肢, または不正なトークン形式の場合
+        children = []
+        for part in parts:
+            if not part:
+                continue
+            children.append(TokenExpr.parse_part(part))
+
+        if not children:
+            # 空文字列 -> 空の leaf
+            return cls(kind=TokenExprType.leaf, token=Token())
+
+        if len(children) == 1:
+            return children[0]
+
+        return cls(kind=TokenExprType.seq, children=children)
+
+    @classmethod
+    def parse_choice(cls, text: str) -> TokenExpr:
+        """
+        `<...>` 形式の選択ブロックをパースして choice ノードを返す\n
+        各選択肢は `prob::token_part` 形式, prob 省略時は 1.0
+
+        Args:
+            text (str): `<...>` 形式の文字列
+
+        Returns:
+            TokenExpr: choice ノード
+        """
+        inner = text[1:-1]
+        parts = split_top_level(inner, "|")
+
+        children = []
+        for part in parts:
+            if not part:
+                continue
+
+            prob, token_part = split_prob_and_token(part)
+            node = TokenExpr.parse_sequence_node(token_part)
+            node.pweight = prob
+            children.append(node)
+
+        return cls(kind=TokenExprType.choice, children=children)
+
+    @classmethod
+    def parse_inline(cls, text: str) -> TokenExpr:
+        """
+        トークン文字列に埋め込まれた `<...>` をパースし, choice ノードを返す\n
+        `<...>` 前後の prefix/suffix は各選択肢の先頭・末尾トークンに文字列として結合される\n
+        例: `x<y,A|z,B>w` -> choice( seq(xy, Aw), seq(xz, Bw) )
+
+        Args:
+            text (str): `<...>` を含むトークン文字列
+
+        Returns:
+            TokenExpr: prefix/suffix を結合済みの choice ノード
+        """
+        # 最初の < の位置を特定
+        start = text.find("<")
+
+        # 対応する > を探す (ネスト考慮)
+        depth = 0
+        end = -1
+        for i, ch in enumerate(text[start:], start):
+            if ch == "<":
+                depth += 1
+            elif ch == ">":
+                depth -= 1
+                if depth == 0:
+                    end = i
+                    break
+
+        prefix = text[:start]  # <...> より前の文字列
+        suffix = text[end + 1 :]  # <...> より後の文字列
+        inner = text[start : end + 1]  # <...> 部分
+
+        # choice ノードの各子に prefix/suffix を結合して新しい children を構築
+        choice_node = TokenExpr.parse_choice(inner)
+
+        new_children = []
+        for child in choice_node.children:
+            new_child = cls._attach_prefix_suffix(child, prefix, suffix)
+            new_child.pweight = child.pweight
+            new_children.append(new_child)
+
+        choice_node.children = new_children
+        return choice_node
+
+    @classmethod
+    def _attach_prefix_suffix(cls, node: TokenExpr, prefix: str, suffix: str) -> TokenExpr:
+        """
+        ノードの先頭トークンに prefix を, 末尾トークンに suffix を文字列結合する\n
+        - leaf: トークン文字列に直接結合\n
+        - seq: 先頭子に prefix, 末尾子に suffix を再帰適用\n
+        - choice: 全子に再帰適用 (ネストした choice への伝播)
+
+        Args:
+            node (TokenExpr): 結合対象ノード
+            prefix (str): 先頭に結合する文字列
+            suffix (str): 末尾に結合する文字列
+
+        Returns:
+            TokenExpr: prefix/suffix を結合した新しいノード
+        """
+        if node.kind == TokenExprType.leaf:
+            tok = node.token
+            new_text = prefix + (tok.token if tok else "") + suffix
+            if not new_text:
+                # prefix/suffix ともに空かつトークンも空 -> 元のノードをそのまま返す
+                return node
+            return cls(kind=TokenExprType.leaf, token=Token.make(new_text))
+
+        elif node.kind == TokenExprType.seq:
+            # 先頭子に prefix, 末尾子に suffix を適用
+            new_children = list(node.children)
+            if new_children:
+                new_children[0] = cls._attach_prefix_suffix(new_children[0], prefix, "")
+                new_children[-1] = cls._attach_prefix_suffix(new_children[-1], "", suffix)
+            return cls(kind=TokenExprType.seq, children=new_children)
+
+        elif node.kind == TokenExprType.choice:
+            # ネストした choice -> 全子に再帰
+            new_children = []
+            for child in node.children:
+                new_child = cls._attach_prefix_suffix(child, prefix, suffix)
+                new_child.pweight = child.pweight
+                new_children.append(new_child)
+            return cls(kind=TokenExprType.choice, children=new_children)
+
+        return node
+
+    @classmethod
+    def parse_part(cls, part: str) -> TokenExpr:
+        """
+        単一パーツ文字列を適切なノードにパースする\n
+        - `<...>` 形式 -> choice ノード\n
+        - `<` を含む -> inline ノード (parse_inline)\n
+        - その他 -> leaf ノード
+
+        Args:
+            part (str): パーツ文字列
+
+        Returns:
+            TokenExpr: パース結果のノード
+        """
+        part = part.strip()
+
+        if part.startswith("<") and part.endswith(">"):
+            return TokenExpr.parse_choice(part)
+
+        if "<" in part:
+            return TokenExpr.parse_inline(part)
+
+        return cls(kind=TokenExprType.leaf, token=Token.make(part))
+
+    def compute_total(self) -> None:
+        """
+        各ノードの重み合計 `total` と choice ノードの正規化済みリスト `norm` を再帰的に算出する\n
+        `make()` 内で自動的に呼ばれる
+
+        - leaf: total = 1.0\n
+        - seq: total = 全子の total の積 (直積展開の組み合わせ数に対応)\n
+        - choice: total = 全子の pweight の和, norm = [(子, pweight), ...]
+        """
+        if self.kind == TokenExprType.leaf:
+            self.total = 1.0
+        elif self.kind == TokenExprType.seq:
+            t = 1.0
+            for c in self.children:
+                c.compute_total()
+                t *= c.total
+            self.total = t
+        elif self.kind == TokenExprType.choice:
+            for c in self.children:
+                c.compute_total()
+            self.norm = []
+            self.total = 0.0
+            for c in self.children:
+                # pweight をそのまま区間幅として使用
+                # sample() 内で子の [0, c.total) へのスケーリングにより正しい確率で選択される
+                self.norm.append((c, c.pweight))
+                self.total += c.pweight
+
+    @classmethod
+    def make(cls, text: str | None) -> TokenExpr:
+        """
+        テキストから TokenExpr ノード木を構築する\n
+        パース後に compute_total() を呼び出して重みを確定する
+
+        Args:
+            text (str | None): プロンプト文字列, None の場合は空ノードを返す
+
+        Returns:
+            TokenExpr: 構築されたノード木
         """
         if text is None:
             return cls()
 
-        sequences = parse_sequence(text)
-        if not sequences:
-            raise ValueError("Empty options.")
+        node = cls.parse_sequence_node(text)
+        node.key = text  # text をそのままキーに使用
+        node.compute_total()
+        return node
 
-        opts = [([Token.make(t) for t in tok_list], w) for tok_list, w in sequences]
-        total = sum(w for _, w in opts)
-        key = "|".join(",".join(tok.token for tok in toks) for toks, _ in opts)
-        return cls(token_opts=opts, prob_total=total, key=key)
+    def next_seed(self, crnt_seed: str, idx: int) -> str:
+        """
+        子ノードへ渡す派生シードを生成する\n
+        同一 seed・同一ノード・同一インデックスに対して常に同じ値を返す\n
+        seq の各子や choice の選択先が互いに独立したシードを持つことを保証する
+
+        Args:
+            crnt_seed (str): 現在のシード文字列
+            idx (int): 子ノードのインデックス
+
+        Returns:
+            str: 派生シード (SHA-256 hexdigest)
+        """
+        h = sha256()
+        h.update(crnt_seed.encode())
+        h.update(idx.to_bytes(4, "big"))
+        h.update((self.key or "").encode())
+        return h.hexdigest()
+
+    def sample(self, seed: str) -> list[Token]:
+        """
+        シードを元に再帰的にトークン列を確定する\n
+        - leaf: 保持するトークンを返す\n
+        - seq: 各子に派生シードを渡して連結\n
+        - choice: pweight に従って1つの子を選択し, その子に派生シードを渡す
+
+        Args:
+            seed (str): 選択を決定するシード文字列
+
+        Returns:
+            list[Token]: 確定したトークン列
+        """
+        if self.kind == TokenExprType.leaf:
+            return [self.token] if self.token and self.token.token else []
+        elif self.kind == TokenExprType.seq:
+            out = []
+            for i, c in enumerate(self.children):
+                # 各子に独立した派生シードを渡して連結
+                out.extend(c.sample(self.next_seed(seed, i)))
+            return out
+        elif self.kind == TokenExprType.choice:
+            h = int(sha256(seed.encode()).hexdigest(), 16)
+            r = (h / 2**256) * self.total
+            acc = 0.0
+            for i, (c, w) in enumerate(self.norm):
+                if r < acc + w:
+                    return c.sample(self.next_seed(seed, i))
+                acc += w
+
+            # 浮動小数誤差対策: 最後の選択肢を返す
+            last_idx = len(self.norm) - 1
+            return self.norm[last_idx][0].sample(self.next_seed(seed, last_idx))
+
+        return []
 
     def confirm(self, seed: str) -> list[Token]:
         """
@@ -366,33 +436,10 @@ class TokenExpr:
             seed (str): 選択を決定するシード文字列
 
         Returns:
-            list[Token]: 確定したトークン列
-
-        Raises:
-            ValueError: 合計重みが 0 以下の場合
+            list[Token]: 確定したトークン列 (選択肢がない場合は空リスト)
         """
-        if not self.token_opts:
-            return []
-
-        def return_(toks: list[Token]) -> list[Token]:
-            if not toks or (len(toks) == 1 and not toks[0].token):
-                return []
-            else:
-                return toks
-
-        # SHA-256 ハッシュを [0, prob_total) の範囲の乱数として使用
-        # key はオブジェクトごとに異なる値を算出するために使用
-        h = int(sha256(f"{seed}|{self.key}".encode()).hexdigest(), 16)
-        r = (h / 2**256) * self.prob_total
-
-        acc_prob = 0.0
-        for tok_list, prob in self.token_opts:
-            acc_prob += prob
-            if r < acc_prob:
-                return return_(tok_list)
-
-        # 浮動小数誤差対策: 最後の選択肢を返す
-        return return_(self.token_opts[-1][0])
+        tokens = self.sample(seed)
+        return [] if not tokens or (len(tokens) == 1 and not tokens[0].token) else tokens
 
 
 class CategoryPath(tuple[str, ...]):
@@ -445,8 +492,8 @@ class Report:
         capturegrp (int): 使用したキャプチャグループ番号
         screen_id (str): このマッチが発生した Screen の ID
         paths (set[CategoryPath]): このマッチに関連する CategoryPath の集合\n
-            同一マッチが複数の CategoryPath に属する場合（import/recurse で
-            同パターンを複数箇所で使う場合など）に複数要素を持つ
+            同一マッチが複数の CategoryPath に属する場合 (import/recurse で
+            同パターンを複数箇所で使う場合など)に複数要素を持つ
     """
 
     matched: str = ""
