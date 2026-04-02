@@ -682,8 +682,8 @@ positive: <2::hoge|<3::fuga|4::hogefuga>>
 - すなわち, 外側の1候補に割り当てられた重みが内側の各候補に比例配分される
 
 ```yaml
-# <2::hoge|<3::fuga|4::hogefuga>> → hoge:fuga:hogefuga = 14:3:4
-# <2::hoge|3::<3::fuga|4::hogefuga>> → hoge:fuga:hogefuga = 14:9:12
+# <2::hoge|<3::fuga|4::hogefuga>> -> hoge:fuga:hogefuga = 14:3:4
+# <2::hoge|3::<3::fuga|4::hogefuga>> -> hoge:fuga:hogefuga = 14:9:12
 positive: <2::hoge|3::<3::fuga|4::hogefuga>>
 ```
 
