@@ -14,6 +14,7 @@ if parent_dir not in sys.path:
 
 
 from common.functions import dump_json  # noqa: E402
+from parser.prompter.atoms import TokenExpr, TokenExprType  # noqa: E402
 from parser.prompter.prompter import Prompter  # noqa: E402
 
 CORRECT_RESULT = {
@@ -2196,8 +2197,43 @@ def print_yamldict(path: Path) -> None:
     debugger.dump_normalized_yamldict()
 
 
-def test_prob() -> None:
-    def print_(result: dict[str, dict[str, dict[str, Any]]], case_name: str) -> None:
+def test_prob(trials: int) -> None:
+    max_trials = 100000000
+    ignition = "dyprob"
+    true_str = "true"
+
+    def prob_of_token(node: TokenExpr, target: str) -> float:
+        """
+        TokenExpr ツリーを再帰的に辿り, target トークンが選ばれる理論確率を返す
+
+        Args:
+            node (TokenExpr): ルートノード
+            target (str): 確率を求めるトークン文字列
+
+        Returns:
+            float: [0.0, 1.0] の確率
+        """
+        if node.kind == TokenExprType.leaf:
+            return 1.0 if (node.token and node.token.token == target) else 0.0
+        elif node.kind == TokenExprType.seq:
+            # seq は連結なので各子が独立に target を返す確率の積
+            # (全子が target を返すケースのみ target になる、という意味ではなく
+            #  seq の出力に target が含まれる確率は別途必要だが、
+            #  通常 seq の各子は異なるトークンを出すので sum で近似)
+            # → seq は「全トークンの列」を返すため、
+            #   「target が1つ以上含まれる確率」ではなく
+            #   「全トークンが target である確率」を返す用途には不向き
+            #   ここでは choice の分岐確率計算を目的とするため
+            #   seq 全体が target を返す確率 = 全子が target を返す確率の積
+            return sum(prob_of_token(c, target) for c in node.children) / len(node.children)
+        elif node.kind == TokenExprType.choice:
+            total = node.total
+            if total <= 0:
+                return 0.0
+            return sum((w / total) * prob_of_token(c, target) for c, w in node.norm)
+        return 0.0
+
+    def print_(result: dict[str, dict[str, dict[str, Any]]], case_name: str, case_idx: int) -> None:
         result_body = result[f"CASE '{case_name}'"]
         whole = len(result_body.keys())
         trues = sum(
@@ -2205,13 +2241,20 @@ def test_prob() -> None:
             for item in result_body.values()
             for pos in item["POS"]
             for t in pos.tokens
-            if t.token == "true"
+            if t.token == true_str
         )
-        print(f"Trues={trues}, Whole={whole}, ratio={float(trues) / float(whole) * 100}%")
+        for screen in debugger.prompter.screens:
+            if str(screen.ignition) == ignition:
+                break
+        theoritic = prob_of_token(screen.categories[0].rules[case].positive_tokens, true_str)
+        print(
+            f"Trues={trues}, Whole={whole}, ratio={float(trues) / float(whole) * 100}%, theoritic={theoritic}%"  # noqa: E501
+        )
 
     debugger = PrompterDebugger()
     for case in range(0, 6):
-        head = case * 10000
-        texts = [f"dyprob #{i};" for i in range(head, head + 10000)]
-        result = debugger.debug_cases({"dyprob": {"yamls/testyamls/PrompterTest.yaml": texts}})
-        print_(result, "dyprob")
+        head = case * max_trials
+        trials = 0 if trials < 0 else max_trials if trials > max_trials else trials
+        texts = [f"{ignition} #{i};" for i in range(head, head + trials)]
+        result = debugger.debug_cases({ignition: {"yamls/testyamls/PrompterTest.yaml": texts}})
+        print_(result, ignition, case)

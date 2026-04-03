@@ -26,6 +26,7 @@ parser = argparse.ArgumentParser(
     epilog="ex: python debug_worker.py -m TW",
 )
 parser.add_argument("-p", "--prompter", action="store_true", help="Prompter")
+parser.add_argument("-P", "--prompter_prob", type=int, help="Prompter's prob checker")
 parser.add_argument("-y", "--yaml", type=str, help="Print normarized YAML")
 parser.add_argument("-i", "--interpreter", choices=["W", "R", "T"], default="T", help="Interpreter")
 args = parser.parse_args()
@@ -33,7 +34,8 @@ args = parser.parse_args()
 
 if args.prompter:
     debug_prompter()
-    test_prob()
+elif args.prompter_prob:
+    test_prob(args.prompter_prob)
 elif args.yaml:
     print_yamldict(args.yaml)
 elif args.interpreter:
