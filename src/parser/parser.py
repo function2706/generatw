@@ -279,21 +279,18 @@ class Parser:
         クリップボードの編集が許可されている場合はダミーを設定する\n
         そうでない場合はダミープロンプトをワンショットで Master へ伝える
         """
-        dummy_input = (
-            f"debug name:{str(random.randint(1, 3))} vibe:{str(random.randint(1, 9))}"
-            f" upper:{str(random.randint(1, 9))} lower:{str(random.randint(1, 9))}"
-        )
+        dummy_input = f"debug name vibe upper lower #{str(random.randint(0, 10000))}"
         self.event.in_debugging.set()
         if self.master.crnt_gui_configs.allow_edit_clipboard:
             # スレッド上の手順に委ねる
             pyperclip.copy(dummy_input)
             return
 
-        prompt_set, _ = self.debug_interpreter.make_prompt(dummy_input)
-        if prompt_set is None:
+        prompt, _ = self.debug_interpreter.make_prompt(dummy_input)
+        if prompt is None:
             return
 
-        self.inform_new_prompt(prompt_set)
+        self.inform_new_prompt(prompt)
 
     def parser(self) -> None:
         """
