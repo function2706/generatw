@@ -189,7 +189,8 @@ class TokenExpr:
     def parse_choice(cls, text: str) -> TokenExpr:
         """
         `<...>` 形式の選択ブロックをパースして choice ノードを返す\n
-        各選択肢は `prob::token_part` 形式, prob 省略時は 1.0
+        各選択肢は `prob::token_part` 形式, prob 省略時は 1.0\n
+        空文字列 -> pweight=1.0 の空 leaf として扱う(<|foo> の空パターンの抽選機会のため)
 
         Args:
             text (str): `<...>` 形式の文字列
@@ -203,6 +204,9 @@ class TokenExpr:
         children = []
         for part in parts:
             if not part:
+                node = cls(kind=TokenExprType.leaf, token=Token())
+                node.pweight = 1.0
+                children.append(node)
                 continue
 
             prob, token_part = split_prob_and_token(part)
@@ -279,7 +283,6 @@ class TokenExpr:
                 # prefix/suffix ともに空かつトークンも空 -> 元のノードをそのまま返す
                 return node
             return cls(kind=TokenExprType.leaf, token=Token.make(new_text))
-
         elif node.kind == TokenExprType.seq:
             # 先頭子に prefix, 末尾子に suffix を適用
             new_children = list(node.children)
@@ -287,7 +290,6 @@ class TokenExpr:
                 new_children[0] = cls._attach_prefix_suffix(new_children[0], prefix, "")
                 new_children[-1] = cls._attach_prefix_suffix(new_children[-1], "", suffix)
             return cls(kind=TokenExprType.seq, children=new_children)
-
         elif node.kind == TokenExprType.choice:
             # ネストした choice -> 全子に再帰
             new_children = []
@@ -352,13 +354,17 @@ class TokenExpr:
                 self.total += c.pweight
 
     @classmethod
-    def make(cls, text: str | None) -> TokenExpr:
+    def make(cls, text: str | None, path: CategoryPath, matches: set[str] = None) -> TokenExpr:
         """
         テキストから TokenExpr ノード木を構築する\n
         パース後に compute_total() を呼び出して重みを確定する
 
         Args:
             text (str | None): プロンプト文字列, None の場合は空ノードを返す
+            path (CategoryPath): カテゴリーパス
+                複数カテゴリーが定義されていて, それらのいくつかがヒットした場合に必要
+            matches (set[str]): マッチ条件
+                maps に複数ヒットが定義されていて, それらのいくつかがヒットした場合に必要
 
         Returns:
             TokenExpr: 構築されたノード木
@@ -367,28 +373,10 @@ class TokenExpr:
             return cls()
 
         node = cls.parse_sequence_node(text)
-        node.key = text  # text をそのままキーに使用
+        match_str = str(sorted(matches)) if matches is not None else "empty"
+        node.key = f"{text}#{CategoryPath(path).stringfy()}#{match_str}"
         node.compute_total()
         return node
-
-    def next_seed(self, crnt_seed: str, idx: int) -> str:
-        """
-        子ノードへ渡す派生シードを生成する\n
-        同一 seed・同一ノード・同一インデックスに対して常に同じ値を返す\n
-        seq の各子や choice の選択先が互いに独立したシードを持つことを保証する
-
-        Args:
-            crnt_seed (str): 現在のシード文字列
-            idx (int): 子ノードのインデックス
-
-        Returns:
-            str: 派生シード (SHA-256 hexdigest)
-        """
-        h = sha256()
-        h.update(crnt_seed.encode())
-        h.update(idx.to_bytes(4, "big"))
-        h.update((self.key or "").encode())
-        return h.hexdigest()
 
     def sample(self, seed: str) -> list[Token]:
         """
@@ -409,20 +397,21 @@ class TokenExpr:
             out = []
             for i, c in enumerate(self.children):
                 # 各子に独立した派生シードを渡して連結
-                out.extend(c.sample(self.next_seed(seed, i)))
+                out.extend(c.sample(f"{seed}#{i}"))
             return out
         elif self.kind == TokenExprType.choice:
-            h = int(sha256(seed.encode()).hexdigest(), 16)
-            r = (h / 2**256) * self.total
+            h = sha256(seed.encode())
+            h.update((self.key or "").encode())
+            r = (int(h.hexdigest(), 16) / 2**256) * self.total
             acc = 0.0
             for i, (c, w) in enumerate(self.norm):
                 if r < acc + w:
-                    return c.sample(self.next_seed(seed, i))
+                    return c.sample(f"{seed}#{i}")
                 acc += w
 
             # 浮動小数誤差対策: 最後の選択肢を返す
             last_idx = len(self.norm) - 1
-            return self.norm[last_idx][0].sample(self.next_seed(seed, last_idx))
+            return self.norm[last_idx][0].sample(f"{seed}#{i}")
 
         return []
 

@@ -53,13 +53,14 @@ class Rule(ABC):
 
     @classmethod
     @abstractmethod
-    def make(cls, key: str, val: str | dict | list):
+    def make(cls, key: str, val: str | dict | list, path: CategoryPath):
         """
         YAML の定義から Rule インスタンスを生成する
 
         Args:
             key (str): ルールのキー
             val (str | dict | list): ルールの値
+            path (CategoryPath): カテゴリーパス
 
         Returns:
             Rule: 生成された Rule インスタンス
@@ -99,7 +100,9 @@ class Rule(ABC):
         if not self.check_hit(match):
             return None
 
-        return self.positive_tokens.confirm(seed), self.negative_tokens.confirm(seed)
+        return self.positive_tokens.confirm(f"{seed}#{match}"), self.negative_tokens.confirm(
+            f"{seed}#{match}"
+        )
 
 
 @dataclass
@@ -117,17 +120,17 @@ class MapsRule(Rule):
     matches: set[str] = field(default_factory=set)
 
     @classmethod
-    def make(cls, key: str, val: str | dict | list):
+    def make(cls, key: str, val: str | dict | list, path: CategoryPath):
         obj = cls()
 
         obj.matches = {str(key)}
         if isinstance(val, str):
             # {'xxx': 'pos1,(pos2:1.2)'} 型
-            obj.positive_tokens = TokenExpr.make(val)
+            obj.positive_tokens = TokenExpr.make(val, path, obj.matches)
             obj.negative_tokens = TokenExpr()
         elif isinstance(val, dict):
-            obj.positive_tokens = TokenExpr.make(val.get(KeyName.positive))
-            obj.negative_tokens = TokenExpr.make(val.get(KeyName.negative))
+            obj.positive_tokens = TokenExpr.make(val.get(KeyName.positive), path, obj.matches)
+            obj.negative_tokens = TokenExpr.make(val.get(KeyName.negative), path, obj.matches)
         else:
             raise ValueError(
                 f"Rule '{key}' in 'maps' must be a string or dict, but {type(val).__name__}."
@@ -155,26 +158,26 @@ class RangesRule(Rule):
     matches: set[str] = field(default_factory=set)
 
     @classmethod
-    def make(cls, key: str, val: str | dict | list):
+    def make(cls, key: str, val: str | dict | list, path: CategoryPath):
         obj = cls()
 
         key_str = str(key)
         if isinstance(val, list):
             # {'pos1,(pos2:1.2)': ['con1', 'con2']} 型
             obj.matches = {str(i) for i in val}
-            obj.positive_tokens = TokenExpr.make(key_str)
+            obj.positive_tokens = TokenExpr.make(key_str, path, obj.matches)
             obj.negative_tokens = TokenExpr()
         elif isinstance(val, dict):
             if isinstance(val.get(KeyName.positive), list):
                 # {'pos1,(pos2:1.2)': {'positive': ['con1', 'con2'], 'negative': 'neg1'}} 型
                 obj.matches = {str(i) for i in val.get(KeyName.positive, [])}
-                obj.positive_tokens = TokenExpr.make(key_str)
-                obj.negative_tokens = TokenExpr.make(val.get(KeyName.negative))
+                obj.positive_tokens = TokenExpr.make(key_str, path, obj.matches)
+                obj.negative_tokens = TokenExpr.make(val.get(KeyName.negative), path, obj.matches)
             elif isinstance(val.get(KeyName.negative), list):
                 # {'pos1,(pos2:1.2)': {'positive': 'pos1', 'negative': ['con1', 'con2'], }} 型
                 obj.matches = {str(i) for i in val.get(KeyName.negative, [])}
-                obj.positive_tokens = TokenExpr.make(val.get(KeyName.positive))
-                obj.negative_tokens = TokenExpr.make(key_str)
+                obj.positive_tokens = TokenExpr.make(val.get(KeyName.positive), path, obj.matches)
+                obj.negative_tokens = TokenExpr.make(key_str, path, obj.matches)
             else:
                 raise ValueError(
                     f"Rule '{key}' in 'ranges' must have 'positive' or 'negative' label."
@@ -205,7 +208,7 @@ class IntervalsRule(Rule):
     interval: tuple[float, float] = field(default_factory=tuple)
 
     @classmethod
-    def make(cls, key: str, val: str | dict | list):
+    def make(cls, key: str, val: str | dict | list, path: CategoryPath):
         def check_list(lst: list) -> tuple[float, float]:
             if len(lst) != 2:
                 raise ValueError(f"'interval' list must be 2-length, this is {len(lst)}-length.")
@@ -224,19 +227,23 @@ class IntervalsRule(Rule):
         if isinstance(val, list):
             # {'pos1,(pos2:1.2)': [min, max]} 型
             min, max = check_list(val)
-            obj.positive_tokens = TokenExpr.make(key_str)
+            obj.positive_tokens = TokenExpr.make(key_str, path, {str(min), str(max)})
             obj.negative_tokens = TokenExpr()
         elif isinstance(val, dict):
             if isinstance(val.get(KeyName.positive), list):
                 # {'pos1,(pos2:1.2)': {'positive': [min, max], 'negative': 'neg1'}} 型
                 min, max = check_list(val.get(KeyName.positive))
-                obj.positive_tokens = TokenExpr.make(key_str)
-                obj.negative_tokens = TokenExpr.make(val.get(KeyName.negative))
+                obj.positive_tokens = TokenExpr.make(key_str, path, {str(min), str(max)})
+                obj.negative_tokens = TokenExpr.make(
+                    val.get(KeyName.negative), path, {str(min), str(max)}
+                )
             elif isinstance(val.get(KeyName.negative), list):
                 # {'pos1,(pos2:1.2)': {'positive': 'pos1', 'negative': [min, max], }} 型
                 min, max = check_list(val.get(KeyName.negative))
-                obj.positive_tokens = TokenExpr.make(val.get(KeyName.positive))
-                obj.negative_tokens = TokenExpr.make(key_str)
+                obj.positive_tokens = TokenExpr.make(
+                    val.get(KeyName.positive), path, {str(min), str(max)}
+                )
+                obj.negative_tokens = TokenExpr.make(key_str, path, {str(min), str(max)})
             else:
                 raise ValueError(
                     f"Rule '{key}' in 'intervals' must have 'positive' or 'negative' label."
@@ -265,15 +272,15 @@ class DefaultRule(Rule):
     """
 
     @classmethod
-    def make(cls, key: str, val: str | dict | list):
+    def make(cls, key: str, val: str | dict | list, path: CategoryPath):
         obj = cls()
 
         if isinstance(val, str):
-            obj.positive_tokens = TokenExpr.make(val)
+            obj.positive_tokens = TokenExpr.make(val, path)
             obj.negative_tokens = TokenExpr()
         elif isinstance(val, dict):
-            obj.positive_tokens = TokenExpr.make(val.get(KeyName.positive))
-            obj.negative_tokens = TokenExpr.make(val.get(KeyName.negative))
+            obj.positive_tokens = TokenExpr.make(val.get(KeyName.positive), path)
+            obj.negative_tokens = TokenExpr.make(val.get(KeyName.negative), path)
         else:
             raise ValueError("Syntax of 'default' is invalid.")
 
@@ -425,13 +432,13 @@ class Category:
                 )
             elif KeyName.maps in category:
                 for key, val in category.get(KeyName.maps).items():
-                    obj.rules.append(MapsRule.make(key=key, val=val))
+                    obj.rules.append(MapsRule.make(key=key, val=val, path=category_path))
             elif KeyName.ranges in category:
                 for key, val in category.get(KeyName.ranges).items():
-                    obj.rules.append(RangesRule.make(key=key, val=val))
+                    obj.rules.append(RangesRule.make(key=key, val=val, path=category_path))
             elif KeyName.intervals in category:
                 for key, val in category.get(KeyName.intervals).items():
-                    obj.rules.append(IntervalsRule.make(key=key, val=val))
+                    obj.rules.append(IntervalsRule.make(key=key, val=val, path=category_path))
             elif KeyName.recurse in category:
                 for key, val in category.get(KeyName.recurse).items():
                     collect_categories(
@@ -447,7 +454,7 @@ class Category:
         if KeyName.default in category:
             val = category.get(KeyName.default)
             try:
-                obj.default = DefaultRule.make(KeyName.default, val)
+                obj.default = DefaultRule.make(KeyName.default, val, path=category_path)
             except Exception as e:
                 raise ValueError(f"Invalid default in field '{obj.pattern.pattern}'") from e
 
@@ -643,11 +650,11 @@ class Screen:
                 obj.ignition = re.compile(str(val))
             elif key == KeyName.common:
                 if isinstance(val, str):
-                    obj.common_positive = TokenExpr.make(val)
+                    obj.common_positive = TokenExpr.make(val, (screen_id,))
                     obj.common_negative = TokenExpr()
                 elif isinstance(val, dict):
-                    obj.common_positive = TokenExpr.make(val.get(KeyName.positive))
-                    obj.common_negative = TokenExpr.make(val.get(KeyName.negative))
+                    obj.common_positive = TokenExpr.make(val.get(KeyName.positive), (screen_id,))
+                    obj.common_negative = TokenExpr.make(val.get(KeyName.negative), (screen_id,))
                 elif isinstance(val, list):
                     # import
                     src_screen_id = val[0]

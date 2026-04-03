@@ -1201,7 +1201,7 @@ CORRECT_RESULT = {
                     "path": [],
                     "tokens": [
                         {"token": "common_neg", "weight": 1.0},
-                        {"token": "com_neg", "weight": 1.0},
+                        {"token": "COM_NEG", "weight": 1.0},
                         {"token": "COMMON_NEG", "weight": 1.0},
                     ],
                 },
@@ -1233,7 +1233,7 @@ CORRECT_RESULT = {
                     "path": [],
                     "tokens": [
                         {"token": "common_neg", "weight": 1.0},
-                        {"token": "com_neg", "weight": 1.0},
+                        {"token": "COM_NEG", "weight": 1.0},
                         {"token": "COMMON_NEG", "weight": 1.0},
                     ],
                 }
@@ -1247,7 +1247,7 @@ CORRECT_RESULT = {
                     "path": ["maps"],
                     "tokens": [
                         {"token": "head", "weight": 1.0},
-                        {"token": "weight", "weight": 1.2},
+                        {"token": "WEIGHT", "weight": 1.2},
                         {"token": "tail", "weight": 1.0},
                     ],
                 },
@@ -1255,7 +1255,7 @@ CORRECT_RESULT = {
                     "path": [],
                     "tokens": [
                         {"token": "common", "weight": 1.0},
-                        {"token": "COM", "weight": 1.0},
+                        {"token": "com", "weight": 1.0},
                         {"token": "COMMON", "weight": 1.0},
                     ],
                 },
@@ -1330,7 +1330,7 @@ CORRECT_RESULT = {
                     "path": [],
                     "tokens": [
                         {"token": "common_neg", "weight": 1.0},
-                        {"token": "com_neg", "weight": 1.0},
+                        {"token": "COM_NEG", "weight": 1.0},
                         {"token": "COMMON_NEG", "weight": 1.0},
                     ],
                 }
@@ -1362,7 +1362,7 @@ CORRECT_RESULT = {
                     "path": [],
                     "tokens": [
                         {"token": "common_neg", "weight": 1.0},
-                        {"token": "com_neg", "weight": 1.0},
+                        {"token": "COM_NEG", "weight": 1.0},
                         {"token": "COMMON_NEG", "weight": 1.0},
                     ],
                 }
@@ -1416,7 +1416,7 @@ CORRECT_RESULT = {
                     "path": ["ranges"],
                     "tokens": [
                         {"token": "head", "weight": 1.0},
-                        {"token": "POSNEGPOS", "weight": 1.0},
+                        {"token": "posnegpos", "weight": 1.0},
                         {"token": "tail", "weight": 1.0},
                     ],
                 },
@@ -1474,7 +1474,7 @@ CORRECT_RESULT = {
                     "path": ["ranges"],
                     "tokens": [
                         {"token": "HEAD", "weight": 1.0},
-                        {"token": "POSNEGNEG", "weight": 1.0},
+                        {"token": "posnegneg", "weight": 1.0},
                         {"token": "TAIL", "weight": 1.0},
                     ],
                 },
@@ -1482,7 +1482,7 @@ CORRECT_RESULT = {
                     "path": [],
                     "tokens": [
                         {"token": "common_neg", "weight": 1.0},
-                        {"token": "COM_NEG", "weight": 1.0},
+                        {"token": "com_neg", "weight": 1.0},
                         {"token": "COMMON_NEG", "weight": 1.0},
                     ],
                 },
@@ -1496,7 +1496,7 @@ CORRECT_RESULT = {
                     "path": ["ranges"],
                     "tokens": [
                         {"token": "defposranges", "weight": 1.0},
-                        {"token": "def", "weight": 1.0},
+                        {"token": "DEF", "weight": 1.0},
                         {"token": "DEFPOSRANGES", "weight": 1.0},
                     ],
                 },
@@ -1552,7 +1552,7 @@ CORRECT_RESULT = {
                     "path": [],
                     "tokens": [
                         {"token": "common", "weight": 1.0},
-                        {"token": "com", "weight": 1.0},
+                        {"token": "COM", "weight": 1.0},
                         {"token": "COMMON", "weight": 1.0},
                     ],
                 },
@@ -1660,7 +1660,7 @@ CORRECT_RESULT = {
                     "path": [],
                     "tokens": [
                         {"token": "common", "weight": 1.0},
-                        {"token": "com", "weight": 1.0},
+                        {"token": "COM", "weight": 1.0},
                         {"token": "COMMON", "weight": 1.0},
                     ],
                 },
@@ -1670,7 +1670,7 @@ CORRECT_RESULT = {
                     "path": [],
                     "tokens": [
                         {"token": "common_neg", "weight": 1.0},
-                        {"token": "com_neg", "weight": 1.0},
+                        {"token": "COM_NEG", "weight": 1.0},
                         {"token": "COMMON_NEG", "weight": 1.0},
                     ],
                 }
@@ -1688,7 +1688,7 @@ CORRECT_RESULT = {
                     "path": [],
                     "tokens": [
                         {"token": "common", "weight": 1.0},
-                        {"token": "com", "weight": 1.0},
+                        {"token": "COM", "weight": 1.0},
                         {"token": "COMMON", "weight": 1.0},
                     ],
                 },
@@ -1698,7 +1698,7 @@ CORRECT_RESULT = {
                     "path": [],
                     "tokens": [
                         {"token": "common_neg", "weight": 1.0},
-                        {"token": "com_neg", "weight": 1.0},
+                        {"token": "COM_NEG", "weight": 1.0},
                         {"token": "COMMON_NEG", "weight": 1.0},
                     ],
                 }
@@ -1711,23 +1711,23 @@ CORRECT_RESULT = {
                 {
                     "path": ["complex"],
                     "tokens": [
-                        {"token": "i", "weight": 1.0},
                         {"token": "j", "weight": 1.0},
                         {"token": "h", "weight": 1.0},
-                        {"token": "c", "weight": 1.0},
-                        {"token": "c", "weight": 1.0},
-                        {"token": "b", "weight": 1.0},
+                        {"token": "f", "weight": 1.0},
+                        {"token": "e", "weight": 1.0},
                         {"token": "i", "weight": 1.0},
-                        {"token": "a", "weight": 1.0},
-                        {"token": "d", "weight": 1.0},
+                        {"token": "c", "weight": 1.0},
+                        {"token": "j", "weight": 1.0},
                         {"token": "i", "weight": 1.0},
+                        {"token": "c", "weight": 1.0},
+                        {"token": "h", "weight": 1.0},
                     ],
                 },
                 {
                     "path": [],
                     "tokens": [
                         {"token": "common", "weight": 1.0},
-                        {"token": "com", "weight": 1.0},
+                        {"token": "COM", "weight": 1.0},
                         {"token": "COMMON", "weight": 1.0},
                     ],
                 },
@@ -1737,7 +1737,7 @@ CORRECT_RESULT = {
                     "path": [],
                     "tokens": [
                         {"token": "common_neg", "weight": 1.0},
-                        {"token": "com_neg", "weight": 1.0},
+                        {"token": "COM_NEG", "weight": 1.0},
                         {"token": "COMMON_NEG", "weight": 1.0},
                     ],
                 }
@@ -1797,11 +1797,91 @@ CORRECT_RESULT = {
                     "path": [],
                     "tokens": [
                         {"token": "common_neg", "weight": 1.0},
-                        {"token": "com_neg", "weight": 1.0},
+                        {"token": "COM_NEG", "weight": 1.0},
                         {"token": "COMMON_NEG", "weight": 1.0},
                     ],
                 }
             ],
+            "REP": [],
+        },
+        "PrompterTest-20: 'variability choices'": {
+            "SID": "variability",
+            "POS": [
+                {
+                    "path": ["choices"],
+                    "tokens": [
+                        {"token": "G", "weight": 1.0},
+                        {"token": "G", "weight": 1.0},
+                        {"token": "J", "weight": 1.0},
+                        {"token": "E", "weight": 1.0},
+                    ],
+                },
+                {"path": [], "tokens": [{"token": "c1", "weight": 1.0}]},
+            ],
+            "NEG": [],
+            "REP": [],
+        },
+        "PrompterTest-21: 'variability internal_maps_1 internal_maps_2 internal_maps_3 internal_maps_4'": {  # noqa: E501
+            "SID": "variability",
+            "POS": [
+                {
+                    "path": ["internal_maps"],
+                    "tokens": [
+                        {"token": "d", "weight": 1.0},
+                        {"token": "a", "weight": 1.0},
+                        {"token": "c", "weight": 1.0},
+                        {"token": "h", "weight": 1.0},
+                    ],
+                },
+                {"path": [], "tokens": [{"token": "c2", "weight": 1.0}]},
+            ],
+            "NEG": [],
+            "REP": [],
+        },
+        "PrompterTest-22: 'variability internal_ranges_1 internal_ranges_2 internal_ranges_3 internal_ranges_4'": {  # noqa: E501
+            "SID": "variability",
+            "POS": [
+                {
+                    "path": ["internal_ranges"],
+                    "tokens": [
+                        {"token": "d", "weight": 1.0},
+                        {"token": "g", "weight": 1.0},
+                        {"token": "d", "weight": 1.0},
+                        {"token": "h", "weight": 1.0},
+                    ],
+                },
+                {"path": [], "tokens": [{"token": "c9", "weight": 1.0}]},
+            ],
+            "NEG": [],
+            "REP": [],
+        },
+        "PrompterTest-23: 'variability internal_intervals_1 internal_intervals_2 internal_intervals_3 internal_intervals_4'": {  # noqa: E501
+            "SID": "variability",
+            "POS": [
+                {
+                    "path": ["internal_intervals"],
+                    "tokens": [
+                        {"token": "f", "weight": 1.0},
+                        {"token": "c", "weight": 1.0},
+                        {"token": "a", "weight": 1.0},
+                        {"token": "h", "weight": 1.0},
+                    ],
+                },
+                {"path": [], "tokens": [{"token": "c2", "weight": 1.0}]},
+            ],
+            "NEG": [],
+            "REP": [],
+        },
+        "PrompterTest-24: 'variability external_1 external_2 external_3 external_4'": {
+            "SID": "variability",
+            "POS": [
+                {"path": ["external_1"], "tokens": [{"token": "0", "weight": 1.0}]},
+                {"path": ["external_2"], "tokens": [{"token": "3", "weight": 1.0}]},
+                {"path": ["external_3"], "tokens": [{"token": "0", "weight": 1.0}]},
+                {"path": ["external_4"], "tokens": [{"token": "9", "weight": 1.0}]},
+                {"path": [], "tokens": [{"token": "c9", "weight": 1.0}]},
+            ],
+            "NEG": [],
             "REP": [],
         },
     },
@@ -2082,6 +2162,12 @@ def debug_prompter() -> None:
                     "dynamic import:standard;",
                     # recursive
                     "dynamic recurse:[here];",
+                    # variability
+                    "variability choices",
+                    "variability internal_maps_1 internal_maps_2 internal_maps_3 internal_maps_4",
+                    "variability internal_ranges_1 internal_ranges_2 internal_ranges_3 internal_ranges_4",  # noqa: E501
+                    "variability internal_intervals_1 internal_intervals_2 internal_intervals_3 internal_intervals_4",  # noqa: E501
+                    "variability external_1 external_2 external_3 external_4",
                 ]
             },
         }
@@ -2124,8 +2210,8 @@ def test_prob() -> None:
         print(f"Trues={trues}, Whole={whole}, ratio={float(trues) / float(whole) * 100}%")
 
     debugger = PrompterDebugger()
-    for case in range(0, 5):
+    for case in range(0, 6):
         head = case * 10000
-        texts = [f"dyprob #{i};" for i in range(head, head + 1000)]
+        texts = [f"dyprob #{i};" for i in range(head, head + 10000)]
         result = debugger.debug_cases({"dyprob": {"yamls/testyamls/PrompterTest.yaml": texts}})
         print_(result, "dyprob")

@@ -226,7 +226,8 @@ class Master(MasterIF):
                         print(f"{event.next_picstats.name}")
                 self.displayer.update_pic_window(event.next_picstats)
             if isinstance(event, master.events.DetectPicsChanges):
-                print(f"type={event.type}")
+                if self.crnt_gui_configs.print_event:
+                    print(f"type={event.type}")
                 self.displayer.update_main_window(rest_capacity=self.rest_files_in_crnt_dir)
 
     def operate_from_displayer(self) -> None:

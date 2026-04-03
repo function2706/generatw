@@ -372,6 +372,51 @@ dynamic:
   common:
     positive: common,<com|COM>,COMMON
     negative: common_neg,<com_neg|COM_NEG>,COMMON_NEG
+variability:
+  ignition: "variability"
+  choices:
+    pattern: "choices"
+    maps:
+      choices: <A|B|C|D|E|F|G|H|I|J>,<A|B|C|D|E|F|G|H|I|J>,<A|B|C|D|E|F|G|H|I|J>,<A|B|C|D|E|F|G|H|I|J>
+  internal_maps:
+    pattern: "internal_maps_[0-9]"
+    maps:
+      internal_maps_1: <a|b|c|d|e|f|g|h|i|j>
+      internal_maps_2: <a|b|c|d|e|f|g|h|i|j>
+      internal_maps_3: <a|b|c|d|e|f|g|h|i|j>
+      internal_maps_4: <a|b|c|d|e|f|g|h|i|j>
+  internal_ranges:
+    pattern: "internal_ranges_[0-9]"
+    ranges:
+      <a|b|c|d|e|f|g|h|i|j>:
+        [
+          internal_ranges_1,
+          internal_ranges_2,
+          internal_ranges_3,
+          internal_ranges_4,
+        ]
+  internal_intervals:
+    pattern: "internal_intervals_([0-9])"
+    capturegrp: 1
+    intervals:
+      <a|b|c|d|e|f|g|h|i|j>: [0, 10]
+  external_1:
+    pattern: "external_1"
+    maps:
+      external_1: <0|1|2|3|4|5|6|7|8|9>
+  external_2:
+    pattern: "external_2"
+    maps:
+      external_2: <0|1|2|3|4|5|6|7|8|9>
+  external_3:
+    pattern: "external_3"
+    maps:
+      external_3: <0|1|2|3|4|5|6|7|8|9>
+  external_4:
+    pattern: "external_4"
+    maps:
+      external_4: <0|1|2|3|4|5|6|7|8|9>
+  common: <c1|c2|c3|c4|c5|c6|c7|c8|c9>
 dynamic_prob:
   ignition: "dyprob"
   main:
@@ -383,3 +428,4 @@ dynamic_prob:
       <1::true|100::(false:100)>: [20000, 29999]
       <true|0.5::(false:0.5)>: [30000, 39999]
       <2::false|3::<4::false|5::false|6::<7::false|8::true>>>: [40000, 49999]
+      <|<|true>>: [50000, 59999]
