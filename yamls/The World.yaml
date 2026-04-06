@@ -233,7 +233,7 @@ main:
       maps:
         xxx: xxx
     upper_state:
-      pattern: '【上半身】\s*[^\s]*\s*([^【]*)'
+      pattern: '【上半身】\s*[^\s]*\s+([^【\n\s]+)\s*\n+【下半身】'
       capturegrp: 1
       maps:
         xxx: xxx
@@ -243,7 +243,7 @@ main:
       maps:
         xxx: xxx
     lower_state:
-      pattern: '【下半身】\s*[^\s]*\s*([^【=<]*)"'
+      pattern: '【下半身】\s*[^\s]*\s+([^【=<\n\s]+)\s*\n+【お気に】'
       capturegrp: 1
       maps:
         xxx: xxx
