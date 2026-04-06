@@ -369,17 +369,17 @@ class ScreenConfig:
 
         # Offer: Memory 上のすべての MemoryEntry をキーカテゴリーと紐づけて提供
         key_entry = memory.get_key_entry(container.keyname)
-        common_purged_memory = Memory(
+        memory_without_common = Memory(
             screen_id=memory.screen_id,
             entries={path: entry for path, entry in memory.entries.items() if path},
         )
         if key_entry is not None:
             if container.prompt.screen_id in container.records:
-                container.records[container.prompt.screen_id][key_entry] = common_purged_memory
+                container.records[container.prompt.screen_id][key_entry] = memory_without_common
             else:
-                container.records[container.prompt.screen_id] = {key_entry: common_purged_memory}
-        container.last_memory.screen_id = common_purged_memory.screen_id
-        container.last_memory.entries = deepcopy(common_purged_memory.entries)
+                container.records[container.prompt.screen_id] = {key_entry: memory_without_common}
+        container.last_memory.screen_id = memory_without_common.screen_id
+        container.last_memory.entries = deepcopy(memory_without_common.entries)
 
     def sort(self, container: PromptContainer) -> None:
         """
