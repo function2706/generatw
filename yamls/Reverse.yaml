@@ -112,6 +112,7 @@ main:
         隠岐奈: "matara okina"
         女苑: "yorigami jo'on,tsurime"
         紫苑: "yorigami shion"
+        霖之助: "morichika rinnosuke"
     vibe:
       pattern: 'の状態:\[(.+?)\].*の状態'
       capturegrp: 1
@@ -132,16 +133,25 @@ main:
           capturegrp: 1
           maps:
             ワンピース: one-piece dress
+            和服: kimono
+            導師服: mage robe
         upper_lingeries:
           pattern: '\[([^\[\]]+?)\]'
           capturegrp: 1
           maps:
             ブラジャー: bra
+            キャミソール: camisole
+            さらし: sarashi
+            Ｔシャツ: t-shirt
         lower_lingeries:
           pattern: '\[([^\[\]]+?)\]'
           capturegrp: 1
           maps:
             パンティ: panties
+            ドロワーズ: drawers
+            トランクス: boxer shorts
+            パンティストッキング: pantyhose
+            褌: fundoshi
         socks:
           pattern: '\[([^\[\]]+?)\]'
           capturegrp: 1
@@ -149,15 +159,65 @@ main:
             ニーソックス:
               positive: thighhighs
               negative: barefoot
+            ソックス: socks
+            ガーターストッキング: garter straps
+            足袋: tabi
+        accessories:
+          pattern: '\[([^\[\]]+?)\]'
+          capturegrp: 1
+          maps:
+            手袋: gloves
+            袖: detached sleeves
+            羽衣: hagoromo
+        upper_cloths:
+          pattern: '\[([^\[\]]+?)\]'
+          capturegrp: 1
+          maps:
+            上着: jacket
+        lower_cloths:
+          pattern: '\[([^\[\]]+?)\]'
+          capturegrp: 1
+          maps:
+            スカート: skirt
+            キュロット: culottes
+            ズボン: pants
+            袴: hakama
+        cosplay:
+          pattern: '\[([^\[\]]+?)\]'
+          capturegrp: 1
+          maps:
+            ボンデージ: bondage outfit
+            和服: kimono
+            メイド服: maid outfit
+            チャイナ服: china dress
+            セーラー服: serafuku
+            スク水: school swimsuit
+            バニースーツ: bunny suit
+            体操服: gym uniform
     posture:
       pattern: '現在の姿勢：.*\]\[.*：(.*?)\]'
       capturegrp: 1
       recurse:
         posture_meat:
-          pattern: "(観察|背後)"
+          pattern: "(観察|背後|正面|に背を向けている|の上|の下)"
           capturegrp: 1
           maps:
             観察: looking at viewer
+            背後: from behind
+            正面: face to face
+            に背を向けている: from behind,looking back
+            の上: on top,straddling
+            の下: on bottom,pinned
+    posture_body:
+      pattern: '現在の姿勢：\[.*?：(.*?)\]\['
+      capturegrp: 1
+      maps:
+        仰向け: lying on back
+        座っている: sitting
+        四つん這い: on all fours
+        直立: standing
+        膝立ち: kneeling
+        楽にしている: relaxed
     tool:
       pattern: '^使用中\s*(.+)'
       capturegrp: 1
@@ -167,27 +227,98 @@ main:
           capturegrp: 1
           maps:
             ペニスバンド: strap-on
+            ローション: lotion,oil
+            媚薬: aphrodisiac
+            バイブ: vibrator
+            特注バイブ: vibrator
+            アナルバイブ: anus,vibrator
+            特注アナルバイブ: anus,vibrator
+            アナルビーズ: anal beads
+            浣腸＋アナルプラグ: anus,butt plug
+            クリキャップ: clitoris,sex toy
+            特注クリキャップ: clitoris,sex toy
+            オナホール: onahole
+            特注オナホール: onahole
+            ニプルキャップ: nipple clamps
+            特注ニプルキャップ: nipple clamps
+            縄で緊縛: rope bondage
+            アイマスク: blindfold
+            ボールギャグ: ball gag
+            三角木馬乗馬中: wooden horse
   common:
     positive: best quality,masterpiece,absurdres,1girl,solo
     negative: (amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm
 action:
-  ignition: "(今の気分について聞いてみた|縄で縛ろうとした|足を舐めろ)"
-  asking:
-    pattern: "今の気分について聞いてみた"
+  ignition: "(今の気分について聞いてみた|縄で縛ろうとした|足を舐めろ|自分のことをどう思うか聞いてみた|性についての知識を語り始めた|優しい言葉で慰めてみた|を厳しい言葉で脅してみた|服を着ろと命令した|初めてを貰ってもいいかと聞いてみた|これからお仕置きすると言い出した|を大声で怒鳴った|に向かって不気味な微笑を浮かべた|押し倒した|を自由にした|バイブの先端をあてがい馴染ませていく|アナルバイブをあてがった|アナルビーズをひとつ飲み込ませようとした|クリキャップを取り付けようとした|クリップローターを取り付けようとした|双頭のペニスバンドを装着させようとした|自分でするところを見せろと命令した|縦筋を左右に広げて中までじっくり見ようとした|見せ付けるように目の前で自慰を始めた|を鏡の前に連れて来た|を連れて鏡の前から離れた|に首輪をつけて外に連れ出した|を連れて部屋に戻ってきた|その場で放尿しろと命令した|自分の男性器を胸で扱けと命令した|ペニスバンドの先端を股に挟んで擦れと命令した|頭をつかんで、乱暴に喉まで突き入れた|口で奉仕するよう誘惑している|尻を平手で強く叩いた|肌に真っ赤な筋が幾本も刻まれていった|体に針を突きたてた|の縄をほどいた|アイマスクを着けさせようとした|ボールギャグを嵌めさせようとした|挑発するかのように痴態を声に出した|を木馬に乗せようとした|木馬から降ろしてやった|浣腸液を流し込み、栓をした|膣に拳で侵入し始めた|アヌスに拳で侵入し始めた|膣とアヌスに拳で侵入し始めた|をその場に放置した|お腹にマジックで「↓公衆便所」と書いて、その場に置いて一人で帰ろうとした|黒光りする双頭ペニスバンドを取り出すと、それを身に付けた|を休ませ自分も休もうとした|特製の栄養剤を取り出して飲ませようとした|を治療しようとした|正常位|後背位|騎乗位|対面座位|背面座位|アナルセックス)"
+  act:
+    pattern: "(今の気分について聞いてみた|縄で縛ろうとした|足を舐めろ|自分のことをどう思うか聞いてみた|性についての知識を語り始めた|優しい言葉で慰めてみた|を厳しい言葉で脅してみた|服を着ろと命令した|初めてを貰ってもいいかと聞いてみた|これからお仕置きすると言い出した|を大声で怒鳴った|に向かって不気味な微笑を浮かべた|押し倒した|を自由にした|バイブの先端をあてがい馴染ませていく|アナルバイブをあてがった|アナルビーズをひとつ飲み込ませようとした|クリキャップを取り付けようとした|クリップローターを取り付けようとした|双頭のペニスバンドを装着させようとした|自分でするところを見せろと命令した|縦筋を左右に広げて中までじっくり見ようとした|見せ付けるように目の前で自慰を始めた|を鏡の前に連れて来た|を連れて鏡の前から離れた|に首輪をつけて外に連れ出した|を連れて部屋に戻ってきた|その場で放尿しろと命令した|自分の男性器を胸で扱けと命令した|ペニスバンドの先端を股に挟んで擦れと命令した|頭をつかんで、乱暴に喉まで突き入れた|口で奉仕するよう誘惑している|尻を平手で強く叩いた|肌に真っ赤な筋が幾本も刻まれていった|体に針を突きたてた|の縄をほどいた|アイマスクを着けさせようとした|ボールギャグを嵌めさせようとした|挑発するかのように痴態を声に出した|を木馬に乗せようとした|木馬から降ろしてやった|浣腸液を流し込み、栓をした|膣に拳で侵入し始めた|アヌスに拳で侵入し始めた|膣とアヌスに拳で侵入し始めた|をその場に放置した|お腹にマジックで「↓公衆便所」と書いて、その場に置いて一人で帰ろうとした|黒光りする双頭ペニスバンドを取り出すと、それを身に付けた|を休ませ自分も休もうとした|特製の栄養剤を取り出して飲ませようとした|を治療しようとした|正常位|後背位|騎乗位|対面座位|背面座位|アナルセックス)"
+    capturegrp: 1
     maps:
       今の気分について聞いてみた: talk to viewer
-  rope:
-    pattern: "縄で縛ろうとした"
-    maps:
       縄で縛ろうとした:
         positive: holding rope,looking at viewer
         negative: bondage
-  foot_licking:
-    pattern: "足を舐めろ"
-    maps:
       足を舐めろ:
         positive: (five toes:1.2),foot focus,from below,pov,soles,toes
         negative: (six toes:1.2),(extra toes:1.2),fewer toes,missing toes,bad feet,mutated feet,(extra feet:1.2),(missing foot:1.1),(bad leg:1.1),(extra legs:1.2),(missing leg:1.1),(footjob:1.1)
+      自分のことをどう思うか聞いてみた: talk to viewer
+      性についての知識を語り始めた: talk to viewer,lecturing
+      優しい言葉で慰めてみた: talk to viewer,comforting smile
+      を厳しい言葉で脅してみた: talk to viewer,glaring
+      服を着ろと命令した: talk to viewer,pointing
+      初めてを貰ってもいいかと聞いてみた: talk to viewer,blush
+      これからお仕置きすると言い出した: talk to viewer,evil smile
+      を大声で怒鳴った: talk to viewer,shouting,angry
+      に向かって不気味な微笑を浮かべた: talk to viewer,creepy smile
+      押し倒した: pinning,on top,looking down at viewer,pov
+      を自由にした: sitting up,looking down at viewer,pov
+      バイブの先端をあてがい馴染ませていく: holding vibrator,looking at viewer
+      アナルバイブをあてがった: holding vibrator,looking at viewer
+      アナルビーズをひとつ飲み込ませようとした: holding anal beads,looking at viewer
+      クリキャップを取り付けようとした: holding sex toy,looking at viewer
+      クリップローターを取り付けようとした: holding nipple clamps,looking at viewer
+      双頭のペニスバンドを装着させようとした: holding strap-on,looking at viewer
+      自分でするところを見せろと命令した: talk to viewer,smug
+      縦筋を左右に広げて中までじっくり見ようとした: looking at viewer,smug,close-up
+      見せ付けるように目の前で自慰を始めた: masturbation,looking at viewer,smile
+      を鏡の前に連れて来た: mirror,holding leash,looking at viewer
+      を連れて鏡の前から離れた: holding leash,walking,looking back
+      に首輪をつけて外に連れ出した: holding leash,outdoors,looking at viewer
+      を連れて部屋に戻ってきた: holding leash,indoors,looking at viewer
+      その場で放尿しろと命令した: talk to viewer,smug
+      自分の男性器を胸で扱けと命令した: paizuri,pov
+      ペニスバンドの先端を股に挟んで擦れと命令した: strap-on,thigh sex,pov
+      頭をつかんで、乱暴に喉まで突き入れた: deepthroat,forced,grabbing head,pov
+      口で奉仕するよう誘惑している: seductive smile,pov
+      尻を平手で強く叩いた: raised hand,looking at viewer,smug
+      肌に真っ赤な筋が幾本も刻まれていった: holding whip,looking at viewer
+      体に針を突きたてた: holding needle,looking at viewer
+      の縄をほどいた:
+        positive: holding rope,relieved smile,looking at viewer
+        negative: bondage,rope bondage
+      アイマスクを着けさせようとした: holding blindfold,looking at viewer
+      ボールギャグを嵌めさせようとした: holding ball gag,looking at viewer
+      挑発するかのように痴態を声に出した: talk to viewer,smug,taunting
+      を木馬に乗せようとした: wooden horse,looking at viewer
+      木馬から降ろしてやった:
+        positive: looking at viewer,relieved smile
+        negative: wooden horse
+      浣腸液を流し込み、栓をした: holding enema bag,looking at viewer
+      膣に拳で侵入し始めた: clenched fist,looking at viewer,smug
+      アヌスに拳で侵入し始めた: clenched fist,looking at viewer,smug
+      膣とアヌスに拳で侵入し始めた: clenched fist,looking at viewer,smug
+      をその場に放置した: walking away,looking back
+      お腹にマジックで「↓公衆便所」と書いて、その場に置いて一人で帰ろうとした: holding marker,smug,walking away
+      黒光りする双頭ペニスバンドを取り出すと、それを身に付けた: strap-on,looking at viewer
+      を休ませ自分も休もうとした: lying down,relaxed,looking at viewer
+      特製の栄養剤を取り出して飲ませようとした: holding bottle,looking at viewer
+      を治療しようとした: holding bandage,caring expression,looking at viewer
+      正常位: missionary,pov
+      後背位: doggystyle,pov
+      騎乗位: cowgirl position,pov
+      対面座位: sitting,face-to-face,pov
+      背面座位: sitting,from behind,pov
+      アナルセックス: anal,pov
   common:
     positive: best quality,masterpiece,absurdres,1girl,solo
     negative: (amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm

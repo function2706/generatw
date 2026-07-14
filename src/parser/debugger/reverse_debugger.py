@@ -41,6 +41,10 @@ CORRECT_RESULT = {
                             "tokens": [{"token": "looking at viewer", "weight": 1.0}],
                         },
                         {
+                            "path": ["character", "posture_body"],
+                            "tokens": [{"token": "relaxed", "weight": 1.0}],
+                        },
+                        {
                             "path": ["character", "tool", "tool_meat"],
                             "tokens": [{"token": "strap-on", "weight": 1.0}],
                         },
@@ -107,7 +111,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {
-                "POS": "houjuu nue,(expressionless:0.8),one-piece dress,thighhighs,looking at viewer,strap-on,best quality,masterpiece,absurdres,1girl,solo",  # noqa: E501
+                "POS": "houjuu nue,(expressionless:0.8),one-piece dress,thighhighs,looking at viewer,relaxed,strap-on,best quality,masterpiece,absurdres,1girl,solo",  # noqa: E501
                 "NEG": "barefoot,(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
             },
             "sufficiency": True,
@@ -127,7 +131,7 @@ CORRECT_RESULT = {
                             "tokens": [{"token": "expressionless", "weight": 0.8}],
                         },
                         {
-                            "path": ["rope"],
+                            "path": ["act"],
                             "tokens": [
                                 {"token": "holding rope", "weight": 1.0},
                                 {"token": "looking at viewer", "weight": 1.0},
@@ -153,7 +157,7 @@ CORRECT_RESULT = {
                         },
                     ],
                     "negative": [
-                        {"path": ["rope"], "tokens": [{"token": "bondage", "weight": 1.0}]},
+                        {"path": ["act"], "tokens": [{"token": "bondage", "weight": 1.0}]},
                         {
                             "path": ["character", "fashion", "socks"],
                             "tokens": [{"token": "barefoot", "weight": 1.0}],
@@ -225,6 +229,10 @@ CORRECT_RESULT = {
                             "tokens": [{"token": "looking at viewer", "weight": 1.0}],
                         },
                         {
+                            "path": ["character", "posture_body"],
+                            "tokens": [{"token": "relaxed", "weight": 1.0}],
+                        },
+                        {
                             "path": ["character", "tool", "tool_meat"],
                             "tokens": [{"token": "strap-on", "weight": 1.0}],
                         },
@@ -287,7 +295,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {
-                "POS": "(expressionless:0.8),looking at viewer,strap-on,best quality,masterpiece,absurdres,1girl,solo",  # noqa: E501
+                "POS": "(expressionless:0.8),looking at viewer,relaxed,strap-on,best quality,masterpiece,absurdres,1girl,solo",  # noqa: E501
                 "NEG": "(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
             },
             "sufficiency": False,
@@ -305,9 +313,13 @@ CORRECT_RESULT = {
                     "capturegrp": 1,
                     "screen_id": "main",
                     "paths": [
+                        ["character", "fashion", "accessories"],
+                        ["character", "fashion", "cosplay"],
                         ["character", "fashion", "dresses"],
+                        ["character", "fashion", "lower_cloths"],
                         ["character", "fashion", "lower_lingeries"],
                         ["character", "fashion", "socks"],
+                        ["character", "fashion", "upper_cloths"],
                         ["character", "fashion", "upper_lingeries"],
                     ],
                 },
@@ -317,9 +329,13 @@ CORRECT_RESULT = {
                     "capturegrp": 1,
                     "screen_id": "main",
                     "paths": [
+                        ["character", "fashion", "accessories"],
+                        ["character", "fashion", "cosplay"],
                         ["character", "fashion", "dresses"],
+                        ["character", "fashion", "lower_cloths"],
                         ["character", "fashion", "lower_lingeries"],
                         ["character", "fashion", "socks"],
+                        ["character", "fashion", "upper_cloths"],
                         ["character", "fashion", "upper_lingeries"],
                     ],
                 },
@@ -329,9 +345,13 @@ CORRECT_RESULT = {
                     "capturegrp": 1,
                     "screen_id": "main",
                     "paths": [
+                        ["character", "fashion", "accessories"],
+                        ["character", "fashion", "cosplay"],
                         ["character", "fashion", "dresses"],
+                        ["character", "fashion", "lower_cloths"],
                         ["character", "fashion", "lower_lingeries"],
                         ["character", "fashion", "socks"],
+                        ["character", "fashion", "upper_cloths"],
                         ["character", "fashion", "upper_lingeries"],
                     ],
                 },
@@ -341,9 +361,13 @@ CORRECT_RESULT = {
                     "capturegrp": 1,
                     "screen_id": "main",
                     "paths": [
+                        ["character", "fashion", "accessories"],
+                        ["character", "fashion", "cosplay"],
                         ["character", "fashion", "dresses"],
+                        ["character", "fashion", "lower_cloths"],
                         ["character", "fashion", "lower_lingeries"],
                         ["character", "fashion", "socks"],
+                        ["character", "fashion", "upper_cloths"],
                         ["character", "fashion", "upper_lingeries"],
                     ],
                 },

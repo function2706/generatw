@@ -15,7 +15,7 @@ from parser.debugger.interpreter_debugger import (  # noqa: E402
 
 CORRECT_RESULT = {
     "CASE 'main'": {
-        "The World-1": {
+        "TheWorld-1": {
             "dataclass": [
                 {
                     "screen_id": "main",
@@ -109,7 +109,7 @@ CORRECT_RESULT = {
             "sufficiency": True,
             "reports": [],
         },
-        "The World-2": {
+        "TheWorld-2": {
             "dataclass": [
                 {
                     "screen_id": "main",
@@ -179,7 +179,7 @@ CORRECT_RESULT = {
             "sufficiency": False,
             "reports": [],
         },
-        "The World-3": {
+        "TheWorld-3": {
             "dataclass": [
                 {
                     "screen_id": "main",
@@ -277,7 +277,7 @@ CORRECT_RESULT = {
             "sufficiency": True,
             "reports": [],
         },
-        "The World-4": {
+        "TheWorld-4": {
             "dataclass": [
                 {
                     "screen_id": "main",
@@ -383,7 +383,7 @@ CORRECT_RESULT = {
             "sufficiency": True,
             "reports": [],
         },
-        "The World-5": {
+        "TheWorld-5": {
             "dataclass": [
                 {
                     "screen_id": "main",
@@ -493,7 +493,7 @@ CORRECT_RESULT = {
         },
     },
     "CASE 'status'": {
-        "The World-1": {
+        "TheWorld-1": {
             "dataclass": [
                 {
                     "screen_id": "status",
@@ -581,7 +581,7 @@ CORRECT_RESULT = {
                 }
             ],
         },
-        "The World-2": {
+        "TheWorld-2": {
             "dataclass": [
                 {
                     "screen_id": "status",
@@ -595,6 +595,10 @@ CORRECT_RESULT = {
                         {"path": ["dresses"], "tokens": [{"token": "maid apron", "weight": 1.0}]},
                         {"path": ["socks"], "tokens": [{"token": "garter straps", "weight": 1.0}]},
                         {"path": ["shoes"], "tokens": [{"token": "shoes", "weight": 1.0}]},
+                        {
+                            "path": ["equipments"],
+                            "tokens": [{"token": "decorative bow", "weight": 1.0}],
+                        },
                         {
                             "path": [],
                             "tokens": [
@@ -655,7 +659,7 @@ CORRECT_RESULT = {
                 }
             ],
             "string": {
-                "POS": "izayoi sakuya,looking at viewer,maid headdress,maid apron,garter straps,shoes,best quality,masterpiece,absurdres,1girl,solo",  # noqa: E501
+                "POS": "izayoi sakuya,looking at viewer,maid headdress,maid apron,garter straps,shoes,decorative bow,best quality,masterpiece,absurdres,1girl,solo",  # noqa: E501
                 "NEG": "disgusting,(amputee:1.1),(bad anatomy:1.1),(extra limbs:1.1),(missing limb:1.1),multiple heads,worst quality,low quality,motion lines,speed lines,3d,(shiny skin:1.2),worst detail,text,logo,cropped,deformed,blurry,extra digits,fewer digits,missing digits,bad hands,mutated hands,six toes,extra toes,fewer toes,missing toes,bad feet,mutated feet,extra feet,missing foot,bad leg,extra legs,missing leg,extra hands,missing hand,bad arm,extra arms,missing arm",  # noqa: E501
             },
             "sufficiency": True,
@@ -666,17 +670,10 @@ CORRECT_RESULT = {
                     "capturegrp": 1,
                     "screen_id": "status",
                     "paths": [["lingeries"]],
-                },
-                {
-                    "matched": "リボン",
-                    "pattern": "装備:付属\\s*\\[(.+?)\\]",
-                    "capturegrp": 1,
-                    "screen_id": "status",
-                    "paths": [["equipments"]],
-                },
+                }
             ],
         },
-        "The World-3": {
+        "TheWorld-3": {
             "dataclass": [
                 {
                     "screen_id": "main",
@@ -770,7 +767,7 @@ CORRECT_RESULT = {
             "sufficiency": True,
             "reports": [],
         },
-        "The World-4": {
+        "TheWorld-4": {
             "dataclass": [
                 {
                     "screen_id": "main",
@@ -866,7 +863,7 @@ CORRECT_RESULT = {
         },
     },
     "CASE 'fashion'": {
-        "The World-1": {
+        "TheWorld-1": {
             "dataclass": [
                 {
                     "screen_id": "main",
@@ -959,7 +956,7 @@ CORRECT_RESULT = {
             "sufficiency": True,
             "reports": [],
         },
-        "The World-2": {
+        "TheWorld-2": {
             "dataclass": [
                 {
                     "screen_id": "fashion",
@@ -1053,7 +1050,7 @@ CORRECT_RESULT = {
                 }
             ],
         },
-        "The World-3": {
+        "TheWorld-3": {
             "dataclass": [
                 {
                     "screen_id": "main",
@@ -1154,7 +1151,7 @@ CORRECT_RESULT = {
             "sufficiency": True,
             "reports": [],
         },
-        "The World-4": {
+        "TheWorld-4": {
             "dataclass": [
                 {
                     "screen_id": "main",
@@ -1247,7 +1244,7 @@ CORRECT_RESULT = {
             "sufficiency": True,
             "reports": [],
         },
-        "The World-5": {
+        "TheWorld-5": {
             "dataclass": [
                 {
                     "screen_id": "fashion",
@@ -1345,7 +1342,7 @@ CORRECT_RESULT = {
                 }
             ],
         },
-        "The World-6": {
+        "TheWorld-6": {
             "dataclass": [
                 {
                     "screen_id": "main",
@@ -1450,7 +1447,7 @@ CORRECT_RESULT = {
             "sufficiency": True,
             "reports": [],
         },
-        "The World-7": {
+        "TheWorld-7": {
             "dataclass": [
                 {
                     "screen_id": "main",
@@ -1551,7 +1548,7 @@ CORRECT_RESULT = {
             "sufficiency": True,
             "reports": [],
         },
-        "The World-8": {
+        "TheWorld-8": {
             "dataclass": [
                 {
                     "screen_id": "fashion",
@@ -1642,7 +1639,7 @@ CORRECT_RESULT = {
                 }
             ],
         },
-        "The World-9": {
+        "TheWorld-9": {
             "dataclass": [
                 {
                     "screen_id": "main",
@@ -1740,7 +1737,7 @@ CORRECT_RESULT = {
             "sufficiency": True,
             "reports": [],
         },
-        "The World-10": {
+        "TheWorld-10": {
             "dataclass": [
                 {
                     "screen_id": "main",
@@ -1847,7 +1844,7 @@ CORRECT_RESULT = {
         },
     },
     "CASE 'action'": {
-        "The World-1": {
+        "TheWorld-1": {
             "dataclass": [
                 {
                     "screen_id": "main",
@@ -1940,7 +1937,7 @@ CORRECT_RESULT = {
             "sufficiency": True,
             "reports": [],
         },
-        "The World-2": {
+        "TheWorld-2": {
             "dataclass": [
                 {
                     "screen_id": "fashion",
@@ -2034,7 +2031,7 @@ CORRECT_RESULT = {
                 }
             ],
         },
-        "The World-3": {
+        "TheWorld-3": {
             "dataclass": [
                 {
                     "screen_id": "main",
@@ -2135,7 +2132,7 @@ CORRECT_RESULT = {
             "sufficiency": True,
             "reports": [],
         },
-        "The World-4": {
+        "TheWorld-4": {
             "dataclass": [
                 {
                     "screen_id": "action",
@@ -2241,7 +2238,7 @@ CORRECT_RESULT = {
             "sufficiency": True,
             "reports": [],
         },
-        "The World-5": {
+        "TheWorld-5": {
             "dataclass": [
                 {
                     "screen_id": "main",
@@ -2342,7 +2339,7 @@ CORRECT_RESULT = {
             "sufficiency": True,
             "reports": [],
         },
-        "The World-6": {
+        "TheWorld-6": {
             "dataclass": [
                 {
                     "screen_id": "action",
@@ -2453,7 +2450,7 @@ CORRECT_RESULT = {
 
 
 def make_testcase(texts: list[str]):
-    return {KeyName.yamlpath: "yamls/The World.yaml", KeyName.texts: texts}
+    return {KeyName.yamlpath: "yamls/TheWorld.yaml", KeyName.texts: texts}
 
 
 def debug_tw_interpreter() -> None:

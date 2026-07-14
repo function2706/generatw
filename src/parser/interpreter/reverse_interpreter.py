@@ -25,13 +25,16 @@ class Cat(StrEnum):
     upper_lingeries = "upper_lingeries"
     lower_lingeries = "lower_lingeries"
     socks = "socks"
+    accessories = "accessories"
+    upper_cloths = "upper_cloths"
+    lower_cloths = "lower_cloths"
+    cosplay = "cosplay"
     posture = "posture"
     posture_meat = "posture_meat"
+    posture_body = "posture_body"
     tool = "tool"
     tool_meat = "tool_meat"
-    asking = "asking"
-    rope = "rope"
-    foot_licking = "foot_licking"
+    act = "act"
 
 
 class ReverseInterpreter(Interpreter):
@@ -73,7 +76,12 @@ class ReverseInterpreter(Interpreter):
                         True,
                     ),
                     (Cat.character, Cat.fashion, Cat.socks): (None, True),
+                    (Cat.character, Cat.fashion, Cat.accessories): (None, True),
+                    (Cat.character, Cat.fashion, Cat.upper_cloths): (None, True),
+                    (Cat.character, Cat.fashion, Cat.lower_cloths): (None, True),
+                    (Cat.character, Cat.fashion, Cat.cosplay): (None, True),
                     (Cat.character, Cat.posture, Cat.posture_meat): (None, False),
+                    (Cat.character, Cat.posture_body): (None, False),
                     (Cat.character, Cat.tool, Cat.tool_meat): (None, False),
                 },
                 sufficiency=Has((Cat.character, Cat.name_n)),
@@ -82,9 +90,7 @@ class ReverseInterpreter(Interpreter):
                 cat_configs={
                     (Cat.character, Cat.name_n): (None, True),
                     (Cat.character, Cat.vibe): (None, False),
-                    (Cat.asking,): (None, False),
-                    (Cat.rope,): (None, False),
-                    (Cat.foot_licking,): (None, False),
+                    (Cat.act,): (None, False),
                     (Cat.character, Cat.fashion, Cat.dresses): (None, True),
                     (Cat.character, Cat.fashion, Cat.upper_lingeries): (
                         expr_no_upper_costumes,
@@ -95,7 +101,12 @@ class ReverseInterpreter(Interpreter):
                         True,
                     ),
                     (Cat.character, Cat.fashion, Cat.socks): (None, True),
+                    (Cat.character, Cat.fashion, Cat.accessories): (None, True),
+                    (Cat.character, Cat.fashion, Cat.upper_cloths): (None, True),
+                    (Cat.character, Cat.fashion, Cat.lower_cloths): (None, True),
+                    (Cat.character, Cat.fashion, Cat.cosplay): (None, True),
                     (Cat.character, Cat.posture, Cat.posture_meat): (None, False),
+                    (Cat.character, Cat.posture_body): (None, False),
                     (Cat.character, Cat.tool, Cat.tool_meat): (None, False),
                 },
                 sufficiency=Has((Cat.character, Cat.name_n)),
@@ -107,6 +118,10 @@ class ReverseInterpreter(Interpreter):
                         (Cat.character, Cat.fashion, Cat.upper_lingeries),
                         (Cat.character, Cat.fashion, Cat.lower_lingeries),
                         (Cat.character, Cat.fashion, Cat.socks),
+                        (Cat.character, Cat.fashion, Cat.accessories),
+                        (Cat.character, Cat.fashion, Cat.upper_cloths),
+                        (Cat.character, Cat.fashion, Cat.lower_cloths),
+                        (Cat.character, Cat.fashion, Cat.cosplay),
                     ]
                 },
             ),
