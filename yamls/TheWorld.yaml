@@ -252,9 +252,9 @@ main:
         ワンピース（白）: one-piece dress,white
         ナース服: nurse uniform
         着物: kimono
-        千早: chihaya
+        千早: chihaya \(clothing\)
         浴衣: yukata
-        白装束: white ritual kimono
+        白装束: white kimono
         忍装束: ninja outfit
         襦袢:
           positive: plain kimono
@@ -263,7 +263,7 @@ main:
         ジャケット: jacket
         割烹着: kappougi
         ケープマント: cape
-        ケープ: shoulder cape
+        ケープ: capelet
         マント: cloak
         どてら: dotera
         羽織: haori
@@ -276,12 +276,12 @@ main:
         作業エプロン: work apron
         白衣: labcoat
         セーラー服: serafuku
-        博麗の巫女服: hakurei miko outfit
+        博麗の巫女服: miko
         水干: suikan
         狩衣: kariginu
         袖無しブラウス: sleeveless blouse
         パジャマ上着: pajama top
-        守矢の巫女服: moriya miko outfit
+        守矢の巫女服: miko
         チューブトップ: tube top
         タンクトップ: tank top
         キャミソール: camisole
@@ -289,18 +289,18 @@ main:
         体操服: gym uniform
         ジャージジャケット: track jacket
         ノースリーブ: sleeveless
-        地獄Ｔシャツ: graphic t-shirt,hell print
-        オフショルダー: off-shoulder
+        地獄Ｔシャツ: print shirt
+        オフショルダー: off-shoulder shirt
         スモックブラウス: smock blouse
-        囚人シャツ: prisoner shirt
+        囚人シャツ: prison clothes
         チャイナドレス: china dress
         法衣: buddhist robe
         道士服: taoist robe
-        イブニングドレス: evening dress
-        ゴスロリドレス: gothic lolita dress
+        イブニングドレス: evening gown
+        ゴスロリドレス: gothic lolita
         スモック: smock dress
         着ぐるみ: kigurumi
-        バスタオル: towel
+        バスタオル: naked towel
         肌襦袢: hadajuban
         ウェディングドレス: wedding dress
         チャイナドレス（ズボン）: china dress,pants
@@ -329,15 +329,15 @@ main:
         ミニスカート: miniskirt
         サロペットスカート: overall skirt
         三色スカート: tricolor skirt
-        囚人スカート: prisoner skirt
-        ショートズボン: short pants
+        囚人スカート: prison clothes
+        ショートズボン: shorts
         パジャマズボン: pajama pants
         ホットパンツ: hot pants
         オーバーオール: overalls
         作業ズボン: work pants
         指貫袴: sashinuki hakama
-        ブルマ: bloomers
-        かぼちゃズボン: pumpkin pants
+        ブルマ: buruma
+        かぼちゃズボン: puffy shorts
         エプロンドレス: maid apron
         ロングネグリジェ: long negligee
         ベビードール: babydoll
@@ -345,9 +345,9 @@ main:
         ワンピース（白）: one-piece dress,white
         ナース服: nurse uniform
         着物: kimono
-        千早: chihaya
+        千早: chihaya \(clothing\)
         浴衣: yukata
-        白装束: white ritual kimono
+        白装束: white kimono
         忍装束: ninja outfit
         襦袢:
           positive: plain kimono
@@ -414,31 +414,37 @@ main:
                        "早鬼宅の風呂", "尤魔宅の風呂", "綿月亭・脱衣所", "綿月亭・風呂",
                        "ドレミー宅・洗面所", "ドレミー宅・風呂", "純狐邸・脱衣所", "純狐邸・風呂",
                        "湯殿", "比那名居邸風呂", "魔理沙宅・風呂", "人形の館・風呂", "エレン宅・風呂"]
-            hot spring: ["温泉"]
+            onsen: ["温泉"]
             toilet: ["トイレ", "厠", "共同便所", "来客用トイレ", "夢幻遺跡・トイレ", "一階トイレ",
                      "二階トイレ", "ドレミー宅・トイレ"]
             kitchen: ["台所", "三妖精の家・台所", "夢幻遺跡・調理室", "厨房", "廃洋館・キッチン",
                       "仙人の屋敷・台所", "八雲邸台所", "比那名居邸厨房"]
             dining room: ["夢幻遺跡・食堂兼談話室", "食堂", "ダイニング", "玉兎食堂"]
-            hallway: ["縁側", "三妖精の家・二階廊下", "夢幻遺跡・一階通路", "夢幻遺跡・二階通路",
+            hallway: ["三妖精の家・二階廊下", "夢幻遺跡・一階通路", "夢幻遺跡・二階通路",
                       "廊下", "是非曲直庁廊下", "中廊下", "二階廊下", "八雲邸廊下", "綿月亭・一階回廊",
                       "綿月亭・二階回廊", "一階廊下", "廃洋館・二階廊下", "地下廊下"]
+            veranda: ["縁側"]
             storage room: ["小さい納戸", "押入れ", "大きい納戸", "納戸", "物置", "蔵", "納屋",
                            "倉庫", "魔理沙宅・倉庫", "人形の館・倉庫", "エレン宅・倉庫", "食料庫",
                            "夢幻遺跡・倉庫", "比那名居邸物置", "宝物庫", "ドレミー宅・倉庫"]
-            shop: ["酒屋", "カフェ", "甘味所", "小料理屋", "鯢呑亭", "鈴奈庵", "花屋", "食料品店",
-                   "八百屋", "香霖堂", "霧雨魔法店", "ふわふわエレン魔法の店", "邪仙楼", "酒場",
-                   "鬼の溜まり場", "食事処", "甘味処"]
-            study: ["経蔵", "夢幻遺跡・第一資料室", "夢幻遺跡・第二資料室", "夢幻遺跡・研究室",
-                    "図書館", "魔理沙宅・研究部屋", "人形の館・研究室", "仙人の屋敷・書斎", "書斎"]
+            shop: ["酒屋", "鈴奈庵", "花屋", "食料品店",
+                   "八百屋", "香霖堂", "霧雨魔法店", "ふわふわエレン魔法の店", "邪仙楼"]
+            cafe: ["カフェ", "甘味所", "甘味処"]
+            restaurant: ["食事処", "小料理屋", "鯢呑亭"]
+            tavern: ["酒場", "鬼の溜まり場"]
+            study: ["経蔵", "魔理沙宅・研究部屋", "夢幻遺跡・研究室",
+                    "人形の館・研究室", "仙人の屋敷・書斎", "書斎"]
+            library: ["図書館", "夢幻遺跡・第一資料室", "夢幻遺跡・第二資料室"]
             clinic: ["調薬室", "待合室", "診察室", "調剤室"]
-            shrine hall: ["本堂", "講堂", "鐘楼", "本殿"]
+            temple: ["本堂", "講堂", "鐘楼", "本殿"]
             dojo: ["道場", "仙人の屋敷・道場"]
             entrance hall: ["土間", "廃洋館・入り口", "玄関", "秋姉妹の家・土間", "仙人の屋敷・玄関",
                             "八雲邸玄関", "比那名居邸土間", "綿月亭・玄関", "純狐邸・玄関", "門番詰め所"]
             basement: ["地下室", "三妖精の家・地下室"]
             abandoned house: ["廃屋", "あばら屋", "空き屋", "空き家"]
-            office: ["警察署", "法廷", "玉兎詰め所"]
+            office: ["玉兎詰め所"]
+            police station: ["警察署"]
+            courtroom: ["法廷"]
             shack: ["守衛小屋", "空き小屋", "小屋", "山小屋"]
         type2:
           pattern: '(.+?)\s+\(到着'
@@ -453,29 +459,34 @@ main:
           pattern: '(.+?)\s+清潔度:'
           capturegrp: 1
           ranges:
-            lakeside: ["湖畔", "霧の湖", "霧の湖・湖底", "入り江", "水浴び場", "川岸", "玄武の沢", "大蝦蟇の池"]
+            lakeside: ["湖畔", "霧の湖", "入り江", "水浴び場", "川岸", "玄武の沢", "大蝦蟇の池"]
+            underwater: ["霧の湖・湖底"]
             path: ["中有の道", "人間の里への道中", "お地蔵通り", "南通り", "東通り", "北通り", "西通り",
                    "分かれ道", "再思の道", "迷いの小道", "山道", "沢へ続く道", "中腹", "分岐点",
                    "山頂への道", "橋", "大通り", "裏通り", "通り", "路地裏", "槐安通路", "参道"]
             balcony: ["小バルコニー", "東テラス", "西テラス", "大バルコニー", "テラス", "バルコニー",
                       "人形の館・バルコニー"]
-            gate: ["鳥居", "人里の門", "正門", "山門", "霊廟大門", "永遠亭入口", "竹林入口",
+            gate: ["人里の門", "正門", "山門", "霊廟大門", "永遠亭入口", "竹林入口",
                    "魔法の森入り口", "人形の館前", "樹海道入り口", "冥界の門", "異界の関所",
-                   "地霊殿前", "山頂入り口", "索道駅", "守矢神社鳥居", "比那名居邸前", "綿月亭・門",
+                   "地霊殿前", "山頂入り口", "索道駅", "比那名居邸前", "綿月亭・門",
                    "夢幻遺跡前", "長屋前"]
-            shrine grounds: ["境内", "賽銭箱", "手水舎", "本殿の裏", "守矢神社分社", "梵鐘楼", "祠", "社務所"]
+            torii: ["鳥居", "守矢神社鳥居"]
+            shrine: ["境内", "賽銭箱", "手水舎", "本殿の裏", "守矢神社分社", "梵鐘楼", "祠", "社務所"]
             garden: ["庭", "裏庭", "枯山水", "共同井戸", "井戸", "太陽の畑", "秋姉妹の家・畑",
                      "仙人の屋敷・庭", "桃園", "バラ園", "中庭", "八雲邸庭", "純狐邸・中庭", "桃林", "四阿"]
             plaza: ["中央広場", "龍神像", "物見櫓", "霊廟広場", "魔法の広場", "有頂天街", "猫の里",
                     "月の都", "玉兎街", "広場"]
-            forest: ["鎮守の森", "キノコ群生地", "古木の大樹", "斜角の竹林", "帚木", "森の深奥", "西行妖"]
+            forest: ["鎮守の森", "キノコ群生地", "古木の大樹", "斜角の竹林", "帚木", "森の深奥"]
+            cherry blossoms: ["西行妖"]
             graveyard: ["墓地", "無縁塚", "積石塚", "賽の河原"]
-            cave: ["兎の洞穴", "夢幻遺跡・艦橋", "間欠泉地下センター", "滝の裏", "虹龍洞", "縦穴の底"]
+            cave: ["兎の洞穴", "夢幻遺跡・艦橋", "間欠泉地下センター", "虹龍洞", "縦穴の底"]
+            waterfall: ["滝の裏"]
             beach: ["砂浜"]
-            hot spring: ["温泉"]
+            onsen: ["温泉"]
             rooftop: ["屋上"]
-            hell: ["地獄", "彼岸", "灼熱地獄跡", "地獄の人工太陽", "旧血の池地獄", "畜生メトロポリス"]
-            mountain view: ["頂上", "玄雲海", "秘天崖", "無名の丘"]
+            hell: ["地獄", "灼熱地獄跡", "地獄の人工太陽", "旧血の池地獄", "畜生メトロポリス"]
+            spider lily,flower field: ["彼岸"]
+            mountain: ["頂上", "玄雲海", "秘天崖", "無名の丘"]
             shack: ["ボロ小屋", "休憩所"]
             storage room: ["物置"]
             shop: ["夜雀の屋台"]
@@ -514,7 +525,7 @@ action:
       頬をつまむ: cheek pinching,pov
       謝る: bowing,apologizing
       お腹を撫でる: pov,belly rub
-      頭を撫でる: pov,head pat
+      頭を撫でる: pov,headpat
       尻を撫でる: pov,ass grab
       抱き付く: hug,pov
       抱き寄せる: hug,pov
@@ -602,7 +613,7 @@ action:
       パイズリ: paizuri,pov
       素股: thigh sex,pov
       泡踊り: soapy massage,pov
-      バキュームフェラ: deep throat,fellatio,pov
+      バキュームフェラ: deepthroat,fellatio,pov
       ゴム精飲: condom,cum drinking,pov
       アナル愛撫される: anus,fingering,pov
       アナル舐めされる: anilingus,pov
@@ -653,12 +664,12 @@ action:
       告白する: confession,blushing
       イタズラする: teasing,mischief
       添い寝する: lying down,cuddling,sleeping
-      セフレ契約: holding contract,agreement
+      セフレ契約: holding paper,agreement
       身を任せる: submissive,pov
       抵抗する: resisting,struggling
       逃げる: running,fleeing
       読み聞かせ: reading aloud,holding book
-      豆まき: throwing beans,festival
+      豆まき: setsubun,throwing beans
       依頼を聞く: listening,talking
       自由行動に付き合う: walking together,pov
       就寝: sleeping,lying down
@@ -674,8 +685,8 @@ action:
       着替える: undressing,changing clothes
       お風呂でくつろぐ: bathing,relaxed,wet
       銭湯: bathing,nude,public bath
-      おみくじ: holding paper,shrine,fortune
-      守矢くじ: holding paper,shrine,fortune
+      おみくじ: omikuji,shrine
+      守矢くじ: omikuji,shrine
       授業を受ける: sitting,classroom,studying
       採集する: foraging,crouching
       調合する: mixing,holding flask
@@ -683,8 +694,8 @@ action:
       酒虫の様子を見る: crouching,looking down
       オナニー: masturbation,1girl,solo
       畑仕事をする: farming,holding hoe
-      弾幕勝負: battle,bullet hell,fighting stance
-      スイカ割り: blindfold,holding stick,watermelon
+      弾幕勝負: danmaku,fighting stance
+      スイカ割り: suikawari,blindfold,watermelon
       散策する: walking,outdoors
       食事に誘う: inviting,talking
       食材の買い出し: shopping,holding bag
@@ -730,27 +741,27 @@ status:
       兎耳ヘアーバンド: bunny headband
       ナースキャップ: nurse cap
       面: mask
-      頭巾: zukin
+      頭巾: hood
       烏帽子: eboshi
       お椀: bowl on head
-      シニヨンキャップ: chignon cap
+      シニヨンキャップ: bun cover
       ナイトキャップ: nightcap
       ターバンキャップ: turban
       ヘッドギア: headgear
-      三角巾: triangular bandana
+      三角巾: head scarf
       ヘッドセット・インカム: headset
       ヘッドホン: headphones
       サンタ帽: santa hat
       サンバイザー: visor cap
       麦藁帽子: straw hat
       学帽: school cap
-      冕冠: mianguan
-      ピエロ帽: clown hat
-      笠: conical hat
+      冕冠: crown
+      ピエロ帽: jester cap
+      笠: rice hat
       フード: hood
       ウェディングベール: bridal veil
       テンガロンハット: cowboy hat
-      金輪: kanawa
+      金輪: circlet
   hands:
     pattern: '装備:腕\s*\[(.+?)\]'
     capturegrp: 1
@@ -781,11 +792,11 @@ status:
       チャイナドレス: china dress
       法衣: buddhist robe
       道士服: taoist robe
-      イブニングドレス: evening dress
-      ゴスロリドレス: gothic lolita dress
+      イブニングドレス: evening gown
+      ゴスロリドレス: gothic lolita
       スモック: smock dress
       着ぐるみ: kigurumi
-      バスタオル: towel
+      バスタオル: naked towel
       肌襦袢: hadajuban
       ウェディングドレス: wedding dress
       チャイナドレス（ズボン）: china dress,pants
@@ -794,9 +805,9 @@ status:
     capturegrp: 1
     maps:
       着物: kimono
-      千早: chihaya
+      千早: chihaya \(clothing\)
       浴衣: yukata
-      白装束: white ritual kimono
+      白装束: white kimono
       忍装束: ninja outfit
       襦袢:
         positive: plain kimono
@@ -810,7 +821,7 @@ status:
       割烹着: kappougi
       ケープマント: cape
       白衣: labcoat
-      ケープ: shoulder cape
+      ケープ: capelet
       マント: cloak
       どてら: dotera
       羽織: haori
@@ -840,12 +851,12 @@ status:
       Ｔシャツ: t-shirt
       胸開きタートルネック: turtleneck,cleavage cutout
       セーラー服: serafuku
-      博麗の巫女服: hakurei miko outfit
+      博麗の巫女服: miko
       水干: suikan
       狩衣: kariginu
       袖無しブラウス: sleeveless blouse
       パジャマ上着: pajama top
-      守矢の巫女服: moriya miko outfit
+      守矢の巫女服: miko
       チューブトップ: tube top
       タンクトップ: tank top
       キャミソール: camisole
@@ -853,10 +864,10 @@ status:
       体操服: gym uniform
       ジャージジャケット: track jacket
       ノースリーブ: sleeveless
-      地獄Ｔシャツ: graphic t-shirt,hell print
-      オフショルダー: off-shoulder
+      地獄Ｔシャツ: print shirt
+      オフショルダー: off-shoulder shirt
       スモックブラウス: smock blouse
-      囚人シャツ: prisoner shirt
+      囚人シャツ: prison clothes
   lower_cloths:
     pattern: '装備:下衣\s*\[(.+?)\]'
     capturegrp: 1
@@ -875,15 +886,15 @@ status:
       ミニスカート: miniskirt
       サロペットスカート: overall skirt
       三色スカート: tricolor skirt
-      囚人スカート: prisoner skirt
-      ショートズボン: short pants
+      囚人スカート: prison clothes
+      ショートズボン: shorts
       パジャマズボン: pajama pants
       ホットパンツ: hot pants
       オーバーオール: overalls
       作業ズボン: work pants
       指貫袴: sashinuki hakama
-      ブルマ: bloomers
-      かぼちゃズボン: pumpkin pants
+      ブルマ: buruma
+      かぼちゃズボン: puffy shorts
   lingeries:
     pattern: '装備:下着\s*\[(.+?)\]'
     capturegrp: 1
@@ -897,20 +908,20 @@ status:
         positive: black bunny suit
         negative: shirt
       レオタード: leotard
-      ハイレグレオタード（黒）: highleg leotard,black
-      ハイレグレオタード（赤）: highleg leotard,red
+      ハイレグレオタード（黒）: highleg leotard,black leotard
+      ハイレグレオタード（赤）: highleg leotard,red leotard
       バニースーツ（赤）:
         positive: red bunny suit
         negative: shirt
       スクール水着: school swimsuit
-      競泳水着: competitive swimsuit
+      競泳水着: competition swimsuit
       ワンピース水着: one-piece swimsuit
       スリングショット: slingshot swimsuit
-      インナースーツ: underlayer bodysuit
+      インナースーツ: bodysuit
       鎖帷子: chainmail
       ボディースーツ: bodysuit
-      ラバースーツ: rubber suit
-      ライダースーツ: riding suit
+      ラバースーツ: latex,bodysuit
+      ライダースーツ: biker clothes
   upper_lingeries:
     pattern: '装備:下着\(上\)\s*\[(.+?)\]'
     capturegrp: 1
@@ -922,7 +933,7 @@ status:
       ビキニトップ: bikini top
       スポーツブラ: sports bra
       キャミソール: camisole
-      ばんそうこう: nipple pasties
+      ばんそうこう: pasties
       ニプレス（星型）: star pasties
       ニプレス（ハート型）: heart pasties
       ニプルピアス: nipple piercing
@@ -931,7 +942,7 @@ status:
       レースのブラ（白）: lace bra,white
       レースのブラ（黒）: lace bra,black
       シースルーブラ: see-through bra
-      トップレスブラ: open-cup bra
+      トップレスブラ: cupless bra
       チューブトップブラ: tube top bra
       貞操帯ブラ: chastity bra
       触手ブラ: tentacle bra
@@ -944,31 +955,31 @@ status:
       スキャンティ: micro panties
       褌: fundoshi
       前張り: maebari
-      絆創膏: crotch pasties
+      絆創膏: maebari
       スパッツ: spats
       貞操帯: chastity belt
       ラビアピアス: labia piercing
       クリピアス: clit piercing
-      トランクス: boxer shorts
-      ドロワーズ: drawers
+      トランクス: boxers
+      ドロワーズ: bloomers
       くまさんパンツ: bear print panties
       水玉パンツ: polka dot panties
       しましまパンツ: striped panties
       フリルパンツ: frilled panties
       無地のパンツ: plain panties
-      ローレグパンツ: low-leg panties
+      ローレグパンツ: lowleg panties
       ローライズパンツ: low-rise panties
       ハイレグパンツ: highleg panties
       レースのパンティ（白）: lace panties,white
       Ｔバック: thong
-      紐パン: string panties
+      紐パン: side-tie panties
       レザーパンツ: leather panties
       ショーツ: panties
-      ふんどし: loincloth
+      ふんどし: fundoshi
       Ｇストリング: g-string
       シースルーショーツ: see-through panties
       オープンショーツ: crotchless panties
-      ドロワーズ（股開き）: crotchless drawers
+      ドロワーズ（股開き）: crotchless bloomers
       触手下着: tentacle panties
       バイブパンツ: vibrator panties
       二穴バイブパンツ: double vibrator panties
@@ -983,10 +994,10 @@ status:
       足袋: tabi
       網タイツ: fishnet pantyhose
       パンティストッキング: pantyhose
-      ニーソックス: knee-high socks
-      サイハイソックス: thigh-high socks
+      ニーソックス: kneehighs
+      サイハイソックス: thighhighs
       タイツ: tights
-      リボン: socks,ribbon trim
+      リボン: bow legwear
   shoes:
     pattern: '装備:靴\s*\[(.+?)\]'
     capturegrp: 1
@@ -1000,9 +1011,9 @@ status:
       下駄: geta
       ハイヒール: high heels
       ナースサンダル: nurse sandals
-      ロングブーツ: long boots
-      ハイブーツ: knee-high boots
-      草履: zori sandals
+      ロングブーツ: thigh boots
+      ハイブーツ: knee boots
+      草履: zouri
       スニーカー: sneakers
       革靴: leather shoes
       地下足袋: jika-tabi
@@ -1024,9 +1035,9 @@ status:
       荒縄: rope
       拘束具: bondage restraints
       ランドセル: randoseru
-      リュックサック: rucksack
+      リュックサック: backpack
       注連縄: shimenawa
-      羽衣: hagoromo
+      羽衣: shawl
       包帯: bandages
       ブレスレット: bracelet
       サッシュベルト: sash belt
@@ -1039,11 +1050,11 @@ status:
       リボン: decorative bow
       ガムテープ: duct tape
       ひげ: fake mustache
-      ごはんつぶ: rice grain on face
+      ごはんつぶ: food on face
       トースト: toast in mouth
       桃: peach
       生理用品: sanitary pad
-      惑星: small planet
+      惑星: planet
       ショルダーバッグ: shoulder bag
       ポシェット: pochette
       つづら: wicker basket
@@ -1066,7 +1077,7 @@ status:
       袖: detached sleeves
       首飾り: necklace
       眼鏡: glasses
-      御札: paper talisman
+      御札: ofuda
       傘: umbrella
       サングラス: sunglasses
       鎖: chains

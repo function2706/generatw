@@ -60,7 +60,7 @@ main:
         天子: "hinanawi tenshi"
         豊姫: "watatsuki no toyohime"
         依姫: "watatsuki no yorihime"
-        レイセン: "reisen (touhou bougetsushou)"
+        レイセン: reisen \(touhou bougetsushou\)
         キスメ: "kisume"
         ヤマメ: "kurodani yamame"
         パルスィ: "mizuhashi parsee"
@@ -96,12 +96,12 @@ main:
         針妙丸: "sukuna shinmyoumaru"
         雷鼓: "horikawa raiko"
         菫子: "usami sumireko"
-        清蘭: "seiran (touhou)"
-        鈴瑚: "ringo (touhou)"
+        清蘭: seiran \(touhou\)
+        鈴瑚: ringo \(touhou\)
         ドレミー: "doremy sweet"
         サグメ: "kishin sagume"
         クラウンピース: "clownpiece"
-        純狐: "junko (touhou)"
+        純狐: junko \(touhou\)
         ヘカーティア: "hecatia lapislazuli"
         エタニティラルバ: "eternity larva"
         ネムノ: "sakata nemuno,sharp teeth"
@@ -134,7 +134,7 @@ main:
           maps:
             ワンピース: one-piece dress
             和服: kimono
-            導師服: mage robe
+            導師服: robe
         upper_lingeries:
           pattern: '\[([^\[\]]+?)\]'
           capturegrp: 1
@@ -148,8 +148,8 @@ main:
           capturegrp: 1
           maps:
             パンティ: panties
-            ドロワーズ: drawers
-            トランクス: boxer shorts
+            ドロワーズ: bloomers
+            トランクス: boxers
             パンティストッキング: pantyhose
             褌: fundoshi
         socks:
@@ -168,7 +168,7 @@ main:
           maps:
             手袋: gloves
             袖: detached sleeves
-            羽衣: hagoromo
+            羽衣: shawl
         upper_cloths:
           pattern: '\[([^\[\]]+?)\]'
           capturegrp: 1
@@ -188,7 +188,7 @@ main:
           maps:
             ボンデージ: bondage outfit
             和服: kimono
-            メイド服: maid outfit
+            メイド服: maid
             チャイナ服: china dress
             セーラー服: serafuku
             スク水: school swimsuit
@@ -269,7 +269,7 @@ action:
       初めてを貰ってもいいかと聞いてみた: talk to viewer,blush
       これからお仕置きすると言い出した: talk to viewer,evil smile
       を大声で怒鳴った: talk to viewer,shouting,angry
-      に向かって不気味な微笑を浮かべた: talk to viewer,creepy smile
+      に向かって不気味な微笑を浮かべた: talk to viewer,crazy smile
       押し倒した: pinning,on top,looking down at viewer,pov
       を自由にした: sitting up,looking down at viewer,pov
       バイブの先端をあてがい馴染ませていく: holding vibrator,looking at viewer
@@ -303,10 +303,10 @@ action:
       木馬から降ろしてやった:
         positive: looking at viewer,relieved smile
         negative: wooden horse
-      浣腸液を流し込み、栓をした: holding enema bag,looking at viewer
-      膣に拳で侵入し始めた: clenched fist,looking at viewer,smug
-      アヌスに拳で侵入し始めた: clenched fist,looking at viewer,smug
-      膣とアヌスに拳で侵入し始めた: clenched fist,looking at viewer,smug
+      浣腸液を流し込み、栓をした: enema,looking at viewer
+      膣に拳で侵入し始めた: clenched hand,looking at viewer,smug
+      アヌスに拳で侵入し始めた: clenched hand,looking at viewer,smug
+      膣とアヌスに拳で侵入し始めた: clenched hand,looking at viewer,smug
       をその場に放置した: walking away,looking back
       お腹にマジックで「↓公衆便所」と書いて、その場に置いて一人で帰ろうとした: holding marker,smug,walking away
       黒光りする双頭ペニスバンドを取り出すと、それを身に付けた: strap-on,looking at viewer
