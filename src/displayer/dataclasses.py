@@ -25,6 +25,10 @@ class GUIConfigs:
     each_max_pics: int = 0
     yamlpath: str | None = None
     backend: str = ""
+    # 画面テキストの入力ソース: "socket" (Emuera からの push) or "clipboard" (従来方式)
+    input_source: str = "clipboard"
+    # socket ソース使用時に listen するポート
+    socket_port: int = 52340
     allow_edit_clipboard: bool = False
     log_parser_reports: bool = False
     save_memory_end: bool = False
