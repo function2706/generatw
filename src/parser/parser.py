@@ -7,7 +7,6 @@ from __future__ import annotations
 import pickle
 import random
 import threading
-import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -17,6 +16,7 @@ import yaml
 import master.events
 from common.functions import BottleMail, PathConsts, dirname_by_prompts, dump_json
 from master.interfaces import MasterIF
+from parser.input_source import ClipboardInputSource, InputSource, SocketInputSource
 from parser.interpreter.debug_interpreter import DebugInterpreter
 from parser.interpreter.interpreter import Interpreter, MemoryEntry
 from parser.interpreter.reverse_interpreter import ReverseInterpreter
@@ -30,26 +30,9 @@ INTERPRETER_LIST: list[type[Interpreter]] = [
     ReverseInterpreter,
 ]
 
-
-def safe_paste(retry: int = 5, delay: float = 0.1) -> str | None:
-    """
-    クリップボードから文字列を取得する\n
-    PyperclipWindowsException (pyperclip が Windows 上でクリップボードを open できない)については\n
-    delay 秒ごとに retry 回再試行し, すべてに失敗した場合に None を返す
-
-    Args:
-        retry (int, optional): リトライ回数. Defaults to 5.
-        delay (float, optional): リトライ間隔. Defaults to 0.1.
-
-    Returns:
-        str | None: 文字列, 失敗時に None
-    """
-    for _ in range(retry):
-        try:
-            return pyperclip.paste()
-        except pyperclip.PyperclipWindowsException:
-            time.sleep(delay)
-    return None
+# 入力ソース識別子 (GUIConfigs.input_source の値との照合)
+INPUT_SOURCE_SOCKET = "socket"
+INPUT_SOURCE_CLIPBOARD = "clipboard"
 
 
 @dataclass(frozen=True)
@@ -94,13 +77,29 @@ class Parser:
         self.interpreter: Interpreter = None
         self.debug_interpreter: DebugInterpreter = DebugInterpreter(Consts.debug_yamlpath)
 
-        self.crnt_clipboard = ""
+        self.crnt_input = ""
         self.crnt_prompt: Prompt = None
+
+        self.source: InputSource = self._make_input_source()
 
         self.event = Event()
         self.parser_thread = threading.Thread(
             target=self.parser, args=(), daemon=True, name="parser"
         )
+
+    def _make_input_source(self) -> InputSource:
+        """
+        現在の設定に応じた入力ソースを生成する\n
+        "socket" 指定時は Emuera からの push を受ける TCP ソース,
+        それ以外 (既定) は従来のクリップボード監視ソース
+
+        Returns:
+            InputSource: 入力ソース
+        """
+        configs = self.master.crnt_gui_configs
+        if getattr(configs, "input_source", INPUT_SOURCE_CLIPBOARD) == INPUT_SOURCE_SOCKET:
+            return SocketInputSource(port=int(getattr(configs, "socket_port", 52340)))
+        return ClipboardInputSource(poll_interval_sec=Consts.thread_interval_sec)
 
     def start(self) -> None:
         """
@@ -294,39 +293,43 @@ class Parser:
 
     def parser(self) -> None:
         """
-        クリップボード監視を行い, プロンプトの生成と報告を行う
+        入力ソース (クリップボード or Emuera からの socket push) を監視し,
+        画面テキストの変化を検知してプロンプトの生成と報告を行う
         """
-        while not self.event.shutdown.is_set():
-            time.sleep(Consts.thread_interval_sec)
-            try:
-                new_clipboard = safe_paste()
-                if new_clipboard is None:
-                    print("Clipboard unavailable, retrying...")
-                    continue
+        self.source.open()
+        try:
+            while not self.event.shutdown.is_set():
+                try:
+                    new_input = self.source.read()
+                    if new_input is None:
+                        # 新規入力なし (タイムアウト等). シャットダウン判定へ戻る
+                        continue
 
-                if self.crnt_clipboard == new_clipboard:
-                    continue
+                    if self.crnt_input == new_input:
+                        continue
 
-                self.crnt_clipboard = new_clipboard
+                    self.crnt_input = new_input
 
-                if self.master.crnt_gui_configs.print_new_clipboard:
-                    print("new_clipboard:")
-                    print(new_clipboard)
+                    if self.master.crnt_gui_configs.print_new_clipboard:
+                        print("new_input:")
+                        print(new_input)
 
-                prompt = None
-                if self.event.in_debugging.is_set():
-                    prompt, _ = self.debug_interpreter.make_prompt(new_clipboard)
-                elif self.interpreter is not None:
-                    prompt, reports = self.interpreter.make_prompt(new_clipboard)
-                    if reports:
-                        self.to_master.enclose(master.events.NewReports(reports))
+                    prompt = None
+                    if self.event.in_debugging.is_set():
+                        prompt, _ = self.debug_interpreter.make_prompt(new_input)
+                    elif self.interpreter is not None:
+                        prompt, reports = self.interpreter.make_prompt(new_input)
+                        if reports:
+                            self.to_master.enclose(master.events.NewReports(reports))
 
-                if prompt is not None:
-                    self.inform_new_prompt(prompt)
-            except Exception as e:
-                raise Exception(
-                    f"Any exception occurred in {threading.current_thread().name}: "
-                ) from e
+                    if prompt is not None:
+                        self.inform_new_prompt(prompt)
+                except Exception as e:
+                    raise Exception(
+                        f"Any exception occurred in {threading.current_thread().name}: "
+                    ) from e
+        finally:
+            self.source.close()
 
     def dump_memory(self) -> None:
         """
