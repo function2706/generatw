@@ -1,0 +1,157 @@
+backend: ComfyUIGenerator
+txt2img:
+  nodes:
+    ckpt_loader:
+      idx: 1
+      class_type: CheckpointLoaderSimple
+      inputs:
+        ckpt_name: Illustrious\waiNSFWIllustrious_v150.safetensors
+    empty_latent:
+      idx: 2
+      class_type: EmptyLatentImage
+      inputs:
+        width: $width
+        height: $height
+        batch_size: $batch_size
+    clip_layer_setter:
+      idx: 3
+      class_type: CLIPSetLastLayer
+      inputs:
+        stop_at_clip_layer: -2
+        clip: [ckpt_loader, 1]
+    positive_clip:
+      idx: 4
+      class_type: CLIPTextEncode
+      inputs:
+        text: $pos_prompt
+        clip: [ckpt_loader, 1]
+    negative_clip:
+      idx: 5
+      class_type: CLIPTextEncode
+      inputs:
+        text: $neg_prompt
+        clip: [ckpt_loader, 1]
+    sampler:
+      idx: 6
+      class_type: KSampler
+      inputs:
+        seed: $seed
+        steps: $steps
+        cfg: $cfg_scale
+        denoise: 1.0
+        sampler_name: $sampler_name
+        scheduler: $scheduler
+        model: [ckpt_loader, 0]
+        latent_image: [empty_latent, 0]
+        positive: [positive_clip, 0]
+        negative: [negative_clip, 0]
+    vae_decoder:
+      idx: 7
+      class_type: VAEDecode
+      inputs:
+        samples: [sampler, 0]
+        vae: [ckpt_loader, 2]
+    previewer:
+      idx: 8
+      class_type: PreviewImage
+      inputs:
+        images: [vae_decoder, 0]
+  picinfo:
+    positive_prompt: [positive_clip, text]
+    negative_prompt: [negative_clip, text]
+    steps: [sampler, steps]
+    sampler: [sampler, sampler_name]
+    scheduler: [sampler, scheduler]
+    cfg_scale: [sampler, cfg]
+    seed: [sampler, seed]
+    width: [empty_latent, width]
+    height: [empty_latent, height]
+    model_name: [ckpt_loader, ckpt_name]
+    clip_skip:
+      from: [clip_layer_setter, stop_at_clip_layer]
+      negate: true
+img2img:
+  nodes:
+    ckpt_loader:
+      idx: 1
+      class_type: CheckpointLoaderSimple
+      inputs:
+        ckpt_name: Illustrious\waiNSFWIllustrious_v150.safetensors
+    image_loader:
+      idx: 2
+      class_type: UnlimitLoadImage
+      inputs:
+        path: $path
+    vae_encoder:
+      idx: 3
+      class_type: VAEEncode
+      inputs:
+        pixels: [image_loader, 0]
+        vae: [ckpt_loader, 2]
+    clip_layer_setter:
+      idx: 4
+      class_type: CLIPSetLastLayer
+      inputs:
+        stop_at_clip_layer: -2
+        clip: [ckpt_loader, 1]
+    positive_clip:
+      idx: 5
+      class_type: CLIPTextEncode
+      inputs:
+        text: $pos_prompt
+        clip: [ckpt_loader, 1]
+    negative_clip:
+      idx: 6
+      class_type: CLIPTextEncode
+      inputs:
+        text: $neg_prompt
+        clip: [ckpt_loader, 1]
+    latent_upscaler:
+      idx: 7
+      class_type: LatentUpscale
+      inputs:
+        upscale_method: $upscaler
+        width: $width
+        height: $height
+        crop: disabled
+        samples: [vae_encoder, 0]
+    sampler:
+      idx: 8
+      class_type: KSampler
+      inputs:
+        seed: $seed
+        steps: $steps
+        cfg: $cfg_scale
+        denoise: $denoise
+        sampler_name: $sampler_name
+        scheduler: $scheduler
+        model: [ckpt_loader, 0]
+        latent_image: [latent_upscaler, 0]
+        positive: [positive_clip, 0]
+        negative: [negative_clip, 0]
+    vae_decoder:
+      idx: 9
+      class_type: VAEDecode
+      inputs:
+        samples: [sampler, 0]
+        vae: [ckpt_loader, 2]
+    previewer:
+      idx: 10
+      class_type: PreviewImage
+      inputs:
+        images: [vae_decoder, 0]
+  picinfo:
+    ancestor: [image_loader, path]
+    positive_prompt: [positive_clip, text]
+    negative_prompt: [negative_clip, text]
+    steps: [sampler, steps]
+    sampler: [sampler, sampler_name]
+    scheduler: [sampler, scheduler]
+    cfg_scale: [sampler, cfg]
+    seed: [sampler, seed]
+    width: [latent_upscaler, width]
+    height: [latent_upscaler, height]
+    model_name: [ckpt_loader, ckpt_name]
+    clip_skip:
+      from: [clip_layer_setter, stop_at_clip_layer]
+      negate: true

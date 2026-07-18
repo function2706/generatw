@@ -436,9 +436,39 @@ class MainTab:
             )
             self.debug_button.grid(row=0, column=3, padx=6, pady=6, sticky="w")
 
+            # WF YAML 選択
+            ttk.Label(self.thread_sellect_frame, text="選択中のWF YAML").grid(
+                row=1, column=0, padx=6, pady=6, sticky="w"
+            )
+            self.wf_yamlpath: Path | None = (
+                Path(init_configs.wf_yamlpath) if init_configs.wf_yamlpath is not None else None
+            )
+            self.wf_yamlpath_var = tkinter.StringVar(
+                value=self.wf_yamlpath.name
+                if self.wf_yamlpath is not None and self.wf_yamlpath.exists()
+                else "ComfyUI.yaml"
+            )
+            ttk.Label(self.thread_sellect_frame, textvariable=self.wf_yamlpath_var).grid(
+                row=1, column=1, padx=6, pady=6, sticky="w"
+            )
+            # ボタン(WF YAML選択)
+            self.select_wf_yaml_button = ttk.Button(
+                self.thread_sellect_frame,
+                text="WF YAML選択",
+                command=owner.super_owner.super_owner.on_select_wf_yaml,
+            )
+            self.select_wf_yaml_button.grid(row=1, column=2, padx=6, pady=6, sticky="w")
+            # ボタン(再読み込み)
+            self.reload_wf_yaml_button = ttk.Button(
+                self.thread_sellect_frame,
+                text="再読み込み",
+                command=owner.super_owner.super_owner.on_reload_wf_yaml,
+            )
+            self.reload_wf_yaml_button.grid(row=1, column=3, padx=6, pady=6, sticky="w")
+
             # バックエンド
             ttk.Label(self.thread_sellect_frame, text="バックエンド").grid(
-                row=1, column=0, padx=6, pady=6, sticky="w"
+                row=2, column=0, padx=6, pady=6, sticky="w"
             )
             self.back_options = [BackEnd.a1111.value, BackEnd.comfy_ui.value]
             self.backend_var = tkinter.StringVar(value=self.back_options[0])
@@ -454,7 +484,7 @@ class MainTab:
                 "<<ComboboxSelected>>",
                 lambda e: self.super_owner.super_owner.super_owner.on_switch_backend(),
             )
-            self.backend_combo.grid(row=1, column=1, padx=6, pady=6, sticky="w")
+            self.backend_combo.grid(row=2, column=1, padx=6, pady=6, sticky="w")
 
     def __init__(self, owner: MainWindow, init_configs: GUIConfigs):
         """
@@ -908,6 +938,25 @@ class Displayer:
         """
         self.to_master.enclose(master.events.OnReloadYaml())
 
+    def on_select_wf_yaml(self) -> None:
+        """
+        WF YAML選択ボタンハンドラ
+        """
+        path = filedialog.askopenfilename(title="WF YAML選択", filetypes=[("YAML", "*.yaml")])
+        if not path:
+            return
+
+        self.main_window.main_tab_obj.sellect_frame.wf_yamlpath = Path(path)
+        self.main_window.main_tab_obj.sellect_frame.wf_yamlpath_var.set(Path(path).name)
+        self.to_master.enclose(master.events.OnSelectWfYaml(path=path))
+        self.update_configs()
+
+    def on_reload_wf_yaml(self) -> None:
+        """
+        WF YAML 再読み込みボタンハンドラ
+        """
+        self.to_master.enclose(master.events.OnReloadWfYaml())
+
     def on_debug(self) -> None:
         """
         デバッグボタンハンドラ
@@ -1002,6 +1051,9 @@ class Displayer:
             ),
             yamlpath=str(self.main_window.main_tab_obj.sellect_frame.yamlpath)
             if self.main_window.main_tab_obj.sellect_frame.yamlpath is not None
+            else None,
+            wf_yamlpath=str(self.main_window.main_tab_obj.sellect_frame.wf_yamlpath)
+            if self.main_window.main_tab_obj.sellect_frame.wf_yamlpath is not None
             else None,
             backend=self.main_window.main_tab_obj.sellect_frame.backend_combo.get(),
             allow_edit_clipboard=bool(

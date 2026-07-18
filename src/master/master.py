@@ -83,10 +83,20 @@ class Master(MasterIF):
         if self.backend == BackEnd.a1111:
             self.generator = A1111Generator(self, self.from_generator)
         elif self.backend == BackEnd.comfy_ui:
-            self.generator = ComfyUIGenerator(self, self.from_generator)
+            self.generator = (
+                ComfyUIGenerator(self, self.from_generator, Path(self.crnt_configs.wf_yamlpath))
+                if self.crnt_configs.wf_yamlpath is not None
+                else ComfyUIGenerator(self, self.from_generator)
+            )
         else:
             raise ValueError
         self.is_switching_backend = False
+        self.is_switching_workflow = False
+        self.crnt_wf_yamlpath: Path = (
+            Path(self.crnt_configs.wf_yamlpath)
+            if self.crnt_configs.wf_yamlpath is not None
+            else Path("yamls/ComfyUI.yaml")
+        )
 
         self.displayer = Displayer(self, self.from_displayer, self.crnt_configs)
 
@@ -169,6 +179,37 @@ class Master(MasterIF):
 
         self.root.after(0, worker)
 
+    def switch_workflow(self, new_yamlpath: Path) -> None:
+        """
+        ComfyUI ワークフロー定義の切り替えを行う\n
+        バックエンドが ComfyUI でない場合は何もしない\n
+        YAML の読み込みに失敗した場合はエラーを表示し, メインループは継続する
+
+        Args:
+            new_yamlpath (Path): 新しい WF YAML パス
+        """
+        if not isinstance(self.generator, ComfyUIGenerator) or self.is_switching_workflow:
+            return
+
+        self.is_switching_workflow = True
+
+        def worker():
+            try:
+                self.generator.switch_workflow(new_yamlpath)
+                self.crnt_wf_yamlpath = new_yamlpath
+            except Exception as e:
+                print(f"WF YAML の読み込みに失敗しました: {e}")
+            finally:
+                self.is_switching_workflow = False
+
+        self.root.after(0, worker)
+
+    def reload_workflow(self) -> None:
+        """
+        ComfyUI ワークフロー定義を再読み込みする
+        """
+        self.switch_workflow(self.crnt_wf_yamlpath)
+
     def switch_backend(self, new_backend: BackEnd) -> None:
         """
         バックエンドの切り替えを行う
@@ -188,11 +229,14 @@ class Master(MasterIF):
             old.join()
 
             self.backend = new_backend
-            self.generator = (
-                A1111Generator(self, self.from_generator)
-                if new_backend == BackEnd.a1111
-                else ComfyUIGenerator(self, self.from_generator)
-            )
+            if new_backend == BackEnd.a1111:
+                self.generator = A1111Generator(self, self.from_generator)
+            elif self.crnt_configs.wf_yamlpath is not None:
+                self.generator = ComfyUIGenerator(
+                    self, self.from_generator, Path(self.crnt_configs.wf_yamlpath)
+                )
+            else:
+                self.generator = ComfyUIGenerator(self, self.from_generator)
 
             self.generator.start()
             self.is_switching_backend = False
@@ -266,6 +310,10 @@ class Master(MasterIF):
                 self.switch_frontend(Path(event.path))
             if isinstance(event, master.events.OnReloadYaml):
                 self.reload_frontend()
+            if isinstance(event, master.events.OnSelectWfYaml):
+                self.switch_workflow(Path(event.path))
+            if isinstance(event, master.events.OnReloadWfYaml):
+                self.reload_workflow()
             if isinstance(event, master.events.OnDebug):
                 self.parser.ready_for_debug()
             if isinstance(event, master.events.OnDumpArchiver):

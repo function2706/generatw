@@ -24,6 +24,7 @@ class GUIConfigs:
     sd_scaleby: float = 0.0
     each_max_pics: int = 0
     yamlpath: str | None = None
+    wf_yamlpath: str | None = None
     backend: str = ""
     allow_edit_clipboard: bool = False
     log_parser_reports: bool = False

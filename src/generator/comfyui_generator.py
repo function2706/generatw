@@ -6,10 +6,12 @@ from __future__ import annotations
 
 import io
 import json
+import random
 import threading
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum, auto
+from pathlib import Path
 from threading import Lock
 
 import requests
@@ -19,7 +21,7 @@ from PIL import Image, ImageFile
 import master.events
 from archiver.dataclasses import PicInfo
 from common.functions import BottleMail
-from generator.comfyui_workflow import Img2ImgWorkFlow, Txt2ImgWorkFlow
+from generator.comfyui_workflow import WorkFlowDef
 from generator.dataclasses import TaskBlueprint, TaskBlueprintImg2Img, TaskBlueprintTxt2Img
 from generator.generator import Generator
 from master.interfaces import MasterIF
@@ -91,12 +93,19 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
     タスク設計図をもとにサーバへ非同期にポストし, ファイル保存をする
     """
 
-    def __init__(self, master: MasterIF, to_master: BottleMail[master.events.GeneratorEvent]):
+    def __init__(
+        self,
+        master: MasterIF,
+        to_master: BottleMail[master.events.GeneratorEvent],
+        workflow_yamlpath: Path = Path("yamls/ComfyUI.yaml"),
+    ):
         """
         コンストラクタ
 
         Args:
             master (MasterIF): Master インターフェース
+            workflow_yamlpath (Path): ワークフロー定義 YAML のパス,
+                Defaults to Path("yamls/ComfyUI.yaml").
         """
         super().__init__(master, to_master)
 
@@ -105,11 +114,27 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
         self.progress: ComfyUITaskProgress = None
         self.progress_lock = Lock()
 
+        self.wfdefs: dict[str, WorkFlowDef] = WorkFlowDef.load(workflow_yamlpath)
+        self.wfdefs_lock = Lock()
+
         self.is_interrupting_listen = threading.Event()  # WS listen 中断要求があった
 
     def finalize(self) -> None:
         self.is_interrupting_listen.clear()
         super().finalize()
+
+    def switch_workflow(self, yamlpath: Path) -> None:
+        """
+        指定の YAML からワークフロー定義群を読み込み直す\n
+        読み込み中の生成/アップスケール要求とは競合しないよう, 読み込み自体はロック外で行い
+        差し替えのみをロックする
+
+        Args:
+            yamlpath (Path): ワークフロー定義 YAML のパス
+        """
+        new_wfdefs = WorkFlowDef.load(yamlpath)
+        with self.wfdefs_lock:
+            self.wfdefs = new_wfdefs
 
     def listen_websocket(self, ws: websocket.WebSocket) -> TaskReport | None:
         """
@@ -165,39 +190,10 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
             buf = io.BytesIO()
             pic.save(buf, format="PNG")
 
-            if is_upscale:
-                workflow_resp = Img2ImgWorkFlow.fromdict(json.loads(pic.info.get("prompt")))
-                picinfo = PicInfo(
-                    positive_prompt=workflow_resp.positive_prompt,
-                    negative_prompt=workflow_resp.negative_prompt,
-                    steps=workflow_resp.steps,
-                    sampler=workflow_resp.sampler,
-                    scheduler=workflow_resp.scheduler,
-                    cfg_scale=workflow_resp.cfg_scale,
-                    seed=workflow_resp.seed,
-                    width=workflow_resp.width,
-                    height=workflow_resp.height,
-                    model_name=workflow_resp.model_name,
-                    model_hash="",
-                    clip_skip=workflow_resp.clip_skip,
-                    ancestor=workflow_resp.ancestor,
-                )
-            else:
-                workflow_resp = Txt2ImgWorkFlow.fromdict(json.loads(pic.info.get("prompt")))
-                picinfo = PicInfo(
-                    positive_prompt=workflow_resp.positive_prompt,
-                    negative_prompt=workflow_resp.negative_prompt,
-                    steps=workflow_resp.steps,
-                    sampler=workflow_resp.sampler,
-                    scheduler=workflow_resp.scheduler,
-                    cfg_scale=workflow_resp.cfg_scale,
-                    seed=workflow_resp.seed,
-                    width=workflow_resp.width,
-                    height=workflow_resp.height,
-                    model_name=workflow_resp.model_name,
-                    model_hash="",
-                    clip_skip=workflow_resp.clip_skip,
-                )
+            with self.wfdefs_lock:
+                wfdef = self.wfdefs["img2img" if is_upscale else "txt2img"]
+            values = wfdef.read_picinfo(json.loads(pic.info.get("prompt")))
+            picinfo = PicInfo(**values, model_hash="")
 
             result.append((Image.open(buf), picinfo))
 
@@ -209,19 +205,21 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
             return []
 
         task: TaskBlueprintTxt2Img = self.crnt_task_copy
-        workflow = Txt2ImgWorkFlow(
-            ckpt_name="Illustrious\\waiNSFWIllustrious_v150.safetensors",
-            pos_prompt=task.prompt,
-            neg_prompt=task.negative_prompt,
-            seed=task.seed,
-            steps=task.steps,
-            batch_size=task.batch_size,
-            sampler_name=task.sampler_name,
-            scheduler=task.scheduler,
-            cfg_scale=task.cfg_scale,
-            width=task.width,
-            height=task.height,
-        )
+        params = {
+            "pos_prompt": task.prompt,
+            "neg_prompt": task.negative_prompt,
+            "seed": random.randint(0, 2**31 - 1) if task.seed == -1 else task.seed,
+            "steps": task.steps,
+            "batch_size": task.batch_size,
+            "sampler_name": task.sampler_name,
+            "scheduler": task.scheduler,
+            "cfg_scale": task.cfg_scale,
+            "width": task.width,
+            "height": task.height,
+        }
+        with self.wfdefs_lock:
+            wfdef = self.wfdefs["txt2img"]
+        workflow = wfdef.build(params)
 
         try:
             requests.post(
@@ -261,22 +259,24 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
             return []
 
         task: TaskBlueprintImg2Img = self.crnt_task_copy
-        workflow = Img2ImgWorkFlow(
-            ckpt_name="Illustrious\\waiNSFWIllustrious_v150.safetensors",
-            path=task.path,
-            pos_prompt=task.prompt,
-            neg_prompt=task.negative_prompt,
-            seed=task.seed,
-            steps=task.steps,
-            batch_size=task.batch_size,
-            sampler_name=task.sampler_name,
-            scheduler=task.scheduler,
-            upscaler=task.upscaler_name,
-            cfg_scale=task.cfg_scale,
-            denoise=task.denoising_strength,
-            width=task.width,
-            height=task.height,
-        )
+        params = {
+            "path": str(Path(task.path).resolve()),
+            "pos_prompt": task.prompt,
+            "neg_prompt": task.negative_prompt,
+            "seed": random.randint(0, 2**31 - 1) if task.seed == -1 else task.seed,
+            "steps": task.steps,
+            "batch_size": task.batch_size,
+            "sampler_name": task.sampler_name,
+            "scheduler": task.scheduler,
+            "upscaler": task.upscaler_name,
+            "cfg_scale": task.cfg_scale,
+            "denoise": task.denoising_strength,
+            "width": task.width,
+            "height": task.height,
+        }
+        with self.wfdefs_lock:
+            wfdef = self.wfdefs["img2img"]
+        workflow = wfdef.build(params)
 
         try:
             requests.post(
