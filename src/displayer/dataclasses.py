@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 
 
@@ -23,27 +23,36 @@ class GUIConfigs:
     sd_height: int = 0
     sd_scaleby: float = 0.0
     each_max_pics: int = 0
-    yamlpath: str | None = None
     backend: str = ""
-    # 画面テキストの入力ソース: "socket" (Emuera からの push) or "clipboard" (従来方式)
-    input_source: str = "clipboard"
-    # socket ソース使用時に listen するポート
-    socket_port: int = 52340
-    allow_edit_clipboard: bool = False
-    log_parser_reports: bool = False
-    save_memory_end: bool = False
-    load_memory_start: bool = False
-    print_new_clipboard: bool = False
-    print_new_prompt_set: bool = False
-    print_new_prompt: bool = False
+    # 選択中キャラクター ID (yamls/characters/<id>.yaml の character キー)
+    crnt_character: str | None = None
+    # 終了時に内部状態を保存する
+    save_state_end: bool = True
+    # 開始時 / キャラ選択時に保存状態を復元する
+    load_state_start: bool = True
+    # 画像メタデータをコンソールへ出力する
     print_picinfo: bool = False
-    print_parser_reports: bool = False
+    # 構築したプロンプト文字列をコンソールへ出力する
+    print_prompt: bool = False
+    # モジュール間イベントをコンソールへ出力する
     print_event: bool = False
 
     @classmethod
     def fromjson(cls, path: Path) -> GUIConfigs:
+        """
+        JSON から設定を読み込む\n
+        未知キー (旧スキーマの残骸など) は無視し, 欠落キーは既定値で補う
+
+        Args:
+            path (Path): JSON パス
+
+        Returns:
+            GUIConfigs: 設定
+        """
         with open(path, encoding="utf-8") as f:
-            return cls(**json.load(f))
+            raw = json.load(f)
+        known = {f.name for f in fields(cls)}
+        return cls(**{k: v for k, v in raw.items() if k in known})
 
     def tojson(self, path: Path) -> None:
         with open(path, "w", encoding="utf-8") as f:

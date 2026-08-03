@@ -1,4 +1,0 @@
-interpreter: SampleInterpreter
-main:
-  ignition: "go"
-  common: ""

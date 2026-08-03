@@ -1,0 +1,99 @@
+# アクション定義 (全キャラ共通)
+# ボタンとして UI に動的に並ぶ. 上から順に表示される.
+# 新しいアクションはこのリストに追記するだけで増やせる.
+# スキーマの詳細は yamls/character_yaml_spec.md を参照.
+#
+# effects  : パラメータ ID -> 変化 (scalar は +n / -n / =n, enum は値名)
+# precondition : 条件を満たさないと locked (拒否) となり, effects/scene は適用されない
+# scene    : そのアクション実行時にだけ一時付与するプロンプト
+# dialogue : 通常セリフ候補 (決定論的に 1 つ選ばれる)
+# dialogue_by : パラメータ条件別セリフ (成立時に優先)
+# dialogue_locked : precondition 未達時のセリフ
+
+actions:
+  - id: greet
+    label: 挨拶
+    scene: { positive: "waving, upper body, open mouth" }
+    effects: { affection: +2, mood: happy }
+    dialogue:
+      - "やっほー！ 来てくれたんだ。"
+      - "こんにちは。今日は何して遊ぶ？"
+    dialogue_by:
+      affection:
+        - { in: [80, 100], lines: ["会いたかった…！ ずっと待ってたんだから。"] }
+
+  - id: talk
+    label: 雑談
+    scene: { positive: "talking, gentle expression, upper body" }
+    effects: { affection: +1 }
+    dialogue:
+      - "あのね、昨日おもしろいことがあってさ。"
+      - "ねえ、あなたの話も聞かせてよ。"
+
+  - id: compliment
+    label: ほめる
+    scene: { positive: "surprised, hand on own cheek, upper body" }
+    effects: { affection: +3, mood: shy }
+    dialogue:
+      - "えっ…そ、そんなこと言われると照れるよ。"
+    dialogue_by:
+      mood:
+        - { is: sulky, lines: ["ふん…そんなこと言っても機嫌は直らないんだから。"] }
+
+  - id: dress
+    label: 着せ替え
+    kind: wardrobe            # 「衣装」コンボの選択を反映する特別アクション
+    dialogue:
+      - "これに着替えればいいの？ ちょっと待ってね。"
+      - "どう…似合ってる？"
+
+  - id: headpat
+    label: なでなで
+    scene: { positive: "headpat, closed eyes, smile, upper body" }
+    effects: { affection: +2, arousal: +5, mood: happy }
+    precondition: { affection: { min: 15 } }
+    dialogue:
+      - "えへへ…なでられるの、好きかも。"
+    dialogue_locked:
+      - "い、いきなり頭に触らないでよ！"
+
+  - id: hug
+    label: ハグ
+    scene: { positive: "hug, close-up, closed eyes" }
+    effects: { affection: +3, arousal: +12 }
+    precondition: { affection: { min: 40 } }
+    dialogue:
+      - "…あったかいね。もう少しだけ、こうしてて。"
+    dialogue_locked:
+      - "ま、まだそういうのは早いってば…！"
+
+  - id: gift
+    label: プレゼント
+    scene: { positive: "holding gift box, sparkling eyes, happy, upper body" }
+    effects: { affection: +5, mood: happy }
+    dialogue:
+      - "わたしに…？ 開けてもいい？ ありがとう！"
+
+  - id: date
+    label: お出かけ
+    scene: { positive: "outdoors, town street, walking, happy, full body" }
+    effects: { affection: +4, mood: happy }
+    precondition: { affection: { min: 30 } }
+    dialogue:
+      - "お出かけ！ どこ行こうか、わたしにおまかせ？"
+    dialogue_locked:
+      - "ふたりで出かけるのは…もう少し仲良くなってからね。"
+
+  - id: tease
+    label: からかう
+    scene: { positive: "pout, puffed cheeks, looking away, upper body" }
+    effects: { mood: sulky, affection: -1 }
+    dialogue:
+      - "むー！ もう、いじわる。"
+
+  - id: goodnight
+    label: おやすみ
+    scene: { positive: "sleepy, soft light, bedroom, upper body" }
+    effects: { mood: normal }
+    dialogue:
+      - "ふぁ…もう眠くなっちゃった。おやすみ…また明日ね。"

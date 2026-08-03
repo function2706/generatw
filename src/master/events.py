@@ -4,14 +4,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from pathlib import Path
+from dataclasses import dataclass
 
 from archiver.dataclasses import NoImageStats, PicStats
 from common.functions import BackEnd
 from displayer.dataclasses import GUIConfigs
 from generator.dataclasses import TaskBlueprint
-from parser.prompter.atoms import Report
 
 
 @dataclass
@@ -31,6 +29,49 @@ class DetectPicsChanges(ArchiverEvent):
 
 @dataclass
 class DisplayerEvent:
+    pass
+
+
+@dataclass
+class OnSelectCharacter(DisplayerEvent):
+    """キャラクター選択"""
+
+    char_id: str
+
+
+@dataclass
+class OnReloadCharacter(DisplayerEvent):
+    """選択中キャラクター/アクションの再読み込み"""
+
+    pass
+
+
+@dataclass
+class OnAction(DisplayerEvent):
+    """アクション実行 (挨拶/着せ替え/スキンシップ 等)"""
+
+    action_id: str
+    wardrobe_key: str | None = None  # kind=wardrobe のアクションで使用
+
+
+@dataclass
+class OnSaveState(DisplayerEvent):
+    """内部状態の保存"""
+
+    pass
+
+
+@dataclass
+class OnLoadState(DisplayerEvent):
+    """内部状態の復元"""
+
+    pass
+
+
+@dataclass
+class OnResetState(DisplayerEvent):
+    """内部状態を初期値へ戻す"""
+
     pass
 
 
@@ -60,47 +101,12 @@ class OnFlushImg2ImgTasks(DisplayerEvent):
 
 
 @dataclass
-class OnSaveMemory(DisplayerEvent):
-    pass
-
-
-@dataclass
-class OnLoadMemory(DisplayerEvent):
-    pass
-
-
-@dataclass
-class OnForgetMemory(DisplayerEvent):
-    pass
-
-
-@dataclass
-class OnSelectYaml(DisplayerEvent):
-    path: Path
-
-
-@dataclass
-class OnReloadYaml(DisplayerEvent):
-    pass
-
-
-@dataclass
-class OnDebug(DisplayerEvent):
-    pass
-
-
-@dataclass
 class OnDumpArchiver(DisplayerEvent):
     pass
 
 
 @dataclass
 class OnDumpTaskList(DisplayerEvent):
-    pass
-
-
-@dataclass
-class OnDumpMemory(DisplayerEvent):
     pass
 
 
@@ -157,20 +163,3 @@ class NewProgress(GeneratorEvent):
 @dataclass
 class ChangeTasks(GeneratorEvent):
     tasks: int = 0
-
-
-@dataclass
-class ParserEvent:
-    pass
-
-
-@dataclass
-class NewPrompts(ParserEvent):
-    is_enough: bool = False
-    positive: str = ""
-    negative: str = ""
-
-
-@dataclass
-class NewReports(ParserEvent):
-    reports: list[Report] = field(default_factory=list)

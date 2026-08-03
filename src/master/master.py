@@ -4,15 +4,14 @@
 
 from __future__ import annotations
 
-import os
 import tkinter
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 
 import master.events
 from archiver.archiver import Archiver
 from archiver.dataclasses import NoImageStats, PicStats
+from character.manager import CharacterManager
 from common.functions import BackEnd, BottleMail, PathConsts, dump_json
 from displayer.dataclasses import GUIConfigs
 from displayer.displayer import Displayer
@@ -20,8 +19,6 @@ from generator.a1111_generator import A1111Generator
 from generator.comfyui_generator import ComfyUIGenerator
 from generator.dataclasses import TaskBlueprintImg2Img, TaskBlueprintTxt2Img
 from master.interfaces import MasterIF
-from parser.parser import Parser
-from parser.prompter.atoms import Report
 
 
 @dataclass(frozen=True)
@@ -38,9 +35,6 @@ class Master(MasterIF):
     def __init__(self):
         """
         コンストラクタ
-
-        Args:
-            stats (Stats): ステータスインスタンス
         """
         self.root = tkinter.Tk()
         self.after_id: str = ""
@@ -48,7 +42,6 @@ class Master(MasterIF):
         self.from_archiver: BottleMail[master.events.ArchiverEvent] = BottleMail()
         self.from_displayer: BottleMail[master.events.DisplayerEvent] = BottleMail()
         self.from_generator: BottleMail[master.events.GeneratorEvent] = BottleMail()
-        self.from_parser: BottleMail[master.events.ParserEvent] = BottleMail()
 
         self.crnt_configs: GUIConfigs = (
             GUIConfigs.fromjson(PathConsts.config_json)
@@ -67,13 +60,8 @@ class Master(MasterIF):
             )
         )
 
-        self.parser: Parser = Parser(self, self.from_parser)
-        self.is_switching_frontend = False
-        if self.crnt_configs.yamlpath is not None:
-            self.parser.switch_interpreter(
-                Path(self.crnt_configs.yamlpath),
-                load_memory_start=self.crnt_configs.load_memory_start,
-            )
+        # キャラクター管理 (旧 Parser の役割を置換)
+        self.character = CharacterManager(load_state_start=self.crnt_configs.load_state_start)
 
         self.archiver = Archiver(self.from_archiver)
 
@@ -90,8 +78,12 @@ class Master(MasterIF):
 
         self.displayer = Displayer(self, self.from_displayer, self.crnt_configs)
 
-        self.parser.start()
         self.generator.start()
+
+        # キャラ一覧を UI へ反映し, 保存されている選択キャラを復元する
+        self.displayer.set_character_list(self.character.metas, self.crnt_configs.crnt_character)
+        if self.crnt_configs.crnt_character:
+            self.select_character(self.crnt_configs.crnt_character, generate=False)
 
     def start(self) -> None:
         """
@@ -104,6 +96,8 @@ class Master(MasterIF):
         """
         終了処理
         """
+        if self.crnt_configs.save_state_end:
+            self.character.save_state()
 
         self.crnt_configs.tojson(PathConsts.config_json)
 
@@ -112,11 +106,9 @@ class Master(MasterIF):
             self.after_id = ""
 
         self.generator.finalize()
-        self.parser.finalize(self.crnt_configs.save_memory_end)
 
         def worker():
             self.generator.join()
-            self.parser.join()
             self.displayer.destroy()
             self.archiver.finalize()
 
@@ -132,42 +124,63 @@ class Master(MasterIF):
         """
         self.finalize()
 
-    def switch_frontend(self, new_yamlpath: Path) -> None:
+    # ------------------------------------------------------------------ #
+    # キャラクター操作
+    # ------------------------------------------------------------------ #
+    def select_character(self, char_id: str, generate: bool = True) -> None:
         """
-        フロントエンドの切り替えを行う
+        キャラクターを選択し, UI と表示画像を更新する
 
         Args:
-            new_yamlpath (Path): 新しい YAML パス
+            char_id (str): キャラ ID
+            generate (bool): 選択直後に生成タスクを予約するか
         """
-        if self.is_switching_frontend:
+        if not self.character.select_character(char_id):
             return
 
-        self.is_switching_frontend = True
+        self.crnt_configs.crnt_character = char_id
+        self.displayer.render_character(
+            self.character.sheet, self.character.actions, self.character.state
+        )
+        self.displayer.set_dialogue(self.character.sheet.display_name, "", locked=False)
 
-        def worker():
-            self.parser.switch_interpreter(
-                new_yamlpath,
-                load_memory_start=self.crnt_configs.load_memory_start,
-                save_memory_end=self.crnt_configs.save_memory_end,
+        if generate:
+            strs = self.character.crnt_strs
+            if strs is not None:
+                self.run_oneshot(strs[0], strs[1])
+        else:
+            self.refresh_pic_randomly(construct_window=True)
+
+    def reload_character(self) -> None:
+        """
+        選択中キャラのシート/アクションを再読み込みして UI を更新する
+        """
+        self.displayer.set_character_list(
+            self.character.metas, self.character.char_id
+        )
+        if self.character.reload_current():
+            self.displayer.render_character(
+                self.character.sheet, self.character.actions, self.character.state
             )
-            self.is_switching_frontend = False
+            self.refresh_pic_randomly(construct_window=True)
 
-        self.root.after(0, worker)
+    def do_action(self, action_id: str, wardrobe_key: str | None) -> None:
+        """
+        アクションを適用し, 状態表示・セリフ・画像生成を更新する
 
-    def reload_frontend(self) -> None:
+        Args:
+            action_id (str): アクション ID
+            wardrobe_key (str | None): 着せ替え先の衣装キー
         """
-        フロントエンドを再起動する
-        """
-        if self.is_switching_frontend:
+        result = self.character.apply_action(action_id, wardrobe_key=wardrobe_key)
+        if result is None:
             return
 
-        self.is_switching_frontend = True
-
-        def worker():
-            self.parser.reload_interpreter()
-            self.is_switching_frontend = False
-
-        self.root.after(0, worker)
+        self.displayer.update_state_view(self.character.sheet, self.character.state)
+        self.displayer.set_dialogue(
+            self.character.sheet.display_name, result.dialogue, locked=result.locked
+        )
+        self.run_oneshot(result.positive, result.negative)
 
     def switch_backend(self, new_backend: BackEnd) -> None:
         """
@@ -244,10 +257,27 @@ class Master(MasterIF):
 
             if self.crnt_gui_configs.print_event:
                 print(f"{self.displayer.__class__.__name__:20} > {event.__class__.__name__:20}")
+            if isinstance(event, master.events.OnSelectCharacter):
+                self.select_character(event.char_id)
+            if isinstance(event, master.events.OnReloadCharacter):
+                self.reload_character()
+            if isinstance(event, master.events.OnAction):
+                self.do_action(event.action_id, event.wardrobe_key)
+            if isinstance(event, master.events.OnSaveState):
+                self.character.save_state()
+            if isinstance(event, master.events.OnLoadState):
+                if self.character.load_state():
+                    self.displayer.update_state_view(self.character.sheet, self.character.state)
+                    self.refresh_pic_randomly(construct_window=True)
+            if isinstance(event, master.events.OnResetState):
+                self.character.reset_state()
+                if self.character.sheet is not None:
+                    self.displayer.update_state_view(self.character.sheet, self.character.state)
+                    self.refresh_pic_randomly(construct_window=True)
             if isinstance(event, master.events.OnRepeatTask):
-                if self.parser.crnt_prompt:
-                    pos, neg = self.parser.make_prompt_strs()
-                    self.reserve_txt2img_task(pos, neg)
+                strs = self.character.crnt_strs
+                if strs is not None:
+                    self.reserve_txt2img_task(strs[0], strs[1])
             if isinstance(event, master.events.OnInterruptTask):
                 self.generator.reserve_interrupt()
             if isinstance(event, master.events.OnFlushTasks):
@@ -256,24 +286,10 @@ class Master(MasterIF):
                 self.generator.clear_of(TaskBlueprintTxt2Img)
             if isinstance(event, master.events.OnFlushImg2ImgTasks):
                 self.generator.clear_of(TaskBlueprintImg2Img)
-            if isinstance(event, master.events.OnSaveMemory):
-                self.parser.save_memory()
-            if isinstance(event, master.events.OnLoadMemory):
-                self.parser.load_memory()
-            if isinstance(event, master.events.OnForgetMemory):
-                self.parser.forget_memory()
-            if isinstance(event, master.events.OnSelectYaml):
-                self.switch_frontend(Path(event.path))
-            if isinstance(event, master.events.OnReloadYaml):
-                self.reload_frontend()
-            if isinstance(event, master.events.OnDebug):
-                self.parser.ready_for_debug()
             if isinstance(event, master.events.OnDumpArchiver):
                 dump_json(self.archiver.archive.todict(), "archiver")
             if isinstance(event, master.events.OnDumpTaskList):
                 dump_json(self.generator.crnt_tasklist(), "tasks")
-            if isinstance(event, master.events.OnDumpMemory):
-                self.parser.dump_memory()
             if isinstance(event, master.events.OnBackward):
                 self.archiver.backward_picstats()
             if isinstance(event, master.events.OnForward):
@@ -328,38 +344,6 @@ class Master(MasterIF):
                 if self.displayer.pic_window.event.outputting_noimage.is_set():
                     self.refresh_pic_randomly(construct_window=True)
 
-    def operate_from_parser(self) -> None:
-        """
-        Parser から発行されたイベントに即して作業を実施する\n
-        本関数は一度の呼び出しで, その時点までに登録されている全イベントをこなす\n
-        本関数は tkinter のメインループで呼び出すこと
-        """
-        while True:
-            try:
-                event = self.from_parser.pickup()
-            except IndexError:
-                break
-
-            if self.crnt_gui_configs.print_event:
-                print(
-                    f"{self.parser.__class__.__name__:20} > {event.__class__.__name__:20} > ",
-                    end="",
-                )
-            if isinstance(event, master.events.NewPrompts):
-                if self.crnt_gui_configs.print_event:
-                    print(f"enough={event.is_enough}")
-                if event.is_enough:
-                    self.run_oneshot(event.positive, event.negative)
-                else:
-                    self.archiver.drop_picstats()
-            if isinstance(event, master.events.NewReports):
-                if self.crnt_gui_configs.print_event:
-                    print("New Reports")
-                if self.crnt_gui_configs.print_parser_reports:
-                    dump_json(event.reports, "parser_reports")
-                if self.crnt_gui_configs.log_parser_reports:
-                    self.log_nothit_reports(event.reports)
-
     @property
     def backend_type(self) -> BackEnd:
         """
@@ -376,7 +360,7 @@ class Master(MasterIF):
         現在の GUI 上の設定値
 
         Returns:
-            CrntGUIConfigs: 現在の GUI 上の設定値
+            GUIConfigs: 現在の GUI 上の設定値
         """
         return self.crnt_configs
 
@@ -389,8 +373,8 @@ class Master(MasterIF):
             int: 枚数
         """
         return (
-            self.archiver.count_files_in(self.parser.crnt_prompt_dir)
-            if self.parser.crnt_prompt_dir is not None
+            self.archiver.count_files_in(self.character.crnt_prompt_dir)
+            if self.character.crnt_prompt_dir is not None
             else None
         )
 
@@ -407,30 +391,9 @@ class Master(MasterIF):
         rest = self.crnt_gui_configs.each_max_pics - self.files_in_crnt_dir
         return rest if rest >= 0 else 0
 
-    def log_nothit_reports(self, nothit_reports: list[Report]) -> None:
-        """
-        無ヒットレポートをロギングする
-
-        Args:
-            nothit_reports (list[Report]): 無ヒットレポート
-        """
-        PathConsts.log_dir.mkdir(parents=True, exist_ok=True)
-        filepath = Path(
-            f"logs/{os.path.splitext(os.path.basename(self.crnt_gui_configs.yamlpath))[0]}_nothit_reports_{datetime.now().strftime('%Y%m%d')}.log"
-        )
-        with open(filepath, "a", encoding="utf-8") as f:
-            for report in nothit_reports:
-                headline = (f'Screen: "{report.screen_id}"').ljust(95, "=")
-                f.write(f"{headline}\n")
-                f.write(
-                    f'matched: "{report.matched}"\n'
-                    f'pattern(idx={report.capturegrp}): "{report.pattern}"\n'
-                    f"paths: {sorted(report.paths)}\n"
-                )
-
     def reserve_txt2img_task(self, positive: str, negative: str) -> None:
         """
-        生成予約ボタンハンドラ\n
+        生成予約\n
         生成数上限到達時, あるいはバックエンド変更中の場合は何もしない\n
         バッチサイズが残り容量より大きい場合, その差だけ生成する(すり切りいっぱい)
         """
@@ -486,7 +449,7 @@ class Master(MasterIF):
         現在の記録中ステータスにおいて, 表示可能な画像が存在する場合にランダムで表示する\n
         存在しない場合は NO IMAGE を表示する
         """
-        if not self.parser.is_enough_prompt():
+        if not self.character.is_ready:
             return
 
         if construct_window:
@@ -497,25 +460,26 @@ class Master(MasterIF):
             self.archiver.drop_picstats()
             return
 
-        self.archiver.warp_picstats(self.parser.crnt_prompt_dir)
+        self.archiver.warp_picstats(self.character.crnt_prompt_dir)
 
     def run_oneshot(self, positive: str, negative: str) -> None:
         """
         タスク予約とすでに存在する画像の表示を1度だけ行う
         """
+        if not positive and not negative:
+            return
         self.reserve_txt2img_task(positive, negative)
         self.refresh_pic_randomly(construct_window=True)
 
     def run_main(self) -> None:
         """
-        メイン処理 (ステータス更新 -> 更新がある場合にタスクを予約 -> すでに存在する画像を表示)\n
+        メイン処理 (イベント処理 -> タスク予約 -> 画像表示)\n
         Tkinter メインループにて周期的に呼び出される処理
         """
         try:
             if not self.root.winfo_exists() or self.is_switching_backend:
                 return
 
-            self.operate_from_parser()
             self.operate_from_archiver()
             self.operate_from_displayer()
             self.operate_from_generator()

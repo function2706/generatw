@@ -1,0 +1,59 @@
+# サンプルキャラクター定義
+# スキーマの詳細は yamls/character_yaml_spec.md を参照.
+# 新しいキャラを追加する場合は, このファイルを複製して character / display_name /
+# base / wardrobe / parameters を書き換える (yamls/characters/ 以下に置く).
+
+character: sample          # キャラ ID (状態ファイル名・記録キーに使用. ファイル名と一致推奨)
+display_name: アオイ        # UI 表示名
+
+# 基本容姿 (常に付与される)
+base:
+  positive: "1girl, solo, long blue hair, blue eyes, <hair between eyes|sidelocks>, medium breasts"
+
+# 末尾に常時付与する共通プロンプト (画質・視点など)
+common:
+  positive: "masterpiece, best quality, highly detailed, looking at viewer"
+  negative: "worst quality, low quality, bad anatomy, extra fingers, jpeg artifacts"
+
+# 着せ替え候補 (挿入順で表示. <a|b> の確率選択も使用可)
+wardrobe:
+  casual:   { label: 私服,     positive: "casual clothes, white blouse, blue skirt" }
+  uniform:  { label: 制服,     positive: "school uniform, blazer, pleated skirt" }
+  swimsuit: { label: 水着,     positive: "swimsuit, <blue|white> bikini" }
+  pajama:   { label: パジャマ, positive: "pajamas, loose shirt, relaxed" }
+init_outfit: casual
+
+# 内部パラメータ (挿入順で表示. 値はアクションの effects で変化し, prompt へ反映される)
+parameters:
+  affection:               # 好感度
+    label: 好感度
+    type: scalar
+    range: [0, 100]
+    init: 20
+    prompt:
+      intervals:
+        - { in: [0, 20],   positive: "expressionless, cold stare" }
+        - { in: [21, 60],  positive: "soft smile" }
+        - { in: [61, 90],  positive: "gentle smile, light blush" }
+        - { in: [91, 100], positive: "(loving smile:1.2), blush, half-closed eyes" }
+
+  mood:                    # 気分
+    label: 気分
+    type: enum
+    values: [normal, happy, shy, sulky]
+    init: normal
+    prompt:
+      maps:
+        happy: "happy, open mouth"
+        shy:   "shy, blush, averting eyes"
+        sulky: "pout, frown"
+
+  arousal:                 # 親密度
+    label: 親密度
+    type: scalar
+    range: [0, 100]
+    init: 0
+    prompt:
+      intervals:
+        - { in: [40, 70],  positive: "blush" }
+        - { in: [71, 100], positive: "(deep blush:1.2), half-closed eyes" }
