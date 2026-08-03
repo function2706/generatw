@@ -210,7 +210,7 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
 
         task: TaskBlueprintTxt2Img = self.crnt_task_copy
         workflow = Txt2ImgWorkFlow(
-            ckpt_name="Illustrious\\waiNSFWIllustrious_v150.safetensors",
+            ckpt_name="Illustrious\\waiIllustriousSDXL_v170.safetensors",
             pos_prompt=task.prompt,
             neg_prompt=task.negative_prompt,
             seed=task.seed,
@@ -262,7 +262,7 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
 
         task: TaskBlueprintImg2Img = self.crnt_task_copy
         workflow = Img2ImgWorkFlow(
-            ckpt_name="Illustrious\\waiNSFWIllustrious_v150.safetensors",
+            ckpt_name="Illustrious\\waiIllustriousSDXL_v170.safetensors",
             path=task.path,
             pos_prompt=task.prompt,
             neg_prompt=task.negative_prompt,
