@@ -1,0 +1,166 @@
+# =============================================================================
+# ComfyUI ワークフロー定義
+#
+# 仕様: yamls/workflow_yaml_spec.md
+# ノードカタログ: yamls/node_catalog.yaml
+#
+# - idx は省略しており, 記述順に 1 から自動採番される
+# - リンクは接続元ノード名のみを書けばよい (スロットはカタログの型から決まる)
+# - $xxx は ComfyUIGenerator が渡すパラメータ
+# =============================================================================
+
+backend: ComfyUIGenerator
+
+# -----------------------------------------------------------------------------
+# 生成 (txt2img)
+# -----------------------------------------------------------------------------
+txt2img:
+  nodes:
+    ckpt_loader:
+      class_type: CheckpointLoaderSimple
+      inputs:
+        ckpt_name: Illustrious\waiIllustriousSDXL_v170.safetensors
+    empty_latent:
+      class_type: EmptyLatentImage
+      inputs:
+        width: $width
+        height: $height
+        batch_size: $batch_size
+    # NOTE: このノードの出力は誰も参照していない (孤立ノード).
+    #       clip_skip を実際に効かせる場合は positive_clip / negative_clip の
+    #       clip を clip_layer_setter に張り替えること.
+    clip_layer_setter:
+      class_type: CLIPSetLastLayer
+      inputs:
+        stop_at_clip_layer: -2
+        clip: ckpt_loader
+    positive_clip:
+      class_type: CLIPTextEncode
+      inputs:
+        text: $pos_prompt
+        clip: ckpt_loader
+    negative_clip:
+      class_type: CLIPTextEncode
+      inputs:
+        text: $neg_prompt
+        clip: ckpt_loader
+    sampler:
+      class_type: KSampler
+      inputs:
+        seed: $seed
+        steps: $steps
+        cfg: $cfg_scale
+        denoise: 1.0
+        sampler_name: $sampler_name
+        scheduler: $scheduler
+        model: ckpt_loader
+        latent_image: empty_latent
+        positive: positive_clip
+        negative: negative_clip
+    vae_decoder:
+      class_type: VAEDecode
+      inputs:
+        samples: sampler
+        vae: ckpt_loader
+    previewer:
+      class_type: PreviewImage
+      inputs:
+        images: vae_decoder
+  picinfo:
+    positive_prompt: [positive_clip, text]
+    negative_prompt: [negative_clip, text]
+    steps: [sampler, steps]
+    sampler: [sampler, sampler_name]
+    scheduler: [sampler, scheduler]
+    cfg_scale: [sampler, cfg]
+    seed: [sampler, seed]
+    width: [empty_latent, width]
+    height: [empty_latent, height]
+    model_name: [ckpt_loader, ckpt_name]
+    clip_skip:
+      from: [clip_layer_setter, stop_at_clip_layer]
+      negate: true
+
+# -----------------------------------------------------------------------------
+# 拡大 (img2img)
+#
+# 既存画像を VAEEncode -> LatentUpscale で目標解像度まで引き伸ばし,
+# denoise < 1.0 の KSampler で描き直す構成.
+# -----------------------------------------------------------------------------
+img2img:
+  nodes:
+    ckpt_loader:
+      class_type: CheckpointLoaderSimple
+      inputs:
+        ckpt_name: Illustrious\waiIllustriousSDXL_v170.safetensors
+    # UnlimitLoadImage は input ディレクトリ外の絶対パスを読めるカスタムノード
+    image_loader:
+      class_type: UnlimitLoadImage
+      inputs:
+        path: $path
+    vae_encoder:
+      class_type: VAEEncode
+      inputs:
+        pixels: image_loader
+        vae: ckpt_loader
+    # NOTE: txt2img 同様, このノードの出力は参照されていない (孤立ノード).
+    clip_layer_setter:
+      class_type: CLIPSetLastLayer
+      inputs:
+        stop_at_clip_layer: -2
+        clip: ckpt_loader
+    positive_clip:
+      class_type: CLIPTextEncode
+      inputs:
+        text: $pos_prompt
+        clip: ckpt_loader
+    negative_clip:
+      class_type: CLIPTextEncode
+      inputs:
+        text: $neg_prompt
+        clip: ckpt_loader
+    latent_upscaler:
+      class_type: LatentUpscale
+      inputs:
+        upscale_method: $upscaler
+        width: $width
+        height: $height
+        crop: disabled
+        samples: vae_encoder
+    sampler:
+      class_type: KSampler
+      inputs:
+        seed: $seed
+        steps: $steps
+        cfg: $cfg_scale
+        denoise: $denoise
+        sampler_name: $sampler_name
+        scheduler: $scheduler
+        model: ckpt_loader
+        latent_image: latent_upscaler
+        positive: positive_clip
+        negative: negative_clip
+    vae_decoder:
+      class_type: VAEDecode
+      inputs:
+        samples: sampler
+        vae: ckpt_loader
+    previewer:
+      class_type: PreviewImage
+      inputs:
+        images: vae_decoder
+  picinfo:
+    positive_prompt: [positive_clip, text]
+    negative_prompt: [negative_clip, text]
+    steps: [sampler, steps]
+    sampler: [sampler, sampler_name]
+    scheduler: [sampler, scheduler]
+    cfg_scale: [sampler, cfg]
+    seed: [sampler, seed]
+    width: [latent_upscaler, width]
+    height: [latent_upscaler, height]
+    model_name: [ckpt_loader, ckpt_name]
+    ancestor: [image_loader, path]
+    clip_skip:
+      from: [clip_layer_setter, stop_at_clip_layer]
+      negate: true

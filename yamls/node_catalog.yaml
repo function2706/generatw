@@ -1,0 +1,143 @@
+# =============================================================================
+# ノードカタログ
+#
+# ワークフロー YAML のロード時検証と, 出力スロット名 → インデックス解決に使う
+# ノード型定義. ハードコード版の isinstance チェックに相当する情報を持つ.
+#
+# ここに無い class_type を使う場合は
+#   - 本ファイルに追記する
+#   - あるいはリンクをインデックス指定 ("@node.0") にして検証を回避する
+# のいずれかを行う.
+#
+# 仕様: yamls/workflow_yaml_spec.md
+# =============================================================================
+
+version: 1
+
+nodes:
+  # --- ローダ ---------------------------------------------------------------
+  CheckpointLoaderSimple:
+    outputs: [MODEL, CLIP, VAE]
+    inputs:
+      ckpt_name: { type: str, required: true }
+
+  VAELoader:
+    outputs: [VAE]
+    inputs:
+      vae_name: { type: str, required: true }
+
+  LoadImage:
+    outputs: [IMAGE, MASK]
+    inputs:
+      image: { type: str, required: true }
+
+  # ComfyUI-Unlimited-... 系のカスタムノード. 絶対パスから直接読み込む
+  UnlimitLoadImage:
+    outputs: [IMAGE]
+    inputs:
+      path: { type: str, required: true }
+
+  # --- ラテント -------------------------------------------------------------
+  EmptyLatentImage:
+    outputs: [LATENT]
+    inputs:
+      width: { type: int, required: true }
+      height: { type: int, required: true }
+      batch_size: { type: int, required: true }
+
+  LatentUpscale:
+    outputs: [LATENT]
+    inputs:
+      upscale_method:
+        type: str
+        required: true
+        choices: [nearest-exact, bilinear, area, bicubic, bislerp]
+      width: { type: int, required: true }
+      height: { type: int, required: true }
+      crop: { type: str, required: true, choices: [disabled, enabled] }
+      samples: { type: link, accepts: [LATENT], required: true }
+
+  LatentUpscaleBy:
+    outputs: [LATENT]
+    inputs:
+      upscale_method:
+        type: str
+        required: true
+        choices: [nearest-exact, bilinear, area, bicubic, bislerp]
+      scale_by: { type: float, required: true }
+      samples: { type: link, accepts: [LATENT], required: true }
+
+  # --- 条件付け -------------------------------------------------------------
+  CLIPSetLastLayer:
+    outputs: [CLIP]
+    inputs:
+      stop_at_clip_layer: { type: int, required: true }
+      clip: { type: link, accepts: [CLIP], required: true }
+
+  CLIPTextEncode:
+    outputs: [CONDITIONING]
+    inputs:
+      text: { type: str, required: true }
+      clip: { type: link, accepts: [CLIP], required: true }
+
+  # --- サンプラ -------------------------------------------------------------
+  KSampler:
+    outputs: [LATENT]
+    inputs:
+      seed: { type: int, required: true }
+      steps: { type: int, required: true }
+      cfg: { type: float, required: true }
+      denoise: { type: float, required: true }
+      sampler_name: { type: str, required: true }
+      scheduler: { type: str, required: true }
+      model: { type: link, accepts: [MODEL], required: true }
+      latent_image: { type: link, accepts: [LATENT], required: true }
+      positive: { type: link, accepts: [CONDITIONING], required: true }
+      negative: { type: link, accepts: [CONDITIONING], required: true }
+
+  KSamplerAdvanced:
+    outputs: [LATENT]
+    inputs:
+      add_noise: { type: str, required: true, choices: [enable, disable] }
+      noise_seed: { type: int, required: true }
+      steps: { type: int, required: true }
+      cfg: { type: float, required: true }
+      sampler_name: { type: str, required: true }
+      scheduler: { type: str, required: true }
+      start_at_step: { type: int, required: true }
+      end_at_step: { type: int, required: true }
+      return_with_leftover_noise:
+        type: str
+        required: true
+        choices: [enable, disable]
+      model: { type: link, accepts: [MODEL], required: true }
+      latent_image: { type: link, accepts: [LATENT], required: true }
+      positive: { type: link, accepts: [CONDITIONING], required: true }
+      negative: { type: link, accepts: [CONDITIONING], required: true }
+
+  # --- VAE ------------------------------------------------------------------
+  VAEEncode:
+    outputs: [LATENT]
+    inputs:
+      pixels: { type: link, accepts: [IMAGE], required: true }
+      vae: { type: link, accepts: [VAE], required: true }
+
+  VAEDecode:
+    outputs: [IMAGE]
+    inputs:
+      samples: { type: link, accepts: [LATENT], required: true }
+      vae: { type: link, accepts: [VAE], required: true }
+
+  # --- 出力 -----------------------------------------------------------------
+  SaveImage:
+    outputs: []
+    is_output: true
+    inputs:
+      images: { type: link, accepts: [IMAGE], required: true }
+      filename_prefix: { type: str, required: false, default: ComfyUI }
+
+  PreviewImage:
+    outputs: []
+    is_output: true
+    inputs:
+      images: { type: link, accepts: [IMAGE], required: true }
