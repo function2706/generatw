@@ -26,6 +26,12 @@ class PathConsts:
     log_dir: Path = Path("logs")
     # 記憶保存先ディレクトリ
     mem_dir: Path = Path("memories")
+    # YAML 保存先ディレクトリ
+    yaml_dir: Path = Path("yamls")
+    # ComfyUI ワークフロー定義 YAML
+    workflow_yaml: Path = Path("yamls/ComfyUI.yaml")
+    # ComfyUI ノードカタログ
+    node_catalog: Path = Path("yamls/node_catalog.yaml")
 
 
 class BackEnd(Enum):

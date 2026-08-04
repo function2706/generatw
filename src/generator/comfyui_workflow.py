@@ -1,7 +1,33 @@
-import random
-from dataclasses import asdict, dataclass, field
+"""
+ComfyUI ワークフロー定義 (YAML) のロードと構築
+
+仕様: yamls/workflow_yaml_spec.md
+"""
+
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
-from typing import Any, Protocol, cast
+from typing import Any, Protocol, get_type_hints
+
+import yaml
+
+from archiver.dataclasses import PicInfo
+from common.functions import PathConsts
+
+BACKEND_KEYWORD = "ComfyUIGenerator"
+
+# セクション名として使えない予約語
+RESERVED_KEYS: tuple[str, ...] = ("backend",)
+# ノード定義のキー
+NODE_KEYS: tuple[str, ...] = ("idx", "class_type", "inputs")
+
+
+class WorkFlowSyntaxError(Exception):
+    """
+    ワークフロー YAML のシンタックスエラー\n
+    ロード時に検出される
+    """
 
 
 class NodeBody(Protocol):
@@ -31,647 +57,14 @@ class NodeSkeleton:
 
 
 @dataclass
-class CheckpointLoaderSimple(NodeBody):
-    @dataclass
-    class Inputs:
-        ckpt_name: str = ""
-
-    class_type: str = "CheckpointLoaderSimple"
-    inputs: Inputs = None
-
-    @classmethod
-    def make(cls, ckpt_name: str):
-        return cls(inputs=CheckpointLoaderSimple.Inputs(ckpt_name=ckpt_name))
-
-    @classmethod
-    def set(cls, data: dict[str, dict[str, Any]]):
-        if data.get("class_type") != cls.class_type:
-            raise ValueError
-        data_inputs = data.get("inputs")
-        return cls(inputs=CheckpointLoaderSimple.Inputs(ckpt_name=data_inputs.get("ckpt_name")))
-
-
-@dataclass
-class EmptyLatentImage(NodeBody):
-    @dataclass
-    class Inputs:
-        width: int = 0
-        height: int = 0
-        batch_size: int = 0
-
-    class_type: str = "EmptyLatentImage"
-    inputs: Inputs = None
-
-    @classmethod
-    def make(cls, width: int, height: int, batch_size: int):
-        return cls(
-            inputs=EmptyLatentImage.Inputs(width=width, height=height, batch_size=batch_size)
-        )
-
-    @classmethod
-    def set(cls, data: dict[str, dict[str, Any]]):
-        if data.get("class_type") != cls.class_type:
-            raise ValueError
-        data_inputs = data.get("inputs")
-        return cls(
-            inputs=EmptyLatentImage.Inputs(
-                width=int(data_inputs.get("width")),
-                height=int(data_inputs.get("height")),
-                batch_size=int(data_inputs.get("batch_size")),
-            )
-        )
-
-
-@dataclass
-class CLIPSetLastLayer(NodeBody):
-    @dataclass
-    class Inputs:
-        stop_at_clip_layer: int = ""
-        clip: list[int | str] = field(default_factory=list)
-
-        @classmethod
-        def make(cls, stop_at_clip_layer: str, loader: NodeSkeleton = None):
-            return cls(
-                stop_at_clip_layer=stop_at_clip_layer,
-                clip=[loader.nodeidx, 1] if loader is not None else [],
-            )
-
-    class_type: str = "CLIPSetLastLayer"
-    inputs: Inputs = None
-
-    @classmethod
-    def make(cls, stop_at_clip_layer: int, loader: NodeSkeleton):
-        if not isinstance(loader.body, CheckpointLoaderSimple):
-            raise TypeError
-
-        return cls(
-            inputs=CLIPSetLastLayer.Inputs.make(
-                stop_at_clip_layer=stop_at_clip_layer, loader=loader
-            )
-        )
-
-    @classmethod
-    def set(cls, data: dict[str, dict[str, Any]]):
-        if data.get("class_type") != cls.class_type:
-            raise ValueError
-        data_inputs = data.get("inputs")
-        return cls(
-            inputs=CLIPSetLastLayer.Inputs.make(
-                stop_at_clip_layer=int(data_inputs.get("stop_at_clip_layer"))
-            )
-        )
-
-
-@dataclass
-class CLIPTextEncode(NodeBody):
-    @dataclass
-    class Inputs:
-        text: str = ""
-        clip: list[int | str] = field(default_factory=list)
-
-        @classmethod
-        def make(cls, text: str, loader: NodeSkeleton = None):
-            return cls(text=text, clip=[loader.nodeidx, 1] if loader is not None else [])
-
-    class_type: str = "CLIPTextEncode"
-    inputs: Inputs = None
-
-    @classmethod
-    def make(cls, text: str, loader: NodeSkeleton):
-        if not isinstance(loader.body, CheckpointLoaderSimple):
-            raise TypeError
-
-        return cls(inputs=CLIPTextEncode.Inputs.make(text=text, loader=loader))
-
-    @classmethod
-    def set(cls, data: dict[str, dict[str, Any]]):
-        if data.get("class_type") != cls.class_type:
-            raise ValueError
-        data_inputs = data.get("inputs")
-        return cls(inputs=CLIPTextEncode.Inputs.make(text=data_inputs.get("text")))
-
-
-@dataclass
-class LatentUpscale(NodeBody):
-    @dataclass
-    class Inputs:
-        upscale_method: str = 0
-        width: int = 0
-        height: int = 0
-        crop: str = 0
-        samples: list[int | str] = field(default_factory=list)
-
-        @classmethod
-        def make(
-            cls,
-            upscale_method: str,
-            width: int,
-            height: int,
-            crop: str,
-            samples: NodeSkeleton = None,
-        ):
-            return cls(
-                upscale_method=upscale_method,
-                width=width,
-                height=height,
-                crop=crop,
-                samples=[samples.nodeidx, 0] if samples is not None else [],
-            )
-
-    class_type: str = "LatentUpscale"
-    inputs: Inputs = None
-
-    @classmethod
-    def make(
-        cls,
-        upscale_method: str,
-        width: int,
-        height: int,
-        crop: bool,
-        samples: NodeSkeleton,
-    ):
-        if not isinstance(samples.body, KSampler | KSamplerAdvanced | VAEEncode):
-            raise TypeError
-
-        return cls(
-            inputs=LatentUpscale.Inputs.make(
-                upscale_method=upscale_method,
-                width=width,
-                height=height,
-                crop="disabled" if not crop else "enabled",
-                samples=samples,
-            )
-        )
-
-    @classmethod
-    def set(cls, data: dict[str, dict[str, Any]]):
-        if data.get("class_type") != cls.class_type:
-            raise ValueError
-        data_inputs = data.get("inputs")
-        return cls(
-            inputs=LatentUpscale.Inputs.make(
-                upscale_method=data_inputs.get("upscale_method"),
-                width=int(data_inputs.get("width")),
-                height=int(data_inputs.get("height")),
-                crop=data_inputs.get("crop"),
-            )
-        )
-
-
-@dataclass
-class LatentUpscaleBy(NodeBody):
-    @dataclass
-    class Inputs:
-        upscale_method: str = 0
-        scale_by: float = 0
-        samples: list[int | str] = field(default_factory=list)
-
-        @classmethod
-        def make(
-            cls,
-            upscale_method: str,
-            scale_by: float,
-            samples: NodeSkeleton = None,
-        ):
-            return cls(
-                upscale_method=upscale_method,
-                scale_by=scale_by,
-                samples=[samples.nodeidx, 0] if samples is not None else [],
-            )
-
-    class_type: str = "LatentUpscaleBy"
-    inputs: Inputs = None
-
-    @classmethod
-    def make(
-        cls,
-        upscale_method: str,
-        scale_by: float,
-        samples: NodeSkeleton,
-    ):
-        if not isinstance(samples.body, KSampler | KSamplerAdvanced | VAEEncode):
-            raise TypeError
-
-        return cls(
-            inputs=LatentUpscaleBy.Inputs.make(
-                upscale_method=upscale_method,
-                scale_by=scale_by,
-                samples=samples,
-            )
-        )
-
-    @classmethod
-    def set(cls, data: dict[str, dict[str, Any]]):
-        if data.get("class_type") != cls.class_type:
-            raise ValueError
-        data_inputs = data.get("inputs")
-        return cls(
-            inputs=LatentUpscaleBy.Inputs.make(
-                upscale_method=data_inputs.get("upscale_method"),
-                scale_by=float(data_inputs.get("scale_by")),
-            )
-        )
-
-
-@dataclass
-class KSampler(NodeBody):
-    @dataclass
-    class Inputs:
-        seed: int = 0
-        steps: int = 0
-        cfg: float = 0
-        denoise: float = 0
-        sampler_name: str = ""
-        scheduler: str = ""
-        model: list[int | str] = field(default_factory=list)
-        latent_image: list[int | str] = field(default_factory=list)
-        positive: list[int | str] = field(default_factory=list)
-        negative: list[int | str] = field(default_factory=list)
-
-        @classmethod
-        def make(
-            cls,
-            seed: int,
-            steps: int,
-            cfg: float,
-            denoise: float,
-            sampler_name: str,
-            scheduler: str,
-            loader: NodeSkeleton = None,
-            latent_image: NodeSkeleton = None,
-            positive: NodeSkeleton = None,
-            negative: NodeSkeleton = None,
-        ):
-            return cls(
-                seed=seed,
-                steps=steps,
-                cfg=cfg,
-                denoise=denoise,
-                sampler_name=sampler_name,
-                scheduler=scheduler,
-                model=[loader.nodeidx, 0] if loader is not None else [],
-                latent_image=[latent_image.nodeidx, 0] if latent_image is not None else [],
-                positive=[positive.nodeidx, 0] if positive is not None else [],
-                negative=[negative.nodeidx, 0] if negative is not None else [],
-            )
-
-    class_type: str = "KSampler"
-    inputs: Inputs = None
-
-    @classmethod
-    def make(
-        cls,
-        seed: int,
-        steps: int,
-        cfg: float,
-        denoise: float,
-        sampler_name: str,
-        scheduler: str,
-        loader: NodeSkeleton,
-        latent_image: NodeSkeleton,
-        positive: NodeSkeleton,
-        negative: NodeSkeleton,
-    ):
-        if (
-            not isinstance(loader.body, CheckpointLoaderSimple)
-            or not isinstance(latent_image.body, EmptyLatentImage | LatentUpscale | LatentUpscaleBy)
-            or not isinstance(positive.body, CLIPTextEncode)
-            or not isinstance(negative.body, CLIPTextEncode)
-        ):
-            raise TypeError
-
-        return cls(
-            inputs=KSampler.Inputs.make(
-                seed=random.randint(0, 2**31 - 1) if seed == -1 else seed,
-                steps=steps,
-                cfg=cfg,
-                denoise=denoise,
-                sampler_name=sampler_name,
-                scheduler=scheduler,
-                loader=loader,
-                latent_image=latent_image,
-                positive=positive,
-                negative=negative,
-            )
-        )
-
-    @classmethod
-    def set(cls, data: dict[str, dict[str, Any]]):
-        if data.get("class_type") != cls.class_type:
-            raise ValueError
-        data_inputs = data.get("inputs")
-        return cls(
-            inputs=KSampler.Inputs.make(
-                seed=int(data_inputs.get("seed")),
-                steps=int(data_inputs.get("steps")),
-                cfg=float(data_inputs.get("cfg")),
-                denoise=float(data_inputs.get("denoise")),
-                sampler_name=data_inputs.get("sampler_name"),
-                scheduler=data_inputs.get("scheduler"),
-            )
-        )
-
-
-@dataclass
-class KSamplerAdvanced(NodeBody):
-    @dataclass
-    class Inputs:
-        seed: int = 0
-        steps: int = 0
-        cfg: float = 0
-        sampler_name: str = ""
-        scheduler: str = ""
-        start_at_step: int = 0
-        end_at_step: int = 0
-        add_noise: bool = False
-        return_with_leftover_noise: bool = False
-        model: list[int | str] = field(default_factory=list)
-        latent_image: list[int | str] = field(default_factory=list)
-        positive: list[int | str] = field(default_factory=list)
-        negative: list[int | str] = field(default_factory=list)
-
-        @classmethod
-        def make(
-            cls,
-            seed: int,
-            steps: int,
-            cfg: float,
-            sampler_name: str,
-            scheduler: str,
-            start_at_step: int,
-            end_at_step: int,
-            add_noise: bool,
-            return_with_leftover_noise: bool,
-            loader: NodeSkeleton = None,
-            latent_image: NodeSkeleton = None,
-            positive: NodeSkeleton = None,
-            negative: NodeSkeleton = None,
-        ):
-            return cls(
-                seed=seed,
-                steps=steps,
-                cfg=cfg,
-                sampler_name=sampler_name.value,
-                scheduler=scheduler.value,
-                start_at_step=start_at_step,
-                end_at_step=end_at_step,
-                add_noise=add_noise,
-                return_with_leftover_noise=return_with_leftover_noise,
-                model=[loader.nodeidx, 0] if loader is not None else [],
-                latent_image=[latent_image.nodeidx, 0] if latent_image is not None else [],
-                positive=[positive.nodeidx, 0] if positive is not None else [],
-                negative=[negative.nodeidx, 0] if negative is not None else [],
-            )
-
-    class_type: str = "KSamplerAdvanced"
-    inputs: Inputs = None
-
-    @classmethod
-    def make(
-        cls,
-        seed: int,
-        steps: int,
-        cfg: float,
-        sampler_name: str,
-        scheduler: str,
-        start_at_step: int,
-        end_at_step: int,
-        add_noise: bool,
-        return_with_leftover_noise: bool,
-        loader: NodeSkeleton,
-        latent_image: NodeSkeleton,
-        positive: NodeSkeleton,
-        negative: NodeSkeleton,
-    ):
-        if (
-            not isinstance(loader.body, CheckpointLoaderSimple)
-            or not isinstance(latent_image.body, EmptyLatentImage | LatentUpscale | LatentUpscaleBy)
-            or not isinstance(positive.body, CLIPTextEncode)
-            or not isinstance(negative.body, CLIPTextEncode)
-        ):
-            raise TypeError
-
-        return cls(
-            inputs=KSamplerAdvanced.Inputs.make(
-                seed=random.randint(0, 2**31 - 1) if seed == -1 else seed,
-                steps=steps,
-                cfg=cfg,
-                sampler_name=sampler_name,
-                scheduler=scheduler,
-                start_at_step=start_at_step,
-                end_at_step=end_at_step,
-                add_noise=add_noise,
-                return_with_leftover_noise=return_with_leftover_noise,
-                loader=loader,
-                latent_image=latent_image,
-                positive=positive,
-                negative=negative,
-            )
-        )
-
-    @classmethod
-    def set(cls, data: dict[str, dict[str, Any]]):
-        if data.get("class_type") != cls.class_type:
-            raise ValueError
-        data_inputs = data.get("inputs")
-        return cls(
-            inputs=KSamplerAdvanced.Inputs.make(
-                seed=int(data_inputs.get("seed")),
-                steps=int(data_inputs.get("steps")),
-                cfg=float(data_inputs.get("cfg")),
-                sampler_name=data_inputs.get("sampler_name"),
-                scheduler=data_inputs.get("scheduler"),
-                start_at_step=int(data_inputs.get("start_at_step")),
-                end_at_step=int(data_inputs.get("end_at_step")),
-                add_noise=True if data_inputs.get("add_noise") == "true" else False,
-                return_with_leftover_noise=True
-                if data_inputs.get("return_with_leftover_noise") == "true"
-                else False,
-            )
-        )
-
-
-@dataclass
-class VAELoader(NodeBody):
-    @dataclass
-    class Inputs:
-        vae_name: str = ""
-
-    class_type: str = "VAELoader"
-    inputs: Inputs = None
-
-    @classmethod
-    def make(cls, vae_name: str):
-        return cls(inputs=VAELoader.Inputs(vae_name=vae_name))
-
-    @classmethod
-    def set(cls, data: dict[str, dict[str, Any]]):
-        if data.get("class_type") != cls.class_type:
-            raise ValueError
-        data_inputs = data.get("inputs")
-        return cls(inputs=VAELoader.Inputs(vae_name=data_inputs.get("vae_name")))
-
-
-@dataclass
-class VAEDecode(NodeBody):
-    @dataclass
-    class Inputs:
-        samples: list[int | str] = field(default_factory=list)
-        vae: list[int | str] = field(default_factory=list)
-
-        @classmethod
-        def make(cls, sampler: NodeSkeleton = None, vae: NodeSkeleton = None):
-            return cls(
-                samples=[sampler.nodeidx, 0] if sampler is not None else [],
-                vae=[vae.nodeidx, 2] if vae is not None else [],
-            )
-
-    class_type: str = "VAEDecode"
-    inputs: Inputs = None
-
-    @classmethod
-    def make(cls, sampler: NodeSkeleton, vae: NodeSkeleton):
-        if not isinstance(vae.body, CheckpointLoaderSimple | VAELoader) or not isinstance(
-            sampler.body, KSampler | KSamplerAdvanced
-        ):
-            raise TypeError
-
-        return cls(inputs=VAEDecode.Inputs.make(sampler=sampler, vae=vae))
-
-    @classmethod
-    def set(cls, data: dict[str, dict[str, Any]]):
-        if data.get("class_type") != cls.class_type:
-            raise ValueError
-        return cls(inputs=VAEDecode.Inputs.make())
-
-
-@dataclass
-class VAEEncode(NodeBody):
-    @dataclass
-    class Inputs:
-        pixels: list[int | str] = field(default_factory=list)
-        vae: list[int | str] = field(default_factory=list)
-
-        @classmethod
-        def make(cls, image: NodeSkeleton = None, vae: NodeSkeleton = None):
-            return cls(
-                pixels=[image.nodeidx, 0] if image is not None else [],
-                vae=[vae.nodeidx, 2] if vae is not None else [],
-            )
-
-    class_type: str = "VAEEncode"
-    inputs: Inputs = None
-
-    @classmethod
-    def make(cls, image: NodeSkeleton, vae: NodeSkeleton):
-        if not isinstance(image.body, LoadImage | UnlimitLoadImage) or not isinstance(
-            vae.body, CheckpointLoaderSimple | VAELoader
-        ):
-            raise TypeError
-
-        return cls(inputs=VAEEncode.Inputs.make(image=image, vae=vae))
-
-    @classmethod
-    def set(cls, data: dict[str, dict[str, Any]]):
-        if data.get("class_type") != cls.class_type:
-            raise ValueError
-        return cls(inputs=VAEEncode.Inputs.make())
-
-
-@dataclass
-class LoadImage(NodeBody):
-    @dataclass
-    class Inputs:
-        image: str = ""
-
-    class_type: str = "LoadImage"
-    inputs: Inputs = None
-
-    @classmethod
-    def make(cls, image: str):
-        return cls(inputs=LoadImage.Inputs(image=image))
-
-    @classmethod
-    def set(cls, data: dict[str, dict[str, Any]]):
-        if data.get("class_type") != cls.class_type:
-            raise ValueError
-        data_inputs = data.get("inputs")
-        return cls(inputs=LoadImage.Inputs(image=data_inputs.get("image")))
-
-
-@dataclass
-class UnlimitLoadImage(NodeBody):
-    @dataclass
-    class Inputs:
-        path: str = ""
-
-    class_type: str = "UnlimitLoadImage"
-    inputs: Inputs = None
-
-    @classmethod
-    def make(cls, path: str):
-        return cls(inputs=UnlimitLoadImage.Inputs(path=path))
-
-    @classmethod
-    def set(cls, data: dict[str, dict[str, Any]]):
-        if data.get("class_type") != cls.class_type:
-            raise ValueError
-        data_inputs = data.get("inputs")
-        return cls(inputs=UnlimitLoadImage.Inputs(path=data_inputs.get("path")))
-
-
-@dataclass
-class SaveImage(NodeBody):
-    @dataclass
-    class Inputs:
-        images: list[int | str] = field(default_factory=list)
-
-        @classmethod
-        def make(cls, vaedec: NodeSkeleton = None):
-            return cls(images=[vaedec.nodeidx, 0] if vaedec is not None else [])
-
-    class_type: str = "SaveImage"
-    inputs: Inputs = None
-
-    @classmethod
-    def make(cls, vaedec: NodeSkeleton):
-        if not isinstance(vaedec.body, VAEDecode):
-            raise TypeError
-
-        return cls(inputs=SaveImage.Inputs.make(vaedec=vaedec))
-
-    @classmethod
-    def set(cls, data: dict[str, dict[str, Any]]):
-        if data.get("class_type") != cls.class_type:
-            raise ValueError
-        return cls(inputs=SaveImage.Inputs.make())
-
-
-@dataclass
-class PreviewImage(NodeBody):
-    @dataclass
-    class Inputs:
-        images: list[int | str] = field(default_factory=list)
-
-        @classmethod
-        def make(cls, vaedec: NodeSkeleton = None):
-            return cls(images=[vaedec.nodeidx, 0] if vaedec is not None else [])
-
-    class_type: str = "PreviewImage"
-    inputs: Inputs = None
-
-    @classmethod
-    def make(cls, vaedec: NodeSkeleton):
-        if not isinstance(vaedec.body, VAEDecode):
-            raise TypeError
-
-        return cls(inputs=PreviewImage.Inputs.make(vaedec=vaedec))
-
-    @classmethod
-    def set(cls, data: dict[str, dict[str, Any]]):
-        if data.get("class_type") != cls.class_type:
-            raise ValueError
-        return cls(inputs=PreviewImage.Inputs.make())
+class GenericNode(NodeBody):
+    """
+    汎用ノード本体\n
+    YAML のワークフロー定義から動的に構築されるノードを表す
+    """
+
+    class_type: str = ""
+    inputs: dict[str, Any] = field(default_factory=dict)
 
 
 class WorkFlow:
@@ -723,400 +116,737 @@ class WorkFlow:
             d.update(node.todict())
         return d
 
-    @classmethod
-    def fromdict(cls, data: dict[str, dict[str, Any]]):
+
+# =============================================================================
+# ノードカタログ
+# =============================================================================
+
+
+class NodeCatalog:
+    """
+    ノード型定義 (node_catalog.yaml)\n
+    リンクのスロット解決と, ロード時の入力検証に用いる
+    """
+
+    def __init__(self, nodes: dict[str, dict[str, Any]] = None):
         """
-        dict から生成
+        コンストラクタ
 
         Args:
-            data (dict[str, dict[str, Any]]): dict
+            nodes (dict[str, dict[str, Any]]): class_type -> 定義
         """
-        obj = cls()
+        self.nodes: dict[str, dict[str, Any]] = nodes or {}
 
-        for idx, node_skeleton in data.items():
-            class_type: str = node_skeleton.get("class_type")
-            if class_type == "CheckpointLoaderSimple":
-                obj.add(NodeSkeleton(int(idx), CheckpointLoaderSimple.set(node_skeleton)))
-            elif class_type == "EmptyLatentImage":
-                obj.add(NodeSkeleton(int(idx), EmptyLatentImage.set(node_skeleton)))
-            elif class_type == "CLIPSetLastLayer":
-                obj.add(NodeSkeleton(int(idx), CLIPSetLastLayer.set(node_skeleton)))
-            elif class_type == "CLIPTextEncode":
-                obj.add(NodeSkeleton(int(idx), CLIPTextEncode.set(node_skeleton)))
-            elif class_type == "LatentUpscale":
-                obj.add(NodeSkeleton(int(idx), LatentUpscale.set(node_skeleton)))
-            elif class_type == "LatentUpscaleBy":
-                obj.add(NodeSkeleton(int(idx), LatentUpscaleBy.set(node_skeleton)))
-            elif class_type == "KSampler":
-                obj.add(NodeSkeleton(int(idx), KSampler.set(node_skeleton)))
-            elif class_type == "KSamplerAdvanced":
-                obj.add(NodeSkeleton(int(idx), KSamplerAdvanced.set(node_skeleton)))
-            elif class_type == "VAELoader":
-                obj.add(NodeSkeleton(int(idx), VAELoader.set(node_skeleton)))
-            elif class_type == "VAEDecode":
-                obj.add(NodeSkeleton(int(idx), VAEDecode.set(node_skeleton)))
-            elif class_type == "VAEEncode":
-                obj.add(NodeSkeleton(int(idx), VAEEncode.set(node_skeleton)))
-            elif class_type == "LoadImage":
-                obj.add(NodeSkeleton(int(idx), LoadImage.set(node_skeleton)))
-            elif class_type == "UnlimitLoadImage":
-                obj.add(NodeSkeleton(int(idx), UnlimitLoadImage.set(node_skeleton)))
-            elif class_type == "SaveImage":
-                obj.add(NodeSkeleton(int(idx), SaveImage.set(node_skeleton)))
-            elif class_type == "PreviewImage":
-                obj.add(NodeSkeleton(int(idx), PreviewImage.set(node_skeleton)))
-            else:
-                print(f"Invalid class_type: {class_type}")
+    @classmethod
+    def load(cls, yamlpath: Path = None) -> NodeCatalog:
+        """
+        カタログを読み込む\n
+        ファイルが存在しない場合は空のカタログを返す (スロット推論と検証が無効になる)
+
+        Args:
+            yamlpath (Path): カタログパス
+
+        Raises:
+            WorkFlowSyntaxError: カタログが不正
+
+        Returns:
+            NodeCatalog: カタログ
+        """
+        yamlpath = Path(yamlpath) if yamlpath is not None else PathConsts.node_catalog
+        if not yamlpath.exists():
+            return cls()
+
+        try:
+            with open(yamlpath, encoding="utf-8") as f:
+                data = yaml.safe_load(f) or {}
+        except yaml.YAMLError as e:
+            raise WorkFlowSyntaxError(f"{yamlpath}: YAML のパースに失敗しました: {e}") from e
+
+        nodes = data.get("nodes")
+        if not isinstance(nodes, dict):
+            raise WorkFlowSyntaxError(f"{yamlpath}: 'nodes' がありません")
+
+        return cls(nodes=nodes)
+
+    def known(self, class_type: str) -> bool:
+        """
+        カタログに存在する class_type か
+        """
+        return class_type in self.nodes
+
+    def outputs(self, class_type: str) -> list[str]:
+        """
+        出力スロット名のリスト (インデックス順)
+        """
+        return list(self.nodes.get(class_type, {}).get("outputs") or [])
+
+    def inputs(self, class_type: str) -> dict[str, dict[str, Any]]:
+        """
+        入力定義
+        """
+        return dict(self.nodes.get(class_type, {}).get("inputs") or {})
+
+    def is_output(self, class_type: str) -> bool:
+        """
+        終端ノードか
+        """
+        return bool(self.nodes.get(class_type, {}).get("is_output", False))
+
+    def is_link_input(self, class_type: str, name: str) -> bool:
+        """
+        指定の入力がリンクを取るものか\n
+        カタログ未登録の class_type では常に False
+
+        Args:
+            class_type (str): ノードクラス名
+            name (str): 入力名
+
+        Returns:
+            bool: True: リンク入力
+        """
+        return self.inputs(class_type).get(name, {}).get("type") == "link"
+
+    def slot_of(self, class_type: str, slotname: str) -> int | None:
+        """
+        出力スロット名をインデックスへ変換する\n
+        解決できない場合は None
+
+        Args:
+            class_type (str): ノードクラス名
+            slotname (str): スロット名
+
+        Returns:
+            int | None: インデックス
+        """
+        outputs = self.outputs(class_type)
+        return outputs.index(slotname) if slotname in outputs else None
+
+    def infer_slot(self, src_class: str, dst_class: str, dst_input: str) -> int:
+        """
+        入力の受け入れ型から出力スロットを推論する
+
+        Args:
+            src_class (str): 接続元ノードの class_type
+            dst_class (str): 接続先ノードの class_type
+            dst_input (str): 接続先の入力名
+
+        Raises:
+            WorkFlowSyntaxError: 推論できない, または一意でない
+
+        Returns:
+            int: 出力スロットインデックス
+        """
+        accepts = self.inputs(dst_class).get(dst_input, {}).get("accepts") or []
+        outputs = self.outputs(src_class)
+        if not outputs:
+            raise WorkFlowSyntaxError(
+                f"接続元 '{src_class}' がカタログ未登録のためスロットを推論できません "
+                f"([<ノード名>, <スロット番号>] 形式で明示してください)"
+            )
+        if not accepts:
+            raise WorkFlowSyntaxError(
+                f"'{dst_class}' の入力 '{dst_input}' に accepts が定義されていないため"
+                f"スロットを推論できません ([<ノード名>, <スロット番号>] 形式で明示してください)"
+            )
+
+        matched = [i for i, name in enumerate(outputs) if name in accepts]
+        if not matched:
+            raise WorkFlowSyntaxError(
+                f"型が一致しません ('{src_class}' の出力 {outputs} に "
+                f"{accepts} がありません)"
+            )
+        if len(matched) > 1:
+            names = [outputs[i] for i in matched]
+            raise WorkFlowSyntaxError(
+                f"スロットが一意に定まりません ('{src_class}' の出力 {names} が"
+                f"いずれも {accepts} に該当します. スロット名で明示してください)"
+            )
+        return matched[0]
+
+
+# =============================================================================
+# ワークフロー定義
+# =============================================================================
+
+
+@dataclass(frozen=True)
+class Link:
+    """
+    ノードリンク (解決済)
+    """
+
+    node: str
+    slot: int
+
+
+@dataclass(frozen=True)
+class Param:
+    """
+    パラメータプレースホルダ ($xxx)
+    """
+
+    name: str
+
+
+@dataclass(frozen=True)
+class PicInfoRef:
+    """
+    PicInfo 逆引き 1 件
+    """
+
+    node: str
+    input: str
+    negate: bool = False
+
+
+@dataclass
+class WorkFlowDef:
+    """
+    ワークフロー定義 (YAML の1セクション分)\n
+    パラメータを与えてのノードグラフ構築, および生成結果からの PicInfo 復元を担う
+    """
+
+    name: str = ""
+    # ノード名 -> (idx, class_type, 解決済 inputs)
+    nodes: dict[str, dict[str, Any]] = field(default_factory=dict)
+    picinfo: dict[str, PicInfoRef] = field(default_factory=dict)
+    # 孤立ノード等の警告 (エラーではない)
+    warnings: list[str] = field(default_factory=list)
+
+    @classmethod
+    def load(cls, yamlpath: Path, catalog: NodeCatalog = None) -> dict[str, WorkFlowDef]:
+        """
+        YAML からワークフロー定義群を読み込む\n
+        "backend" キーが "ComfyUIGenerator" でない場合はシンタックスエラーとする
+
+        Args:
+            yamlpath (Path): YAML パス
+            catalog (NodeCatalog): ノードカタログ (省略時は既定パスから読む)
+
+        Raises:
+            WorkFlowSyntaxError: YAML が不正
+
+        Returns:
+            dict[str, WorkFlowDef]: セクション名 (txt2img, img2img 等) -> ワークフロー定義
+        """
+        yamlpath = Path(yamlpath)
+        if not yamlpath.exists():
+            raise WorkFlowSyntaxError(f"{yamlpath}: ファイルが存在しません")
+
+        try:
+            with open(yamlpath, encoding="utf-8") as f:
+                yamldict = yaml.safe_load(f)
+        except yaml.YAMLError as e:
+            raise WorkFlowSyntaxError(f"{yamlpath}: YAML のパースに失敗しました: {e}") from e
+
+        if not isinstance(yamldict, dict):
+            raise WorkFlowSyntaxError(f"{yamlpath}: トップレベルがマッピングではありません")
+
+        keyword = yamldict.get("backend")
+        if keyword != BACKEND_KEYWORD:
+            raise WorkFlowSyntaxError(
+                f"{yamlpath}: 'backend' が '{BACKEND_KEYWORD}' ではありません: {keyword}"
+            )
+
+        catalog = catalog if catalog is not None else NodeCatalog.load()
+
+        wfdefs: dict[str, WorkFlowDef] = {}
+        for name, section in yamldict.items():
+            if name in RESERVED_KEYS:
+                continue
+            wfdefs[name] = cls._load_section(yamlpath, str(name), section, catalog)
+
+        if not wfdefs:
+            raise WorkFlowSyntaxError(f"{yamlpath}: ワークフロー定義がありません")
+
+        return wfdefs
+
+    @classmethod
+    def _load_section(
+        cls, yamlpath: Path, name: str, section: Any, catalog: NodeCatalog
+    ) -> WorkFlowDef:
+        """
+        1 セクション分を解析し, 検証済の定義を返す
+
+        Args:
+            yamlpath (Path): YAML パス (エラーメッセージ用)
+            name (str): セクション名
+            section (Any): セクション本体
+            catalog (NodeCatalog): ノードカタログ
+
+        Raises:
+            WorkFlowSyntaxError: セクションが不正
+
+        Returns:
+            WorkFlowDef: ワークフロー定義
+        """
+        where = f"{yamlpath}: {name}"
+        if not isinstance(section, dict):
+            raise WorkFlowSyntaxError(f"{where}: セクションがマッピングではありません")
+
+        raw_nodes = section.get("nodes")
+        if not isinstance(raw_nodes, dict) or not raw_nodes:
+            raise WorkFlowSyntaxError(f"{where}: 'nodes' がありません")
+
+        obj = cls(name=name)
+        obj._assign_idxs(where, raw_nodes)
+        obj._resolve_inputs(where, raw_nodes, catalog)
+        obj._validate_inputs(where, catalog)
+        obj._detect_cycle(where)
+        obj._parse_picinfo(where, section.get("picinfo") or {})
+        obj._detect_orphans(catalog)
         return obj
 
+    def _assign_idxs(self, where: str, raw_nodes: dict[str, Any]) -> None:
+        """
+        ノード番号を確定する\n
+        明示された idx を優先し, 省略されたノードには記述順に空き番号を割り当てる
 
-class Txt2ImgWorkFlow(WorkFlow):
-    """
-    txt2img に相当するワークフロー
-    """
+        Args:
+            where (str): エラーメッセージ用の位置情報
+            raw_nodes (dict[str, Any]): nodes セクション
 
-    def __init__(
+        Raises:
+            WorkFlowSyntaxError: idx が不正または重複
+        """
+        explicit: dict[str, int] = {}
+        for nname, ndef in raw_nodes.items():
+            if not isinstance(ndef, dict):
+                raise WorkFlowSyntaxError(f"{where}: ノード '{nname}': 定義がマッピングではありません")
+            if ndef.get("idx") is None:
+                continue
+
+            idx = ndef.get("idx")
+            if not isinstance(idx, int) or idx < 1:
+                raise WorkFlowSyntaxError(f"{where}: ノード '{nname}': 'idx' は 1 以上の整数です")
+            if idx in explicit.values():
+                raise WorkFlowSyntaxError(f"{where}: ノード '{nname}': 'idx' {idx} が重複しています")
+            explicit[nname] = idx
+
+        nextidx = 1
+        for nname, ndef in raw_nodes.items():
+            class_type = ndef.get("class_type")
+            if not isinstance(class_type, str) or not class_type:
+                raise WorkFlowSyntaxError(f"{where}: ノード '{nname}': 'class_type' がありません")
+
+            for key in ndef:
+                if key not in NODE_KEYS:
+                    raise WorkFlowSyntaxError(
+                        f"{where}: ノード '{nname}': 未知のキー '{key}' があります {NODE_KEYS}"
+                    )
+
+            if nname in explicit:
+                idx = explicit[nname]
+            else:
+                while nextidx in explicit.values():
+                    nextidx += 1
+                idx = nextidx
+                nextidx += 1
+
+            self.nodes[nname] = {"idx": idx, "class_type": class_type, "inputs": {}}
+
+    def _resolve_inputs(
+        self, where: str, raw_nodes: dict[str, Any], catalog: NodeCatalog
+    ) -> None:
+        """
+        inputs をリンク / プレースホルダ / 静的値へ分類し, リンクのスロットを解決する
+
+        Args:
+            where (str): エラーメッセージ用の位置情報
+            raw_nodes (dict[str, Any]): nodes セクション
+            catalog (NodeCatalog): ノードカタログ
+
+        Raises:
+            WorkFlowSyntaxError: 記法が不正, またはリンクを解決できない
+        """
+        for nname, ndef in raw_nodes.items():
+            class_type = self.nodes[nname]["class_type"]
+            raw_inputs = ndef.get("inputs") or {}
+            if not isinstance(raw_inputs, dict):
+                raise WorkFlowSyntaxError(f"{where}: ノード '{nname}': 'inputs' がマッピングではありません")
+
+            for key, value in raw_inputs.items():
+                pos = f"{where}: ノード '{nname}' の入力 '{key}'"
+                self.nodes[nname]["inputs"][key] = self._resolve_value(
+                    pos, class_type, key, value, catalog
+                )
+
+    def _resolve_value(
+        self, pos: str, class_type: str, key: str, value: Any, catalog: NodeCatalog
+    ) -> Any:
+        """
+        入力値 1 つを解決する
+
+        Args:
+            pos (str): エラーメッセージ用の位置情報
+            class_type (str): ノードクラス名
+            key (str): 入力名
+            value (Any): YAML 上の値
+            catalog (NodeCatalog): ノードカタログ
+
+        Raises:
+            WorkFlowSyntaxError: 記法が不正
+
+        Returns:
+            Any: Link, Param, または静的値
+        """
+        # [<ノード名>] / [<ノード名>, <スロット名 | スロット番号>]
+        if isinstance(value, list):
+            if not 1 <= len(value) <= 2 or not isinstance(value[0], str):
+                raise WorkFlowSyntaxError(
+                    f"{pos}: リンクは [<ノード名>] か [<ノード名>, <スロット>] で記述します"
+                )
+            return self._make_link(pos, class_type, key, value[0], value[1:], catalog)
+
+        if isinstance(value, str):
+            # $$ は $ のエスケープ
+            if value.startswith("$$"):
+                return value[1:]
+            if value.startswith("$"):
+                return Param(name=value[1:])
+            # カタログが link 型と宣言している入力は, スカラをノード名として解釈する
+            if catalog.is_link_input(class_type, key):
+                return self._make_link(pos, class_type, key, value, [], catalog)
+
+        return value
+
+    def _make_link(
         self,
-        ckpt_name: str = None,
-        pos_prompt: str = None,
-        neg_prompt: str = None,
-        seed: int = None,
-        steps: int = None,
-        batch_size: int = None,
-        sampler_name: str = None,
-        scheduler: str = None,
-        cfg_scale: float = None,
-        width: int = None,
-        height: int = None,
-    ):
+        pos: str,
+        class_type: str,
+        key: str,
+        target: str,
+        rest: list[Any],
+        catalog: NodeCatalog,
+    ) -> Link:
         """
-        コンストラクタ
+        リンクを構築する (スロット未指定時は型から推論する)
+
+        Args:
+            pos (str): エラーメッセージ用の位置情報
+            class_type (str): 接続先ノードの class_type
+            key (str): 接続先の入力名
+            target (str): 接続元ノード名
+            rest (list[Any]): スロット指定 (0 or 1 要素)
+            catalog (NodeCatalog): ノードカタログ
+
+        Raises:
+            WorkFlowSyntaxError: リンク先が存在しない, またはスロットを解決できない
+
+        Returns:
+            Link: リンク
         """
-        super().__init__()
+        if target not in self.nodes:
+            raise WorkFlowSyntaxError(f"{pos}: リンク先ノード '{target}' が存在しません")
 
-        self.ckpt_loader_idx = 1
-        self.empty_latent_idx = 2
-        self.clip_layer_setter_idx = 3
-        self.positive_clip_idx = 4
-        self.negative_clip_idx = 5
-        self.sampler_idx = 6
-        self.vae_decoder_idx = 7
-        self.previewer_idx = 8
+        src_class = self.nodes[target]["class_type"]
+        if not rest:
+            try:
+                return Link(node=target, slot=catalog.infer_slot(src_class, class_type, key))
+            except WorkFlowSyntaxError as e:
+                raise WorkFlowSyntaxError(f"{pos}: {e}") from e
 
-        if (
-            ckpt_name is None
-            or pos_prompt is None
-            or neg_prompt is None
-            or seed is None
-            or steps is None
-            or batch_size is None
-            or sampler_name is None
-            or scheduler is None
-            or cfg_scale is None
-            or width is None
-            or height is None
-        ):
-            return
+        slot = rest[0]
+        if isinstance(slot, bool) or not isinstance(slot, int | str):
+            raise WorkFlowSyntaxError(f"{pos}: スロットはスロット名か整数で指定します")
+        if isinstance(slot, int):
+            return Link(node=target, slot=slot)
 
-        self.add(
-            NodeSkeleton(self.ckpt_loader_idx, CheckpointLoaderSimple.make(ckpt_name=ckpt_name))
-        )
-        self.add(
-            NodeSkeleton(
-                self.empty_latent_idx,
-                EmptyLatentImage.make(width=width, height=height, batch_size=batch_size),
+        resolved = catalog.slot_of(src_class, slot)
+        if resolved is None:
+            raise WorkFlowSyntaxError(
+                f"{pos}: '{src_class}' に出力スロット '{slot}' がありません "
+                f"(カタログ未登録の場合はスロット番号で指定してください)"
             )
-        )
-        self.add(
-            NodeSkeleton(
-                self.clip_layer_setter_idx,
-                CLIPSetLastLayer.make(
-                    stop_at_clip_layer=-2, loader=self.node_of(self.ckpt_loader_idx)
-                ),
+        return Link(node=target, slot=resolved)
+
+    def _validate_inputs(self, where: str, catalog: NodeCatalog) -> None:
+        """
+        カタログと突き合わせて入力名 / 必須 / リンク型 / 選択肢を検証する\n
+        カタログ未登録の class_type は検証をスキップし, 警告に記録する
+
+        Args:
+            where (str): エラーメッセージ用の位置情報
+            catalog (NodeCatalog): ノードカタログ
+
+        Raises:
+            WorkFlowSyntaxError: 検証に失敗
+        """
+        for nname, ndef in self.nodes.items():
+            class_type = ndef["class_type"]
+            if not catalog.known(class_type):
+                self.warnings.append(
+                    f"ノード '{nname}': class_type '{class_type}' はカタログに未登録のため"
+                    f"検証をスキップしました"
+                )
+                continue
+
+            defs = catalog.inputs(class_type)
+            for key, value in ndef["inputs"].items():
+                pos = f"{where}: ノード '{nname}' の入力 '{key}'"
+                idef = defs.get(key)
+                if idef is None:
+                    raise WorkFlowSyntaxError(f"{pos}: '{class_type}' に存在しない入力名です")
+
+                if idef.get("type") == "link":
+                    if not isinstance(value, Link):
+                        raise WorkFlowSyntaxError(f"{pos}: リンクを指定する必要があります")
+                    accepts = idef.get("accepts")
+                    outputs = catalog.outputs(self.nodes[value.node]["class_type"])
+                    if accepts and outputs and value.slot < len(outputs):
+                        actual = outputs[value.slot]
+                        if actual not in accepts:
+                            raise WorkFlowSyntaxError(
+                                f"{pos}: 型が一致しません (期待: {accepts}, 実際: '{actual}')"
+                            )
+                    continue
+
+                if isinstance(value, Link):
+                    raise WorkFlowSyntaxError(f"{pos}: この入力はリンクを受け付けません")
+
+                # 静的値のみ検証する (プレースホルダの中身はビルド時にしか分からない)
+                choices = idef.get("choices")
+                if not isinstance(value, Param) and choices and value not in choices:
+                    raise WorkFlowSyntaxError(f"{pos}: '{value}' は {choices} にありません")
+
+            for key, idef in defs.items():
+                if idef.get("required") and key not in ndef["inputs"]:
+                    raise WorkFlowSyntaxError(
+                        f"{where}: ノード '{nname}': 必須の入力 '{key}' がありません"
+                    )
+
+    def _detect_cycle(self, where: str) -> None:
+        """
+        循環参照を検出する
+
+        Args:
+            where (str): エラーメッセージ用の位置情報
+
+        Raises:
+            WorkFlowSyntaxError: 循環参照を検出
+        """
+        # 0: 未訪問, 1: 探索中, 2: 完了
+        state: dict[str, int] = {name: 0 for name in self.nodes}
+
+        def visit(name: str, stack: list[str]) -> None:
+            if state[name] == 1:
+                raise WorkFlowSyntaxError(
+                    f"{where}: 循環参照を検出しました: {' -> '.join([*stack, name])}"
+                )
+            if state[name] == 2:
+                return
+
+            state[name] = 1
+            for value in self.nodes[name]["inputs"].values():
+                if isinstance(value, Link):
+                    visit(value.node, [*stack, name])
+            state[name] = 2
+
+        for name in self.nodes:
+            visit(name, [])
+
+    def _parse_picinfo(self, where: str, raw: Any) -> None:
+        """
+        picinfo を解析する
+
+        Args:
+            where (str): エラーメッセージ用の位置情報
+            raw (Any): picinfo セクション
+
+        Raises:
+            WorkFlowSyntaxError: picinfo が不正
+        """
+        if not isinstance(raw, dict):
+            raise WorkFlowSyntaxError(f"{where}: 'picinfo' がマッピングではありません")
+
+        valid_fields = {f.name for f in fields(PicInfo)}
+        for key, spec in raw.items():
+            pos = f"{where}: picinfo '{key}'"
+            if key not in valid_fields:
+                raise WorkFlowSyntaxError(f"{pos}: PicInfo に存在しないフィールドです")
+
+            negate = False
+            if isinstance(spec, dict):
+                accessor = spec.get("from")
+                negate = bool(spec.get("negate", False))
+            else:
+                accessor = spec
+
+            if (
+                not isinstance(accessor, list)
+                or len(accessor) != 2
+                or not all(isinstance(e, str) for e in accessor)
+            ):
+                raise WorkFlowSyntaxError(f"{pos}: [<ノード名>, <入力名>] 形式で記述します")
+
+            node_name, input_name = accessor
+            if node_name not in self.nodes:
+                raise WorkFlowSyntaxError(f"{pos}: ノード '{node_name}' が存在しません")
+            if input_name not in self.nodes[node_name]["inputs"]:
+                raise WorkFlowSyntaxError(
+                    f"{pos}: ノード '{node_name}' に入力 '{input_name}' がありません"
+                )
+            if isinstance(self.nodes[node_name]["inputs"][input_name], Link):
+                raise WorkFlowSyntaxError(f"{pos}: リンクを指す入力は参照できません")
+
+            self.picinfo[key] = PicInfoRef(node=node_name, input=input_name, negate=negate)
+
+    def _detect_orphans(self, catalog: NodeCatalog) -> None:
+        """
+        孤立ノードを警告として記録する
+
+        Args:
+            catalog (NodeCatalog): ノードカタログ
+        """
+        referred = {
+            value.node
+            for ndef in self.nodes.values()
+            for value in ndef["inputs"].values()
+            if isinstance(value, Link)
+        }
+        for nname, ndef in self.nodes.items():
+            if nname in referred or catalog.is_output(ndef["class_type"]):
+                continue
+            self.warnings.append(
+                f"ノード '{nname}' (idx={ndef['idx']}) はどこからも参照されていません"
             )
-        )
-        self.add(
-            NodeSkeleton(
-                self.positive_clip_idx,
-                CLIPTextEncode.make(text=pos_prompt, loader=self.node_of(self.ckpt_loader_idx)),
+
+    @property
+    def placeholders(self) -> list[str]:
+        """
+        本定義が要求するパラメータ名 (重複なし, 出現順)
+
+        Returns:
+            list[str]: パラメータ名のリスト
+        """
+        found: list[str] = []
+        for ndef in self.nodes.values():
+            for value in ndef["inputs"].values():
+                if isinstance(value, Param) and value.name not in found:
+                    found.append(value.name)
+        return found
+
+    def build(self, params: dict[str, Any]) -> WorkFlow:
+        """
+        パラメータを与えてワークフロー (ノードグラフ) を構築する
+
+        Args:
+            params (dict[str, Any]): "$xxx" で参照されるパラメータ
+
+        Raises:
+            KeyError: 要求されたパラメータが渡されていない
+
+        Returns:
+            WorkFlow: 構築されたワークフロー
+        """
+        workflow = WorkFlow()
+        for ndef in self.nodes.values():
+            inputs: dict[str, Any] = {}
+            for key, value in ndef["inputs"].items():
+                if isinstance(value, Link):
+                    inputs[key] = [str(self.nodes[value.node]["idx"]), value.slot]
+                elif isinstance(value, Param):
+                    if value.name not in params:
+                        raise KeyError(f"Missing parameter for workflow build: {value.name}")
+                    inputs[key] = params[value.name]
+                else:
+                    inputs[key] = value
+
+            workflow.add(
+                NodeSkeleton(
+                    ndef["idx"], GenericNode(class_type=ndef["class_type"], inputs=inputs)
+                )
             )
-        )
-        self.add(
-            NodeSkeleton(
-                self.negative_clip_idx,
-                CLIPTextEncode.make(text=neg_prompt, loader=self.node_of(self.ckpt_loader_idx)),
-            )
-        )
-        self.add(
-            NodeSkeleton(
-                self.sampler_idx,
-                KSampler.make(
-                    seed=seed,
-                    steps=steps,
-                    cfg=cfg_scale,
-                    denoise=1.0,
-                    sampler_name=sampler_name,
-                    scheduler=scheduler,
-                    loader=self.node_of(self.ckpt_loader_idx),
-                    latent_image=self.node_of(self.empty_latent_idx),
-                    positive=self.node_of(self.positive_clip_idx),
-                    negative=self.node_of(self.negative_clip_idx),
-                ),
-            ),
-        )
-        self.add(
-            NodeSkeleton(
-                self.vae_decoder_idx,
-                VAEDecode.make(
-                    sampler=self.node_of(self.sampler_idx), vae=self.node_of(self.ckpt_loader_idx)
-                ),
-            )
-        )
-        self.add(
-            NodeSkeleton(
-                self.previewer_idx, PreviewImage.make(vaedec=self.node_of(self.vae_decoder_idx))
-            )
-        )
+        return workflow
 
-    @property
-    def positive_prompt(self) -> str:
-        return cast(CLIPTextEncode.Inputs, self.node_of(self.positive_clip_idx).body.inputs).text
+    def read_picinfo(self, data: dict[str, dict[str, Any]]) -> dict[str, Any]:
+        """
+        生成結果のワークフロー dict (ComfyUI が PNG メタデータの "prompt" として返すものと
+        同じ形) から, PicInfo 用の値を picinfo 定義に従って抽出する
 
-    @property
-    def negative_prompt(self) -> str:
-        return cast(CLIPTextEncode.Inputs, self.node_of(self.negative_clip_idx).body.inputs).text
+        Args:
+            data (dict[str, dict[str, Any]]): ワークフロー dict (キーはノード番号の文字列)
 
-    @property
-    def steps(self) -> int:
-        return cast(KSampler.Inputs, self.node_of(self.sampler_idx).body.inputs).steps
+        Returns:
+            dict[str, Any]: PicInfo フィールド名 -> 値 (PicInfo のフィールド型に変換済み)
+        """
+        type_hints = get_type_hints(PicInfo)
+        result: dict[str, Any] = {}
 
-    @property
-    def sampler(self) -> str:
-        return cast(KSampler.Inputs, self.node_of(self.sampler_idx).body.inputs).sampler_name
+        for key, ref in self.picinfo.items():
+            node_data = data.get(str(self.nodes[ref.node]["idx"]), {})
+            value = (node_data.get("inputs") or {}).get(ref.input)
+            if value is None:
+                continue
 
-    @property
-    def scheduler(self) -> str:
-        return cast(KSampler.Inputs, self.node_of(self.sampler_idx).body.inputs).scheduler
+            if ref.negate:
+                value = -value
 
-    @property
-    def cfg_scale(self) -> float:
-        return cast(KSampler.Inputs, self.node_of(self.sampler_idx).body.inputs).cfg
+            field_type = type_hints.get(key)
+            if field_type is int:
+                value = int(value)
+            elif field_type is float:
+                value = float(value)
 
-    @property
-    def seed(self) -> int:
-        return cast(KSampler.Inputs, self.node_of(self.sampler_idx).body.inputs).seed
+            result[key] = value
 
-    @property
-    def width(self) -> int:
-        return cast(EmptyLatentImage.Inputs, self.node_of(self.empty_latent_idx).body.inputs).width
-
-    @property
-    def height(self) -> int:
-        return cast(EmptyLatentImage.Inputs, self.node_of(self.empty_latent_idx).body.inputs).height
-
-    @property
-    def model_name(self) -> str:
-        return cast(
-            CheckpointLoaderSimple.Inputs, self.node_of(self.ckpt_loader_idx).body.inputs
-        ).ckpt_name
-
-    @property
-    def clip_skip(self) -> int:
-        return -cast(
-            CLIPSetLastLayer.Inputs, self.node_of(self.clip_layer_setter_idx).body.inputs
-        ).stop_at_clip_layer
+        return result
 
 
-class Img2ImgWorkFlow(WorkFlow):
+@dataclass
+class WorkFlowYamlSummary:
     """
-    img2img に相当するワークフロー
+    ワークフロー YAML の走査結果 1 件
     """
 
-    def __init__(
-        self,
-        ckpt_name: str = None,
-        path: str = None,
-        pos_prompt: str = None,
-        neg_prompt: str = None,
-        seed: int = None,
-        steps: int = None,
-        batch_size: int = None,
-        sampler_name: str = None,
-        scheduler: str = None,
-        upscaler: str = None,
-        cfg_scale: float = None,
-        denoise: float = None,
-        width: int = None,
-        height: int = None,
-    ):
+    path: Path
+    sections: list[str] = field(default_factory=list)
+    error: str = ""
+
+    @property
+    def label(self) -> str:
         """
-        コンストラクタ
+        UI 表示用のラベル
         """
-        super().__init__()
+        return self.path.name if not self.error else f"{self.path.name} (エラー)"
 
-        self.ckpt_loader_idx = 1
-        self.image_loader_idx = 2
-        self.vae_encoder_idx = 3
-        self.clip_layer_setter_idx = 4
-        self.positive_clip_idx = 5
-        self.negative_clip_idx = 6
-        self.latent_upscaler_idx = 7
-        self.sampler_idx = 8
-        self.vae_decoder_idx = 9
-        self.previewer_idx = 10
 
-        if (
-            ckpt_name is None
-            or path is None
-            or pos_prompt is None
-            or neg_prompt is None
-            or seed is None
-            or steps is None
-            or batch_size is None
-            or sampler_name is None
-            or scheduler is None
-            or upscaler is None
-            or cfg_scale is None
-            or denoise is None
-            or width is None
-            or height is None
-        ):
-            return
+def scan_workflow_yamls(
+    dirpath: Path = None, catalog: NodeCatalog = None
+) -> list[WorkFlowYamlSummary]:
+    """
+    ディレクトリ内のワークフロー YAML (backend キーを持つもの) を走査する\n
+    不正なファイルは error 付きで返す
 
-        self.add(
-            NodeSkeleton(self.ckpt_loader_idx, CheckpointLoaderSimple.make(ckpt_name=ckpt_name))
-        )
-        self.add(
-            NodeSkeleton(
-                self.image_loader_idx, UnlimitLoadImage.make(path=str(Path(path).resolve()))
-            )
-        )
-        self.add(
-            NodeSkeleton(
-                self.vae_encoder_idx,
-                VAEEncode.make(
-                    image=self.node_of(self.image_loader_idx),
-                    vae=self.node_of(self.ckpt_loader_idx),
-                ),
-            )
-        )
-        self.add(
-            NodeSkeleton(
-                self.clip_layer_setter_idx,
-                CLIPSetLastLayer.make(
-                    stop_at_clip_layer=-2, loader=self.node_of(self.ckpt_loader_idx)
-                ),
-            )
-        )
-        self.add(
-            NodeSkeleton(
-                self.positive_clip_idx,
-                CLIPTextEncode.make(text=pos_prompt, loader=self.node_of(self.ckpt_loader_idx)),
-            )
-        )
-        self.add(
-            NodeSkeleton(
-                self.negative_clip_idx,
-                CLIPTextEncode.make(text=neg_prompt, loader=self.node_of(self.ckpt_loader_idx)),
-            )
-        )
-        self.add(
-            NodeSkeleton(
-                self.latent_upscaler_idx,
-                LatentUpscale.make(
-                    upscale_method=upscaler,
-                    width=width,
-                    height=height,
-                    crop=False,
-                    samples=self.node_of(self.vae_encoder_idx),
-                ),
-            )
-        )
-        self.add(
-            NodeSkeleton(
-                self.sampler_idx,
-                KSampler.make(
-                    seed=seed,
-                    steps=steps,
-                    cfg=cfg_scale,
-                    denoise=denoise,
-                    sampler_name=sampler_name,
-                    scheduler=scheduler,
-                    loader=self.node_of(self.ckpt_loader_idx),
-                    latent_image=self.node_of(self.latent_upscaler_idx),
-                    positive=self.node_of(self.positive_clip_idx),
-                    negative=self.node_of(self.negative_clip_idx),
-                ),
-            ),
-        )
-        self.add(
-            NodeSkeleton(
-                self.vae_decoder_idx,
-                VAEDecode.make(
-                    sampler=self.node_of(self.sampler_idx), vae=self.node_of(self.ckpt_loader_idx)
-                ),
-            )
-        )
-        self.add(
-            NodeSkeleton(
-                self.previewer_idx, PreviewImage.make(vaedec=self.node_of(self.vae_decoder_idx))
-            )
-        )
+    Args:
+        dirpath (Path): 走査先ディレクトリ
+        catalog (NodeCatalog): ノードカタログ
 
-    @property
-    def ancestor(self) -> str:
-        return cast(UnlimitLoadImage.Inputs, self.node_of(self.image_loader_idx).body.inputs).path
+    Returns:
+        list[WorkFlowYamlSummary]: 走査結果
+    """
+    dirpath = Path(dirpath) if dirpath is not None else PathConsts.yaml_dir
+    if not dirpath.exists():
+        return []
 
-    @property
-    def positive_prompt(self) -> str:
-        return cast(CLIPTextEncode.Inputs, self.node_of(self.positive_clip_idx).body.inputs).text
+    catalog = catalog if catalog is not None else NodeCatalog.load()
 
-    @property
-    def negative_prompt(self) -> str:
-        return cast(CLIPTextEncode.Inputs, self.node_of(self.negative_clip_idx).body.inputs).text
+    results: list[WorkFlowYamlSummary] = []
+    for path in sorted(dirpath.glob("*.yaml")):
+        try:
+            with open(path, encoding="utf-8") as f:
+                head = yaml.safe_load(f) or {}
+        except (yaml.YAMLError, OSError):
+            continue
 
-    @property
-    def steps(self) -> int:
-        return cast(KSampler.Inputs, self.node_of(self.sampler_idx).body.inputs).steps
+        if not isinstance(head, dict) or head.get("backend") != BACKEND_KEYWORD:
+            # ワークフロー YAML ではない (プロンプトルール YAML 等)
+            continue
 
-    @property
-    def sampler(self) -> str:
-        return cast(KSampler.Inputs, self.node_of(self.sampler_idx).body.inputs).sampler_name
+        try:
+            wfdefs = WorkFlowDef.load(path, catalog)
+            results.append(WorkFlowYamlSummary(path=path, sections=list(wfdefs)))
+        except WorkFlowSyntaxError as e:
+            results.append(WorkFlowYamlSummary(path=path, error=str(e)))
 
-    @property
-    def scheduler(self) -> str:
-        return cast(KSampler.Inputs, self.node_of(self.sampler_idx).body.inputs).scheduler
-
-    @property
-    def cfg_scale(self) -> float:
-        return cast(KSampler.Inputs, self.node_of(self.sampler_idx).body.inputs).cfg
-
-    @property
-    def seed(self) -> int:
-        return cast(KSampler.Inputs, self.node_of(self.sampler_idx).body.inputs).seed
-
-    @property
-    def upscaler(self) -> str:
-        return cast(
-            LatentUpscale.Inputs, self.node_of(self.latent_upscaler_idx).body.inputs
-        ).upscale_method
-
-    @property
-    def width(self) -> int:
-        return cast(LatentUpscale.Inputs, self.node_of(self.latent_upscaler_idx).body.inputs).width
-
-    @property
-    def height(self) -> int:
-        return cast(LatentUpscale.Inputs, self.node_of(self.latent_upscaler_idx).body.inputs).height
-
-    @property
-    def model_name(self) -> str:
-        return cast(
-            CheckpointLoaderSimple.Inputs, self.node_of(self.ckpt_loader_idx).body.inputs
-        ).ckpt_name
-
-    @property
-    def clip_skip(self) -> int:
-        return -cast(
-            CLIPSetLastLayer.Inputs, self.node_of(self.clip_layer_setter_idx).body.inputs
-        ).stop_at_clip_layer
+    return results
