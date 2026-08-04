@@ -14,6 +14,7 @@ from common.functions import BottleMail
 from displayer.dataclasses import GUIConfigs
 from displayer.info_window import InfoWindow
 from displayer.pic_window import PicWindow
+from displayer.workflow_tab import WorkFlowTab
 from generator.dataclasses import TaskBlueprint
 from master.interfaces import BackEnd, MasterIF
 
@@ -681,6 +682,12 @@ class MainWindow:
         self.main_tab = ttk.Frame(self.notebook, padding=12)
         self.notebook.add(self.main_tab, text="メイン")
         self.main_tab_obj = MainTab(self, init_configs)
+        # ワークフロータブ
+        self.workflow_tab = ttk.Frame(self.notebook, padding=12)
+        self.workflow_tab.columnconfigure(0, weight=1)
+        self.workflow_tab.rowconfigure(0, weight=1)
+        self.notebook.add(self.workflow_tab, text="ワークフロー")
+        self.workflow_tab_obj = WorkFlowTab(self, init_configs)
         # デバッグタブ
         self.debug_tab = ttk.Frame(self.notebook, padding=12)
         self.debug_tab.columnconfigure(0, weight=1)
@@ -1003,6 +1010,7 @@ class Displayer:
             yamlpath=str(self.main_window.main_tab_obj.sellect_frame.yamlpath)
             if self.main_window.main_tab_obj.sellect_frame.yamlpath is not None
             else None,
+            wf_yamlpath=str(self.main_window.workflow_tab_obj.wf_yamlpath),
             backend=self.main_window.main_tab_obj.sellect_frame.backend_combo.get(),
             allow_edit_clipboard=bool(
                 self.main_window.debug_tab_obj.toggle_frame.allow_edit_clipboard_check.get()
