@@ -24,6 +24,8 @@ class GUIConfigs:
     sd_scaleby: float = 0.0
     each_max_pics: int = 0
     yamlpath: str | None = None
+    # ComfyUI ワークフロー定義 YAML (未指定時は PathConsts.workflow_yaml)
+    wf_yamlpath: str | None = None
     backend: str = ""
     # 画面テキストの入力ソース: "socket" (Emuera からの push) or "clipboard" (従来方式)
     input_source: str = "clipboard"

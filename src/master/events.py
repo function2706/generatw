@@ -85,6 +85,16 @@ class OnReloadYaml(DisplayerEvent):
 
 
 @dataclass
+class OnSelectWfYaml(DisplayerEvent):
+    path: Path
+
+
+@dataclass
+class OnReloadWfYaml(DisplayerEvent):
+    pass
+
+
+@dataclass
 class OnDebug(DisplayerEvent):
     pass
 

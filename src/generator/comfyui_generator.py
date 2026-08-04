@@ -6,10 +6,12 @@ from __future__ import annotations
 
 import io
 import json
+import random
 import threading
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum, auto
+from pathlib import Path
 from threading import Lock
 
 import requests
@@ -18,8 +20,8 @@ from PIL import Image, ImageFile
 
 import master.events
 from archiver.dataclasses import PicInfo
-from common.functions import BottleMail
-from generator.comfyui_workflow import Img2ImgWorkFlow, Txt2ImgWorkFlow
+from common.functions import BottleMail, PathConsts
+from generator.comfyui_workflow import WorkFlowDef
 from generator.dataclasses import TaskBlueprint, TaskBlueprintImg2Img, TaskBlueprintTxt2Img
 from generator.generator import Generator
 from master.interfaces import MasterIF
@@ -91,12 +93,19 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
     タスク設計図をもとにサーバへ非同期にポストし, ファイル保存をする
     """
 
-    def __init__(self, master: MasterIF, to_master: BottleMail[master.events.GeneratorEvent]):
+    def __init__(
+        self,
+        master: MasterIF,
+        to_master: BottleMail[master.events.GeneratorEvent],
+        workflow_yamlpath: Path = PathConsts.workflow_yaml,
+    ):
         """
         コンストラクタ
 
         Args:
             master (MasterIF): Master インターフェース
+            workflow_yamlpath (Path): ワークフロー定義 YAML のパス,
+                Defaults to PathConsts.workflow_yaml.
         """
         super().__init__(master, to_master)
 
@@ -105,11 +114,43 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
         self.progress: ComfyUITaskProgress = None
         self.progress_lock = Lock()
 
+        self.wfdefs: dict[str, WorkFlowDef] = WorkFlowDef.load(workflow_yamlpath)
+        self.wfdefs_lock = Lock()
+
         self.is_interrupting_listen = threading.Event()  # WS listen 中断要求があった
 
     def finalize(self) -> None:
         self.is_interrupting_listen.clear()
         super().finalize()
+
+    def switch_workflow(self, yamlpath: Path) -> None:
+        """
+        指定の YAML からワークフロー定義群を読み込み直す\n
+        読み込み中の生成/アップスケール要求とは競合しないよう, 読み込み自体はロック外で行い
+        差し替えのみをロックする
+
+        Args:
+            yamlpath (Path): ワークフロー定義 YAML のパス
+
+        Raises:
+            WorkFlowSyntaxError: YAML が不正
+        """
+        new_wfdefs = WorkFlowDef.load(yamlpath)
+        with self.wfdefs_lock:
+            self.wfdefs = new_wfdefs
+
+    def wfdef_of(self, name: str) -> WorkFlowDef | None:
+        """
+        指定名のワークフロー定義を取得する
+
+        Args:
+            name (str): セクション名 (txt2img / img2img)
+
+        Returns:
+            WorkFlowDef | None: ワークフロー定義
+        """
+        with self.wfdefs_lock:
+            return self.wfdefs.get(name)
 
     def listen_websocket(self, ws: websocket.WebSocket) -> TaskReport | None:
         """
@@ -139,8 +180,42 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
 
         return None
 
+    @staticmethod
+    def make_params(task: TaskBlueprint, is_upscale: bool) -> dict[str, object]:
+        """
+        タスクからワークフローへ渡すパラメータを組み立てる\n
+        seed の乱数化とパスの絶対化は YAML の責務外であり, ここで行う\n
+        UI のプレビューからも参照される (実際の要求と同じ形を保証するため)
+
+        Args:
+            task (TaskBlueprint): タスク
+            is_upscale (bool): True: img2img, False: txt2img
+
+        Returns:
+            dict[str, object]: パラメータ ("$xxx" で参照される)
+        """
+        params: dict[str, object] = {
+            "pos_prompt": task.prompt,
+            "neg_prompt": task.negative_prompt,
+            "seed": random.randint(0, 2**31 - 1) if task.seed == -1 else task.seed,
+            "steps": task.steps,
+            "batch_size": task.batch_size,
+            "sampler_name": task.sampler_name,
+            "scheduler": task.scheduler,
+            "cfg_scale": task.cfg_scale,
+            "width": task.width,
+            "height": task.height,
+        }
+        if is_upscale:
+            params |= {
+                "path": str(Path(task.path).resolve()),
+                "upscaler": task.upscaler_name,
+                "denoise": task.denoising_strength,
+            }
+        return params
+
     def make_pictuple(
-        self, report: TaskReport, is_upscale: bool
+        self, report: TaskReport, wfdef: WorkFlowDef
     ) -> list[tuple[ImageFile.ImageFile, PicInfo]]:
         """
         ImageFile と PicInfo のタプルリストをタスクレポートから得る\n
@@ -148,6 +223,7 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
 
         Args:
             report (TaskReport): タスクレポート
+            wfdef (WorkFlowDef): 要求に用いたワークフロー定義
 
         Returns:
             list[tuple[ImageFile.ImageFile, PicInfo]]: ImageFile と PicInfo のタプルリスト
@@ -165,41 +241,8 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
             buf = io.BytesIO()
             pic.save(buf, format="PNG")
 
-            if is_upscale:
-                workflow_resp = Img2ImgWorkFlow.fromdict(json.loads(pic.info.get("prompt")))
-                picinfo = PicInfo(
-                    positive_prompt=workflow_resp.positive_prompt,
-                    negative_prompt=workflow_resp.negative_prompt,
-                    steps=workflow_resp.steps,
-                    sampler=workflow_resp.sampler,
-                    scheduler=workflow_resp.scheduler,
-                    cfg_scale=workflow_resp.cfg_scale,
-                    seed=workflow_resp.seed,
-                    width=workflow_resp.width,
-                    height=workflow_resp.height,
-                    model_name=workflow_resp.model_name,
-                    model_hash="",
-                    clip_skip=workflow_resp.clip_skip,
-                    ancestor=workflow_resp.ancestor,
-                )
-            else:
-                workflow_resp = Txt2ImgWorkFlow.fromdict(json.loads(pic.info.get("prompt")))
-                picinfo = PicInfo(
-                    positive_prompt=workflow_resp.positive_prompt,
-                    negative_prompt=workflow_resp.negative_prompt,
-                    steps=workflow_resp.steps,
-                    sampler=workflow_resp.sampler,
-                    scheduler=workflow_resp.scheduler,
-                    cfg_scale=workflow_resp.cfg_scale,
-                    seed=workflow_resp.seed,
-                    width=workflow_resp.width,
-                    height=workflow_resp.height,
-                    model_name=workflow_resp.model_name,
-                    model_hash="",
-                    clip_skip=workflow_resp.clip_skip,
-                )
-
-            result.append((Image.open(buf), picinfo))
+            values = wfdef.read_picinfo(json.loads(pic.info.get("prompt")))
+            result.append((Image.open(buf), PicInfo(**values, model_hash="")))
 
         return result
 
@@ -209,24 +252,16 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
             return []
 
         task: TaskBlueprintTxt2Img = self.crnt_task_copy
-        workflow = Txt2ImgWorkFlow(
-            ckpt_name="Illustrious\\waiIllustriousSDXL_v170.safetensors",
-            pos_prompt=task.prompt,
-            neg_prompt=task.negative_prompt,
-            seed=task.seed,
-            steps=task.steps,
-            batch_size=task.batch_size,
-            sampler_name=task.sampler_name,
-            scheduler=task.scheduler,
-            cfg_scale=task.cfg_scale,
-            width=task.width,
-            height=task.height,
-        )
+        wfdef = self.wfdef_of("txt2img")
+        if wfdef is None:
+            print('No "txt2img" workflow in the workflow YAML.')
+            return []
+        workflow = wfdef.build(self.make_params(task, is_upscale=False)).todict()
 
         try:
             requests.post(
                 f"http://{task.dst_addr}:{task.dst_port}/prompt",
-                json={"prompt": workflow.todict(), "client_id": self.client_id},
+                json={"prompt": workflow, "client_id": self.client_id},
             )
         except requests.exceptions.RequestException:
             print(f"Failed request to {task.dst_addr}:{task.dst_port}.")
@@ -253,7 +288,7 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
         finally:
             ws.close()
 
-        return self.make_pictuple(report, False) if report is not None else []
+        return self.make_pictuple(report, wfdef) if report is not None else []
 
     def request_upscale(self) -> None:
         self.is_interrupting_listen.clear()
@@ -261,27 +296,16 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
             return []
 
         task: TaskBlueprintImg2Img = self.crnt_task_copy
-        workflow = Img2ImgWorkFlow(
-            ckpt_name="Illustrious\\waiIllustriousSDXL_v170.safetensors",
-            path=task.path,
-            pos_prompt=task.prompt,
-            neg_prompt=task.negative_prompt,
-            seed=task.seed,
-            steps=task.steps,
-            batch_size=task.batch_size,
-            sampler_name=task.sampler_name,
-            scheduler=task.scheduler,
-            upscaler=task.upscaler_name,
-            cfg_scale=task.cfg_scale,
-            denoise=task.denoising_strength,
-            width=task.width,
-            height=task.height,
-        )
+        wfdef = self.wfdef_of("img2img")
+        if wfdef is None:
+            print('No "img2img" workflow in the workflow YAML.')
+            return []
+        workflow = wfdef.build(self.make_params(task, is_upscale=True)).todict()
 
         try:
             requests.post(
                 f"http://{task.dst_addr}:{task.dst_port}/prompt",
-                json={"prompt": workflow.todict(), "client_id": self.client_id},
+                json={"prompt": workflow, "client_id": self.client_id},
             )
         except requests.exceptions.RequestException:
             print(f"Failed request to {task.dst_addr}:{task.dst_port}.")
@@ -308,7 +332,7 @@ class ComfyUIGenerator(Generator[ComfyUITaskProgress | None]):
         finally:
             ws.close()
 
-        return self.make_pictuple(report, True) if report is not None else []
+        return self.make_pictuple(report, wfdef) if report is not None else []
 
     def request_interrupt(self) -> None:
         if self.is_crnt_task_none():
