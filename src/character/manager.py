@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from character.engine import ActionResult, CharacterEngine
-from character.models import ActionSet, CharacterSheet
+from character.models import ActionSet, CharacterSheet, PersonaSet
 from character.state import CharacterState
 from common.functions import dirname_by_prompts
 
@@ -23,6 +23,7 @@ class CharacterPaths:
     yaml_dir: Path = Path("yamls")
     characters_dir: Path = Path("yamls/characters")
     actions_yaml: Path = Path("yamls/actions.yaml")
+    personas_yaml: Path = Path("yamls/personas.yaml")
 
 
 @dataclass
@@ -50,6 +51,7 @@ class CharacterManager:
         self.load_state_start = load_state_start
 
         self.actions: ActionSet = self._load_actions()
+        self.personas: PersonaSet = self._load_personas()
         self.engine: CharacterEngine | None = None
         self._metas: list[CharacterMeta] = []
         self.refresh_character_list()
@@ -61,6 +63,11 @@ class CharacterManager:
         if self.paths.actions_yaml.exists():
             return ActionSet.load(self.paths.actions_yaml)
         return ActionSet()
+
+    def _load_personas(self) -> PersonaSet:
+        if self.paths.personas_yaml.exists():
+            return PersonaSet.load(self.paths.personas_yaml)
+        return PersonaSet()
 
     def refresh_character_list(self) -> list[CharacterMeta]:
         """
@@ -114,7 +121,12 @@ class CharacterManager:
         if state is None:
             state = CharacterState.initial(sheet)
 
-        self.engine = CharacterEngine(sheet=sheet, actions=self.actions, state=state)
+        self.engine = CharacterEngine(
+            sheet=sheet,
+            actions=self.actions,
+            state=state,
+            persona=self.personas.get(sheet.persona),
+        )
         self.engine.refresh_prompt()
         return True
 
@@ -129,6 +141,7 @@ class CharacterManager:
             return False
 
         self.actions = self._load_actions()
+        self.personas = self._load_personas()
         self.refresh_character_list()
 
         meta = self._meta_of(self.engine.sheet.char_id)
@@ -138,7 +151,12 @@ class CharacterManager:
         sheet = CharacterSheet.load(meta.path)
         state = self.engine.state
         state.reconcile(sheet)
-        self.engine = CharacterEngine(sheet=sheet, actions=self.actions, state=state)
+        self.engine = CharacterEngine(
+            sheet=sheet,
+            actions=self.actions,
+            state=state,
+            persona=self.personas.get(sheet.persona),
+        )
         self.engine.refresh_prompt()
         return True
 

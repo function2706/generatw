@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from character.dialogue import DialogueContext, DialogueProvider, YamlDialogueProvider
-from character.models import WARDROBE, ActionDef, ActionSet, CharacterSheet
+from character.models import WARDROBE, ActionDef, ActionSet, CharacterSheet, Persona
 from character.state import CharacterState
 from common.atoms import CategoryPath, Prompt, PromptParts, TokenExpr
 
@@ -45,6 +45,7 @@ class CharacterEngine:
         sheet: CharacterSheet,
         actions: ActionSet,
         state: CharacterState,
+        persona: Persona | None = None,
         dialogue_provider: DialogueProvider | None = None,
     ):
         """
@@ -54,11 +55,13 @@ class CharacterEngine:
             sheet (CharacterSheet): キャラシート
             actions (ActionSet): アクション定義集合
             state (CharacterState): 実行時状態
+            persona (Persona | None): 参照ペルソナ (性格・口調)
             dialogue_provider (DialogueProvider): セリフプロバイダ (既定: YAML 定型)
         """
         self.sheet = sheet
         self.actions = actions
         self.state = state
+        self.persona = persona
         self.dialogue = dialogue_provider or YamlDialogueProvider()
 
         self._counter = 0  # アクションごとに増やし, <> 抽選のバリエーションを生む
@@ -133,6 +136,7 @@ class CharacterEngine:
                 sheet=self.sheet,
                 state=self.state,
                 action=action,
+                persona=self.persona,
                 locked=locked,
                 seed=f"{self.sheet.char_id}#{action_id}#{self._counter}",
             )

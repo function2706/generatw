@@ -301,6 +301,7 @@ class CharacterSheet:
     wardrobe: dict[str, WardrobeItem] = field(default_factory=dict)
     init_outfit: str = ""
     parameters: dict[str, ParameterDef] = field(default_factory=dict)
+    persona: str = ""  # 参照する性格・口調 (personas.yaml の ID)
     source_path: Path | None = None
 
     @classmethod
@@ -346,6 +347,7 @@ class CharacterSheet:
             wardrobe=wardrobe,
             init_outfit=init_outfit,
             parameters=parameters,
+            persona=str(d.get("persona") or ""),
             source_path=path,
         )
 
@@ -434,3 +436,107 @@ class ActionSet:
             d: dict = yaml.safe_load(f) or {}
         actions = [ActionDef.fromdict(a) for a in (d.get("actions") or [])]
         return cls(actions=actions, source_path=path)
+
+
+@dataclass
+class PersonaLines:
+    """
+    1 アクション分の, ペルソナ固有のセリフ
+
+    Attributes:
+        lines (list[str]): 通常セリフ候補
+        locked (list[str]): precondition 未達時のセリフ候補
+        by (dict[str, list[dict]]): パラメータ条件別セリフ (ActionDef.dialogue_by と同形式)
+    """
+
+    lines: list[str] = field(default_factory=list)
+    locked: list[str] = field(default_factory=list)
+    by: dict[str, list[dict]] = field(default_factory=dict)
+
+    @classmethod
+    def fromobj(cls, obj: object) -> PersonaLines:
+        """
+        リスト (通常セリフのみ) または dict (lines/locked/by) から構築する
+
+        Args:
+            obj (object): セリフ定義
+
+        Returns:
+            PersonaLines: 構築結果
+        """
+        if isinstance(obj, list):
+            return cls(lines=[str(x) for x in obj])
+        if isinstance(obj, dict):
+            return cls(
+                lines=[str(x) for x in (obj.get("lines") or [])],
+                locked=[str(x) for x in (obj.get("locked") or [])],
+                by=dict(obj.get("by") or {}),
+            )
+        return cls()
+
+
+@dataclass
+class Persona:
+    """
+    性格・口調の属性 (幼馴染系 / お嬢様系 など)
+
+    Attributes:
+        persona_id (str): ペルソナ ID
+        label (str): 表示名
+        description (str): 説明
+        dialogue (dict[str, PersonaLines]): アクション ID -> セリフ
+    """
+
+    persona_id: str
+    label: str = ""
+    description: str = ""
+    dialogue: dict[str, PersonaLines] = field(default_factory=dict)
+
+    def lines_for(self, action_id: str) -> PersonaLines | None:
+        return self.dialogue.get(action_id)
+
+
+@dataclass
+class PersonaSet:
+    """ペルソナ定義の集合 (yamls/personas.yaml)"""
+
+    personas: dict[str, Persona] = field(default_factory=dict)
+    source_path: Path | None = None
+
+    def get(self, persona_id: str) -> Persona | None:
+        return self.personas.get(persona_id)
+
+    @property
+    def metas(self) -> list[tuple[str, str]]:
+        """(persona_id, label) の一覧 (UI 用)"""
+        return [(p.persona_id, p.label or p.persona_id) for p in self.personas.values()]
+
+    @classmethod
+    def load(cls, path: Path) -> PersonaSet:
+        """
+        ペルソナ YAML を読み込む
+
+        Args:
+            path (Path): YAML パス
+
+        Returns:
+            PersonaSet: 構築結果
+        """
+        path = Path(path)
+        with open(path, encoding="utf-8") as f:
+            d: dict = yaml.safe_load(f) or {}
+
+        personas: dict[str, Persona] = {}
+        for pid, pdef in (d.get("personas") or {}).items():
+            pdef = pdef or {}
+            dialogue = {
+                str(aid): PersonaLines.fromobj(entry)
+                for aid, entry in (pdef.get("dialogue") or {}).items()
+            }
+            personas[str(pid)] = Persona(
+                persona_id=str(pid),
+                label=str(pdef.get("label") or pid),
+                description=str(pdef.get("description") or ""),
+                dialogue=dialogue,
+            )
+        return cls(personas=personas, source_path=path)

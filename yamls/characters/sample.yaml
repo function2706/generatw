@@ -5,15 +5,17 @@
 
 character: sample          # キャラ ID (状態ファイル名・記録キーに使用. ファイル名と一致推奨)
 display_name: アオイ        # UI 表示名
+persona: osananajimi       # 性格・口調 (personas.yaml の ID). セリフはこれに従う
 
-# 基本容姿 (常に付与される)
+# 基本容姿 (常に付与される. solo で対象キャラのみを描く)
 base:
   positive: "1girl, solo, long blue hair, blue eyes, <hair between eyes|sidelocks>, medium breasts"
 
-# 末尾に常時付与する共通プロンプト (画質・視点など)
+# 末尾に常時付与する共通プロンプト (画質・視点)
+# negative の後半は「対象キャラのみを映す」ための抑制トークン (他人物・手・POV を排除)
 common:
   positive: "masterpiece, best quality, highly detailed, looking at viewer"
-  negative: "worst quality, low quality, bad anatomy, extra fingers, jpeg artifacts"
+  negative: "worst quality, low quality, bad anatomy, extra fingers, jpeg artifacts, 2boys, 1boy, multiple girls, multiple views, pov, hetero, holding hands, disembodied hand, out of frame"
 
 # 着せ替え候補 (挿入順で表示. <a|b> の確率選択も使用可)
 wardrobe:
