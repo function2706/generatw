@@ -357,7 +357,7 @@ class WorkFlowTab:
         """
         try:
             configs = self.displayer.crnt_configs
-        except (ValueError, tkinter.TclError):
+        except (ValueError, tkinter.TclError, AttributeError):
             configs = GUIConfigs()
 
         is_upscale = kind == Consts.kind_img2img

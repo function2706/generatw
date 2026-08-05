@@ -735,6 +735,10 @@ class Displayer:
         self.master = master
         self.to_master = to_master
 
+        # MainWindow 構築中に参照され得るため先に初期化しておく
+        self.last_picstats: PicStats | NoImageStats = None
+        self.last_task: TaskBlueprint = None
+
         self.main_window = MainWindow(self, init_configs)
         self.info_window = InfoWindow(self)
         self.info_window.construct(fix_position=True)
@@ -742,9 +746,6 @@ class Displayer:
         self.switch_output_button_state(False)
 
         self.update_configs()
-
-        self.last_picstats: PicStats | NoImageStats = None
-        self.last_task: TaskBlueprint = None
 
     def exists(self) -> bool:
         """
