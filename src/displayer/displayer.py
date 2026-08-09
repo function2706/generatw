@@ -14,6 +14,7 @@ from common.functions import BottleMail
 from displayer import theme, widgets
 from displayer.dataclasses import GUIConfigs
 from displayer.info_window import InfoWindow
+from displayer.log_window import LogCapture, LogWindow
 from displayer.pic_window import PicWindow
 from displayer.prompt_tab import PromptTab
 from displayer.theme import STYLES
@@ -70,6 +71,7 @@ class MainTab:
             card, "画像", d.on_open_pic_window, width=w, row=1, column=1
         )
         action_button(card, "情報", d.on_open_info_window, width=w, row=1, column=2)
+        action_button(card, "ログ", d.on_open_log_window, width=w, row=1, column=3)
 
         ttk.Label(card, text="キュークリア", style=STYLES.muted).grid(
             row=2, column=0, sticky="w", pady=3
@@ -361,6 +363,10 @@ class Displayer:
         self._input_source = init_configs.input_source
         self._socket_port = init_configs.socket_port
 
+        # 標準出力/標準エラーを捕捉 (ログウィンドウ表示 + コンソールへミラー)
+        self.log_capture = LogCapture()
+        self.log_capture.install()
+
         # MainWindow 構築中に参照され得るため先に初期化しておく
         self.last_picstats: PicStats | NoImageStats = None
         self.last_task: TaskBlueprint = None
@@ -369,6 +375,7 @@ class Displayer:
         self.info_window = InfoWindow(self)
         self.info_window.construct(fix_position=True)
         self.pic_window = PicWindow(self)
+        self.log_window = LogWindow(self, self.log_capture)
         self.switch_output_button_state(False)
 
         self.update_configs()
@@ -397,6 +404,8 @@ class Displayer:
         """
         self.pic_window.destroy()
         self.info_window.destroy()
+        self.log_window.destroy()
+        self.log_capture.restore()
         if self.exists():
             self.master.root.destroy()
 
@@ -466,6 +475,9 @@ class Displayer:
         if self.pic_window.existed():
             widgets.apply_toplevel_bg(self.pic_window.pic_window)
             self.pic_window.retheme()
+        if self.log_window.existed():
+            widgets.apply_toplevel_bg(self.log_window.window)
+            self.log_window.retheme()
         self.main_window.workflow_tab_obj.retheme()
         self.main_window.prompt_tab_obj.retheme()
         self.update_configs()
@@ -521,6 +533,17 @@ class Displayer:
 
         self.info_window.update_taskinfo_tab(task=self.last_task)
         self.info_window.update_picinfo_tab(self.last_picstats)
+
+    def on_open_log_window(self) -> None:
+        """
+        ログウィンドウの表示ハンドラ\n
+        すでに開いている場合は最前面に表示のみ行う
+        """
+        if self.log_window is not None and self.log_window.existed():
+            self.log_window.window.deiconify()
+            self.log_window.window.lift()
+        else:
+            self.log_window.construct(fix_position=True)
 
     def on_save_memory(self) -> None:
         """記憶保存ハンドラ"""
