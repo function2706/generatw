@@ -13,6 +13,9 @@ from typing import TYPE_CHECKING
 
 from PIL import Image, ImageDraw, ImageFont, ImageTk
 
+from displayer import theme, widgets
+from displayer.theme import STYLES
+
 if TYPE_CHECKING:
     from displayer.displayer import Displayer
 
@@ -28,28 +31,29 @@ class Event:
 
 class CursorFrame:
     """
-    画像表示フレーム
+    画像表示フレーム (< 画像 >)
     """
 
     def __init__(self, owner: PicWindow):
         """
-        画像表示フレームコンストラクタ
+        コンストラクタ
+
         Args:
             owner (PicWindow): PicWindow インスタンス
         """
         self.super_owner = owner
         self.cursor_frame = ttk.Frame(owner.main_frame)
         self.cursor_frame.grid(row=0, column=0, sticky="nwe")
-        # ラベル
-        self.pic_label = ttk.Label(self.cursor_frame)
-        self.pic_label.grid(row=0, column=1, padx=6, pady=6, sticky="nswe")
-        self.pic_label_image = None
-        # ボタン(<)
+
         self.backward_button = ttk.Button(
             self.cursor_frame, text="<", width=2, command=owner.super_owner.on_backward
         )
         self.backward_button.grid(row=0, column=0, padx=6, pady=6, sticky="nsw")
-        # ボタン(>)
+
+        self.pic_label = ttk.Label(self.cursor_frame, anchor="center")
+        self.pic_label.grid(row=0, column=1, padx=6, pady=6, sticky="nswe")
+        self.pic_label_image = None
+
         self.forward_button = ttk.Button(
             self.cursor_frame, text=">", width=2, command=owner.super_owner.on_forward
         )
@@ -58,12 +62,13 @@ class CursorFrame:
 
 class EvalFrame:
     """
-    評価フレーム
+    評価フレーム (アップスケール予約 / 削除)
     """
 
     def __init__(self, owner: PicWindow):
         """
-        評価フレームコンストラクタ
+        コンストラクタ
+
         Args:
             owner (PicWindow): PicWindow インスタンス
         """
@@ -72,18 +77,19 @@ class EvalFrame:
         self.eval_frame.grid(row=1, column=0, sticky="swe")
         self.eval_frame.columnconfigure(0, weight=1)
         self.eval_frame.columnconfigure(1, weight=1)
-        # ボタン(アップスケール予約)
+
         self.upscale_button = ttk.Button(
             self.eval_frame,
             text="アップスケール予約",
-            command=self.super_owner.super_owner.on_upscale,
+            style=STYLES.accent_button,
+            command=owner.super_owner.on_upscale,
         )
         self.upscale_button.grid(row=0, column=0, padx=6, pady=6, sticky="wes")
-        # ボタン(削除)
+
         self.delete_button = ttk.Button(
             self.eval_frame,
             text="削除",
-            command=self.super_owner.super_owner.on_delete,
+            command=owner.super_owner.on_delete,
         )
         self.delete_button.grid(row=0, column=1, padx=6, pady=6, sticky="wes")
 
@@ -95,27 +101,33 @@ class PicWindow:
 
     def __init__(self, owner: Displayer):
         """
-        画像ウィンドウコンストラクタ
+        コンストラクタ
+
         Args:
-            owner (Displayer): Display インスタンス
-            fix_position (bool, optional): 表示位置を固定するか
+            owner (Displayer): Displayer インスタンス
         """
         self.super_owner = owner
         self.pic_window: tkinter.Toplevel = None
+        self.main_frame: ttk.Frame = None
         self.cursor_frame: CursorFrame = None
         self.eval_frame: EvalFrame = None
         self.event = Event()
         self.noimage_img: ImageTk.PhotoImage = None
+        self._noimage_size: tuple[int, int] = None
 
     def construct(self, fix_position=False) -> None:
         """
         画像ウィンドウを構築する\n
         すでに開いている場合は何もしない
+
+        Args:
+            fix_position (bool): 表示位置を親ウィンドウ基準に固定するか
         """
         if self.existed() and self.pic_window:
             return
 
         self.pic_window = tkinter.Toplevel(self.super_owner.master.root)
+        widgets.apply_toplevel_bg(self.pic_window)
         if fix_position:
             self.pic_window.geometry(
                 f"-{self.super_owner.config_window_x + self.super_owner.config_window_width + 50}"
@@ -123,7 +135,7 @@ class PicWindow:
             )
         self.pic_window.title("picmaker - 画像")
         self.pic_window.protocol("WM_DELETE_WINDOW", self.destroy)
-        self.main_frame = ttk.Frame(self.pic_window, padding=5)
+        self.main_frame = ttk.Frame(self.pic_window, padding=8)
         self.main_frame.grid(row=0, column=0, sticky="nsew")
         self.cursor_frame = CursorFrame(self)
         self.eval_frame = EvalFrame(self)
@@ -139,6 +151,7 @@ class PicWindow:
     def existed(self) -> bool:
         """
         画像ウィンドウが開かれているか
+
         Returns:
             bool: True: 開かれている, False: 開かれていない or TclError 例外発生
         """
@@ -153,14 +166,15 @@ class PicWindow:
         """
         画像ウィンドウを指定のパスの画像で更新する\n
         path が None の場合は NO IMAGE で更新する
+
         Args:
-            path (PicStats): 更新予定の PicStats
+            path (Path): 表示する画像のパス
         """
         if not self.existed():
             return
+
         if path is not None and path.exists():
-            image = Image.open(path)
-            tk_img = ImageTk.PhotoImage(image)
+            tk_img = ImageTk.PhotoImage(Image.open(path))
             self.cursor_frame.pic_label.configure(image=tk_img)
             self.cursor_frame.pic_label_image = tk_img
             self.event.outputting_noimage.clear()
@@ -172,81 +186,73 @@ class PicWindow:
             self.event.outputting_noimage.set()
             self.switch_button_state(False)
 
+    def retheme(self) -> None:
+        """
+        テーマ切替時に NO IMAGE 画像を現在のパレットで再生成する
+        """
+        self.noimage_img = None
+        self._noimage_size = None
+        if self.existed() and self.event.outputting_noimage.is_set():
+            self.update()
+
     def set_no_image(self) -> None:
         """
-        表示すべき画像がない場合の画像を作成し, インスタンス変数にセットする\n
-        すでに同サイズの作成済みのイメージが存在する場合は新たに生成しない\n
-        グレースケールのチェックパターンに"NO IMAGE"\n
-        幅と高さは自動的に 8 の倍数に切り下げられる(Stable Diffusion の仕様に準拠)
+        表示すべき画像がない場合の画像を生成し, インスタンス変数へ格納する\n
+        グレーのチェックパターンに "NO IMAGE"\n
+        幅と高さは 8 の倍数へ切り下げる (Stable Diffusion の仕様に準拠)\n
+        同サイズの生成済みイメージがある場合は再生成しない
         """
         width = self.super_owner.crnt_configs.sd_width & -8
         height = self.super_owner.crnt_configs.sd_height & -8
-        if self.noimage_img is not None and (
-            self.noimage_img.width() == width or self.noimage_img.height() == height
-        ):
+        if self.noimage_img is not None and self._noimage_size == (width, height):
             return
-        light = "#e0e0e0"
-        dark = "#c0c0c0"
-        text_color = "#444444"
+
+        pal = theme.current
+        light, dark, text_color = pal.surface_alt, pal.border, pal.muted
         img = Image.new("RGB", (width, height), light)
         draw = ImageDraw.Draw(img)
         cell = max(8, min(width, height) // 20)
         for y in range(0, height, cell):
             for x in range(0, width, cell):
-                if (x // cell + y // cell) % 2 == 0:
-                    draw.rectangle((x, y, x + cell, y + cell), fill=light)
-                else:
+                if (x // cell + y // cell) % 2:
                     draw.rectangle((x, y, x + cell, y + cell), fill=dark)
+
         text = "NO IMAGE"
-        fallback_font = ImageFont.load_default()
-        max_font_size = int(height * 0.15)
-        font_size = max_font_size
+        font_size = int(height * 0.15)
+        chosen = ImageFont.load_default()
         while font_size > 5:
             try:
-                font = ImageFont.truetype("arial.ttf", font_size)
+                chosen = ImageFont.truetype("arial.ttf", font_size)
             except Exception:
-                font = fallback_font
-            bbox = draw.textbbox((0, 0), text, font=font)
-            text_w = bbox[2] - bbox[0]
-            if text_w <= width * 0.8:
+                chosen = ImageFont.load_default()
+            bbox = draw.textbbox((0, 0), text, font=chosen)
+            if bbox[2] - bbox[0] <= width * 0.8:
                 break
             font_size -= 2
-        bbox = draw.textbbox((0, 0), text, font=font)
-        text_w = bbox[2] - bbox[0]
-        text_h = bbox[3] - bbox[1]
-        text_x = (width - text_w) // 2
-        text_y = (height - text_h) // 2
-        draw.text((text_x, text_y), text, fill=text_color, font=font)
+
+        bbox = draw.textbbox((0, 0), text, font=chosen)
+        text_x = (width - (bbox[2] - bbox[0])) // 2
+        text_y = (height - (bbox[3] - bbox[1])) // 2
+        draw.text((text_x, text_y), text, fill=text_color, font=chosen)
+
         self.noimage_img = ImageTk.PhotoImage(img)
+        self._noimage_size = (width, height)
 
     def switch_button_state(self, toggle: bool) -> None:
         """
         画像ウィンドウ上のボタンの有効/無効(グレーアウト)を切り替える
+
         Args:
             toggle (bool): True で有効, False で無効
         """
         if not self.existed():
             return
 
-        forward_button = self.cursor_frame.forward_button
-        backward_button = self.cursor_frame.backward_button
-        upscale_button = self.eval_frame.upscale_button
-        remove_button = self.eval_frame.delete_button
-        if toggle:
-            if str(forward_button.cget("state")) == "disabled":
-                forward_button.configure(state="normal")
-            if str(backward_button.cget("state")) == "disabled":
-                backward_button.configure(state="normal")
-            if str(upscale_button.cget("state")) == "disabled":
-                upscale_button.configure(state="normal")
-            if str(remove_button.cget("state")) == "disabled":
-                remove_button.configure(state="normal")
-        else:
-            if str(forward_button.cget("state")) == "normal":
-                forward_button.configure(state="disabled")
-            if str(backward_button.cget("state")) == "normal":
-                backward_button.configure(state="disabled")
-            if str(upscale_button.cget("state")) == "normal":
-                upscale_button.configure(state="disabled")
-            if str(remove_button.cget("state")) == "normal":
-                remove_button.configure(state="disabled")
+        state = "normal" if toggle else "disabled"
+        for button in (
+            self.cursor_frame.forward_button,
+            self.cursor_frame.backward_button,
+            self.eval_frame.upscale_button,
+            self.eval_frame.delete_button,
+        ):
+            button.configure(state=state)

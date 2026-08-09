@@ -16,7 +16,9 @@ from typing import TYPE_CHECKING
 
 import master.events
 from common.functions import PathConsts
+from displayer import theme, widgets
 from displayer.dataclasses import GUIConfigs
+from displayer.theme import STYLES
 from generator.comfyui_generator import ComfyUIGenerator
 from generator.comfyui_workflow import (
     Link,
@@ -34,13 +36,10 @@ if TYPE_CHECKING:
 @dataclass(frozen=True)
 class Consts:
     """
-    このクラス関連の定数
+    このクラス関連の定数\n
+    (状態表示の色は displayer.theme のパレットを参照する)
     """
 
-    # 状態表示の色
-    color_ok: str = "#1a7f37"
-    color_ng: str = "#c33"
-    color_warn: str = "#9a6700"
     # ComfyUIGenerator が要求するセクション名
     kind_txt2img: str = "txt2img"
     kind_img2img: str = "img2img"
@@ -68,16 +67,18 @@ class WorkFlowPane:
         self.kind = kind
         self.wfdef: WorkFlowDef | None = None
 
-        self.frame = ttk.Frame(parent, padding=8)
+        self.frame = ttk.Frame(parent, padding=10)
         self.frame.columnconfigure(0, weight=1)
         self.frame.rowconfigure(1, weight=1)
-        self.frame.rowconfigure(4, weight=1)
+        self.frame.rowconfigure(5, weight=1)
 
         # --- ノード一覧 ------------------------------------------------------
-        ttk.Label(self.frame, text="ノード").grid(row=0, column=0, padx=4, sticky="w")
+        ttk.Label(self.frame, text="ノード", style=STYLES.section).grid(
+            row=0, column=0, sticky="w", pady=(0, 3)
+        )
 
-        tree_frame = ttk.Frame(self.frame)
-        tree_frame.grid(row=1, column=0, padx=4, pady=4, sticky="nsew")
+        tree_frame = ttk.Frame(self.frame, style=STYLES.card, padding=1)
+        tree_frame.grid(row=1, column=0, pady=(0, 4), sticky="nsew")
         tree_frame.columnconfigure(0, weight=1)
         tree_frame.rowconfigure(0, weight=1)
 
@@ -101,25 +102,35 @@ class WorkFlowPane:
         # --- プレースホルダ --------------------------------------------------
         self.placeholder_var = tkinter.StringVar(value="")
         ttk.Label(self.frame, textvariable=self.placeholder_var, wraplength=620).grid(
-            row=2, column=0, padx=4, pady=(4, 0), sticky="w"
+            row=2, column=0, pady=(2, 0), sticky="w"
         )
 
         # --- プレビュー ------------------------------------------------------
         head = ttk.Frame(self.frame)
-        head.grid(row=3, column=0, padx=4, pady=(8, 0), sticky="ew")
-        ttk.Label(head, text="ビルド結果 (POST される JSON)").grid(row=0, column=0, sticky="w")
-        ttk.Button(head, text="プレビュー", command=self.on_preview).grid(row=0, column=1, padx=8)
+        head.grid(row=3, column=0, pady=(10, 3), sticky="ew")
+        ttk.Label(head, text="ビルド結果 (POST される JSON)", style=STYLES.section).grid(
+            row=0, column=0, sticky="w"
+        )
+        ttk.Button(
+            head, text="プレビュー", command=self.on_preview, style=STYLES.accent_button
+        ).grid(row=0, column=1, padx=10)
 
         text_frame = ttk.Frame(self.frame)
-        text_frame.grid(row=4, column=0, padx=4, pady=4, sticky="nsew")
+        text_frame.grid(row=5, column=0, sticky="nsew")
         text_frame.columnconfigure(0, weight=1)
         text_frame.rowconfigure(0, weight=1)
 
-        self.preview_text = tkinter.Text(text_frame, height=9, wrap="none")
+        self.preview_text = widgets.themed_text(text_frame, height=9)
         self.preview_text.grid(row=0, column=0, sticky="nsew")
         text_scroll = ttk.Scrollbar(text_frame, orient="vertical", command=self.preview_text.yview)
         text_scroll.grid(row=0, column=1, sticky="ns")
         self.preview_text.configure(yscrollcommand=text_scroll.set, state="disabled")
+
+    def retheme(self) -> None:
+        """
+        プレビューテキストを現在のパレットへ追従させる
+        """
+        widgets.retheme_text(self.preview_text)
 
     def update(self, wfdef: WorkFlowDef | None) -> None:
         """
@@ -225,26 +236,32 @@ class WorkFlowTab:
         self.wfdefs: dict[str, WorkFlowDef] = {}
         # 表示ラベル -> パス
         self.entries: dict[str, Path] = {}
+        # 直近の検証結果 (retheme で状態色を再現するため)
+        self._status_ok: bool = True
 
         self.main_frame = ttk.Frame(owner.workflow_tab)
         self.main_frame.grid(row=0, column=0, sticky="nsew")
         self.main_frame.columnconfigure(0, weight=1)
-        self.main_frame.rowconfigure(3, weight=1)
+        self.main_frame.rowconfigure(2, weight=1)
 
-        # --- 選択行 ----------------------------------------------------------
-        select_frame = ttk.Frame(self.main_frame)
-        select_frame.grid(row=0, column=0, sticky="ew")
-        select_frame.columnconfigure(1, weight=1)
+        # --- 定義カード (選択行 + 状態 + 警告) --------------------------------
+        ttk.Label(self.main_frame, text="ワークフロー定義", style=STYLES.section).grid(
+            row=0, column=0, sticky="w", pady=(0, 2)
+        )
+        card = ttk.Frame(self.main_frame, style=STYLES.card, padding=12)
+        card.grid(row=1, column=0, sticky="ew", pady=(0, 8))
+        card.columnconfigure(1, weight=1)
 
-        ttk.Label(select_frame, text="WF YAML").grid(row=0, column=0, padx=4, pady=6, sticky="w")
-
+        ttk.Label(card, text="WF YAML", style=STYLES.muted).grid(
+            row=0, column=0, padx=(0, 6), pady=4, sticky="w"
+        )
         self.selected_var = tkinter.StringVar(value=self.wf_yamlpath.name)
-        self.combo = ttk.Combobox(select_frame, textvariable=self.selected_var, state="readonly")
-        self.combo.grid(row=0, column=1, padx=4, pady=6, sticky="ew")
+        self.combo = ttk.Combobox(card, textvariable=self.selected_var, state="readonly")
+        self.combo.grid(row=0, column=1, pady=4, sticky="ew")
         self.combo.bind("<<ComboboxSelected>>", lambda e: self.on_select())
 
-        button_frame = ttk.Frame(select_frame)
-        button_frame.grid(row=0, column=2, sticky="e")
+        button_frame = ttk.Frame(card, style=STYLES.surface)
+        button_frame.grid(row=0, column=2, padx=(6, 0), sticky="e")
         ttk.Button(button_frame, text="参照", command=self.on_browse).grid(row=0, column=0, padx=2)
         ttk.Button(button_frame, text="再読み込み", command=self.on_reload).grid(
             row=0, column=1, padx=2
@@ -252,20 +269,21 @@ class WorkFlowTab:
 
         # --- 状態表示 --------------------------------------------------------
         self.status_var = tkinter.StringVar(value="")
-        self.status_label = ttk.Label(self.main_frame, textvariable=self.status_var, wraplength=620)
-        self.status_label.grid(row=1, column=0, padx=4, pady=(0, 4), sticky="w")
+        self.status_label = ttk.Label(
+            card, textvariable=self.status_var, wraplength=620, style=STYLES.value
+        )
+        self.status_label.grid(row=1, column=0, columnspan=3, pady=(6, 0), sticky="w")
 
         self.warning_var = tkinter.StringVar(value="")
-        ttk.Label(
-            self.main_frame,
-            textvariable=self.warning_var,
-            wraplength=620,
-            foreground=Consts.color_warn,
-        ).grid(row=2, column=0, padx=4, pady=(0, 6), sticky="w")
+        self.warning_label = ttk.Label(
+            card, textvariable=self.warning_var, wraplength=620, style=STYLES.value
+        )
+        self.warning_label.configure(foreground=theme.current.warn)
+        self.warning_label.grid(row=2, column=0, columnspan=3, pady=(2, 0), sticky="w")
 
         # --- セクションごとのサブタブ -------------------------------------------
         self.notebook = ttk.Notebook(self.main_frame)
-        self.notebook.grid(row=3, column=0, sticky="nsew")
+        self.notebook.grid(row=2, column=0, sticky="nsew")
 
         self.panes: dict[str, WorkFlowPane] = {}
         for kind, label in (
@@ -308,13 +326,15 @@ class WorkFlowTab:
         try:
             self.wfdefs = WorkFlowDef.load(self.wf_yamlpath)
         except WorkFlowSyntaxError as e:
-            self.status_label.configure(foreground=Consts.color_ng)
+            self._status_ok = False
+            self.status_label.configure(foreground=theme.current.err)
             self.status_var.set(f"エラー: {e}")
             for pane in self.panes.values():
                 pane.update(None)
             return
 
-        self.status_label.configure(foreground=Consts.color_ok)
+        self._status_ok = True
+        self.status_label.configure(foreground=theme.current.ok)
         sections = ", ".join(f"{k} ({len(v.nodes)} ノード)" for k, v in self.wfdefs.items())
         self.status_var.set(f"OK: {sections}")
 
@@ -327,6 +347,17 @@ class WorkFlowTab:
 
         for kind, pane in self.panes.items():
             pane.update(self.wfdefs.get(kind))
+
+    def retheme(self) -> None:
+        """
+        テーマ切替時に非 ttk 領域と状態色を追従させる
+        """
+        self.status_label.configure(
+            foreground=theme.current.ok if self._status_ok else theme.current.err
+        )
+        self.warning_label.configure(foreground=theme.current.warn)
+        for pane in self.panes.values():
+            pane.retheme()
 
     # -------------------------------------------------------------------------
     # パラメータ
