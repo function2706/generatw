@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import tkinter
 from pathlib import Path
-from tkinter import TclError, filedialog, ttk
+from tkinter import TclError, ttk
 
 import master.events
 from archiver.dataclasses import NoImageStats, PicStats
@@ -114,30 +114,41 @@ class MainTab:
 
     def _build_source(self, row: int, cfg: GUIConfigs) -> None:
         """
-        入力 / バックエンドカードを構築する
+        入力 / バックエンドカードを構築する\n
+        YAML の選択は各タブ (プロンプト定義 / ワークフロー) 側で行い,
+        ここでは現在の選択を読み取り専用で表示する
         """
         card = carded_section(self.main_frame, "入力 / バックエンド", row)
         card.columnconfigure(1, weight=1)
+        owner = self.super_owner  # MainWindow (notebook / 各タブへのジャンプ用)
 
-        ttk.Label(card, text="選択中の YAML", style=STYLES.muted).grid(
+        # プロンプト (フロントエンド) YAML 表示
+        ttk.Label(card, text="プロンプト YAML", style=STYLES.muted).grid(
             row=0, column=0, padx=(0, 6), pady=5, sticky="e"
         )
-        self.yamlpath: Path | None = Path(cfg.yamlpath) if cfg.yamlpath is not None else None
-        self.yamlpath_var = tkinter.StringVar(
-            value=self.yamlpath.name
-            if self.yamlpath is not None and self.yamlpath.exists()
-            else "(未選択)"
-        )
-        ttk.Label(card, textvariable=self.yamlpath_var, style=STYLES.value).grid(
+        self.prompt_yaml_var = tkinter.StringVar(value="(未選択)")
+        ttk.Label(card, textvariable=self.prompt_yaml_var, style=STYLES.value).grid(
             row=0, column=1, pady=5, sticky="w"
         )
-        btns = ttk.Frame(card, style=STYLES.surface)
-        btns.grid(row=0, column=2, sticky="e")
-        action_button(btns, "YAML選択", self.displayer.on_select_yaml, row=0, column=0)
-        action_button(btns, "再読み込み", self.displayer.on_reload_yaml, row=0, column=1)
+        action_button(
+            card, "編集", lambda: owner.notebook.select(owner.prompt_tab), row=0, column=2
+        )
 
-        ttk.Label(card, text="バックエンド", style=STYLES.muted).grid(
+        # ワークフロー YAML 表示 (ComfyUI 時のみ使用)
+        ttk.Label(card, text="ワークフロー YAML", style=STYLES.muted).grid(
             row=1, column=0, padx=(0, 6), pady=5, sticky="e"
+        )
+        self.wf_yaml_var = tkinter.StringVar(value="(未選択)")
+        ttk.Label(card, textvariable=self.wf_yaml_var, style=STYLES.value).grid(
+            row=1, column=1, pady=5, sticky="w"
+        )
+        action_button(
+            card, "編集", lambda: owner.notebook.select(owner.workflow_tab), row=1, column=2
+        )
+
+        # バックエンド
+        ttk.Label(card, text="バックエンド", style=STYLES.muted).grid(
+            row=2, column=0, padx=(0, 6), pady=5, sticky="e"
         )
         self.back_options = [BackEnd.a1111.value, BackEnd.comfy_ui.value]
         self.backend_var = tkinter.StringVar(value=cfg.backend or self.back_options[0])
@@ -151,7 +162,7 @@ class MainTab:
         self.backend_combo.bind(
             "<<ComboboxSelected>>", lambda e: self.displayer.on_switch_backend()
         )
-        self.backend_combo.grid(row=1, column=1, pady=5, sticky="w")
+        self.backend_combo.grid(row=2, column=1, pady=5, sticky="w")
 
     def _build_memory(self, row: int, cfg: GUIConfigs) -> None:
         """
@@ -378,6 +389,7 @@ class Displayer:
         self.log_window = LogWindow(self, self.log_capture)
         self.switch_output_button_state(False)
 
+        self.sync_yaml_display()
         self.update_configs()
 
     # -------------------------------------------------------------------------
@@ -557,20 +569,31 @@ class Displayer:
         """記憶忘却ハンドラ"""
         self.to_master.enclose(master.events.OnForgetMemory())
 
-    def on_select_yaml(self) -> None:
-        """YAML選択ボタンハンドラ"""
-        path = filedialog.askopenfilename(title="YAML選択", filetypes=[("YAML", "*.yaml")])
-        if not path:
-            return
+    def on_prompt_yaml_selected(self, path: Path) -> None:
+        """
+        プロンプト定義タブでフロントエンド YAML が選択されたときの通知\n
+        インタプリタ切替を Master に伝え, 設定と表示を更新する
 
-        self.main_window.main_tab_obj.yamlpath = Path(path)
-        self.main_window.main_tab_obj.yamlpath_var.set(Path(path).name)
-        self.to_master.enclose(master.events.OnSelectYaml(path=path))
+        Args:
+            path (Path): 選択された YAML パス
+        """
+        self.to_master.enclose(master.events.OnSelectYaml(path=str(path)))
         self.update_configs()
+        self.sync_yaml_display()
 
     def on_reload_yaml(self) -> None:
         """YAML 再読み込みボタンハンドラ"""
         self.to_master.enclose(master.events.OnReloadYaml())
+
+    def sync_yaml_display(self) -> None:
+        """
+        メインタブの YAML 表示を各タブの現在の選択に同期する
+        """
+        main = self.main_window.main_tab_obj
+        prompt_path = self.main_window.prompt_tab_obj.path
+        wf_path = self.main_window.workflow_tab_obj.wf_yamlpath
+        main.prompt_yaml_var.set(prompt_path.name if prompt_path is not None else "(未選択)")
+        main.wf_yaml_var.set(wf_path.name if wf_path is not None else "(未選択)")
 
     def on_debug(self) -> None:
         """デバッグボタンハンドラ"""
@@ -642,7 +665,11 @@ class Displayer:
             sd_height=int(main.height_entry.get()),
             sd_scaleby=float(main.scaleby_entry.get()),
             each_max_pics=int(main.each_max_pics_entry.get()),
-            yamlpath=str(main.yamlpath) if main.yamlpath is not None else None,
+            yamlpath=(
+                str(self.main_window.prompt_tab_obj.path)
+                if self.main_window.prompt_tab_obj.path is not None
+                else None
+            ),
             wf_yamlpath=str(self.main_window.workflow_tab_obj.wf_yamlpath),
             backend=main.backend_combo.get(),
             theme=self.main_window.theme_pref,

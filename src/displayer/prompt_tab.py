@@ -121,8 +121,9 @@ class PromptTab:
         btns = ttk.Frame(card, style=STYLES.surface)
         btns.grid(row=0, column=2, padx=(6, 0), sticky="e")
         widgets.action_button(btns, "参照", self.on_browse, row=0, column=0)
-        widgets.action_button(btns, "検証", self.validate, row=0, column=1)
-        widgets.action_button(btns, "保存", self.on_save, row=0, column=2)
+        widgets.action_button(btns, "再読み込み", self.on_reload, row=0, column=1)
+        widgets.action_button(btns, "検証", self.validate, row=0, column=2)
+        widgets.action_button(btns, "保存", self.on_save, row=0, column=3)
 
         self.status_var = tkinter.StringVar(value="")
         self.status_label = ttk.Label(
@@ -280,13 +281,15 @@ class PromptTab:
 
     def on_select(self) -> None:
         """
-        コンボボックス選択ハンドラ
+        コンボボックス選択ハンドラ\n
+        選択したファイルを編集対象にし, フロントエンド (解釈器) も切り替える
         """
         picked = self.entries.get(self.selected_var.get())
         if picked is None or picked == self.path:
             return
         self.path = picked
         self.load_file()
+        self.displayer.on_prompt_yaml_selected(self.path)
 
     def on_browse(self) -> None:
         """
@@ -301,6 +304,15 @@ class PromptTab:
             return
         self.path = Path(picked)
         self.refresh_entries()
+        self.displayer.on_prompt_yaml_selected(self.path)
+
+    def on_reload(self) -> None:
+        """
+        再読み込みボタンハンドラ\n
+        ファイルをエディタへ再読込し, フロントエンドの再読み込みも Master へ通知する
+        """
+        self.load_file()
+        self.displayer.on_reload_yaml()
 
     def on_save(self) -> None:
         """

@@ -468,12 +468,13 @@ class WorkFlowTab:
 
     def notify_select(self) -> None:
         """
-        選択変更を Master へ通知する
+        選択変更を Master へ通知し, メインタブの表示も同期する
         """
         self.displayer.to_master.enclose(
             master.events.OnSelectWfYaml(path=str(self.wf_yamlpath))
         )
         self.displayer.update_configs()
+        self.displayer.sync_yaml_display()
 
     @property
     def displayer(self):
