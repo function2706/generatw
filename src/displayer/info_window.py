@@ -89,10 +89,12 @@ class InfoTree:
             self.tree.column(col, width=60, stretch=False, anchor="w")
             self.tree.heading(col, text=col, anchor="w")
 
-        scroll = ttk.Scrollbar(self.frame, orient="vertical", command=self.tree.yview)
-        self.tree.configure(yscrollcommand=scroll.set)
+        vscroll = ttk.Scrollbar(self.frame, orient="vertical", command=self.tree.yview)
+        hscroll = ttk.Scrollbar(self.frame, orient="horizontal", command=self.tree.xview)
+        self.tree.configure(yscrollcommand=vscroll.set, xscrollcommand=hscroll.set)
         self.tree.grid(row=0, column=0, sticky="nsew")
-        scroll.grid(row=0, column=1, sticky="ns")
+        vscroll.grid(row=0, column=1, sticky="ns")
+        hscroll.grid(row=1, column=0, sticky="ew")
 
         self._key_to_iid: dict[str, str] = {}
         for key in rows:
