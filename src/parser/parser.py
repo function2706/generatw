@@ -79,6 +79,8 @@ class Parser:
 
         self.crnt_input = ""
         self.crnt_prompt: Prompt = None
+        # crnt_prompt がデバッグ由来か (十分性判定にどちらの Interpreter を使うか)
+        self.crnt_is_debug = False
 
         self.source: InputSource = self._make_input_source()
 
@@ -232,19 +234,22 @@ class Parser:
         Returns:
             bool: True: 十分, False: 不十分(空文字列)
         """
-        if self.event.in_debugging.is_set():
+        # in_debugging (スレッドの入力ルーティング用) は Master が非同期に本関数を
+        # 呼ぶ頃には解除済みのため, 現プロンプトの由来 (crnt_is_debug) で判定する
+        if self.crnt_is_debug:
             return self.debug_interpreter.check_sufficiency_of(self.crnt_prompt)
         elif self.interpreter is not None:
             return self.interpreter.check_sufficiency_of(self.crnt_prompt)
         return False
 
-    def inform_new_prompt(self, prompt: Prompt) -> None:
+    def inform_new_prompt(self, prompt: Prompt, is_debug: bool = False) -> None:
         """
         Master に新たなプロンプトを報告する\n
         更新がない, あるいは情報が不十分な場合は何もしない
 
         Args:
-            prompt_set (Prompt): Prompt
+            prompt (Prompt): Prompt
+            is_debug (bool): デバッグ Interpreter による生成か
         """
         try:
             if not prompt.positive and not prompt.negative:
@@ -254,6 +259,7 @@ class Parser:
             if prompt == self.crnt_prompt:
                 return
             self.crnt_prompt = prompt
+            self.crnt_is_debug = is_debug
 
             if self.master.crnt_gui_configs.print_new_prompt_set:
                 dump_json(prompt, "new_prompt_set")
@@ -280,16 +286,21 @@ class Parser:
         """
         dummy_input = f"debug name vibe upper lower #{str(random.randint(0, 10000))}"
         self.event.in_debugging.set()
-        if self.master.crnt_gui_configs.allow_edit_clipboard:
-            # スレッド上の手順に委ねる
+        # 入力ソースがクリップボードのときのみクリップボード経由に委ねる.
+        # socket ソース等では clipboard を読まないため直接 debug 経路を通す
+        # (さもないと in_debugging が立ちっぱなしで次の実入力を debug と誤認する)
+        if self.master.crnt_gui_configs.allow_edit_clipboard and isinstance(
+            self.source, ClipboardInputSource
+        ):
             pyperclip.copy(dummy_input)
             return
 
         prompt, _ = self.debug_interpreter.make_prompt(dummy_input)
         if prompt is None:
+            self.event.in_debugging.clear()
             return
 
-        self.inform_new_prompt(prompt)
+        self.inform_new_prompt(prompt, is_debug=True)
 
     def parser(self) -> None:
         """
@@ -315,7 +326,8 @@ class Parser:
                         print(new_input)
 
                     prompt = None
-                    if self.event.in_debugging.is_set():
+                    is_debug = self.event.in_debugging.is_set()
+                    if is_debug:
                         prompt, _ = self.debug_interpreter.make_prompt(new_input)
                     elif self.interpreter is not None:
                         prompt, reports = self.interpreter.make_prompt(new_input)
@@ -323,7 +335,7 @@ class Parser:
                             self.to_master.enclose(master.events.NewReports(reports))
 
                     if prompt is not None:
-                        self.inform_new_prompt(prompt)
+                        self.inform_new_prompt(prompt, is_debug=is_debug)
                 except Exception as e:
                     raise Exception(
                         f"Any exception occurred in {threading.current_thread().name}: "
