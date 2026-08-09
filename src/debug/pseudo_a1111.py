@@ -15,7 +15,10 @@ from PIL import Image, ImageDraw, ImageFont
 from pydantic import BaseModel, Field
 
 app = FastAPI(title="Mock A1111 sdapi/v1")
-app.state.cooldown = 0
+# ダミー生成に要する総時間 (秒). 各ステップに分散して sleep する
+app.state.cooldown = 0.0
+# ジョブを失敗させる確率 (0.0-1.0). クライアント側のエラー処理確認用
+app.state.fail_rate = 0.0
 app.state.interrupted = False
 
 # progress 用状態
@@ -179,7 +182,7 @@ async def txt2img(req: Txt2ImgRequest):
     app.state.interrupted = False
     app.state.started_at = time.time()
     app.state.sampling_step = 0
-    app.state.sampling_steps = req.steps or 20
+    app.state.sampling_steps = max(1, req.steps or 20)
     app.state.job = "txt2img"
 
     max_side = 8192
@@ -205,8 +208,13 @@ async def txt2img(req: Txt2ImgRequest):
             return {"images": [], "info": "{}"}
 
         app.state.sampling_step = step + 1
-        cooldown = float(getattr(app.state, "cooldown", 0)) / app.state.sampling_steps
-        await asyncio.sleep(cooldown)
+        per_step = float(getattr(app.state, "cooldown", 0.0)) / app.state.sampling_steps
+        await asyncio.sleep(per_step)
+
+    # 失敗注入: 空の結果を返してクライアントのエラー処理を確認する
+    if random.random() < float(getattr(app.state, "fail_rate", 0.0)):
+        app.state.active = False
+        return {"images": [], "info": "{}"}
 
     # 画像生成（単色 + 時刻等）
     images_b64: list[str] = []
@@ -308,7 +316,7 @@ async def img2img(req: Img2ImgRequest):
     app.state.interrupted = False
     app.state.started_at = time.time()
     app.state.sampling_step = 0
-    app.state.sampling_steps = req.steps or 20
+    app.state.sampling_steps = max(1, req.steps or 20)
     app.state.job = "img2img"
 
     try:
@@ -337,8 +345,13 @@ async def img2img(req: Img2ImgRequest):
             return {"images": [], "info": "{}"}
 
         app.state.sampling_step = step + 1
-        cooldown = float(getattr(app.state, "cooldown", 0)) / app.state.sampling_steps
-        await asyncio.sleep(cooldown)
+        per_step = float(getattr(app.state, "cooldown", 0.0)) / app.state.sampling_steps
+        await asyncio.sleep(per_step)
+
+    # 失敗注入: 空の結果を返してクライアントのエラー処理を確認する
+    if random.random() < float(getattr(app.state, "fail_rate", 0.0)):
+        app.state.active = False
+        return {"images": [], "info": "{}"}
 
     new_width = req.width
     new_height = req.height
@@ -439,7 +452,9 @@ if __name__ == "__main__":
     )
     parser.add_argument("-s", "--server", default="127.0.0.1", help="A1111 IP Addr")
     parser.add_argument("-p", "--port", type=int, default=7860, help="A1111 Port")
-    parser.add_argument("-c", "--cooldown", type=int, default=0, help="Cooldown Time")
+    parser.add_argument("-c", "--cooldown", type=float, default=0.0, help="生成時間 (秒)")
+    parser.add_argument("-f", "--fail-rate", type=float, default=0.0, help="失敗率 (0.0-1.0)")
     args = parser.parse_args()
     app.state.cooldown = args.cooldown
+    app.state.fail_rate = args.fail_rate
     run_uvicorn_until_success(app, args.server, args.port)

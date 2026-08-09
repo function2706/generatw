@@ -13,12 +13,27 @@ from fastapi.responses import StreamingResponse
 from PIL import Image, ImageDraw, ImageFont, PngImagePlugin
 
 app = FastAPI(title="Mock ComfyUI sdapi/v1")
-app.state.cooldown = 0
+# ダミー生成に要する総時間 (秒). 各ステップに分散して sleep する
+app.state.cooldown = 0.0
+# ジョブを失敗させる確率 (0.0-1.0). クライアント側のエラー処理確認用
+app.state.fail_rate = 0.0
+
+# 保持する PROMPTS / IMAGES の上限 (長時間稼働時のメモリリーク防止)
+CACHE_LIMIT = 256
 
 PROMPTS: dict[str, Any] = {}
 IMAGES: dict[str, bytes] = {}
 WS_CLIENTS: dict[str, WebSocket] = {}
-RUNNING_TASKS: dict[str, asyncio.Task] = {}
+# client_id -> {prompt_id -> Task}
+RUNNING_TASKS: dict[str, dict[str, asyncio.Task]] = {}
+
+
+def _trim_cache(cache: dict) -> None:
+    """
+    dict が上限を超えたら古い要素から捨てる (挿入順を利用)
+    """
+    while len(cache) > CACHE_LIMIT:
+        cache.pop(next(iter(cache)))
 
 
 @app.post("/prompt")
@@ -33,11 +48,19 @@ async def prompt(req: dict[str, Any]):
         "status": "running",
         "outputs": {},
     }
+    _trim_cache(PROMPTS)
 
     task = asyncio.create_task(simulate_generation(prompt_id))
     RUNNING_TASKS.setdefault(client_id, {})[prompt_id] = task
 
-    task.add_done_callback(lambda t: RUNNING_TASKS.pop(prompt_id, None))
+    def _cleanup(_task, cid=client_id, pid=prompt_id):
+        tasks = RUNNING_TASKS.get(cid)
+        if tasks is not None:
+            tasks.pop(pid, None)
+            if not tasks:
+                RUNNING_TASKS.pop(cid, None)
+
+    task.add_done_callback(_cleanup)
 
     return {"prompt_id": prompt_id}
 
@@ -85,6 +108,7 @@ def gen_images(width: int, height: int, batch_size: int, top_seed: int, prompt) 
         buffer.seek(0)
         filename = f"{uuid.uuid4()}.png"
         IMAGES[filename] = buffer.getvalue()
+        _trim_cache(IMAGES)
         images.append({"filename": filename, "subfolder": "", "type": "output"})
 
     return images
@@ -92,7 +116,6 @@ def gen_images(width: int, height: int, batch_size: int, top_seed: int, prompt) 
 
 def upscale(path: str, new_width: int, new_height: int, prompt) -> list[dict]:
     img = Image.open(path)
-    w, h = img.size
     resized = img.resize((new_width, new_height), Image.LANCZOS)
 
     meta = PngImagePlugin.PngInfo()
@@ -102,6 +125,7 @@ def upscale(path: str, new_width: int, new_height: int, prompt) -> list[dict]:
     buffer.seek(0)
     filename = f"{uuid.uuid4()}.png"
     IMAGES[filename] = buffer.getvalue()
+    _trim_cache(IMAGES)
     return [{"filename": filename, "subfolder": "", "type": "output"}]
 
 
@@ -138,13 +162,24 @@ async def simulate_generation(prompt_id: str):
         ksampler_id, ksampler = ksampler_nodes[0]
         preview_image_id, _ = preview_nodes[0]
 
+        # 失敗注入: 完了通知だけ送って success にしない (history が {} を返す)
+        if random.random() < float(getattr(app.state, "fail_rate", 0.0)):
+            print(f"[INFO] Injected failure for prompt {prompt_id}")
+            PROMPTS[prompt_id]["status"] = "error"
+            ws = get_ws()
+            if ws:
+                await ws.send_json(
+                    {"type": "executing", "data": {"node": -1, "prompt_id": prompt_id}}
+                )
+            return
+
         seed = ksampler["inputs"]["seed"]
-        steps = ksampler["inputs"]["steps"]
-        cooldown = float(getattr(app.state, "cooldown", 0)) / steps
+        steps = max(1, int(ksampler["inputs"]["steps"]))
+        per_step = float(getattr(app.state, "cooldown", 0.0)) / steps
 
         # プログレスバーの送信
         for step in range(1, steps + 1):
-            await asyncio.sleep(cooldown)
+            await asyncio.sleep(per_step)
             ws = get_ws()
             if ws:
                 try:
@@ -214,7 +249,6 @@ async def simulate_generation(prompt_id: str):
         PROMPTS[prompt_id]["status"] = "success"
     except asyncio.CancelledError:
         PROMPTS[prompt_id]["status"] = "interrupted"
-        client_id = PROMPTS[prompt_id]["client_id"]
         raise
 
     except Exception as e:
@@ -280,9 +314,11 @@ if __name__ == "__main__":
     )
     parser.add_argument("-s", "--server", default="127.0.0.1", help="ComfyUI IP Addr")
     parser.add_argument("-p", "--port", type=int, default=8188, help="ComfyUI Port")
-    parser.add_argument("-c", "--cooldown", type=int, default=0, help="Cooldown Time")
+    parser.add_argument("-c", "--cooldown", type=float, default=0.0, help="生成時間 (秒)")
+    parser.add_argument("-f", "--fail-rate", type=float, default=0.0, help="失敗率 (0.0-1.0)")
     args = parser.parse_args()
     app.state.cooldown = args.cooldown
+    app.state.fail_rate = args.fail_rate
 
     print(f"Starting uvicorn on {args.server}:{args.port}")
     uvicorn.run(app, host=args.server, port=args.port)
