@@ -355,6 +355,12 @@ class Displayer:
         self.master = master
         self.to_master = to_master
 
+        # GUI にウィジェットを持たない設定 (入力ソース / socket ポート) は
+        # init から引き継ぎ crnt_configs で維持する. さもないと OnChangeConfig の
+        # たびに既定へ戻り, 終了時の config.json 保存で socket 設定が失われる
+        self._input_source = init_configs.input_source
+        self._socket_port = init_configs.socket_port
+
         # MainWindow 構築中に参照され得るため先に初期化しておく
         self.last_picstats: PicStats | NoImageStats = None
         self.last_task: TaskBlueprint = None
@@ -617,6 +623,8 @@ class Displayer:
             wf_yamlpath=str(self.main_window.workflow_tab_obj.wf_yamlpath),
             backend=main.backend_combo.get(),
             theme=self.main_window.theme_pref,
+            input_source=self._input_source,
+            socket_port=self._socket_port,
             allow_edit_clipboard=bool(debug.allow_edit_clipboard_check.get()),
             log_parser_reports=bool(debug.log_parser_reports_check.get()),
             save_memory_end=bool(main.save_memory_end_check.get()),
