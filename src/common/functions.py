@@ -15,6 +15,31 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+import yaml
+
+# YAML 種別 (kind): プロンプト定義 / ワークフロー定義 の混在を防ぐ最上位識別子
+YAML_KIND_KEY = "kind"
+YAML_KIND_PROMPT = "prompt"
+YAML_KIND_WORKFLOW = "workflow"
+
+
+def read_yaml_kind(path: Path) -> str | None:
+    """
+    YAML 先頭の 'kind' 値を読み取る
+
+    Args:
+        path (Path): YAML ファイルパス
+
+    Returns:
+        str | None: kind の値 (読み取れない / 未記載なら None)
+    """
+    try:
+        with open(path, encoding="utf-8") as f:
+            head = yaml.safe_load(f) or {}
+    except (yaml.YAMLError, OSError):
+        return None
+    return head.get(YAML_KIND_KEY) if isinstance(head, dict) else None
+
 
 @dataclass(frozen=True)
 class PathConsts:

@@ -22,6 +22,7 @@
 ## 1. 全体構造
 
 ```yaml
+kind: workflow            # 必須. このファイルがワークフロー定義であることを示す予約語
 backend: <Generator ID>   # Generator が提供する紐づけのための予約語(現状 ComfyUIGenerator のみ)
 <workflow name>:          # ワークフロー名. ComfyUIGenerator は txt2img / img2img を要求する
   nodes:
@@ -33,6 +34,8 @@ backend: <Generator ID>   # Generator が提供する紐づけのための予約
   picinfo:
     <picinfo key>: <accessor>
 ```
+
+先頭の `kind: workflow` は必須の種別識別子で, GUI のワークフロータブはこの値を持つ YAML のみを選択候補として表示する (プロンプト定義 YAML との混在防止). 値が `workflow` でないファイルは選択できない.
 
 このフォーマットは Workflow > Node という二層構造によって記述される.
 

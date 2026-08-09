@@ -23,6 +23,7 @@ from parser.prompter.atoms import (
 class KeyName(StrEnum):
     """YAML設定ファイルで使用されるキー名の定数"""
 
+    kind = "kind"
     interpreter = "interpreter"
     ignition = "ignition"
     pattern = "pattern"
@@ -769,6 +770,8 @@ class Prompter:
         catreg_dict: dict[CategoryPath, CategoryRegister] = {}
         common_dict: dict[str, tuple[list[Token], list[Token]]] = {}
         for key, val in yamldict.items():
+            if key == KeyName.kind:
+                continue  # 種別識別子 (Screen ではない)
             if key == KeyName.interpreter:
                 obj.interpreter_keyword = val
             else:

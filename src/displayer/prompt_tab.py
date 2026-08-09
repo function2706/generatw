@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 import yaml
 
 import master.events
-from common.functions import PathConsts
+from common.functions import YAML_KIND_PROMPT, PathConsts, read_yaml_kind
 from displayer import theme, widgets
 from displayer.theme import STYLES
 from parser.prompter.prompter import Prompter
@@ -249,11 +249,20 @@ class PromptTab:
 
     def refresh_entries(self) -> None:
         """
-        yamls ディレクトリを走査してコンボボックスを作り直し, 現ファイルを読み込む
+        yamls ディレクトリを走査してコンボボックスを作り直し, 現ファイルを読み込む\n
+        kind == prompt の YAML のみを候補とする
         """
-        found = sorted(PathConsts.yaml_dir.glob("*.yaml"))
+        found = [
+            p
+            for p in sorted(PathConsts.yaml_dir.glob("*.yaml"))
+            if read_yaml_kind(p) == YAML_KIND_PROMPT
+        ]
         self.entries = {p.name: p for p in found}
-        if self.path is not None and self.path not in self.entries.values():
+        if (
+            self.path is not None
+            and self.path not in self.entries.values()
+            and read_yaml_kind(self.path) == YAML_KIND_PROMPT
+        ):
             self.entries[str(self.path)] = self.path
 
         self.combo.configure(values=list(self.entries.keys()))
@@ -302,7 +311,13 @@ class PromptTab:
         )
         if not picked:
             return
-        self.path = Path(picked)
+        path = Path(picked)
+        if read_yaml_kind(path) != YAML_KIND_PROMPT:
+            self.set_status(
+                f"プロンプト定義YAMLではありません (kind: prompt が必要): {path.name}", ok=False
+            )
+            return
+        self.path = path
         self.refresh_entries()
         self.displayer.on_prompt_yaml_selected(self.path)
 

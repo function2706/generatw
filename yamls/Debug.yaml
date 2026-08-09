@@ -1,3 +1,4 @@
+kind: prompt
 interpreter: DebugInterpreter
 main:
   ignition: "debug"

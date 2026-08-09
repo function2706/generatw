@@ -13,12 +13,12 @@ from typing import Any, Protocol, get_type_hints
 import yaml
 
 from archiver.dataclasses import PicInfo
-from common.functions import PathConsts
+from common.functions import YAML_KIND_KEY, YAML_KIND_WORKFLOW, PathConsts
 
 BACKEND_KEYWORD = "ComfyUIGenerator"
 
 # セクション名として使えない予約語
-RESERVED_KEYS: tuple[str, ...] = ("backend",)
+RESERVED_KEYS: tuple[str, ...] = ("backend", YAML_KIND_KEY)
 # ノード定義のキー
 NODE_KEYS: tuple[str, ...] = ("idx", "class_type", "inputs")
 
@@ -412,7 +412,9 @@ class WorkFlowDef:
         explicit: dict[str, int] = {}
         for nname, ndef in raw_nodes.items():
             if not isinstance(ndef, dict):
-                raise WorkFlowSyntaxError(f"{where}: ノード '{nname}': 定義がマッピングではありません")
+                raise WorkFlowSyntaxError(
+                    f"{where}: ノード '{nname}': 定義がマッピングではありません"
+                )
             if ndef.get("idx") is None:
                 continue
 
@@ -420,7 +422,9 @@ class WorkFlowDef:
             if not isinstance(idx, int) or idx < 1:
                 raise WorkFlowSyntaxError(f"{where}: ノード '{nname}': 'idx' は 1 以上の整数です")
             if idx in explicit.values():
-                raise WorkFlowSyntaxError(f"{where}: ノード '{nname}': 'idx' {idx} が重複しています")
+                raise WorkFlowSyntaxError(
+                    f"{where}: ノード '{nname}': 'idx' {idx} が重複しています"
+                )
             explicit[nname] = idx
 
         nextidx = 1
@@ -463,7 +467,9 @@ class WorkFlowDef:
             class_type = self.nodes[nname]["class_type"]
             raw_inputs = ndef.get("inputs") or {}
             if not isinstance(raw_inputs, dict):
-                raise WorkFlowSyntaxError(f"{where}: ノード '{nname}': 'inputs' がマッピングではありません")
+                raise WorkFlowSyntaxError(
+                    f"{where}: ノード '{nname}': 'inputs' がマッピングではありません"
+                )
 
             for key, value in raw_inputs.items():
                 pos = f"{where}: ノード '{nname}' の入力 '{key}'"
@@ -839,8 +845,8 @@ def scan_workflow_yamls(
         except (yaml.YAMLError, OSError):
             continue
 
-        if not isinstance(head, dict) or head.get("backend") != BACKEND_KEYWORD:
-            # ワークフロー YAML ではない (プロンプトルール YAML 等)
+        if not isinstance(head, dict) or head.get(YAML_KIND_KEY) != YAML_KIND_WORKFLOW:
+            # ワークフロー YAML ではない (kind が workflow 以外, もしくは未記載)
             continue
 
         try:

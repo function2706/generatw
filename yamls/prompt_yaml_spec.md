@@ -22,6 +22,7 @@
 ## 1. 全体構造
 
 ```yaml
+kind: prompt                  # 必須. このファイルがプロンプト定義であることを示す予約語
 interpreter: <Interpreter ID> # Interpreter が提供する紐づけのための予約語
 <screen name>:                # Screen 名, Interpreter による予約語
   ignition: <regex>
@@ -37,6 +38,8 @@ interpreter: <Interpreter ID> # Interpreter が提供する紐づけのための
     positive: <tokens>
     negative: <tokens>
 ```
+
+先頭の `kind: prompt` は必須の種別識別子で, GUI のプロンプト定義タブはこの値を持つ YAML のみを選択候補として表示する (ワークフロー定義 YAML との混在防止). 値が `prompt` でないファイルは選択できない.
 
 このフォーマットは Screen > Category > Rule という三層構造によって記述される.  
 これらは YAML 上の階層(インデント)によって書き分けることとする.

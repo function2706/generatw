@@ -1,3 +1,4 @@
+kind: prompt
 interpreter: TheWorldInterpreter
 main:
   ignition: '[春夏秋冬]の月\s[0-9]*日目'

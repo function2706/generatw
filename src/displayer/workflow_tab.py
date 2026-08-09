@@ -15,7 +15,7 @@ from tkinter import filedialog, ttk
 from typing import TYPE_CHECKING
 
 import master.events
-from common.functions import PathConsts
+from common.functions import YAML_KIND_WORKFLOW, PathConsts, read_yaml_kind
 from displayer import theme, widgets
 from displayer.dataclasses import GUIConfigs
 from displayer.theme import STYLES
@@ -455,7 +455,16 @@ class WorkFlowTab:
         if not picked:
             return
 
-        self.wf_yamlpath = Path(picked)
+        path = Path(picked)
+        if read_yaml_kind(path) != YAML_KIND_WORKFLOW:
+            self._status_ok = False
+            self.status_label.configure(foreground=theme.current.err)
+            self.status_var.set(
+                f"ワークフロー定義YAMLではありません (kind: workflow が必要): {path.name}"
+            )
+            return
+
+        self.wf_yamlpath = path
         self.refresh_entries()
         self.notify_select()
 

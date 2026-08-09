@@ -1,3 +1,4 @@
+kind: prompt
 interpreter: ReverseInterpreter
 main:
   ignition: '\[LV'
