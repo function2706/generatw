@@ -15,6 +15,7 @@ from displayer import theme, widgets
 from displayer.dataclasses import GUIConfigs
 from displayer.info_window import InfoWindow
 from displayer.log_window import LogCapture, LogWindow
+from displayer.memory_tab import MemoryTab
 from displayer.pic_window import PicWindow
 from displayer.prompt_tab import PromptTab
 from displayer.theme import STYLES
@@ -51,7 +52,6 @@ class MainTab:
         self._build_operation(0)
         self._build_sd_config(1, init_configs)
         self._build_source(2, init_configs)
-        self._build_memory(3, init_configs)
 
     def _build_operation(self, row: int) -> None:
         """
@@ -79,11 +79,6 @@ class MainTab:
         action_button(card, "全タスク", d.on_flush_tasks, width=w, row=2, column=1)
         action_button(card, "生成タスク", d.on_flush_txt2img_tasks, width=w, row=2, column=2)
         action_button(card, "拡大タスク", d.on_flush_img2img_tasks, width=w, row=2, column=3)
-
-        ttk.Label(card, text="記憶", style=STYLES.muted).grid(row=3, column=0, sticky="w", pady=3)
-        action_button(card, "保存", d.on_save_memory, width=w, row=3, column=1)
-        action_button(card, "復元", d.on_load_memory, width=w, row=3, column=2)
-        action_button(card, "忘却", d.on_forget_memory, width=w, row=3, column=3)
 
     def _build_sd_config(self, row: int, cfg: GUIConfigs) -> None:
         """
@@ -164,23 +159,6 @@ class MainTab:
         )
         self.backend_combo.grid(row=2, column=1, pady=5, sticky="w")
 
-    def _build_memory(self, row: int, cfg: GUIConfigs) -> None:
-        """
-        記憶トグルカードを構築する
-        """
-        card = carded_section(self.main_frame, "起動時の記憶", row)
-        on_change = self.displayer.update_configs
-
-        self.save_memory_end_check = tkinter.BooleanVar(value=cfg.save_memory_end)
-        ttk.Checkbutton(
-            card, text="終了時に保存", variable=self.save_memory_end_check, command=on_change
-        ).grid(row=0, column=0, padx=(0, 16), pady=3, sticky="w")
-
-        self.load_memory_start_check = tkinter.BooleanVar(value=cfg.load_memory_start)
-        ttk.Checkbutton(
-            card, text="開始時に復元", variable=self.load_memory_start_check, command=on_change
-        ).grid(row=0, column=1, pady=3, sticky="w")
-
 
 class DebugTab:
     """
@@ -215,7 +193,6 @@ class DebugTab:
         action_button(card, "デバッグ", d.on_debug, row=0, column=0)
         action_button(card, "アーカイブ出力", d.on_dump_archiver, row=1, column=0, padx=(3, 12))
         action_button(card, "タスクリスト", d.on_dump_tasklist, row=1, column=1)
-        action_button(card, "現在の記憶", d.on_dump_memory, row=1, column=2)
 
     def _build_toggles(self, row: int, cfg: GUIConfigs) -> None:
         """
@@ -306,6 +283,12 @@ class MainWindow:
         self.workflow_tab.rowconfigure(0, weight=1)
         self.notebook.add(self.workflow_tab, text="ワークフロー")
         self.workflow_tab_obj = WorkFlowTab(self, init_configs)
+
+        self.memory_tab = ttk.Frame(self.notebook, padding=12)
+        self.memory_tab.columnconfigure(0, weight=1)
+        self.memory_tab.rowconfigure(0, weight=1)
+        self.notebook.add(self.memory_tab, text="記憶")
+        self.memory_tab_obj = MemoryTab(self, init_configs)
 
         self.debug_tab = ttk.Frame(self.notebook, padding=12)
         self.debug_tab.columnconfigure(0, weight=1)
@@ -492,6 +475,7 @@ class Displayer:
             self.log_window.retheme()
         self.main_window.workflow_tab_obj.retheme()
         self.main_window.prompt_tab_obj.retheme()
+        self.main_window.memory_tab_obj.retheme()
         self.update_configs()
 
     # -------------------------------------------------------------------------
@@ -568,6 +552,19 @@ class Displayer:
     def on_forget_memory(self) -> None:
         """記憶忘却ハンドラ"""
         self.to_master.enclose(master.events.OnForgetMemory())
+
+    def on_request_memory(self) -> None:
+        """記憶タブの「更新」ハンドラ: 現在の記憶スナップショットを要求する"""
+        self.to_master.enclose(master.events.OnRequestMemory())
+
+    def update_memory_view(self, data: dict) -> None:
+        """
+        Master から受け取った記憶スナップショットを記憶タブへ反映する
+
+        Args:
+            data (dict): parser.memory_snapshot() の戻り値
+        """
+        self.main_window.memory_tab_obj.update_view(data)
 
     def on_prompt_yaml_selected(self, path: Path) -> None:
         """
@@ -677,8 +674,8 @@ class Displayer:
             socket_port=self._socket_port,
             allow_edit_clipboard=bool(debug.allow_edit_clipboard_check.get()),
             log_parser_reports=bool(debug.log_parser_reports_check.get()),
-            save_memory_end=bool(main.save_memory_end_check.get()),
-            load_memory_start=bool(main.load_memory_start_check.get()),
+            save_memory_end=bool(self.main_window.memory_tab_obj.save_memory_end_check.get()),
+            load_memory_start=bool(self.main_window.memory_tab_obj.load_memory_start_check.get()),
             print_new_clipboard=bool(debug.verbose_clipboard_check.get()),
             print_new_prompt_set=bool(debug.verbose_prompt_set_check.get()),
             print_new_prompt=bool(debug.verbose_prompt_check.get()),

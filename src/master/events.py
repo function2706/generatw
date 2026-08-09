@@ -115,6 +115,13 @@ class OnDumpMemory(DisplayerEvent):
 
 
 @dataclass
+class OnRequestMemory(DisplayerEvent):
+    """記憶タブ用に現在の記憶スナップショットを要求する"""
+
+    pass
+
+
+@dataclass
 class OnBackward(DisplayerEvent):
     pass
 

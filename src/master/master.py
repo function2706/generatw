@@ -332,6 +332,8 @@ class Master(MasterIF):
                 dump_json(self.generator.crnt_tasklist(), "tasks")
             if isinstance(event, master.events.OnDumpMemory):
                 self.parser.dump_memory()
+            if isinstance(event, master.events.OnRequestMemory):
+                self.displayer.update_memory_view(self.parser.memory_snapshot())
             if isinstance(event, master.events.OnBackward):
                 self.archiver.backward_picstats()
             if isinstance(event, master.events.OnForward):

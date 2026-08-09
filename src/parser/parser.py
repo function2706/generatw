@@ -343,17 +343,33 @@ class Parser:
         finally:
             self.source.close()
 
-    def dump_memory(self) -> None:
+    def memory_snapshot(self) -> dict:
         """
-        現在の記憶をダンプする
+        現在の記憶を JSON 化可能な dict として返す\n
+        interpreter が未設定の場合は空 dict
+
+        Returns:
+            dict: {"records": {...}, "last_memory": {...}}
         """
+        if self.interpreter is None:
+            return {}
+
         stringfied_records: dict[str, dict[str, dict[str, MemoryEntry]]] = {
             screen_id: {
                 key_entry.stringfy(): memory.stringfy() for key_entry, memory in record.items()
             }
             for screen_id, record in self.interpreter.records.items()
         }
+        return {
+            "records": stringfied_records,
+            "last_memory": self.interpreter.last_memory.stringfy(),
+        }
 
-        dump_json(stringfied_records, "records")
+    def dump_memory(self) -> None:
+        """
+        現在の記憶をコンソール (ログ) へダンプする
+        """
+        snapshot = self.memory_snapshot()
+        dump_json(snapshot.get("records", {}), "records")
         print("\n")
-        dump_json(self.interpreter.last_memory.stringfy(), "last_memory")
+        dump_json(snapshot.get("last_memory", {}), "last_memory")
