@@ -15,6 +15,7 @@ from displayer import theme, widgets
 from displayer.dataclasses import GUIConfigs
 from displayer.info_window import InfoWindow
 from displayer.pic_window import PicWindow
+from displayer.prompt_tab import PromptTab
 from displayer.theme import STYLES
 from displayer.widgets import action_button, carded_section, field_entry, field_value
 from displayer.workflow_tab import WorkFlowTab
@@ -61,7 +62,7 @@ class MainTab:
         w = 8  # ボタン幅を揃える
 
         ttk.Label(card, text="タスク", style=STYLES.muted).grid(row=0, column=0, sticky="w", pady=3)
-        action_button(card, "再実行", d.on_repeat_task, accent=True, width=w, row=0, column=1)
+        action_button(card, "再実行", d.on_repeat_task, width=w, row=0, column=1)
         action_button(card, "中断", d.on_interrput_task, width=w, row=0, column=2)
 
         ttk.Label(card, text="表示", style=STYLES.muted).grid(row=1, column=0, sticky="w", pady=3)
@@ -198,7 +199,7 @@ class DebugTab:
         """
         card = carded_section(self.main_frame, "操作と出力", row, pady=(4, 2))
         d = self.displayer
-        action_button(card, "デバッグ", d.on_debug, accent=True, row=0, column=0)
+        action_button(card, "デバッグ", d.on_debug, row=0, column=0)
         action_button(card, "アーカイブ出力", d.on_dump_archiver, row=1, column=0, padx=(3, 12))
         action_button(card, "タスクリスト", d.on_dump_tasklist, row=1, column=1)
         action_button(card, "現在の記憶", d.on_dump_memory, row=1, column=2)
@@ -280,6 +281,12 @@ class MainWindow:
         self.main_tab.columnconfigure(0, weight=1)
         self.notebook.add(self.main_tab, text="メイン")
         self.main_tab_obj = MainTab(self, init_configs)
+
+        self.prompt_tab = ttk.Frame(self.notebook, padding=12)
+        self.prompt_tab.columnconfigure(0, weight=1)
+        self.prompt_tab.rowconfigure(0, weight=1)
+        self.notebook.add(self.prompt_tab, text="プロンプト定義")
+        self.prompt_tab_obj = PromptTab(self, init_configs)
 
         self.workflow_tab = ttk.Frame(self.notebook, padding=12)
         self.workflow_tab.columnconfigure(0, weight=1)
@@ -454,6 +461,7 @@ class Displayer:
             widgets.apply_toplevel_bg(self.pic_window.pic_window)
             self.pic_window.retheme()
         self.main_window.workflow_tab_obj.retheme()
+        self.main_window.prompt_tab_obj.retheme()
         self.update_configs()
 
     # -------------------------------------------------------------------------

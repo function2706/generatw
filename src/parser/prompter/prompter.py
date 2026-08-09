@@ -746,11 +746,25 @@ class Prompter:
         Returns:
             Prompter: 生成されたPrompterインスタンス
         """
-        obj = cls()
-
-        obj.yamlpath = Path(yamlpath)
         with open(yamlpath, encoding="utf-8") as f:
             yamldict: dict = yaml.safe_load(f)
+        return cls.from_yamldict(yamldict, Path(yamlpath))
+
+    @classmethod
+    def from_yamldict(cls, yamldict: dict, yamlpath: Path = Path()):
+        """
+        パース済みの YAML 辞書から Prompter インスタンスを生成する\n
+        ファイル I/O を伴わないため, 編集中バッファの検証などに利用できる
+
+        Args:
+            yamldict (dict): yaml.safe_load 済みの辞書
+            yamlpath (Path): 由来のパス (任意)
+
+        Returns:
+            Prompter: 生成されたPrompterインスタンス
+        """
+        obj = cls()
+        obj.yamlpath = Path(yamlpath)
 
         catreg_dict: dict[CategoryPath, CategoryRegister] = {}
         common_dict: dict[str, tuple[list[Token], list[Token]]] = {}

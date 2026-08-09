@@ -14,7 +14,6 @@ from typing import TYPE_CHECKING
 from PIL import Image, ImageDraw, ImageFont, ImageTk
 
 from displayer import theme, widgets
-from displayer.theme import STYLES
 
 if TYPE_CHECKING:
     from displayer.displayer import Displayer
@@ -81,7 +80,6 @@ class EvalFrame:
         self.upscale_button = ttk.Button(
             self.eval_frame,
             text="アップスケール予約",
-            style=STYLES.accent_button,
             command=owner.super_owner.on_upscale,
         )
         self.upscale_button.grid(row=0, column=0, padx=6, pady=6, sticky="wes")

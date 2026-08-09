@@ -111,9 +111,9 @@ class WorkFlowPane:
         ttk.Label(head, text="ビルド結果 (POST される JSON)", style=STYLES.section).grid(
             row=0, column=0, sticky="w"
         )
-        ttk.Button(
-            head, text="プレビュー", command=self.on_preview, style=STYLES.accent_button
-        ).grid(row=0, column=1, padx=10)
+        ttk.Button(head, text="プレビュー", command=self.on_preview).grid(
+            row=0, column=1, padx=10
+        )
 
         text_frame = ttk.Frame(self.frame)
         text_frame.grid(row=5, column=0, sticky="nsew")

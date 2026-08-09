@@ -358,8 +358,32 @@ def _configure_styles(style: ttk.Style, pal: Palette) -> None:
     )
 
     # --- ノートブック ----------------------------------------------------------
-    # 選択タブは大きさを変えず, 面色 (surface) と文字色で区別する
-    style.configure("TNotebook", background=pal.bg, borderwidth=0, tabmargins=(0, 2, 0, 0))
+    # clam 既定の Tab レイアウトから Notebook.focus を除去し, 選択タブに出る
+    # 青い点線フォーカス枠を消す
+    style.layout(
+        "TNotebook.Tab",
+        [
+            (
+                "Notebook.tab",
+                {
+                    "sticky": "nswe",
+                    "children": [
+                        (
+                            "Notebook.padding",
+                            {
+                                "side": "top",
+                                "sticky": "nswe",
+                                "children": [("Notebook.label", {"side": "top", "sticky": ""})],
+                            },
+                        )
+                    ],
+                },
+            )
+        ],
+    )
+    # tabmargins と選択タブの expand を上端で揃え, 選択/非選択を同じ高さにする
+    # (clam は既定で非選択タブを高く描くため, 選択タブを同じだけ持ち上げる)
+    style.configure("TNotebook", background=pal.bg, borderwidth=0, tabmargins=(2, 6, 2, 0))
     style.configure(
         "TNotebook.Tab",
         background=pal.surface_alt,
@@ -367,8 +391,9 @@ def _configure_styles(style: ttk.Style, pal: Palette) -> None:
         bordercolor=pal.border,
         lightcolor=pal.surface_alt,
         darkcolor=pal.surface_alt,
+        focuscolor=pal.surface_alt,
         borderwidth=1,
-        padding=(16, 8),
+        padding=(16, 6),
     )
     style.map(
         "TNotebook.Tab",
@@ -376,7 +401,7 @@ def _configure_styles(style: ttk.Style, pal: Palette) -> None:
         foreground=[("selected", pal.text)],
         lightcolor=[("selected", pal.surface)],
         darkcolor=[("selected", pal.surface)],
-        expand=[("selected", (0, 0, 0, 0))],
+        expand=[("selected", (2, 6, 2, 0))],
     )
 
     # --- ツリービュー ----------------------------------------------------------
